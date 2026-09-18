@@ -1,0 +1,590 @@
+namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
+{
+    partial class TruckManagementView
+    {
+        private System.ComponentModel.IContainer components = null;
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        #region Component Designer generated code
+
+        private void InitializeComponent()
+        {
+            lblTitle = new Label();
+            tblMasterContent = new TableLayoutPanel();
+            pnlForm = new Panel();
+            btnClear = new Button();
+            tblUpdateDelete = new TableLayoutPanel();
+            btnUpdate = new Button();
+            btnDelete = new Button();
+            btnAdd = new Button();
+            txtRemarks = new TextBox();
+            lblRemarks = new Label();
+            numCapacity = new NumericUpDown();
+            lblCap = new Label();
+            tblCargoStatus = new TableLayoutPanel();
+            lblCargoType = new Label();
+            lblStatus = new Label();
+            cbCargoType = new ComboBox();
+            cbStatus = new ComboBox();
+            tblPlateType = new TableLayoutPanel();
+            lblPlate = new Label();
+            lblType = new Label();
+            txtPlate = new TextBox();
+            cbType = new ComboBox();
+            lblFormHeader = new Label();
+            pnlGridCard = new Panel();
+            gridTrucks = new DataGridView();
+            pnlGridHeaderBar = new Panel();
+            pnlGridActionsFlow = new FlowLayoutPanel();
+            txtGridSearch = new TextBox();
+            btnClearSearch = new Button();
+            btnPrint = new Button();
+            lblGridHeader = new Label();
+            tblMasterContent.SuspendLayout();
+            pnlForm.SuspendLayout();
+            tblUpdateDelete.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)numCapacity).BeginInit();
+            tblCargoStatus.SuspendLayout();
+            tblPlateType.SuspendLayout();
+            pnlGridCard.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)gridTrucks).BeginInit();
+            pnlGridHeaderBar.SuspendLayout();
+            pnlGridActionsFlow.SuspendLayout();
+            SuspendLayout();
+            // 
+            // lblTitle
+            // 
+            lblTitle.AutoSize = true;
+            lblTitle.Dock = DockStyle.Top;
+            lblTitle.Font = new Font("Segoe UI", 16F, FontStyle.Bold);
+            lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
+            lblTitle.Location = new Point(16, 16);
+            lblTitle.Name = "lblTitle";
+            lblTitle.Padding = new Padding(0, 0, 0, 10);
+            lblTitle.Size = new Size(334, 47);
+            lblTitle.TabIndex = 0;
+            lblTitle.Text = "Fleet Truck Management";
+            // 
+            // tblMasterContent
+            // 
+            tblMasterContent.ColumnCount = 2;
+            tblMasterContent.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 480F));
+            tblMasterContent.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tblMasterContent.Controls.Add(pnlForm, 0, 0);
+            tblMasterContent.Controls.Add(pnlGridCard, 1, 0);
+            tblMasterContent.Dock = DockStyle.Fill;
+            tblMasterContent.Location = new Point(16, 63);
+            tblMasterContent.Name = "tblMasterContent";
+            tblMasterContent.RowCount = 1;
+            tblMasterContent.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tblMasterContent.Size = new Size(1148, 631);
+            tblMasterContent.TabIndex = 1;
+            // 
+            // pnlForm
+            // 
+            pnlForm.AutoScroll = true;
+            pnlForm.BackColor = Color.White;
+            pnlForm.Controls.Add(btnClear);
+            pnlForm.Controls.Add(tblUpdateDelete);
+            pnlForm.Controls.Add(btnAdd);
+            pnlForm.Controls.Add(txtRemarks);
+            pnlForm.Controls.Add(lblRemarks);
+            pnlForm.Controls.Add(numCapacity);
+            pnlForm.Controls.Add(lblCap);
+            pnlForm.Controls.Add(tblCargoStatus);
+            pnlForm.Controls.Add(tblPlateType);
+            pnlForm.Controls.Add(lblFormHeader);
+            pnlForm.Dock = DockStyle.Fill;
+            pnlForm.Location = new Point(0, 0);
+            pnlForm.Margin = new Padding(0, 0, 12, 0);
+            pnlForm.Name = "pnlForm";
+            pnlForm.Padding = new Padding(16);
+            pnlForm.Size = new Size(468, 631);
+            pnlForm.TabIndex = 0;
+            // 
+            // btnClear
+            // 
+            btnClear.BackColor = Color.FromArgb(241, 245, 249);
+            btnClear.Cursor = Cursors.Hand;
+            btnClear.Dock = DockStyle.Top;
+            btnClear.FlatAppearance.BorderSize = 0;
+            btnClear.FlatStyle = FlatStyle.Flat;
+            btnClear.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            btnClear.ForeColor = Color.FromArgb(71, 85, 105);
+            btnClear.Location = new Point(16, 382);
+            btnClear.Margin = new Padding(0, 4, 0, 6);
+            btnClear.Name = "btnClear";
+            btnClear.Size = new Size(436, 36);
+            btnClear.TabIndex = 9;
+            btnClear.Text = "\U0001f9f9 CLEAR FORM";
+            btnClear.UseVisualStyleBackColor = false;
+            btnClear.Click += BtnClear_Click;
+            // 
+            // tblUpdateDelete
+            // 
+            tblUpdateDelete.ColumnCount = 2;
+            tblUpdateDelete.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblUpdateDelete.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblUpdateDelete.Controls.Add(btnUpdate, 0, 0);
+            tblUpdateDelete.Controls.Add(btnDelete, 1, 0);
+            tblUpdateDelete.Dock = DockStyle.Top;
+            tblUpdateDelete.Location = new Point(16, 340);
+            tblUpdateDelete.Margin = new Padding(0, 4, 0, 6);
+            tblUpdateDelete.Name = "tblUpdateDelete";
+            tblUpdateDelete.RowCount = 1;
+            tblUpdateDelete.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tblUpdateDelete.Size = new Size(436, 42);
+            tblUpdateDelete.TabIndex = 8;
+            // 
+            // btnUpdate
+            // 
+            btnUpdate.BackColor = Color.FromArgb(16, 185, 129);
+            btnUpdate.Cursor = Cursors.Hand;
+            btnUpdate.Dock = DockStyle.Fill;
+            btnUpdate.FlatAppearance.BorderSize = 0;
+            btnUpdate.FlatStyle = FlatStyle.Flat;
+            btnUpdate.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            btnUpdate.ForeColor = Color.White;
+            btnUpdate.Location = new Point(0, 0);
+            btnUpdate.Margin = new Padding(0, 0, 4, 0);
+            btnUpdate.Name = "btnUpdate";
+            btnUpdate.Size = new Size(214, 42);
+            btnUpdate.TabIndex = 0;
+            btnUpdate.Text = "✏ UPDATE";
+            btnUpdate.UseVisualStyleBackColor = false;
+            btnUpdate.Click += BtnUpdate_Click;
+            // 
+            // btnDelete
+            // 
+            btnDelete.BackColor = Color.FromArgb(239, 68, 68);
+            btnDelete.Cursor = Cursors.Hand;
+            btnDelete.Dock = DockStyle.Fill;
+            btnDelete.FlatAppearance.BorderSize = 0;
+            btnDelete.FlatStyle = FlatStyle.Flat;
+            btnDelete.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            btnDelete.ForeColor = Color.White;
+            btnDelete.Location = new Point(222, 0);
+            btnDelete.Margin = new Padding(4, 0, 0, 0);
+            btnDelete.Name = "btnDelete";
+            btnDelete.Size = new Size(214, 42);
+            btnDelete.TabIndex = 1;
+            btnDelete.Text = "🗑 DELETE";
+            btnDelete.UseVisualStyleBackColor = false;
+            btnDelete.Click += BtnDelete_Click;
+            // 
+            // btnAdd
+            // 
+            btnAdd.BackColor = Color.FromArgb(37, 99, 235);
+            btnAdd.Cursor = Cursors.Hand;
+            btnAdd.Dock = DockStyle.Top;
+            btnAdd.FlatAppearance.BorderSize = 0;
+            btnAdd.FlatStyle = FlatStyle.Flat;
+            btnAdd.Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold);
+            btnAdd.ForeColor = Color.White;
+            btnAdd.Location = new Point(16, 300);
+            btnAdd.Margin = new Padding(0, 4, 0, 8);
+            btnAdd.Name = "btnAdd";
+            btnAdd.Size = new Size(436, 40);
+            btnAdd.TabIndex = 7;
+            btnAdd.Text = "+ ADD TRUCK";
+            btnAdd.UseVisualStyleBackColor = false;
+            btnAdd.Click += BtnSave_Click;
+            // 
+            // txtRemarks
+            // 
+            txtRemarks.Dock = DockStyle.Top;
+            txtRemarks.Font = new Font("Segoe UI", 9.5F);
+            txtRemarks.Location = new Point(16, 244);
+            txtRemarks.Margin = new Padding(0, 0, 0, 8);
+            txtRemarks.Multiline = true;
+            txtRemarks.Name = "txtRemarks";
+            txtRemarks.PlaceholderText = "Vehicle condition notes, repair history, special instructions...";
+            txtRemarks.Size = new Size(436, 56);
+            txtRemarks.TabIndex = 6;
+            // 
+            // lblRemarks
+            // 
+            lblRemarks.AutoSize = true;
+            lblRemarks.Dock = DockStyle.Top;
+            lblRemarks.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblRemarks.ForeColor = Color.FromArgb(30, 41, 59);
+            lblRemarks.Location = new Point(16, 217);
+            lblRemarks.Name = "lblRemarks";
+            lblRemarks.Padding = new Padding(0, 4, 0, 2);
+            lblRemarks.Size = new Size(163, 27);
+            lblRemarks.TabIndex = 5;
+            lblRemarks.Text = "Remarks / Condition:";
+            // 
+            // numCapacity
+            // 
+            numCapacity.Dock = DockStyle.Top;
+            numCapacity.Font = new Font("Segoe UI", 9.5F);
+            numCapacity.Location = new Point(16, 188);
+            numCapacity.Margin = new Padding(0, 0, 0, 8);
+            numCapacity.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
+            numCapacity.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
+            numCapacity.Name = "numCapacity";
+            numCapacity.Size = new Size(436, 29);
+            numCapacity.TabIndex = 4;
+            numCapacity.Value = new decimal(new int[] { 300, 0, 0, 0 });
+            // 
+            // lblCap
+            // 
+            lblCap.AutoSize = true;
+            lblCap.Dock = DockStyle.Top;
+            lblCap.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblCap.ForeColor = Color.FromArgb(30, 41, 59);
+            lblCap.Location = new Point(16, 161);
+            lblCap.Name = "lblCap";
+            lblCap.Padding = new Padding(0, 4, 0, 2);
+            lblCap.Size = new Size(147, 27);
+            lblCap.TabIndex = 3;
+            lblCap.Text = "Capacity (Crates) *:";
+            // 
+            // tblCargoStatus
+            // 
+            tblCargoStatus.ColumnCount = 2;
+            tblCargoStatus.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblCargoStatus.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblCargoStatus.Controls.Add(lblCargoType, 0, 0);
+            tblCargoStatus.Controls.Add(lblStatus, 1, 0);
+            tblCargoStatus.Controls.Add(cbCargoType, 0, 1);
+            tblCargoStatus.Controls.Add(cbStatus, 1, 1);
+            tblCargoStatus.Dock = DockStyle.Top;
+            tblCargoStatus.Location = new Point(16, 105);
+            tblCargoStatus.Margin = new Padding(0, 4, 0, 4);
+            tblCargoStatus.Name = "tblCargoStatus";
+            tblCargoStatus.RowCount = 2;
+            tblCargoStatus.RowStyles.Add(new RowStyle());
+            tblCargoStatus.RowStyles.Add(new RowStyle());
+            tblCargoStatus.Size = new Size(436, 56);
+            tblCargoStatus.TabIndex = 2;
+            // 
+            // lblCargoType
+            // 
+            lblCargoType.AutoSize = true;
+            lblCargoType.Dock = DockStyle.Fill;
+            lblCargoType.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblCargoType.ForeColor = Color.FromArgb(30, 41, 59);
+            lblCargoType.Location = new Point(0, 0);
+            lblCargoType.Margin = new Padding(0, 0, 4, 2);
+            lblCargoType.Name = "lblCargoType";
+            lblCargoType.Size = new Size(214, 21);
+            lblCargoType.TabIndex = 0;
+            lblCargoType.Text = "Cargo / Temp Type *:";
+            // 
+            // lblStatus
+            // 
+            lblStatus.AutoSize = true;
+            lblStatus.Dock = DockStyle.Fill;
+            lblStatus.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblStatus.ForeColor = Color.FromArgb(30, 41, 59);
+            lblStatus.Location = new Point(222, 0);
+            lblStatus.Margin = new Padding(4, 0, 0, 2);
+            lblStatus.Name = "lblStatus";
+            lblStatus.Size = new Size(214, 21);
+            lblStatus.TabIndex = 1;
+            lblStatus.Text = "Operational Status *:";
+            // 
+            // cbCargoType
+            // 
+            cbCargoType.Dock = DockStyle.Fill;
+            cbCargoType.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbCargoType.Font = new Font("Segoe UI", 9.5F);
+            cbCargoType.FormattingEnabled = true;
+            cbCargoType.Items.AddRange(new object[] { "Cold / Chilled", "Dry Goods", "Dry and Chilled Mix" });
+            cbCargoType.Location = new Point(0, 25);
+            cbCargoType.Margin = new Padding(0, 2, 4, 6);
+            cbCargoType.Name = "cbCargoType";
+            cbCargoType.Size = new Size(214, 29);
+            cbCargoType.TabIndex = 2;
+            // 
+            // cbStatus
+            // 
+            cbStatus.Dock = DockStyle.Fill;
+            cbStatus.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbStatus.Font = new Font("Segoe UI", 9.5F);
+            cbStatus.FormattingEnabled = true;
+            cbStatus.Items.AddRange(new object[] { "Available", "In Use", "Under Maintenance" });
+            cbStatus.Location = new Point(222, 25);
+            cbStatus.Margin = new Padding(4, 2, 0, 6);
+            cbStatus.Name = "cbStatus";
+            cbStatus.Size = new Size(214, 29);
+            cbStatus.TabIndex = 3;
+            // 
+            // tblPlateType
+            // 
+            tblPlateType.ColumnCount = 2;
+            tblPlateType.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblPlateType.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblPlateType.Controls.Add(lblPlate, 0, 0);
+            tblPlateType.Controls.Add(lblType, 1, 0);
+            tblPlateType.Controls.Add(txtPlate, 0, 1);
+            tblPlateType.Controls.Add(cbType, 1, 1);
+            tblPlateType.Dock = DockStyle.Top;
+            tblPlateType.Location = new Point(16, 49);
+            tblPlateType.Margin = new Padding(0, 4, 0, 4);
+            tblPlateType.Name = "tblPlateType";
+            tblPlateType.RowCount = 2;
+            tblPlateType.RowStyles.Add(new RowStyle());
+            tblPlateType.RowStyles.Add(new RowStyle());
+            tblPlateType.Size = new Size(436, 56);
+            tblPlateType.TabIndex = 1;
+            // 
+            // lblPlate
+            // 
+            lblPlate.AutoSize = true;
+            lblPlate.Dock = DockStyle.Fill;
+            lblPlate.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblPlate.ForeColor = Color.FromArgb(30, 41, 59);
+            lblPlate.Location = new Point(0, 0);
+            lblPlate.Margin = new Padding(0, 0, 4, 2);
+            lblPlate.Name = "lblPlate";
+            lblPlate.Size = new Size(214, 21);
+            lblPlate.TabIndex = 0;
+            lblPlate.Text = "Plate Number *:";
+            // 
+            // lblType
+            // 
+            lblType.AutoSize = true;
+            lblType.Dock = DockStyle.Fill;
+            lblType.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblType.ForeColor = Color.FromArgb(30, 41, 59);
+            lblType.Location = new Point(222, 0);
+            lblType.Margin = new Padding(4, 0, 0, 2);
+            lblType.Name = "lblType";
+            lblType.Size = new Size(214, 21);
+            lblType.TabIndex = 1;
+            lblType.Text = "Truck Category *:";
+            // 
+            // txtPlate
+            // 
+            txtPlate.CharacterCasing = CharacterCasing.Upper;
+            txtPlate.Dock = DockStyle.Fill;
+            txtPlate.Font = new Font("Segoe UI", 9.5F);
+            txtPlate.Location = new Point(0, 25);
+            txtPlate.Margin = new Padding(0, 2, 4, 6);
+            txtPlate.Name = "txtPlate";
+            txtPlate.PlaceholderText = "e.g. ABC 1234";
+            txtPlate.Size = new Size(214, 29);
+            txtPlate.TabIndex = 2;
+            // 
+            // cbType
+            // 
+            cbType.Dock = DockStyle.Fill;
+            cbType.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbType.Font = new Font("Segoe UI", 9.5F);
+            cbType.FormattingEnabled = true;
+            cbType.Location = new Point(222, 25);
+            cbType.Margin = new Padding(4, 2, 0, 6);
+            cbType.Name = "cbType";
+            cbType.Size = new Size(214, 29);
+            cbType.TabIndex = 3;
+            // 
+            // lblFormHeader
+            // 
+            lblFormHeader.AutoSize = true;
+            lblFormHeader.Dock = DockStyle.Top;
+            lblFormHeader.Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold);
+            lblFormHeader.ForeColor = Color.FromArgb(30, 41, 59);
+            lblFormHeader.Location = new Point(16, 16);
+            lblFormHeader.Name = "lblFormHeader";
+            lblFormHeader.Padding = new Padding(0, 0, 0, 8);
+            lblFormHeader.Size = new Size(187, 33);
+            lblFormHeader.TabIndex = 0;
+            lblFormHeader.Text = "Truck Vehicle Details";
+            // 
+            // pnlGridCard
+            // 
+            pnlGridCard.BackColor = Color.White;
+            pnlGridCard.Controls.Add(gridTrucks);
+            pnlGridCard.Controls.Add(pnlGridHeaderBar);
+            pnlGridCard.Dock = DockStyle.Fill;
+            pnlGridCard.Location = new Point(480, 0);
+            pnlGridCard.Margin = new Padding(0);
+            pnlGridCard.MinimumSize = new Size(480, 300);
+            pnlGridCard.Name = "pnlGridCard";
+            pnlGridCard.Padding = new Padding(16);
+            pnlGridCard.Size = new Size(668, 631);
+            pnlGridCard.TabIndex = 1;
+            // 
+            // gridTrucks
+            // 
+            gridTrucks.AllowUserToAddRows = false;
+            gridTrucks.AllowUserToDeleteRows = false;
+            gridTrucks.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            gridTrucks.BackgroundColor = Color.White;
+            gridTrucks.BorderStyle = BorderStyle.None;
+            gridTrucks.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            gridTrucks.Dock = DockStyle.Fill;
+            gridTrucks.EnableHeadersVisualStyles = false;
+            gridTrucks.Location = new Point(16, 90);
+            gridTrucks.MultiSelect = false;
+            gridTrucks.Name = "gridTrucks";
+            gridTrucks.ReadOnly = true;
+            gridTrucks.RowHeadersVisible = false;
+            gridTrucks.RowHeadersWidth = 51;
+            gridTrucks.RowTemplate.Height = 34;
+            gridTrucks.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            gridTrucks.Size = new Size(636, 525);
+            gridTrucks.TabIndex = 1;
+            gridTrucks.SelectionChanged += GridTrucks_SelectionChanged;
+            // 
+            // pnlGridHeaderBar
+            // 
+            pnlGridHeaderBar.AutoSize = true;
+            pnlGridHeaderBar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            pnlGridHeaderBar.Controls.Add(pnlGridActionsFlow);
+            pnlGridHeaderBar.Controls.Add(lblGridHeader);
+            pnlGridHeaderBar.Dock = DockStyle.Top;
+            pnlGridHeaderBar.Location = new Point(16, 16);
+            pnlGridHeaderBar.Name = "pnlGridHeaderBar";
+            pnlGridHeaderBar.Padding = new Padding(0, 0, 0, 8);
+            pnlGridHeaderBar.Size = new Size(636, 74);
+            pnlGridHeaderBar.TabIndex = 0;
+            // 
+            // pnlGridActionsFlow
+            // 
+            pnlGridActionsFlow.AutoSize = true;
+            pnlGridActionsFlow.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            pnlGridActionsFlow.Controls.Add(txtGridSearch);
+            pnlGridActionsFlow.Controls.Add(btnClearSearch);
+            pnlGridActionsFlow.Controls.Add(btnPrint);
+            pnlGridActionsFlow.Dock = DockStyle.Top;
+            pnlGridActionsFlow.Location = new Point(0, 33);
+            pnlGridActionsFlow.Name = "pnlGridActionsFlow";
+            pnlGridActionsFlow.Size = new Size(636, 33);
+            pnlGridActionsFlow.TabIndex = 1;
+            // 
+            // txtGridSearch
+            // 
+            txtGridSearch.Font = new Font("Segoe UI", 9.5F);
+            txtGridSearch.Location = new Point(0, 4);
+            txtGridSearch.Margin = new Padding(0, 4, 4, 0);
+            txtGridSearch.Name = "txtGridSearch";
+            txtGridSearch.PlaceholderText = "🔍 Search plate #, truck type, status...";
+            txtGridSearch.Size = new Size(220, 29);
+            txtGridSearch.TabIndex = 0;
+            txtGridSearch.TextChanged += TxtGridSearch_TextChanged;
+            // 
+            // btnClearSearch
+            // 
+            btnClearSearch.BackColor = Color.FromArgb(241, 245, 249);
+            btnClearSearch.Cursor = Cursors.Hand;
+            btnClearSearch.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            btnClearSearch.FlatStyle = FlatStyle.Flat;
+            btnClearSearch.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
+            btnClearSearch.ForeColor = Color.FromArgb(100, 116, 139);
+            btnClearSearch.Location = new Point(228, 4);
+            btnClearSearch.Margin = new Padding(4, 4, 8, 0);
+            btnClearSearch.Name = "btnClearSearch";
+            btnClearSearch.Size = new Size(28, 26);
+            btnClearSearch.TabIndex = 1;
+            btnClearSearch.Text = "✖";
+            btnClearSearch.UseVisualStyleBackColor = false;
+            btnClearSearch.Click += BtnClearSearch_Click;
+            // 
+            // btnPrint
+            // 
+            btnPrint.BackColor = Color.FromArgb(71, 85, 105);
+            btnPrint.Cursor = Cursors.Hand;
+            btnPrint.FlatAppearance.BorderSize = 0;
+            btnPrint.FlatStyle = FlatStyle.Flat;
+            btnPrint.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
+            btnPrint.ForeColor = Color.White;
+            btnPrint.Location = new Point(268, 4);
+            btnPrint.Margin = new Padding(4, 4, 0, 0);
+            btnPrint.Name = "btnPrint";
+            btnPrint.Size = new Size(180, 28);
+            btnPrint.TabIndex = 2;
+            btnPrint.Text = "🖨 PRINT FLEET REPORT";
+            btnPrint.UseVisualStyleBackColor = false;
+            btnPrint.Click += BtnPrint_Click;
+            // 
+            // lblGridHeader
+            // 
+            lblGridHeader.AutoSize = true;
+            lblGridHeader.Dock = DockStyle.Top;
+            lblGridHeader.Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold);
+            lblGridHeader.ForeColor = Color.FromArgb(30, 41, 59);
+            lblGridHeader.Location = new Point(0, 0);
+            lblGridHeader.Name = "lblGridHeader";
+            lblGridHeader.Padding = new Padding(0, 0, 0, 8);
+            lblGridHeader.Size = new Size(215, 33);
+            lblGridHeader.TabIndex = 0;
+            lblGridHeader.Text = "Registered Vehicle Fleet";
+            // 
+            // TruckManagementView
+            // 
+            AutoScroll = true;
+            AutoScrollMinSize = new Size(1000, 620);
+            BackColor = Color.FromArgb(241, 245, 249);
+            Controls.Add(tblMasterContent);
+            Controls.Add(lblTitle);
+            Font = new Font("Segoe UI", 10F);
+            Name = "TruckManagementView";
+            Padding = new Padding(16);
+            Size = new Size(1180, 710);
+            tblMasterContent.ResumeLayout(false);
+            pnlForm.ResumeLayout(false);
+            pnlForm.PerformLayout();
+            tblUpdateDelete.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)numCapacity).EndInit();
+            tblCargoStatus.ResumeLayout(false);
+            tblCargoStatus.PerformLayout();
+            tblPlateType.ResumeLayout(false);
+            tblPlateType.PerformLayout();
+            pnlGridCard.ResumeLayout(false);
+            pnlGridCard.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)gridTrucks).EndInit();
+            pnlGridHeaderBar.ResumeLayout(false);
+            pnlGridHeaderBar.PerformLayout();
+            pnlGridActionsFlow.ResumeLayout(false);
+            pnlGridActionsFlow.PerformLayout();
+            ResumeLayout(false);
+            PerformLayout();
+        }
+
+        #endregion
+
+        private System.Windows.Forms.Label lblTitle;
+        private System.Windows.Forms.TableLayoutPanel tblMasterContent;
+        private System.Windows.Forms.Panel pnlForm;
+        private System.Windows.Forms.Label lblFormHeader;
+        private System.Windows.Forms.TableLayoutPanel tblPlateType;
+        private System.Windows.Forms.Label lblPlate;
+        private System.Windows.Forms.TextBox txtPlate;
+        private System.Windows.Forms.Label lblType;
+        private System.Windows.Forms.ComboBox cbType;
+        private System.Windows.Forms.TableLayoutPanel tblCargoStatus;
+        private System.Windows.Forms.Label lblCargoType;
+        private System.Windows.Forms.ComboBox cbCargoType;
+        private System.Windows.Forms.Label lblStatus;
+        private System.Windows.Forms.ComboBox cbStatus;
+        private System.Windows.Forms.Label lblCap;
+        private System.Windows.Forms.NumericUpDown numCapacity;
+        private System.Windows.Forms.Label lblRemarks;
+        private System.Windows.Forms.TextBox txtRemarks;
+        private System.Windows.Forms.Button btnAdd;
+        private System.Windows.Forms.TableLayoutPanel tblUpdateDelete;
+        private System.Windows.Forms.Button btnUpdate;
+        private System.Windows.Forms.Button btnDelete;
+        private System.Windows.Forms.Button btnClear;
+        private System.Windows.Forms.Panel pnlGridCard;
+        private System.Windows.Forms.Panel pnlGridHeaderBar;
+        private System.Windows.Forms.Label lblGridHeader;
+        private System.Windows.Forms.FlowLayoutPanel pnlGridActionsFlow;
+        private System.Windows.Forms.TextBox txtGridSearch;
+        private System.Windows.Forms.Button btnClearSearch;
+        private System.Windows.Forms.Button btnPrint;
+        private System.Windows.Forms.DataGridView gridTrucks;
+    }
+}
