@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
+using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
 
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database
@@ -364,6 +365,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                 }
                             }
 
+                            string recordIdent = $"Record #{id}";
+                            try
+                            {
+                                var identCmd = conn.CreateCommand();
+                                identCmd.Transaction = tx;
+                                if (tableName.Equals("Deliveries", StringComparison.OrdinalIgnoreCase)) identCmd.CommandText = "SELECT DispatchNumber FROM Deliveries WHERE Id = @id";
+                                else if (tableName.Equals("LoadingSchedules", StringComparison.OrdinalIgnoreCase)) identCmd.CommandText = "SELECT ScheduleNumber FROM LoadingSchedules WHERE Id = @id";
+                                else if (tableName.Equals("Trucks", StringComparison.OrdinalIgnoreCase)) identCmd.CommandText = "SELECT PlateNumber FROM Trucks WHERE Id = @id";
+                                else if (tableName.Equals("Crews", StringComparison.OrdinalIgnoreCase)) identCmd.CommandText = "SELECT FullName FROM Crews WHERE Id = @id";
+                                else if (tableName.Equals("Invoices", StringComparison.OrdinalIgnoreCase)) identCmd.CommandText = "SELECT InvoiceNumber FROM Invoices WHERE Id = @id";
+                                else if (tableName.Equals("TripReports", StringComparison.OrdinalIgnoreCase)) identCmd.CommandText = "SELECT TripReportNumber FROM TripReports WHERE Id = @id";
+                                else if (tableName.Equals("IncidentReports", StringComparison.OrdinalIgnoreCase)) identCmd.CommandText = "SELECT IncidentNumber FROM IncidentReports WHERE Id = @id";
+                                else if (tableName.Equals("Users", StringComparison.OrdinalIgnoreCase)) identCmd.CommandText = "SELECT Username FROM Users WHERE Id = @id";
+                                else if (tableName.Equals("RateMatrix", StringComparison.OrdinalIgnoreCase)) identCmd.CommandText = "SELECT Destination FROM RateMatrix WHERE Id = @id";
+                                else identCmd.CommandText = "SELECT Id FROM " + tableName + " WHERE Id = @id";
+                                identCmd.Parameters.AddWithValue("@id", id);
+                                var obj = identCmd.ExecuteScalar();
+                                if (obj != null && obj != DBNull.Value) recordIdent = obj.ToString() ?? recordIdent;
+                            }
+                            catch { }
+
                             var cmd = conn.CreateCommand();
                             cmd.Transaction = tx;
                             cmd.CommandText = $"DELETE FROM {tableName} WHERE Id = @id";
@@ -371,6 +393,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             cmd.ExecuteNonQuery();
 
                             tx.Commit();
+                            LogAuditTrail("DELETE", tableName, id, recordIdent, "", "", "", $"Permanently deleted record #{id} ({recordIdent}) from {tableName}");
                             return true;
                         }
                         catch
@@ -451,7 +474,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         IsPeak INTEGER DEFAULT 0,
                         Status TEXT DEFAULT 'Pending',
                         Remarks TEXT,
-                        CancellationReason TEXT DEFAULT ''
+                        CancellationReason TEXT DEFAULT '',
+                        RescheduleCount INTEGER DEFAULT 0,
+                        OriginalScheduleDate TEXT,
+                        RescheduleReason TEXT DEFAULT ''
                     );
 
                     CREATE TABLE IF NOT EXISTS Deliveries (
@@ -512,6 +538,33 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         Status TEXT DEFAULT 'Pending',
                         PhotoPath TEXT,
                         FOREIGN KEY (DeliveryId) REFERENCES Deliveries(Id)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS DispatchStops (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        DeliveryId INTEGER NOT NULL,
+                        StopSequence INTEGER NOT NULL,
+                        LoadingScheduleId INTEGER,
+                        ClientName TEXT NOT NULL,
+                        Destination TEXT NOT NULL,
+                        GCrate INTEGER DEFAULT 0,
+                        ECrate INTEGER DEFAULT 0,
+                        TotalCrates INTEGER DEFAULT 0,
+                        Status TEXT DEFAULT 'Pending',
+                        ArrivalTime TEXT,
+                        DepartureTime TEXT,
+                        DeliveredGCrates INTEGER DEFAULT 0,
+                        DeliveredECrates INTEGER DEFAULT 0,
+                        DeliveredCrates INTEGER DEFAULT 0,
+                        ReturnedGCrates INTEGER DEFAULT 0,
+                        ReturnedECrates INTEGER DEFAULT 0,
+                        ReturnedCrates INTEGER DEFAULT 0,
+                        StoreManagerLastName TEXT DEFAULT '',
+                        StoreManagerFirstName TEXT DEFAULT '',
+                        StoreManagerMiddleName TEXT DEFAULT '',
+                        StoreManagerName TEXT DEFAULT '',
+                        Remarks TEXT DEFAULT '',
+                        FOREIGN KEY (DeliveryId) REFERENCES Deliveries(Id) ON DELETE CASCADE
                     );
 
                     CREATE TABLE IF NOT EXISTS StatementsOfAccount (
@@ -583,6 +636,45 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         Description TEXT,
                         UpdatedAt TEXT NOT NULL
                     );
+
+                    CREATE TABLE IF NOT EXISTS FormDrafts (
+                        ModuleKey TEXT NOT NULL,
+                        UserKey TEXT NOT NULL,
+                        DraftData TEXT NOT NULL,
+                        LastSaved TEXT NOT NULL,
+                        PRIMARY KEY (ModuleKey, UserKey)
+                    );
+
+                    CREATE TABLE IF NOT EXISTS AuditTrail (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+                        Username TEXT NOT NULL,
+                        UserRole TEXT NOT NULL,
+                        ActionType TEXT NOT NULL,
+                        TableName TEXT NOT NULL,
+                        RecordId INTEGER NOT NULL,
+                        RecordIdentifier TEXT NOT NULL,
+                        FieldName TEXT,
+                        OldValue TEXT,
+                        NewValue TEXT,
+                        ReasonOrNotes TEXT,
+                        IpOrMachine TEXT
+                    );
+
+                    CREATE TABLE IF NOT EXISTS SystemNotifications (
+                        Id TEXT PRIMARY KEY,
+                        Title TEXT NOT NULL,
+                        Message TEXT NOT NULL,
+                        Timestamp TEXT NOT NULL,
+                        Type TEXT NOT NULL,
+                        Category TEXT NOT NULL,
+                        IsRead INTEGER NOT NULL DEFAULT 0,
+                        TargetModule TEXT,
+                        TargetRecordId TEXT
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_sys_notifs_time ON SystemNotifications(Timestamp DESC);
+                    CREATE INDEX IF NOT EXISTS idx_sys_notifs_read ON SystemNotifications(IsRead);
+                    CREATE INDEX IF NOT EXISTS idx_sys_notifs_cat ON SystemNotifications(Category);
                 ";
                 cmd.ExecuteNonQuery();
 
@@ -618,7 +710,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     "ALTER TABLE Clients ADD COLUMN MiddleName TEXT DEFAULT '';",
                     "ALTER TABLE TripReports ADD COLUMN StoreManagerLastName TEXT DEFAULT '';",
                     "ALTER TABLE TripReports ADD COLUMN StoreManagerFirstName TEXT DEFAULT '';",
-                    "ALTER TABLE TripReports ADD COLUMN StoreManagerMiddleName TEXT DEFAULT '';"
+                    "ALTER TABLE TripReports ADD COLUMN StoreManagerMiddleName TEXT DEFAULT '';",
+                    "ALTER TABLE LoadingSchedules ADD COLUMN RescheduleCount INTEGER DEFAULT 0;",
+                    "ALTER TABLE LoadingSchedules ADD COLUMN OriginalScheduleDate TEXT;",
+                    "ALTER TABLE LoadingSchedules ADD COLUMN RescheduleReason TEXT DEFAULT '';"
                 };
 
                 foreach (var mig in migrations)
@@ -671,6 +766,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     var migCmd3 = conn.CreateCommand();
                     migCmd3.CommandText = "ALTER TABLE Deliveries ADD COLUMN CargoType TEXT DEFAULT 'Cold / Chilled';";
                     migCmd3.ExecuteNonQuery();
+                } catch { }
+
+                try
+                {
+                    var migCmd5 = conn.CreateCommand();
+                    migCmd5.CommandText = "ALTER TABLE Deliveries ADD COLUMN IsMultiDrop INTEGER DEFAULT 0;";
+                    migCmd5.ExecuteNonQuery();
+                } catch { }
+
+                try
+                {
+                    var migCmd6 = conn.CreateCommand();
+                    migCmd6.CommandText = "ALTER TABLE Deliveries ADD COLUMN TotalStopsCount INTEGER DEFAULT 1;";
+                    migCmd6.ExecuteNonQuery();
                 } catch { }
 
                 try
@@ -956,6 +1065,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             catch { }
                         }
 
+                        string secQ = "";
+                        string secA = "";
+                        string ln = "";
+                        string fn = "";
+                        string mn = "";
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            string colName = reader.GetName(i);
+                            if (colName.Equals("SecurityQuestion", StringComparison.OrdinalIgnoreCase) && !reader.IsDBNull(i))
+                                secQ = reader.GetString(i);
+                            else if (colName.Equals("SecurityAnswer", StringComparison.OrdinalIgnoreCase) && !reader.IsDBNull(i))
+                                secA = reader.GetString(i);
+                            else if (colName.Equals("LastName", StringComparison.OrdinalIgnoreCase) && !reader.IsDBNull(i))
+                                ln = reader.GetString(i);
+                            else if (colName.Equals("FirstName", StringComparison.OrdinalIgnoreCase) && !reader.IsDBNull(i))
+                                fn = reader.GetString(i);
+                            else if (colName.Equals("MiddleName", StringComparison.OrdinalIgnoreCase) && !reader.IsDBNull(i))
+                                mn = reader.GetString(i);
+                        }
+
+                        if (string.IsNullOrEmpty(ln) && string.IsNullOrEmpty(fn) && !string.IsNullOrEmpty(dbName))
+                        {
+                            var s = NameHelper.SplitFullName(dbName);
+                            ln = s.LastName;
+                            fn = s.FirstName;
+                            mn = s.MiddleName;
+                        }
+
                         var user = new User
                         {
                             Id = userId,
@@ -965,7 +1102,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             FullName = dbName,
                             ContactNumber = dbContact,
                             IsActive = dbActive,
-                            CreatedAt = dbCreatedAt
+                            CreatedAt = dbCreatedAt,
+                            SecurityQuestion = secQ,
+                            SecurityAnswer = secA,
+                            LastName = ln,
+                            FirstName = fn,
+                            MiddleName = mn
                         };
                         return (AuthResult.Success, user);
                     }
@@ -1036,6 +1178,325 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return await Task.Run(() => GetSecurityAuditLogs(limit));
         }
 
+        public static void LogAuditTrail(string actionType, string tableName, int recordId, string recordIdentifier, string? fieldName, string? oldValue, string? newValue, string? reason)
+        {
+            try
+            {
+                using (var conn = new SqliteConnection(connectionString))
+                {
+                    conn.Open();
+                    var cmd = conn.CreateCommand();
+                    cmd.CommandText = @"
+                        INSERT INTO AuditTrail (Timestamp, Username, UserRole, ActionType, TableName, RecordId, RecordIdentifier, FieldName, OldValue, NewValue, ReasonOrNotes, IpOrMachine)
+                        VALUES (@ts, @u, @r, @act, @tbl, @rid, @rident, @fld, @old, @new, @rsn, @ip);
+                    ";
+                    cmd.Parameters.AddWithValue("@ts", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                    cmd.Parameters.AddWithValue("@u", SessionContext.ActiveUser?.Username ?? SessionContext.CurrentUsername);
+                    cmd.Parameters.AddWithValue("@r", SessionContext.ActiveUser?.Role ?? "System");
+                    cmd.Parameters.AddWithValue("@act", actionType ?? "UPDATE");
+                    cmd.Parameters.AddWithValue("@tbl", tableName ?? "");
+                    cmd.Parameters.AddWithValue("@rid", recordId);
+                    cmd.Parameters.AddWithValue("@rident", recordIdentifier ?? "");
+                    cmd.Parameters.AddWithValue("@fld", fieldName ?? "");
+                    cmd.Parameters.AddWithValue("@old", oldValue ?? "");
+                    cmd.Parameters.AddWithValue("@new", newValue ?? "");
+                    cmd.Parameters.AddWithValue("@rsn", reason ?? "");
+                    cmd.Parameters.AddWithValue("@ip", Environment.MachineName);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch { }
+        }
+
+        public static async Task LogAuditTrailAsync(string actionType, string tableName, int recordId, string recordIdentifier, string? fieldName, string? oldValue, string? newValue, string? reason)
+        {
+            await Task.Run(() => LogAuditTrail(actionType, tableName, recordId, recordIdentifier, fieldName, oldValue, newValue, reason));
+        }
+
+        public static List<AuditTrailEntry> GetAuditTrail(int limit = 500)
+        {
+            return GetAuditTrail(null, null, limit);
+        }
+
+        public static List<AuditTrailEntry> GetAuditTrail(string[]? tableNames, string? actionFilter = null, int limit = 500)
+        {
+            var list = new List<AuditTrailEntry>();
+            try
+            {
+                using (var conn = new SqliteConnection(connectionString))
+                {
+                    conn.Open();
+                    var cmd = conn.CreateCommand();
+                    var conditions = new List<string>();
+                    if (tableNames != null && tableNames.Length > 0)
+                    {
+                        var tblParams = new List<string>();
+                        for (int i = 0; i < tableNames.Length; i++)
+                        {
+                            tblParams.Add($"@tbl{i}");
+                            cmd.Parameters.AddWithValue($"@tbl{i}", tableNames[i]);
+                        }
+                        conditions.Add($"TableName IN ({string.Join(",", tblParams)})");
+                    }
+                    if (!string.IsNullOrWhiteSpace(actionFilter) && !actionFilter.Equals("All", StringComparison.OrdinalIgnoreCase) && !actionFilter.Equals("All Actions", StringComparison.OrdinalIgnoreCase))
+                    {
+                        conditions.Add("ActionType = @act");
+                        cmd.Parameters.AddWithValue("@act", actionFilter);
+                    }
+
+                    string whereClause = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : "";
+                    cmd.CommandText = $"SELECT Id, Timestamp, Username, UserRole, ActionType, TableName, RecordId, RecordIdentifier, FieldName, OldValue, NewValue, ReasonOrNotes, IpOrMachine FROM AuditTrail {whereClause} ORDER BY Id DESC LIMIT {limit}";
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            list.Add(new AuditTrailEntry
+                            {
+                                Id = reader.GetInt32(0),
+                                Timestamp = DateTime.TryParse(reader.GetString(1), out var dt) ? dt : DateTime.Now,
+                                Username = reader.GetString(2),
+                                UserRole = reader.GetString(3),
+                                ActionType = reader.GetString(4),
+                                TableName = reader.GetString(5),
+                                RecordId = reader.GetInt32(6),
+                                RecordIdentifier = reader.GetString(7),
+                                FieldName = reader.IsDBNull(8) ? "" : reader.GetString(8),
+                                OldValue = reader.IsDBNull(9) ? "" : reader.GetString(9),
+                                NewValue = reader.IsDBNull(10) ? "" : reader.GetString(10),
+                                ReasonOrNotes = reader.IsDBNull(11) ? "" : reader.GetString(11),
+                                IpOrMachine = reader.IsDBNull(12) ? "" : reader.GetString(12)
+                            });
+                        }
+                    }
+                }
+            }
+            catch { }
+            return list;
+        }
+
+        public static async Task<List<AuditTrailEntry>> GetAuditTrailAsync(int limit = 500)
+        {
+            return await Task.Run(() => GetAuditTrail(null, null, limit));
+        }
+
+        public static async Task<List<AuditTrailEntry>> GetAuditTrailAsync(string[]? tableNames, string? actionFilter = null, int limit = 500)
+        {
+            return await Task.Run(() => GetAuditTrail(tableNames, actionFilter, limit));
+        }
+
+        public static void SaveSystemNotification(SystemNotification notif)
+        {
+            try
+            {
+                using var conn = new SqliteConnection(connectionString);
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = @"
+                    INSERT INTO SystemNotifications (Id, Title, Message, Timestamp, Type, Category, IsRead, TargetModule, TargetRecordId)
+                    VALUES (@id, @title, @message, @timestamp, @type, @category, @isRead, @targetModule, @targetRecordId)
+                    ON CONFLICT(Id) DO UPDATE SET
+                        Title = excluded.Title,
+                        Message = excluded.Message,
+                        Type = excluded.Type,
+                        Category = excluded.Category,
+                        IsRead = excluded.IsRead,
+                        TargetModule = excluded.TargetModule,
+                        TargetRecordId = excluded.TargetRecordId;
+                ";
+                cmd.Parameters.AddWithValue("@id", notif.Id);
+                cmd.Parameters.AddWithValue("@title", notif.Title ?? "");
+                cmd.Parameters.AddWithValue("@message", notif.Message ?? "");
+                cmd.Parameters.AddWithValue("@timestamp", notif.Timestamp.ToString("o"));
+                cmd.Parameters.AddWithValue("@type", notif.Type.ToString());
+                cmd.Parameters.AddWithValue("@category", notif.Category ?? "System");
+                cmd.Parameters.AddWithValue("@isRead", notif.IsRead ? 1 : 0);
+                cmd.Parameters.AddWithValue("@targetModule", (object?)notif.TargetModule ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@targetRecordId", (object?)notif.TargetRecordId ?? DBNull.Value);
+                cmd.ExecuteNonQuery();
+
+                PruneOldSystemNotifications(150);
+            }
+            catch { }
+        }
+
+        public static List<SystemNotification> GetSystemNotifications(int limit = 50, bool unreadOnly = false, string? category = null, bool? isAdmin = null)
+        {
+            bool admin = isAdmin ?? SessionContext.IsAdmin;
+            var list = new List<SystemNotification>();
+            try
+            {
+                using var conn = new SqliteConnection(connectionString);
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                string query = "SELECT Id, Title, Message, Timestamp, Type, Category, IsRead, TargetModule, TargetRecordId FROM SystemNotifications WHERE 1=1";
+                if (!admin)
+                {
+                    query += " AND LOWER(Category) NOT IN ('security', 'system', 'audit') AND LOWER(COALESCE(TargetModule, '')) NOT IN ('settings', 'audit', 'users') AND LOWER(Title) NOT LIKE '%security%' AND LOWER(Title) NOT LIKE '%user%' AND LOWER(Title) NOT LIKE '%session%' AND LOWER(Title) NOT LIKE '%password%' AND LOWER(Title) NOT LIKE '%login%' AND LOWER(Title) NOT LIKE '%auth%' AND LOWER(Title) NOT LIKE '%backup%' AND LOWER(Title) NOT LIKE '%database%'";
+                }
+                if (unreadOnly)
+                {
+                    query += " AND IsRead = 0";
+                }
+                if (!string.IsNullOrWhiteSpace(category) && !category.Equals("All", StringComparison.OrdinalIgnoreCase))
+                {
+                    query += " AND Category = @cat";
+                    cmd.Parameters.AddWithValue("@cat", category);
+                }
+                query += $" ORDER BY Timestamp DESC LIMIT {limit}";
+                cmd.CommandText = query;
+
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    string id = reader.GetString(0);
+                    string title = reader.GetString(1);
+                    string message = reader.GetString(2);
+                    string tsStr = reader.GetString(3);
+                    DateTime.TryParse(tsStr, out DateTime ts);
+                    string typeStr = reader.GetString(4);
+                    Enum.TryParse(typeStr, true, out ToastType toastType);
+                    string cat = reader.GetString(5);
+                    bool isRead = reader.GetInt32(6) == 1;
+                    string? targetMod = reader.IsDBNull(7) ? null : reader.GetString(7);
+                    string? targetRec = reader.IsDBNull(8) ? null : reader.GetString(8);
+
+                    var item = new SystemNotification
+                    {
+                        Id = id,
+                        Title = title,
+                        Message = message,
+                        Timestamp = ts == default ? DateTime.Now : ts,
+                        Type = toastType,
+                        Category = cat,
+                        IsRead = isRead,
+                        TargetModule = targetMod,
+                        TargetRecordId = targetRec
+                    };
+
+                    if (admin || !item.IsAdminOnly)
+                    {
+                        list.Add(item);
+                    }
+                }
+            }
+            catch { }
+            return list;
+        }
+
+        public static int GetUnreadSystemNotificationCount(bool? isAdmin = null)
+        {
+            bool admin = isAdmin ?? SessionContext.IsAdmin;
+            try
+            {
+                using var conn = new SqliteConnection(connectionString);
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                if (admin)
+                {
+                    cmd.CommandText = "SELECT COUNT(*) FROM SystemNotifications WHERE IsRead = 0";
+                }
+                else
+                {
+                    cmd.CommandText = "SELECT COUNT(*) FROM SystemNotifications WHERE IsRead = 0 AND LOWER(Category) NOT IN ('security', 'system', 'audit') AND LOWER(COALESCE(TargetModule, '')) NOT IN ('settings', 'audit', 'users') AND LOWER(Title) NOT LIKE '%security%' AND LOWER(Title) NOT LIKE '%user%' AND LOWER(Title) NOT LIKE '%session%' AND LOWER(Title) NOT LIKE '%password%' AND LOWER(Title) NOT LIKE '%login%' AND LOWER(Title) NOT LIKE '%auth%' AND LOWER(Title) NOT LIKE '%backup%' AND LOWER(Title) NOT LIKE '%database%'";
+                }
+                return Convert.ToInt32(cmd.ExecuteScalar() ?? 0);
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        public static void MarkSystemNotificationAsRead(string id)
+        {
+            try
+            {
+                using var conn = new SqliteConnection(connectionString);
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "UPDATE SystemNotifications SET IsRead = 1 WHERE Id = @id";
+                cmd.Parameters.AddWithValue("@id", id);
+                cmd.ExecuteNonQuery();
+            }
+            catch { }
+        }
+
+        public static void MarkAllSystemNotificationsAsRead(bool? isAdmin = null)
+        {
+            bool admin = isAdmin ?? SessionContext.IsAdmin;
+            try
+            {
+                using var conn = new SqliteConnection(connectionString);
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                if (admin)
+                {
+                    cmd.CommandText = "UPDATE SystemNotifications SET IsRead = 1 WHERE IsRead = 0";
+                }
+                else
+                {
+                    cmd.CommandText = "UPDATE SystemNotifications SET IsRead = 1 WHERE IsRead = 0 AND LOWER(Category) NOT IN ('security', 'system', 'audit') AND LOWER(COALESCE(TargetModule, '')) NOT IN ('settings', 'audit', 'users') AND LOWER(Title) NOT LIKE '%security%' AND LOWER(Title) NOT LIKE '%user%' AND LOWER(Title) NOT LIKE '%session%' AND LOWER(Title) NOT LIKE '%password%' AND LOWER(Title) NOT LIKE '%login%' AND LOWER(Title) NOT LIKE '%auth%' AND LOWER(Title) NOT LIKE '%backup%' AND LOWER(Title) NOT LIKE '%database%'";
+                }
+                cmd.ExecuteNonQuery();
+            }
+            catch { }
+        }
+
+        public static void DeleteSystemNotification(string id)
+        {
+            try
+            {
+                using var conn = new SqliteConnection(connectionString);
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "DELETE FROM SystemNotifications WHERE Id = @id";
+                cmd.Parameters.AddWithValue("@id", id);
+                cmd.ExecuteNonQuery();
+            }
+            catch { }
+        }
+
+        public static void ClearAllSystemNotifications(bool? isAdmin = null)
+        {
+            bool admin = isAdmin ?? SessionContext.IsAdmin;
+            try
+            {
+                using var conn = new SqliteConnection(connectionString);
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                if (admin)
+                {
+                    cmd.CommandText = "DELETE FROM SystemNotifications";
+                }
+                else
+                {
+                    cmd.CommandText = "DELETE FROM SystemNotifications WHERE LOWER(Category) NOT IN ('security', 'system', 'audit') AND LOWER(COALESCE(TargetModule, '')) NOT IN ('settings', 'audit', 'users') AND LOWER(Title) NOT LIKE '%security%' AND LOWER(Title) NOT LIKE '%user%' AND LOWER(Title) NOT LIKE '%session%' AND LOWER(Title) NOT LIKE '%password%' AND LOWER(Title) NOT LIKE '%login%' AND LOWER(Title) NOT LIKE '%auth%' AND LOWER(Title) NOT LIKE '%backup%' AND LOWER(Title) NOT LIKE '%database%'";
+                }
+                cmd.ExecuteNonQuery();
+            }
+            catch { }
+        }
+
+        public static void PruneOldSystemNotifications(int keepCount = 150)
+        {
+            try
+            {
+                using var conn = new SqliteConnection(connectionString);
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = $@"
+                    DELETE FROM SystemNotifications
+                    WHERE Id NOT IN (
+                        SELECT Id FROM SystemNotifications
+                        ORDER BY Timestamp DESC
+                        LIMIT {keepCount}
+                    );
+                ";
+                cmd.ExecuteNonQuery();
+            }
+            catch { }
+        }
+
         public static bool IsUsernameTaken(string username)
         {
             using (var conn = new SqliteConnection(connectionString))
@@ -1045,6 +1506,162 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.CommandText = "SELECT COUNT(*) FROM Users WHERE TRIM(LOWER(Username)) = TRIM(LOWER(@u))";
                 cmd.Parameters.AddWithValue("@u", username.Trim());
                 return Convert.ToInt64(cmd.ExecuteScalar() ?? 0) > 0;
+            }
+        }
+
+        public static string? GetUserSecurityQuestion(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username)) return null;
+            using (var conn = new SqliteConnection(connectionString))
+            {
+                conn.Open();
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT SecurityQuestion FROM Users WHERE TRIM(LOWER(Username)) = TRIM(LOWER(@u))";
+                cmd.Parameters.AddWithValue("@u", username.Trim());
+                var res = cmd.ExecuteScalar();
+                if (res == null || res == DBNull.Value) return null;
+                string q = res.ToString() ?? "";
+                return string.IsNullOrWhiteSpace(q) ? "What is your registered contact number?" : q;
+            }
+        }
+
+        public static (string Question, string Answer) GetUserSecurityCredentials(int userId)
+        {
+            if (userId <= 0) return ("", "");
+            try
+            {
+                using (var conn = new SqliteConnection(connectionString))
+                {
+                    conn.Open();
+                    var cmd = conn.CreateCommand();
+                    cmd.CommandText = "SELECT SecurityQuestion, SecurityAnswer FROM Users WHERE Id = @id";
+                    cmd.Parameters.AddWithValue("@id", userId);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            string q = reader.IsDBNull(0) ? "" : reader.GetString(0);
+                            string a = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                            return (q.Trim(), a.Trim());
+                        }
+                    }
+                }
+            }
+            catch { }
+            return ("", "");
+        }
+
+        public static string? GetRawUserSecurityQuestion(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username)) return null;
+            using (var conn = new SqliteConnection(connectionString))
+            {
+                conn.Open();
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT SecurityQuestion FROM Users WHERE TRIM(LOWER(Username)) = TRIM(LOWER(@u))";
+                cmd.Parameters.AddWithValue("@u", username.Trim());
+                var res = cmd.ExecuteScalar();
+                if (res == null || res == DBNull.Value) return null;
+                string q = res.ToString() ?? "";
+                return string.IsNullOrWhiteSpace(q) ? null : q.Trim();
+            }
+        }
+
+        public static (bool Success, string Message) VerifySecurityAnswerAndResetPassword(string username, string answer, string newPassword)
+        {
+            if (string.IsNullOrWhiteSpace(username)) return (false, "Username is required.");
+            if (string.IsNullOrWhiteSpace(answer)) return (false, "Security answer is required.");
+            if (string.IsNullOrWhiteSpace(newPassword)) return (false, "New password is required.");
+
+            using (var conn = new SqliteConnection(connectionString))
+            {
+                conn.Open();
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT Id, SecurityAnswer, ContactNumber FROM Users WHERE TRIM(LOWER(Username)) = TRIM(LOWER(@u))";
+                cmd.Parameters.AddWithValue("@u", username.Trim());
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read())
+                    {
+                        return (false, "Account not found.");
+                    }
+
+                    int id = reader.GetInt32(0);
+                    string dbAnswer = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                    string contact = reader.IsDBNull(2) ? "" : reader.GetString(2);
+
+                    bool matched = false;
+                    if (!string.IsNullOrWhiteSpace(dbAnswer))
+                    {
+                        matched = string.Equals(dbAnswer.Trim(), answer.Trim(), StringComparison.OrdinalIgnoreCase);
+                    }
+                    else if (!string.IsNullOrWhiteSpace(contact))
+                    {
+                        matched = string.Equals(contact.Trim(), answer.Trim(), StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    if (!matched)
+                    {
+                        LogSecurityEvent(username, "PASSWORD_RESET_FAILED", "Incorrect security answer provided");
+                        return (false, "Incorrect security answer. Please try again.");
+                    }
+
+                    using (var updateCmd = conn.CreateCommand())
+                    {
+                        updateCmd.CommandText = "UPDATE Users SET Password = @p WHERE Id = @id";
+                        updateCmd.Parameters.AddWithValue("@p", HashPassword(newPassword));
+                        updateCmd.Parameters.AddWithValue("@id", id);
+                        updateCmd.ExecuteNonQuery();
+                    }
+
+                    LogSecurityEvent(username, "PASSWORD_RESET_SUCCESS", "Password reset successfully via security question verification");
+                    return (true, "Password has been reset successfully. You can now log in with your new password.");
+                }
+            }
+        }
+
+        public static bool UpdateUserSecurityQuestion(int userId, string question, string answer)
+        {
+            try
+            {
+                using (var conn = new SqliteConnection(connectionString))
+                {
+                    conn.Open();
+                    var cmd = conn.CreateCommand();
+                    cmd.CommandText = "UPDATE Users SET SecurityQuestion = @q, SecurityAnswer = @a WHERE Id = @id";
+                    cmd.Parameters.AddWithValue("@q", question.Trim());
+                    cmd.Parameters.AddWithValue("@a", answer.Trim());
+                    cmd.Parameters.AddWithValue("@id", userId);
+                    cmd.ExecuteNonQuery();
+                    LogAuditTrail("SECURITY_UPDATE", "Users", userId, $"User #{userId}", "SecurityQuestion", "", question, "Security recovery question configured/updated");
+                    return true;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static bool UpdateUserPassword(int userId, string newPassword)
+        {
+            try
+            {
+                using (var conn = new SqliteConnection(connectionString))
+                {
+                    conn.Open();
+                    var cmd = conn.CreateCommand();
+                    cmd.CommandText = "UPDATE Users SET Password = @p WHERE Id = @id";
+                    cmd.Parameters.AddWithValue("@p", HashPassword(newPassword));
+                    cmd.Parameters.AddWithValue("@id", userId);
+                    cmd.ExecuteNonQuery();
+                    LogAuditTrail("PASSWORD_CHANGE", "Users", userId, $"User #{userId}", "Password", "", "********", "Account password updated");
+                    return true;
+                }
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -1191,6 +1808,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                 catch { }
                             }
 
+                            string secQ = "";
+                            string secA = "";
+                            string ln = "";
+                            string fn = "";
+                            string mn = "";
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                string colName = reader.GetName(i);
+                                if (colName.Equals("SecurityQuestion", StringComparison.OrdinalIgnoreCase) && !reader.IsDBNull(i))
+                                    secQ = reader.GetString(i);
+                                else if (colName.Equals("SecurityAnswer", StringComparison.OrdinalIgnoreCase) && !reader.IsDBNull(i))
+                                    secA = reader.GetString(i);
+                                else if (colName.Equals("LastName", StringComparison.OrdinalIgnoreCase) && !reader.IsDBNull(i))
+                                    ln = reader.GetString(i);
+                                else if (colName.Equals("FirstName", StringComparison.OrdinalIgnoreCase) && !reader.IsDBNull(i))
+                                    fn = reader.GetString(i);
+                                else if (colName.Equals("MiddleName", StringComparison.OrdinalIgnoreCase) && !reader.IsDBNull(i))
+                                    mn = reader.GetString(i);
+                            }
+
+                            if (string.IsNullOrEmpty(ln) && string.IsNullOrEmpty(fn) && !string.IsNullOrEmpty(dbName))
+                            {
+                                var s = NameHelper.SplitFullName(dbName);
+                                ln = s.LastName;
+                                fn = s.FirstName;
+                                mn = s.MiddleName;
+                            }
+
                             return new User
                             {
                                 Id = userId,
@@ -1200,7 +1845,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                 FullName = dbName,
                                 ContactNumber = dbContact,
                                 IsActive = dbActive,
-                                CreatedAt = dbCreatedAt
+                                CreatedAt = dbCreatedAt,
+                                SecurityQuestion = secQ,
+                                SecurityAnswer = secA,
+                                LastName = ln,
+                                FirstName = fn,
+                                MiddleName = mn
                             };
                         }
                     }
@@ -1216,7 +1866,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 conn.Open();
                 var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT Id, Username, Password, Role, FullName, ContactNumber, IsActive, CreatedAt, LastName, FirstName, MiddleName FROM Users ORDER BY Id DESC";
+                cmd.CommandText = "SELECT Id, Username, Password, Role, FullName, ContactNumber, IsActive, CreatedAt, LastName, FirstName, MiddleName, SecurityQuestion, SecurityAnswer FROM Users ORDER BY Id DESC";
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
@@ -1225,6 +1875,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         string ln = reader.FieldCount > 8 && !reader.IsDBNull(8) ? reader.GetString(8) : "";
                         string first = reader.FieldCount > 9 && !reader.IsDBNull(9) ? reader.GetString(9) : "";
                         string mid = reader.FieldCount > 10 && !reader.IsDBNull(10) ? reader.GetString(10) : "";
+                        string secQ = reader.FieldCount > 11 && !reader.IsDBNull(11) ? reader.GetString(11) : "";
+                        string secA = reader.FieldCount > 12 && !reader.IsDBNull(12) ? reader.GetString(12) : "";
 
                         if (string.IsNullOrEmpty(ln) && string.IsNullOrEmpty(first) && !string.IsNullOrEmpty(fn))
                         {
@@ -1251,7 +1903,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             CreatedAt = DateTime.TryParse(reader.GetString(7), out var dt) ? dt : DateTime.Now,
                             LastName = ln,
                             FirstName = first,
-                            MiddleName = mid
+                            MiddleName = mid,
+                            SecurityQuestion = secQ,
+                            SecurityAnswer = secA
                         });
                     }
                 }
@@ -1302,6 +1956,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                     cmd.Parameters.AddWithValue("@id", user.Id);
                 }
+                bool isNew = user.Id == 0;
                 cmd.Parameters.AddWithValue("@u", user.Username);
                 cmd.Parameters.AddWithValue("@r", user.Role);
                 cmd.Parameters.AddWithValue("@f", user.FullName);
@@ -1311,7 +1966,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.Parameters.AddWithValue("@fn", user.FirstName ?? "");
                 cmd.Parameters.AddWithValue("@mn", user.MiddleName ?? "");
                 cmd.ExecuteNonQuery();
+
+                if (isNew)
+                {
+                    using var idCmd = conn.CreateCommand();
+                    idCmd.CommandText = "SELECT last_insert_rowid();";
+                    user.Id = Convert.ToInt32(idCmd.ExecuteScalar());
+                }
+
+                LogAuditTrail(isNew ? "ADD" : "UPDATE", "Users", user.Id, user.Username, "Role", "", user.Role, $"User account @{user.Username} ({user.Role}) {(isNew ? "created" : "updated")}");
             }
+
+            try
+            {
+                bool isNew = user.Id == 0;
+                EventNotificationService.Publish(isNew ? "User Account Created" : "User Account Updated", $"User @{user.Username} ({user.Role})", ToastType.Success);
+            }
+            catch { }
         }
 
         public static List<Crew> GetCrews()
@@ -1407,11 +2078,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.Parameters.AddWithValue("@ac", crew.IsActive ? 1 : 0);
                 cmd.Parameters.AddWithValue("@s", crew.IsSeasonal ? 1 : 0);
                 cmd.Parameters.AddWithValue("@photo", crew.PhotoPath ?? "");
+                bool isNew = crew.Id == 0;
                 cmd.Parameters.AddWithValue("@ln", crew.LastName ?? "");
                 cmd.Parameters.AddWithValue("@fn", crew.FirstName ?? "");
                 cmd.Parameters.AddWithValue("@mn", crew.MiddleName ?? "");
                 cmd.ExecuteNonQuery();
+
+                if (isNew)
+                {
+                    using var idCmd = conn.CreateCommand();
+                    idCmd.CommandText = "SELECT last_insert_rowid();";
+                    crew.Id = Convert.ToInt32(idCmd.ExecuteScalar());
+                }
+
+                LogAuditTrail(isNew ? "ADD" : "UPDATE", "Crews", crew.Id, crew.FullName, "Role", "", crew.Role, $"Crew member {crew.FullName} ({crew.Role}) {(isNew ? "registered" : "updated")}");
             }
+
+            try
+            {
+                bool isNew = crew.Id == 0;
+                EventNotificationService.Publish(isNew ? "Crew Member Added" : "Crew Member Updated", $"{crew.FullName} ({crew.Role})", ToastType.Success);
+            }
+            catch { }
         }
 
         public static string? ValidateDuplicateCrew(int crewId, string fullName, string? contactNumber = null, string? licenseNumber = null, string? lastName = null, string? firstName = null)
@@ -1551,13 +2239,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     while (reader.Read())
                     {
+                        string rawSt = reader.GetString(4);
                         list.Add(new Truck
                         {
                             Id = reader.GetInt32(0),
                             PlateNumber = reader.GetString(1),
                             TruckType = reader.GetString(2),
                             CapacityCrates = reader.GetInt32(3),
-                            Status = reader.GetString(4),
+                            Status = rawSt.Equals("Available", StringComparison.OrdinalIgnoreCase) ? "Active" : rawSt,
                             Remarks = reader.IsDBNull(5) ? "" : reader.GetString(5)
                         });
                     }
@@ -1602,6 +2291,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     cmd.CommandText = @"UPDATE Trucks SET PlateNumber=@p, TruckType=@t, CapacityCrates=@c, Status=@s, Remarks=@r WHERE Id=@id";
                     cmd.Parameters.AddWithValue("@id", truck.Id);
                 }
+                bool isNew = truck.Id == 0;
                 cmd.Parameters.AddWithValue("@p", truck.PlateNumber.Trim());
                 cmd.Parameters.AddWithValue("@t", truck.TruckType);
                 cmd.Parameters.AddWithValue("@c", truck.CapacityCrates);
@@ -1609,7 +2299,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.Parameters.AddWithValue("@r", truck.Remarks ?? "");
                 cmd.ExecuteNonQuery();
 
+                if (isNew)
+                {
+                    using var idCmd = conn.CreateCommand();
+                    idCmd.CommandText = "SELECT last_insert_rowid();";
+                    truck.Id = Convert.ToInt32(idCmd.ExecuteScalar());
+                }
+
+                LogAuditTrail(isNew ? "ADD" : "UPDATE", "Trucks", truck.Id, truck.PlateNumber, "Status", "", truck.Status, $"Truck {truck.PlateNumber} ({truck.TruckType}, {truck.CapacityCrates} crates) {(isNew ? "registered" : "updated")}, Status: {truck.Status}");
             }
+
+            try
+            {
+                bool isNew = truck.Id == 0;
+                EventNotificationService.Publish(isNew ? "Truck Registered" : "Truck Updated", $"Plate {truck.PlateNumber} ({truck.TruckType}, {truck.CapacityCrates} crates)", ToastType.Success);
+            }
+            catch { }
         }
 
         public static FleetRecommendation GetFleetRecommendation(int totalCrates, DateTime dispatchDate)
@@ -1633,7 +2338,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
 
-            var availableTrucks = trucks.Where(t => t.Status == "Available" && !busyTruckIds.Contains(t.Id))
+            var availableTrucks = trucks.Where(t => (t.Status == "Available" || t.Status == "Active") && !busyTruckIds.Contains(t.Id))
                                         .OrderBy(t => t.CapacityCrates)
                                         .ToList();
 
@@ -1646,7 +2351,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     rec.RecommendedTruck = anyMatchingTruck;
                     rec.RequiredTruckCount = 1;
                     rec.CapacityUtilization = Math.Round(((double)totalCrates / anyMatchingTruck.CapacityCrates) * 100.0, 1);
-                    rec.RecommendationMessage = $"✓ Fleet Match: {anyMatchingTruck.PlateNumber} ({anyMatchingTruck.TruckType} - {anyMatchingTruck.CapacityCrates} crates) handles {totalCrates} crates ({rec.CapacityUtilization}% capacity).";
+                    rec.RecommendationMessage = $"✓ Truck Match: {anyMatchingTruck.PlateNumber} ({anyMatchingTruck.TruckType} - {anyMatchingTruck.CapacityCrates} crates) handles {totalCrates} crates ({rec.CapacityUtilization}% capacity).";
                     rec.IsMultiTruckNeeded = false;
                     return rec;
                 }
@@ -1676,6 +2381,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             return rec;
+        }
+
+        public static TruckRecommendation GetTruckRecommendation(int totalCrates, DateTime dispatchDate)
+        {
+            var r = GetFleetRecommendation(totalCrates, dispatchDate);
+            return new TruckRecommendation
+            {
+                TotalCrates = r.TotalCrates,
+                RecommendedTruck = r.RecommendedTruck,
+                RequiredTruckCount = r.RequiredTruckCount,
+                RecommendationMessage = r.RecommendationMessage,
+                CapacityUtilization = r.CapacityUtilization,
+                IsMultiTruckNeeded = r.IsMultiTruckNeeded
+            };
         }
 
         public static List<RateMatrix> GetRateMatrix()
@@ -1775,6 +2494,44 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 if (string.IsNullOrWhiteSpace(trkType)) trkType = "Refrigerated Van";
 
+                if (del.IsMultiDrop)
+                {
+                    var stops = GetDispatchStops(del.Id);
+                    if (stops != null && stops.Count > 0)
+                    {
+                        var rates = GetRateMatrix();
+                        var matchedCombinedRate = rates.FirstOrDefault(r =>
+                            r.IsPeakSeason == isPeak &&
+                            (string.IsNullOrWhiteSpace(trkType) || r.TruckType.Equals(trkType, StringComparison.OrdinalIgnoreCase)) &&
+                            stops.All(s => !string.IsNullOrWhiteSpace(s.Destination) && (r.Destination.Contains(s.Destination, StringComparison.OrdinalIgnoreCase) || r.RouteName.Contains(s.Destination, StringComparison.OrdinalIgnoreCase)))
+                        );
+                        if (matchedCombinedRate != null)
+                        {
+                            matchDescription = $"🏷️ Multi-Drop Combined Rate: {matchedCombinedRate.RouteName} ({matchedCombinedRate.Destination}) - {(matchedCombinedRate.IsPeakSeason ? "Peak" : "Regular")}";
+                            return matchedCombinedRate.RateAmount;
+                        }
+
+                        decimal totalStopTariff = 0m;
+                        int ratedStops = 0;
+                        foreach (var stop in stops)
+                        {
+                            var stopRate = FindMatchingRate(stop.Destination, isPeak, trkType);
+                            if (stopRate != null)
+                            {
+                                totalStopTariff += stopRate.RateAmount;
+                                ratedStops++;
+                            }
+                            else
+                            {
+                                int stopCrates = stop.TotalCrates > 0 ? stop.TotalCrates : (stop.GCrate + stop.ECrate > 0 ? stop.GCrate + stop.ECrate : 100);
+                                totalStopTariff += stopCrates * 45.00m;
+                            }
+                        }
+                        matchDescription = $"🏷️ Multi-Drop Consolidated Tariff: {stops.Count} stops ({ratedStops} rated, Total ₱{totalStopTariff:N2})";
+                        return totalStopTariff;
+                    }
+                }
+
                 var matchedRate = FindMatchingRate(dest, isPeak, trkType);
                 if (matchedRate != null)
                 {
@@ -1788,7 +2545,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             catch
             {
-                matchDescription = "💡 Base Freight Rate";
+                matchDescription = "💡 Base Transport Rate";
                 return 8500m;
             }
         }
@@ -1903,11 +2660,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.Parameters.AddWithValue("@r", rm.RouteName);
                 cmd.Parameters.AddWithValue("@d", rm.Destination);
                 cmd.Parameters.AddWithValue("@t", rm.TruckType);
+                bool isNew = rm.Id == 0;
                 cmd.Parameters.AddWithValue("@p", rm.IsPeakSeason ? 1 : 0);
                 cmd.Parameters.AddWithValue("@a", rm.RateAmount);
                 cmd.ExecuteNonQuery();
 
+                if (isNew)
+                {
+                    using var idCmd = conn.CreateCommand();
+                    idCmd.CommandText = "SELECT last_insert_rowid();";
+                    rm.Id = Convert.ToInt32(idCmd.ExecuteScalar());
+                }
+
+                LogAuditTrail(isNew ? "ADD" : "UPDATE", "RateMatrix", rm.Id, rm.Destination, "RateAmount", "", rm.RateAmount.ToString("N2"), $"Rate matrix for {rm.Destination} ({rm.TruckType}, {(rm.IsPeakSeason ? "Peak" : "Regular")}): PHP {rm.RateAmount:N2} {(isNew ? "added" : "updated")}");
             }
+
+            try
+            {
+                bool isNew = rm.Id == 0;
+                EventNotificationService.Publish(isNew ? "Rate Matrix Entry Added" : "Rate Matrix Entry Updated", $"{rm.RouteName} ({rm.TruckType}): PHP {rm.RateAmount:N2}", ToastType.Success);
+            }
+            catch { }
         }
 
         public static List<LoadingSchedule> GetLoadingSchedules()
@@ -1917,7 +2690,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 conn.Open();
                 var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT Id, ScheduleNumber, ClientName, Destination, ScheduleDate, DepartureTime, GCrate, ECrate, TotalCrates, IsPeak, Status, Remarks, CancellationReason FROM LoadingSchedules ORDER BY Id DESC";
+                cmd.CommandText = "SELECT Id, ScheduleNumber, ClientName, Destination, ScheduleDate, DepartureTime, GCrate, ECrate, TotalCrates, IsPeak, Status, Remarks, CancellationReason, RescheduleCount, OriginalScheduleDate, RescheduleReason, CargoType FROM LoadingSchedules ORDER BY Id DESC";
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
@@ -1928,6 +2701,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         int totalCrates = reader.IsDBNull(8) ? 0 : reader.GetInt32(8);
                         if (totalCrates == 0 && (gCrate > 0 || eCrate > 0)) totalCrates = gCrate + eCrate;
                         if (gCrate == 0 && eCrate == 0 && totalCrates > 0) gCrate = totalCrates;
+
+                        int reschedCount = reader.FieldCount > 13 && !reader.IsDBNull(13) ? reader.GetInt32(13) : 0;
+                        DateTime? origDate = null;
+                        if (reader.FieldCount > 14 && !reader.IsDBNull(14))
+                        {
+                            if (DateTime.TryParse(reader.GetString(14), out var od)) origDate = od;
+                        }
+                        string reschedReason = reader.FieldCount > 15 && !reader.IsDBNull(15) ? reader.GetString(15) : "";
+                        string cargoType = reader.FieldCount > 16 && !reader.IsDBNull(16) ? reader.GetString(16) : "Cold / Chilled";
 
                         list.Add(new LoadingSchedule
                         {
@@ -1943,7 +2725,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             IsPeak = !reader.IsDBNull(9) && reader.GetInt32(9) == 1,
                             Status = reader.IsDBNull(10) ? "Pending" : reader.GetString(10),
                             Remarks = reader.IsDBNull(11) ? "" : reader.GetString(11),
-                            CancellationReason = reader.IsDBNull(12) ? "" : reader.GetString(12)
+                            CancellationReason = reader.IsDBNull(12) ? "" : reader.GetString(12),
+                            RescheduleCount = reschedCount,
+                            OriginalScheduleDate = origDate,
+                            RescheduleReason = reschedReason,
+                            CargoType = cargoType
                         });
                     }
                 }
@@ -1967,12 +2753,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (ls.Id == 0)
                 {
                     ls.ScheduleNumber = $"LS-{DateTime.Now:yyyyMMdd-HHmmss}-{DateTime.Now.Millisecond:D3}{Random.Shared.Next(10, 99)}";
-                    cmd.CommandText = @"INSERT INTO LoadingSchedules (ScheduleNumber, ClientName, Destination, ScheduleDate, DepartureTime, GCrate, ECrate, TotalCrates, IsPeak, Status, Remarks, CancellationReason)
-                                        VALUES (@sn, @c, @d, @sd, @dt, @gc, @ec, @tc, @ip, @s, @r, @cr)";
+                    cmd.CommandText = @"INSERT INTO LoadingSchedules (ScheduleNumber, ClientName, Destination, ScheduleDate, DepartureTime, GCrate, ECrate, TotalCrates, IsPeak, Status, Remarks, CancellationReason, RescheduleCount, OriginalScheduleDate, RescheduleReason, CargoType)
+                                        VALUES (@sn, @c, @d, @sd, @dt, @gc, @ec, @tc, @ip, @s, @r, @cr, @rc, @osd, @rr, @cargo)";
                 }
                 else
                 {
-                    cmd.CommandText = @"UPDATE LoadingSchedules SET ClientName=@c, Destination=@d, ScheduleDate=@sd, DepartureTime=@dt, GCrate=@gc, ECrate=@ec, TotalCrates=@tc, IsPeak=@ip, Status=@s, Remarks=@r, CancellationReason=@cr WHERE Id=@id";
+                    cmd.CommandText = @"UPDATE LoadingSchedules SET ClientName=@c, Destination=@d, ScheduleDate=@sd, DepartureTime=@dt, GCrate=@gc, ECrate=@ec, TotalCrates=@tc, IsPeak=@ip, Status=@s, Remarks=@r, CancellationReason=@cr, RescheduleCount=@rc, OriginalScheduleDate=@osd, RescheduleReason=@rr, CargoType=@cargo WHERE Id=@id";
                     cmd.Parameters.AddWithValue("@id", ls.Id);
                 }
                 cmd.Parameters.AddWithValue("@sn", ls.ScheduleNumber);
@@ -1987,8 +2773,139 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.Parameters.AddWithValue("@s", ls.Status);
                 cmd.Parameters.AddWithValue("@r", ls.Remarks);
                 cmd.Parameters.AddWithValue("@cr", ls.CancellationReason ?? "");
+                cmd.Parameters.AddWithValue("@rc", ls.RescheduleCount);
+                cmd.Parameters.AddWithValue("@osd", ls.OriginalScheduleDate.HasValue ? (object)ls.OriginalScheduleDate.Value.ToString("yyyy-MM-dd") : DBNull.Value);
+                cmd.Parameters.AddWithValue("@rr", ls.RescheduleReason ?? "");
+                bool isNew = ls.Id == 0;
+                cmd.Parameters.AddWithValue("@cargo", string.IsNullOrEmpty(ls.CargoType) ? "Cold / Chilled" : ls.CargoType);
                 cmd.ExecuteNonQuery();
 
+                if (isNew)
+                {
+                    using var idCmd = conn.CreateCommand();
+                    idCmd.CommandText = "SELECT last_insert_rowid();";
+                    ls.Id = Convert.ToInt32(idCmd.ExecuteScalar());
+                }
+
+                LogAuditTrail(isNew ? "ADD" : (ls.Status == "Cancelled" ? "CANCEL" : "UPDATE"), "LoadingSchedules", ls.Id, ls.ScheduleNumber, "Status", "", ls.Status, $"Loading schedule #{ls.ScheduleNumber} for {ls.ClientName} ({ls.TotalCrates} crates) {(isNew ? "created" : "updated")}, Status: {ls.Status}");
+            }
+
+            try
+            {
+                bool isNew = ls.Id == 0;
+                EventNotificationService.Publish(isNew ? "Loading Order Created" : "Loading Order Updated", $"Order #{ls.ScheduleNumber} for {ls.ClientName} ({ls.TotalCrates} crates)", ToastType.Success);
+            }
+            catch { }
+        }
+
+        public static (bool Success, string Message) RescheduleLoadingSchedule(int scheduleId, DateTime newDate, string newTime, string reason, string operatorUsername)
+        {
+            using (var conn = new SqliteConnection(connectionString))
+            {
+                conn.Open();
+                using (var trans = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        var checkCmd = conn.CreateCommand();
+                        checkCmd.Transaction = trans;
+                        checkCmd.CommandText = "SELECT Id, ScheduleNumber, ClientName, ScheduleDate, DepartureTime, Status, RescheduleCount, OriginalScheduleDate FROM LoadingSchedules WHERE Id = @id";
+                        checkCmd.Parameters.AddWithValue("@id", scheduleId);
+                        using (var reader = checkCmd.ExecuteReader())
+                        {
+                            if (!reader.Read())
+                            {
+                                return (false, "Loading schedule order was not found.");
+                            }
+                            string schedNum = reader.GetString(1);
+                            string clientName = reader.GetString(2);
+                            string oldDateStr = reader.GetString(3);
+                            string oldTimeStr = reader.IsDBNull(4) ? "08:00 AM" : reader.GetString(4);
+                            string status = reader.IsDBNull(5) ? "Pending" : reader.GetString(5);
+                            int curCount = reader.IsDBNull(6) ? 0 : reader.GetInt32(6);
+                            string origDateStr = reader.IsDBNull(7) ? "" : reader.GetString(7);
+
+                            if (status.Equals("In Transit", StringComparison.OrdinalIgnoreCase) ||
+                                status.Equals("Completed", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return (false, $"Cannot reschedule loading order in '{status}' status.");
+                            }
+
+                            if (status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return (false, "Cannot reschedule a cancelled loading order.");
+                            }
+
+                            reader.Close();
+
+                            var delCheckCmd = conn.CreateCommand();
+                            delCheckCmd.Transaction = trans;
+                            delCheckCmd.CommandText = "SELECT DispatchNumber, Status FROM Deliveries WHERE LoadingScheduleId = @lsid AND Status <> 'Cancelled'";
+                            delCheckCmd.Parameters.AddWithValue("@lsid", scheduleId);
+                            using (var delReader = delCheckCmd.ExecuteReader())
+                            {
+                                if (delReader.Read())
+                                {
+                                    string delStatus = delReader.GetString(1);
+                                    if (delStatus.Equals("In Transit", StringComparison.OrdinalIgnoreCase) ||
+                                        delStatus.Equals("Completed", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        return (false, $"Linked delivery dispatch {delReader.GetString(0)} is '{delStatus}'. Cannot reschedule.");
+                                    }
+                                }
+                            }
+
+                            string effectiveOrigDate = string.IsNullOrEmpty(origDateStr) ? oldDateStr : origDateStr;
+                            int newCount = curCount + 1;
+
+                            var updateCmd = conn.CreateCommand();
+                            updateCmd.Transaction = trans;
+                            updateCmd.CommandText = @"UPDATE LoadingSchedules
+                                                      SET ScheduleDate = @sd,
+                                                          DepartureTime = @dt,
+                                                          Status = 'Rescheduled',
+                                                          RescheduleCount = @rc,
+                                                          OriginalScheduleDate = @osd,
+                                                          RescheduleReason = @rr
+                                                      WHERE Id = @id";
+                            updateCmd.Parameters.AddWithValue("@id", scheduleId);
+                            updateCmd.Parameters.AddWithValue("@sd", newDate.ToString("yyyy-MM-dd"));
+                            updateCmd.Parameters.AddWithValue("@dt", string.IsNullOrWhiteSpace(newTime) ? oldTimeStr : newTime);
+                            updateCmd.Parameters.AddWithValue("@rc", newCount);
+                            updateCmd.Parameters.AddWithValue("@osd", effectiveOrigDate);
+                            updateCmd.Parameters.AddWithValue("@rr", reason ?? "");
+                            updateCmd.ExecuteNonQuery();
+
+                            var updateDelCmd = conn.CreateCommand();
+                            updateDelCmd.Transaction = trans;
+                            updateDelCmd.CommandText = @"UPDATE Deliveries
+                                                         SET DispatchDate = @dd,
+                                                             DepartureTime = @dt
+                                                         WHERE LoadingScheduleId = @lsid AND Status <> 'Cancelled'";
+                            updateDelCmd.Parameters.AddWithValue("@lsid", scheduleId);
+                            updateDelCmd.Parameters.AddWithValue("@dd", newDate.ToString("yyyy-MM-dd"));
+                            updateDelCmd.Parameters.AddWithValue("@dt", string.IsNullOrWhiteSpace(newTime) ? oldTimeStr : newTime);
+                            updateDelCmd.ExecuteNonQuery();
+
+                            trans.Commit();
+
+                            LogAuditTrail("RESCHEDULE", "LoadingSchedules", scheduleId, schedNum, "ScheduleDate", $"{oldDateStr} {oldTimeStr}", $"{newDate:yyyy-MM-dd} {newTime}", reason);
+
+                            try
+                            {
+                                EventNotificationService.Publish("Loading Rescheduled", $"Order #{schedNum} for {clientName} moved to {newDate:MMM dd, yyyy} {newTime} ({reason})", ToastType.Warning, null, "Operations", "Loading", schedNum);
+                            }
+                            catch { }
+
+                            return (true, $"Order #{schedNum} successfully rescheduled to {newDate:MMM dd, yyyy} {newTime}.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        trans.Rollback();
+                        return (false, $"Reschedule failed: {ex.Message}");
+                    }
+                }
             }
         }
 
@@ -1999,7 +2916,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 conn.Open();
                 var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT Id, DispatchNumber, LoadingScheduleId, LoadingScheduleInfo, TruckId, TruckInfo, DriverId, DriverName, AideId, AideName, DispatchDate, DepartureTime, Status, Remarks, GCrate, ECrate, TotalCrates, AideIds, AideNames, CancellationReason FROM Deliveries ORDER BY Id DESC";
+                cmd.CommandText = "SELECT Id, DispatchNumber, LoadingScheduleId, LoadingScheduleInfo, TruckId, TruckInfo, DriverId, DriverName, AideId, AideName, DispatchDate, DepartureTime, Status, Remarks, GCrate, ECrate, TotalCrates, AideIds, AideNames, CancellationReason, COALESCE(CargoType, 'Cold / Chilled'), COALESCE(IsMultiDrop, 0), COALESCE(TotalStopsCount, 1) FROM Deliveries ORDER BY Id DESC";
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
@@ -2039,7 +2956,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             DepartureTime = reader.IsDBNull(11) ? "08:00 AM" : reader.GetString(11),
                             Status = reader.IsDBNull(12) ? "Pending" : reader.GetString(12),
                             Remarks = reader.IsDBNull(13) ? "" : reader.GetString(13),
-                            CancellationReason = reader.IsDBNull(19) ? "" : reader.GetString(19)
+                            CancellationReason = reader.IsDBNull(19) ? "" : reader.GetString(19),
+                            CargoType = reader.IsDBNull(20) ? "Cold / Chilled" : reader.GetString(20),
+                            IsMultiDrop = !reader.IsDBNull(21) && reader.GetInt32(21) == 1,
+                            TotalStopsCount = reader.IsDBNull(22) ? 1 : reader.GetInt32(22)
                         });
                     }
                 }
@@ -2084,34 +3004,41 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         if (d.Id == 0)
                         {
                             d.DispatchNumber = $"DSP-{DateTime.Now:yyyyMMdd-HHmmss}-{DateTime.Now.Millisecond:D3}{Random.Shared.Next(10, 99)}";
-                            cmd.CommandText = @"INSERT INTO Deliveries (DispatchNumber, LoadingScheduleId, LoadingScheduleInfo, TruckId, TruckInfo, DriverId, DriverName, AideId, AideName, AideIds, AideNames, GCrate, ECrate, TotalCrates, DispatchDate, DepartureTime, Status, Remarks, CancellationReason)
-                                                VALUES (@dn, @lsid, @lsi, @tid, @ti, @drid, @drn, @aid, @ain, @aids, @ains, @gc, @ec, @tc, @dd, @dt, @s, @r, @cr)";
+                            cmd.CommandText = @"INSERT INTO Deliveries (DispatchNumber, LoadingScheduleId, LoadingScheduleInfo, TruckId, TruckInfo, DriverId, DriverName, AideId, AideName, AideIds, AideNames, GCrate, ECrate, TotalCrates, DispatchDate, DepartureTime, Status, Remarks, CancellationReason, CargoType, IsMultiDrop, TotalStopsCount)
+                                                VALUES (@dn, @lsid, @lsi, @tid, @ti, @drid, @drn, @aid, @ain, @aids, @ains, @gc, @ec, @tc, @dd, @dt, @s, @r, @cr, @ct, @md, @tsc);
+                                                SELECT last_insert_rowid();";
 
-                            var updateLs = conn.CreateCommand();
-                            updateLs.Transaction = tx;
-                            updateLs.CommandText = "UPDATE LoadingSchedules SET Status='Assigned' WHERE Id=@lsid";
-                            updateLs.Parameters.AddWithValue("@lsid", d.LoadingScheduleId);
-                            updateLs.ExecuteNonQuery();
-
-                            var updateTr = conn.CreateCommand();
-                            updateTr.Transaction = tx;
-                            updateTr.CommandText = "UPDATE Trucks SET Status='In Use' WHERE Id=@tid";
-                            updateTr.Parameters.AddWithValue("@tid", d.TruckId);
-                            updateTr.ExecuteNonQuery();
-
-                            var lockCrew = conn.CreateCommand();
-                            lockCrew.Transaction = tx;
-                            lockCrew.CommandText = "UPDATE Crews SET IsAvailable=0 WHERE Id = @drid";
-                            lockCrew.Parameters.AddWithValue("@drid", d.DriverId);
-                            lockCrew.ExecuteNonQuery();
-
-                            foreach (int aideId in aideIdList)
+                            if (d.LoadingScheduleId > 0)
                             {
-                                var lockAide = conn.CreateCommand();
-                                lockAide.Transaction = tx;
-                                lockAide.CommandText = "UPDATE Crews SET IsAvailable=0 WHERE Id = @aid";
-                                lockAide.Parameters.AddWithValue("@aid", aideId);
-                                lockAide.ExecuteNonQuery();
+                                var updateLs = conn.CreateCommand();
+                                updateLs.Transaction = tx;
+                                updateLs.CommandText = "UPDATE LoadingSchedules SET Status='Assigned' WHERE Id=@lsid";
+                                updateLs.Parameters.AddWithValue("@lsid", d.LoadingScheduleId);
+                                updateLs.ExecuteNonQuery();
+                            }
+
+                            if (d.DispatchDate.Date <= DateTime.Today && d.Status != "Cancelled")
+                            {
+                                var updateTr = conn.CreateCommand();
+                                updateTr.Transaction = tx;
+                                updateTr.CommandText = "UPDATE Trucks SET Status='In Use' WHERE Id=@tid";
+                                updateTr.Parameters.AddWithValue("@tid", d.TruckId);
+                                updateTr.ExecuteNonQuery();
+
+                                var lockCrew = conn.CreateCommand();
+                                lockCrew.Transaction = tx;
+                                lockCrew.CommandText = "UPDATE Crews SET IsAvailable=0 WHERE Id = @drid";
+                                lockCrew.Parameters.AddWithValue("@drid", d.DriverId);
+                                lockCrew.ExecuteNonQuery();
+
+                                foreach (int aideId in aideIdList)
+                                {
+                                    var lockAide = conn.CreateCommand();
+                                    lockAide.Transaction = tx;
+                                    lockAide.CommandText = "UPDATE Crews SET IsAvailable=0 WHERE Id = @aid";
+                                    lockAide.Parameters.AddWithValue("@aid", aideId);
+                                    lockAide.ExecuteNonQuery();
+                                }
                             }
                         }
                         else
@@ -2170,14 +3097,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                 }
                             }
 
-                            cmd.CommandText = @"UPDATE Deliveries SET LoadingScheduleId=@lsid, LoadingScheduleInfo=@lsi, TruckId=@tid, TruckInfo=@ti, DriverId=@drid, DriverName=@drn, AideId=@aid, AideName=@ain, AideIds=@aids, AideNames=@ains, GCrate=@gc, ECrate=@ec, TotalCrates=@tc, DispatchDate=@dd, DepartureTime=@dt, Status=@s, Remarks=@r, CancellationReason=@cr WHERE Id=@id";
+                            cmd.CommandText = @"UPDATE Deliveries SET LoadingScheduleId=@lsid, LoadingScheduleInfo=@lsi, TruckId=@tid, TruckInfo=@ti, DriverId=@drid, DriverName=@drn, AideId=@aid, AideName=@ain, AideIds=@aids, AideNames=@ains, GCrate=@gc, ECrate=@ec, TotalCrates=@tc, DispatchDate=@dd, DepartureTime=@dt, Status=@s, Remarks=@r, CancellationReason=@cr, CargoType=@ct, IsMultiDrop=@md, TotalStopsCount=@tsc WHERE Id=@id";
                             cmd.Parameters.AddWithValue("@id", d.Id);
 
                             if (d.Status == "Completed" || d.Status == "Cancelled")
                             {
                                 var releaseTr = conn.CreateCommand();
                                 releaseTr.Transaction = tx;
-                                releaseTr.CommandText = "UPDATE Trucks SET Status='Available' WHERE Id=@tid";
+                                releaseTr.CommandText = "UPDATE Trucks SET Status='Active' WHERE Id=@tid";
                                 releaseTr.Parameters.AddWithValue("@tid", d.TruckId);
                                 releaseTr.ExecuteNonQuery();
 
@@ -2196,15 +3123,39 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                     releaseAide.ExecuteNonQuery();
                                 }
 
-                                var updateLs = conn.CreateCommand();
-                                updateLs.Transaction = tx;
-                                updateLs.CommandText = d.Status == "Completed"
-                                    ? "UPDATE LoadingSchedules SET Status='Completed' WHERE Id=@lsid"
-                                    : "UPDATE LoadingSchedules SET Status='Pending' WHERE Id=@lsid";
-                                updateLs.Parameters.AddWithValue("@lsid", d.LoadingScheduleId);
-                                updateLs.ExecuteNonQuery();
+                                var stopsToUpdate = d.Stops;
+                                if (d.IsMultiDrop && (stopsToUpdate == null || stopsToUpdate.Count == 0) && d.Id > 0)
+                                {
+                                    stopsToUpdate = GetDispatchStops(d.Id);
+                                }
+                                if (d.IsMultiDrop && stopsToUpdate != null && stopsToUpdate.Count > 0)
+                                {
+                                    foreach (var stop in stopsToUpdate)
+                                    {
+                                        if (stop.LoadingScheduleId.HasValue && stop.LoadingScheduleId.Value > 0)
+                                        {
+                                            var updateLsStop = conn.CreateCommand();
+                                            updateLsStop.Transaction = tx;
+                                            updateLsStop.CommandText = d.Status == "Completed"
+                                                ? "UPDATE LoadingSchedules SET Status='Completed' WHERE Id=@lsid"
+                                                : "UPDATE LoadingSchedules SET Status='Pending' WHERE Id=@lsid";
+                                            updateLsStop.Parameters.AddWithValue("@lsid", stop.LoadingScheduleId.Value);
+                                            updateLsStop.ExecuteNonQuery();
+                                        }
+                                    }
+                                }
+                                else if (d.LoadingScheduleId > 0)
+                                {
+                                    var updateLs = conn.CreateCommand();
+                                    updateLs.Transaction = tx;
+                                    updateLs.CommandText = d.Status == "Completed"
+                                        ? "UPDATE LoadingSchedules SET Status='Completed' WHERE Id=@lsid"
+                                        : "UPDATE LoadingSchedules SET Status='Pending' WHERE Id=@lsid";
+                                    updateLs.Parameters.AddWithValue("@lsid", d.LoadingScheduleId);
+                                    updateLs.ExecuteNonQuery();
+                                }
                             }
-                            else
+                            else if (d.DispatchDate.Date <= DateTime.Today)
                             {
                                 var lockTr = conn.CreateCommand();
                                 lockTr.Transaction = tx;
@@ -2248,9 +3199,37 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         cmd.Parameters.AddWithValue("@s", d.Status);
                         cmd.Parameters.AddWithValue("@r", d.Remarks);
                         cmd.Parameters.AddWithValue("@cr", d.CancellationReason ?? "");
-                        cmd.ExecuteNonQuery();
+                        cmd.Parameters.AddWithValue("@ct", string.IsNullOrEmpty(d.CargoType) ? "Cold / Chilled" : d.CargoType);
+                        cmd.Parameters.AddWithValue("@md", d.IsMultiDrop ? 1 : 0);
+                        cmd.Parameters.AddWithValue("@tsc", d.TotalStopsCount > 0 ? d.TotalStopsCount : 1);
+
+                        if (d.Id == 0)
+                        {
+                            object? insertRes = cmd.ExecuteScalar();
+                            if (insertRes != null && insertRes != DBNull.Value)
+                            {
+                                d.Id = Convert.ToInt32(insertRes);
+                            }
+                        }
+                        else
+                        {
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        if (d.Stops != null && d.Stops.Count > 0 && d.Id > 0)
+                        {
+                            SaveDispatchStopsInternal(conn, tx, d.Id, d.Stops);
+                        }
 
                         tx.Commit();
+
+                        try
+                        {
+                            bool isNew = d.Id == 0;
+                            LogAuditTrail(isNew ? "DISPATCH_CREATED" : (d.Status == "Cancelled" ? "CANCEL" : "UPDATE"), "Deliveries", d.Id, d.DispatchNumber, "Status", "", d.Status, $"Dispatch #{d.DispatchNumber} {(isNew ? "created" : "updated")}, Truck: {d.TruckInfo}, Driver: {d.DriverName}, Status: {d.Status}");
+                            EventNotificationService.Publish(isNew ? "Trip Dispatched" : "Trip Updated", $"Dispatch #{d.DispatchNumber} assigned to {d.TruckInfo}", ToastType.Success);
+                        }
+                        catch { }
                     }
                     catch
                     {
@@ -2276,9 +3255,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         string plate = r.GetString(0);
                         string status = r.GetString(1);
-                        if (deliveryId == 0 && !status.Equals("Available", StringComparison.OrdinalIgnoreCase))
+                        if (status.Equals("Maintenance", StringComparison.OrdinalIgnoreCase))
                         {
-                            return $"TRUCK UNAVAILABLE:\nVehicle '{plate}' is currently marked as '{status}' and cannot be dispatched.";
+                            return $"TRUCK UNDER MAINTENANCE:\nVehicle '{plate}' is currently under maintenance and cannot be dispatched.";
+                        }
+                        if (deliveryId == 0 && !status.Equals("Available", StringComparison.OrdinalIgnoreCase) && !status.Equals("Active", StringComparison.OrdinalIgnoreCase) && dispatchDate.Date == DateTime.Today)
+                        {
+                            return $"TRUCK UNAVAILABLE:\nVehicle '{plate}' is currently marked as '{status}' and cannot be dispatched for today.";
                         }
                     }
                 }
@@ -2292,9 +3275,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         string name = r.GetString(0);
                         int isAvail = r.GetInt32(1);
-                        if (deliveryId == 0 && isAvail == 0)
+                        if (deliveryId == 0 && isAvail == 0 && dispatchDate.Date == DateTime.Today)
                         {
-                            return $"DRIVER ON TRIP:\nDriver '{name}' is currently marked as 'On Trip' and cannot be assigned to a new dispatch.";
+                            return $"DRIVER ON TRIP:\nDriver '{name}' is currently marked as 'On Trip' and cannot be assigned to a new dispatch for today.";
                         }
                     }
                 }
@@ -2312,9 +3295,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             {
                                 string name = r.GetString(0);
                                 int isAvail = r.GetInt32(1);
-                                if (deliveryId == 0 && isAvail == 0)
+                                if (deliveryId == 0 && isAvail == 0 && dispatchDate.Date == DateTime.Today)
                                 {
-                                    return $"AIDE/HELPER ON TRIP:\nHelper '{name}' is currently marked as 'On Trip' and cannot be assigned to a new dispatch.";
+                                    return $"AIDE/HELPER ON TRIP:\nHelper '{name}' is currently marked as 'On Trip' and cannot be assigned to a new dispatch for today.";
                                 }
                             }
                         }
@@ -2380,6 +3363,204 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             return null;
+        }
+
+        public static List<DispatchStop> GetDispatchStops(int deliveryId)
+        {
+            var list = new List<DispatchStop>();
+            try
+            {
+                using var conn = new SqliteConnection(connectionString);
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT Id, DeliveryId, StopSequence, LoadingScheduleId, ClientName, Destination, GCrate, ECrate, TotalCrates, Status, ArrivalTime, DepartureTime, DeliveredGCrates, DeliveredECrates, DeliveredCrates, ReturnedGCrates, ReturnedECrates, ReturnedCrates, StoreManagerLastName, StoreManagerFirstName, StoreManagerMiddleName, StoreManagerName, Remarks FROM DispatchStops WHERE DeliveryId = @did ORDER BY StopSequence ASC, Id ASC";
+                cmd.Parameters.AddWithValue("@did", deliveryId);
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    list.Add(new DispatchStop
+                    {
+                        Id = r.GetInt32(0),
+                        DeliveryId = r.GetInt32(1),
+                        StopSequence = r.GetInt32(2),
+                        LoadingScheduleId = r.IsDBNull(3) ? null : r.GetInt32(3),
+                        ClientName = r.IsDBNull(4) ? "" : r.GetString(4),
+                        Destination = r.IsDBNull(5) ? "" : r.GetString(5),
+                        GCrate = r.IsDBNull(6) ? 0 : r.GetInt32(6),
+                        ECrate = r.IsDBNull(7) ? 0 : r.GetInt32(7),
+                        TotalCrates = r.IsDBNull(8) ? 0 : r.GetInt32(8),
+                        Status = r.IsDBNull(9) ? "Pending" : r.GetString(9),
+                        ArrivalTime = r.IsDBNull(10) ? "" : r.GetString(10),
+                        DepartureTime = r.IsDBNull(11) ? "" : r.GetString(11),
+                        DeliveredGCrates = r.IsDBNull(12) ? 0 : r.GetInt32(12),
+                        DeliveredECrates = r.IsDBNull(13) ? 0 : r.GetInt32(13),
+                        DeliveredCrates = r.IsDBNull(14) ? 0 : r.GetInt32(14),
+                        ReturnedGCrates = r.IsDBNull(15) ? 0 : r.GetInt32(15),
+                        ReturnedECrates = r.IsDBNull(16) ? 0 : r.GetInt32(16),
+                        ReturnedCrates = r.IsDBNull(17) ? 0 : r.GetInt32(17),
+                        StoreManagerLastName = r.IsDBNull(18) ? "" : r.GetString(18),
+                        StoreManagerFirstName = r.IsDBNull(19) ? "" : r.GetString(19),
+                        StoreManagerMiddleName = r.IsDBNull(20) ? "" : r.GetString(20),
+                        StoreManagerName = r.IsDBNull(21) ? "" : r.GetString(21),
+                        Remarks = r.IsDBNull(22) ? "" : r.GetString(22)
+                    });
+                }
+            }
+            catch { }
+            return list;
+        }
+
+        public static void SaveDispatchStops(int deliveryId, List<DispatchStop> stops)
+        {
+            if (deliveryId <= 0 || stops == null) return;
+            try
+            {
+                using var conn = new SqliteConnection(connectionString);
+                conn.Open();
+                using var tx = conn.BeginTransaction();
+                SaveDispatchStopsInternal(conn, tx, deliveryId, stops);
+                tx.Commit();
+            }
+            catch { }
+        }
+
+        private static void SaveDispatchStopsInternal(SqliteConnection conn, SqliteTransaction tx, int deliveryId, List<DispatchStop> stops)
+        {
+            using (var delCmd = conn.CreateCommand())
+            {
+                delCmd.Transaction = tx;
+                delCmd.CommandText = "DELETE FROM DispatchStops WHERE DeliveryId = @did";
+                delCmd.Parameters.AddWithValue("@did", deliveryId);
+                delCmd.ExecuteNonQuery();
+            }
+
+            for (int i = 0; i < stops.Count; i++)
+            {
+                var s = stops[i];
+                s.DeliveryId = deliveryId;
+                s.StopSequence = i + 1;
+                s.TotalCrates = s.GCrate + s.ECrate;
+                s.StoreManagerName = NameHelper.FormatFullName(s.StoreManagerLastName, s.StoreManagerFirstName, s.StoreManagerMiddleName);
+
+                using var ins = conn.CreateCommand();
+                ins.Transaction = tx;
+                ins.CommandText = @"INSERT INTO DispatchStops (DeliveryId, StopSequence, LoadingScheduleId, ClientName, Destination, GCrate, ECrate, TotalCrates, Status, ArrivalTime, DepartureTime, DeliveredGCrates, DeliveredECrates, DeliveredCrates, ReturnedGCrates, ReturnedECrates, ReturnedCrates, StoreManagerLastName, StoreManagerFirstName, StoreManagerMiddleName, StoreManagerName, Remarks)
+                                    VALUES (@did, @seq, @lsid, @cn, @dest, @gc, @ec, @tc, @st, @at, @dt, @dgc, @dec, @dc, @rgc, @rec, @rc, @smln, @smfn, @smmn, @smn, @rem)";
+                ins.Parameters.AddWithValue("@did", deliveryId);
+                ins.Parameters.AddWithValue("@seq", s.StopSequence);
+                ins.Parameters.AddWithValue("@lsid", s.LoadingScheduleId.HasValue ? (object)s.LoadingScheduleId.Value : DBNull.Value);
+                ins.Parameters.AddWithValue("@cn", s.ClientName ?? "");
+                ins.Parameters.AddWithValue("@dest", s.Destination ?? "");
+                ins.Parameters.AddWithValue("@gc", s.GCrate);
+                ins.Parameters.AddWithValue("@ec", s.ECrate);
+                ins.Parameters.AddWithValue("@tc", s.TotalCrates);
+                ins.Parameters.AddWithValue("@st", string.IsNullOrEmpty(s.Status) ? "Pending" : s.Status);
+                ins.Parameters.AddWithValue("@at", s.ArrivalTime ?? "");
+                ins.Parameters.AddWithValue("@dt", s.DepartureTime ?? "");
+                ins.Parameters.AddWithValue("@dgc", s.DeliveredGCrates);
+                ins.Parameters.AddWithValue("@dec", s.DeliveredECrates);
+                ins.Parameters.AddWithValue("@dc", s.DeliveredCrates);
+                ins.Parameters.AddWithValue("@rgc", s.ReturnedGCrates);
+                ins.Parameters.AddWithValue("@rec", s.ReturnedECrates);
+                ins.Parameters.AddWithValue("@rc", s.ReturnedCrates);
+                ins.Parameters.AddWithValue("@smln", s.StoreManagerLastName ?? "");
+                ins.Parameters.AddWithValue("@smfn", s.StoreManagerFirstName ?? "");
+                ins.Parameters.AddWithValue("@smmn", s.StoreManagerMiddleName ?? "");
+                ins.Parameters.AddWithValue("@smn", s.StoreManagerName ?? "");
+                ins.Parameters.AddWithValue("@rem", s.Remarks ?? "");
+                ins.ExecuteNonQuery();
+            }
+        }
+
+        public static (bool Success, string Message, Delivery? NewDelivery) CloneDeliveryForFutureDate(int sourceDeliveryId, DateTime targetDate, string targetTime)
+        {
+            try
+            {
+                var all = GetDeliveries();
+                var src = all.FirstOrDefault(d => d.Id == sourceDeliveryId);
+                if (src == null) return (false, "Source dispatch order not found.", null);
+
+                var aideIdList = new List<int>();
+                if (!string.IsNullOrEmpty(src.AideIds))
+                {
+                    foreach (var s in src.AideIds.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        if (int.TryParse(s.Trim(), out int parsedId) && parsedId > 0)
+                        {
+                            aideIdList.Add(parsedId);
+                        }
+                    }
+                }
+                if (aideIdList.Count == 0 && src.AideId > 0)
+                {
+                    aideIdList.Add(src.AideId);
+                }
+
+                string? conflict = ValidateDispatchConflict(0, src.TruckId, src.DriverId, aideIdList, targetDate);
+                if (!string.IsNullOrEmpty(conflict))
+                {
+                    return (false, conflict, null);
+                }
+
+                var stops = GetDispatchStops(sourceDeliveryId);
+
+                var cloned = new Delivery
+                {
+                    Id = 0,
+                    LoadingScheduleId = src.LoadingScheduleId,
+                    LoadingScheduleInfo = src.LoadingScheduleInfo,
+                    TruckId = src.TruckId,
+                    TruckInfo = src.TruckInfo,
+                    DriverId = src.DriverId,
+                    DriverName = src.DriverName,
+                    AideId = src.AideId,
+                    AideName = src.AideName,
+                    AideIds = src.AideIds,
+                    AideNames = src.AideNames,
+                    GCrate = src.GCrate,
+                    ECrate = src.ECrate,
+                    TotalCrates = src.TotalCrates,
+                    DispatchDate = targetDate,
+                    DepartureTime = string.IsNullOrWhiteSpace(targetTime) ? src.DepartureTime : targetTime,
+                    Status = "Pending",
+                    Remarks = $"Scheduled from Dispatch #{src.DispatchNumber}",
+                    CargoType = src.CargoType,
+                    IsMultiDrop = src.IsMultiDrop,
+                    TotalStopsCount = src.TotalStopsCount
+                };
+
+                SaveDelivery(cloned);
+
+                if (stops != null && stops.Count > 0)
+                {
+                    var newStops = new List<DispatchStop>();
+                    foreach (var s in stops)
+                    {
+                        newStops.Add(new DispatchStop
+                        {
+                            DeliveryId = cloned.Id,
+                            StopSequence = s.StopSequence,
+                            LoadingScheduleId = s.LoadingScheduleId,
+                            ClientName = s.ClientName,
+                            Destination = s.Destination,
+                            GCrate = s.GCrate,
+                            ECrate = s.ECrate,
+                            TotalCrates = s.TotalCrates,
+                            Status = "Pending",
+                            Remarks = s.Remarks
+                        });
+                    }
+                    SaveDispatchStops(cloned.Id, newStops);
+                    cloned.Stops = newStops;
+                }
+
+                LogAuditTrail("CLONE_DISPATCH", "Deliveries", cloned.Id, cloned.DispatchNumber, "Status", "", "Pending", $"Cloned future dispatch from #{src.DispatchNumber} for {targetDate:MMM dd, yyyy}");
+                return (true, $"Future Dispatch #{cloned.DispatchNumber} scheduled for {targetDate:MMM dd, yyyy} {cloned.DepartureTime}.", cloned);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Failed to clone dispatch: {ex.Message}", null);
+            }
         }
 
         public static string? ValidateLoadingScheduleConflict(int scheduleId, string clientName, string destination, DateTime scheduleDate, string? departureTime = null)
@@ -2534,7 +3715,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             var releaseTr = conn.CreateCommand();
                             releaseTr.Transaction = tx;
-                            releaseTr.CommandText = "UPDATE Trucks SET Status='Available' WHERE Id=(SELECT TruckId FROM Deliveries WHERE Id=@did)";
+                            releaseTr.CommandText = "UPDATE Trucks SET Status='Active' WHERE Id=(SELECT TruckId FROM Deliveries WHERE Id=@did)";
                             releaseTr.Parameters.AddWithValue("@did", tr.DeliveryId);
                             releaseTr.ExecuteNonQuery();
 
@@ -2578,6 +3759,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             updateLs.CommandText = "UPDATE LoadingSchedules SET Status='Completed' WHERE Id=(SELECT LoadingScheduleId FROM Deliveries WHERE Id=@did)";
                             updateLs.Parameters.AddWithValue("@did", tr.DeliveryId);
                             updateLs.ExecuteNonQuery();
+
+                            var updateStopsCmd = conn.CreateCommand();
+                            updateStopsCmd.Transaction = tx;
+                            updateStopsCmd.CommandText = "UPDATE DispatchStops SET Status='Delivered' WHERE DeliveryId=@did AND Status='Pending'";
+                            updateStopsCmd.Parameters.AddWithValue("@did", tr.DeliveryId);
+                            updateStopsCmd.ExecuteNonQuery();
+
+                            var updateStopsLs = conn.CreateCommand();
+                            updateStopsLs.Transaction = tx;
+                            updateStopsLs.CommandText = "UPDATE LoadingSchedules SET Status='Completed' WHERE Id IN (SELECT LoadingScheduleId FROM DispatchStops WHERE DeliveryId=@did AND LoadingScheduleId IS NOT NULL)";
+                            updateStopsLs.Parameters.AddWithValue("@did", tr.DeliveryId);
+                            updateStopsLs.ExecuteNonQuery();
                         }
                         else
                         {
@@ -2605,6 +3798,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         cmd.ExecuteNonQuery();
 
                         tx.Commit();
+
+                        try
+                        {
+                            bool isNew = tr.Id == 0;
+                            LogAuditTrail(isNew ? "INSERT" : "UPDATE", "TripReports", tr.Id, tr.TripReportNumber, "Delivered/Returned", "", $"Delivered: {tr.DeliveredCrates}, Returned: {tr.ReturnedCrates}", $"Trip report for Dispatch #{tr.DispatchNumber} {(isNew ? "filed" : "updated")}");
+                            EventNotificationService.Publish(isNew ? "Trip Report Saved" : "Trip Report Updated", $"Report #{tr.TripReportNumber} for dispatch #{tr.DispatchNumber}", ToastType.Success);
+                        }
+                        catch { }
                     }
                     catch
                     {
@@ -2688,11 +3889,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.Parameters.AddWithValue("@c", ir.Cause);
                 cmd.Parameters.AddWithValue("@ch", ir.ChargeableToCrew ? 1 : 0);
                 cmd.Parameters.AddWithValue("@desc", ir.Description);
+                bool isNew = ir.Id == 0;
                 cmd.Parameters.AddWithValue("@s", ir.Status);
                 cmd.Parameters.AddWithValue("@photo", ir.PhotoPath ?? "");
                 cmd.ExecuteNonQuery();
 
+                if (isNew)
+                {
+                    using var idCmd = conn.CreateCommand();
+                    idCmd.CommandText = "SELECT last_insert_rowid();";
+                    ir.Id = Convert.ToInt32(idCmd.ExecuteScalar());
+                }
+
+                LogAuditTrail(isNew ? "ADD" : "UPDATE", "IncidentReports", ir.Id, ir.DispatchNumber, "Cause", "", ir.Cause, $"Incident for Dispatch #{ir.DispatchNumber}: {ir.Cause} (Damaged: {ir.DamagedQuantity}, Cost: PHP {ir.EstimatedCost:N2}) {(isNew ? "filed" : "updated")}");
             }
+
+            try
+            {
+                bool isNew = ir.Id == 0;
+                EventNotificationService.Publish(isNew ? "Incident Logged" : "Incident Updated", $"Dispatch #{ir.DispatchNumber}: {ir.Cause} ({ir.DamagedQuantity} damaged crates)", ToastType.Warning);
+            }
+            catch { }
         }
 
         public static List<Invoice> GetInvoices()
@@ -2765,6 +3982,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.Parameters.AddWithValue("@s", inv.Status);
                 cmd.ExecuteNonQuery();
             }
+
+            try
+            {
+                bool isNew = inv.Id == 0;
+                LogAuditTrail(isNew ? "INVOICE_CREATED" : "UPDATE", "Invoices", inv.Id, inv.InvoiceNumber, "NetAmount", "", inv.NetAmount.ToString("F2"), $"Invoice {(isNew ? "created" : "updated")} for {inv.ClientName}, Status: {inv.Status}, Net: PHP {inv.NetAmount:N2}");
+                EventNotificationService.Publish(isNew ? "Invoice Created" : "Invoice Updated", $"Invoice #{inv.InvoiceNumber} for {inv.ClientName} (PHP {inv.NetAmount:N2})", ToastType.Success);
+            }
+            catch { }
         }
 
         public static List<StatementOfAccount> GetStatementsOfAccount()
@@ -2855,6 +4080,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         }
 
                         tx.Commit();
+
+                        try
+                        {
+                            EventNotificationService.Publish("SOA Saved", $"Statement #{soa.SoaNumber} for {soa.ClientName} (PHP {soa.TotalAmount:N2})", ToastType.Success);
+                        }
+                        catch { }
+
                         return soaId;
                     }
                     catch
@@ -3002,22 +4234,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 public static void DeleteCollectionReceipt(int receiptId)
         {
             int invoiceId = 0;
+            string receiptNumber = $"CR-{receiptId}";
             using (var conn = new SqliteConnection(connectionString))
             {
                 conn.Open();
                 var getCmd = conn.CreateCommand();
-                getCmd.CommandText = "SELECT InvoiceId FROM CollectionReceipts WHERE Id = @id";
+                getCmd.CommandText = "SELECT InvoiceId, ReceiptNumber FROM CollectionReceipts WHERE Id = @id";
                 getCmd.Parameters.AddWithValue("@id", receiptId);
-                var res = getCmd.ExecuteScalar();
-                if (res != null && res != DBNull.Value)
+                using (var r = getCmd.ExecuteReader())
                 {
-                    invoiceId = Convert.ToInt32(res);
+                    if (r.Read())
+                    {
+                        if (!r.IsDBNull(0)) invoiceId = r.GetInt32(0);
+                        if (!r.IsDBNull(1)) receiptNumber = r.GetString(1);
+                    }
                 }
 
                 var delCmd = conn.CreateCommand();
                 delCmd.CommandText = "DELETE FROM CollectionReceipts WHERE Id = @id";
                 delCmd.Parameters.AddWithValue("@id", receiptId);
                 delCmd.ExecuteNonQuery();
+
+                LogAuditTrail("DELETE", "CollectionReceipts", receiptId, receiptNumber, "", "", "", $"Permanently deleted collection receipt {receiptNumber} (Invoice #{invoiceId})");
 
                 if (invoiceId > 0)
                 {
@@ -3118,6 +4356,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         updateInv.ExecuteNonQuery();
 
                         tx.Commit();
+
+                        try
+                        {
+                            bool isNew = cr.Id == 0;
+                            LogAuditTrail(isNew ? "PAYMENT_COLLECTED" : "UPDATE", "CollectionReceipts", cr.Id, cr.ReceiptNumber, "AmountPaid", "", $"PHP {cr.AmountPaid:N2}", $"Collection receipt for Invoice #{cr.InvoiceNumber} via {cr.PaymentMethod} (Ref: {cr.ReferenceNumber})");
+                            EventNotificationService.Publish("Payment Collected", $"Receipt #{cr.ReceiptNumber} for invoice #{cr.InvoiceNumber} (PHP {cr.AmountPaid:N2})", ToastType.Success);
+                        }
+                        catch { }
                     }
                     catch
                     {
@@ -3135,6 +4381,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 using (var conn = new SqliteConnection(connectionString))
                 {
                     conn.Open();
+
+                    using (var checkCmd = conn.CreateCommand())
+                    {
+                        checkCmd.CommandText = "PRAGMA integrity_check;";
+                        var checkResult = checkCmd.ExecuteScalar()?.ToString();
+                        if (checkResult != null && !checkResult.Equals("ok", StringComparison.OrdinalIgnoreCase))
+                        {
+                            EventNotificationService.Publish("Database Warning", $"Integrity check reported non-standard state: {checkResult}", ToastType.Warning);
+                        }
+                    }
 
                     var fixTrucksCmd = conn.CreateCommand();
                     fixTrucksCmd.CommandText = @"
@@ -3281,6 +4537,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             NotifyCategoriesChanged();
+            LogAuditTrail("ADD", "LookupCategories", 0, itemValue.Trim(), "ExtraValue", "", extraValue.Trim(), $"Saved category item '{itemValue.Trim()}' (Extra: {extraValue.Trim()}) under '{categoryType}'");
         }
 
         public static List<ClientCompany> GetClients()
@@ -3428,6 +4685,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             SaveLookupItem("Client Company", name);
             NotifyCategoriesChanged();
+            LogAuditTrail("UPDATE", "Clients", 0, name, "ContactPerson", "", client.ContactPerson, $"Client company profile {name} saved");
+
+            try
+            {
+                EventNotificationService.Publish("Client Saved", $"{client.CompanyName} (Contact: {client.ContactPerson})", ToastType.Success);
+            }
+            catch { }
         }
 
         public static void DeleteClient(string companyName)
@@ -3443,6 +4707,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             DeleteLookupItem("Client Company", companyName);
             NotifyCategoriesChanged();
+            LogAuditTrail("DELETE", "Clients", 0, companyName, "", "", "", $"Deleted client profile {companyName}");
         }
 
         public static List<string> GetLookupItems(string categoryType)
@@ -3479,6 +4744,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
             NotifyCategoriesChanged();
+            LogAuditTrail("ADD", "LookupCategories", 0, itemValue.Trim(), "ItemValue", "", itemValue.Trim(), $"Added category item '{itemValue.Trim()}' under '{categoryType}'");
         }
 
         public static bool DeleteLookupItem(string categoryType, string itemValue)
@@ -3496,6 +4762,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (affected > 0)
                     {
                         NotifyCategoriesChanged();
+                        LogAuditTrail("DELETE", "LookupCategories", 0, itemValue.Trim(), "ItemValue", itemValue.Trim(), "", $"Deleted category item '{itemValue.Trim()}' from '{categoryType}'");
                         return true;
                     }
                 }
@@ -3525,7 +4792,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         {
                             results.Add(new GlobalSearchResult
                             {
-                                Category = "Fleet & Trucks",
+                                Category = "Trucks & Vehicles",
                                 Title = $"Truck {r.GetString(1)} ({r.GetString(2)})",
                                 Subtitle = $"Status: {r.GetString(3)} | Capacity: {r.GetInt32(4)} Crates",
                                 Tag = r.GetInt32(0),
@@ -3545,7 +4812,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             {
                                 Category = "Crew Personnel",
                                 Title = $"{r.GetString(1)} ({r.GetString(2)})",
-                                Subtitle = $"Contact: {(r.IsDBNull(3) ? "N/A" : r.GetString(3))} | Status: {(r.GetInt32(4) == 1 ? "Available" : "On Trip")}",
+                                Subtitle = $"Contact: {(r.IsDBNull(3) ? "N/A" : r.GetString(3))} | Status: {(r.GetInt32(4) == 1 ? "Active" : "On Trip")}",
                                 Tag = r.GetInt32(0),
                                 TargetModule = "Crews"
                             });
@@ -3777,6 +5044,123 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.Parameters.AddWithValue("@excludeId", excludeDeliveryId);
                 var count = Convert.ToInt32(cmd.ExecuteScalar());
                 return count > 0;
+            }
+        }
+
+        public static void SaveFormDraft(string moduleKey, string userKey, string draftData)
+        {
+            if (string.IsNullOrWhiteSpace(moduleKey)) return;
+            string uKey = string.IsNullOrWhiteSpace(userKey) ? "default" : userKey.Trim().ToLowerInvariant();
+            using (var conn = new SqliteConnection(connectionString))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        INSERT INTO FormDrafts (ModuleKey, UserKey, DraftData, LastSaved)
+                        VALUES (@m, @u, @d, @t)
+                        ON CONFLICT(ModuleKey, UserKey) DO UPDATE SET
+                            DraftData = excluded.DraftData,
+                            LastSaved = excluded.LastSaved;
+                    ";
+                    cmd.Parameters.AddWithValue("@m", moduleKey.Trim());
+                    cmd.Parameters.AddWithValue("@u", uKey);
+                    cmd.Parameters.AddWithValue("@d", draftData ?? "");
+                    cmd.Parameters.AddWithValue("@t", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public static (string Data, DateTime LastSaved)? GetFormDraft(string moduleKey, string userKey)
+        {
+            if (string.IsNullOrWhiteSpace(moduleKey)) return null;
+            string uKey = string.IsNullOrWhiteSpace(userKey) ? "default" : userKey.Trim().ToLowerInvariant();
+            using (var conn = new SqliteConnection(connectionString))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT DraftData, LastSaved FROM FormDrafts WHERE ModuleKey = @m AND UserKey = @u LIMIT 1";
+                    cmd.Parameters.AddWithValue("@m", moduleKey.Trim());
+                    cmd.Parameters.AddWithValue("@u", uKey);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            string data = reader.GetString(0);
+                            string dateStr = reader.GetString(1);
+                            DateTime dt = DateTime.TryParse(dateStr, out var d) ? d : DateTime.Now;
+                            return (data, dt);
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        public static void ClearFormDraft(string moduleKey, string userKey)
+        {
+            if (string.IsNullOrWhiteSpace(moduleKey)) return;
+            string uKey = string.IsNullOrWhiteSpace(userKey) ? "default" : userKey.Trim().ToLowerInvariant();
+            using (var conn = new SqliteConnection(connectionString))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "DELETE FROM FormDrafts WHERE ModuleKey = @m AND UserKey = @u";
+                    cmd.Parameters.AddWithValue("@m", moduleKey.Trim());
+                    cmd.Parameters.AddWithValue("@u", uKey);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public static string PerformTimedRollingBackup(int maxSnapshots = 5)
+        {
+            try
+            {
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string backupDir = Path.Combine(baseDir, "Backups", "AutoSave");
+                if (!Directory.Exists(backupDir))
+                {
+                    Directory.CreateDirectory(backupDir);
+                }
+
+                if (!File.Exists(dbFilePath)) return "";
+
+                try
+                {
+                    using var chkConn = new SqliteConnection(connectionString);
+                    chkConn.Open();
+                    using var chkCmd = chkConn.CreateCommand();
+                    chkCmd.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
+                    chkCmd.ExecuteNonQuery();
+                }
+                catch { }
+
+                string backupFileName = $"AutoSave_Snapshot_{DateTime.Now:yyyyMMdd_HHmmss}.bak";
+                string backupPath = Path.Combine(backupDir, backupFileName);
+
+                File.Copy(dbFilePath, backupPath, true);
+
+                var snapshots = new DirectoryInfo(backupDir).GetFiles("AutoSave_Snapshot_*.bak")
+                    .OrderByDescending(f => f.CreationTime)
+                    .ToList();
+
+                if (snapshots.Count > maxSnapshots)
+                {
+                    for (int i = maxSnapshots; i < snapshots.Count; i++)
+                    {
+                        try { snapshots[i].Delete(); } catch { }
+                    }
+                }
+
+                return backupPath;
+            }
+            catch
+            {
+                return "";
             }
         }
 

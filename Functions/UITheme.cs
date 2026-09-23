@@ -46,8 +46,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
-                Form? parentForm = parent.FindForm();
-                if (parentForm == null || parentForm.IsDisposed) return;
+                Form? parentForm = parent is Form f ? f : parent.FindForm();
+                if (parentForm == null || parentForm.IsDisposed || !parentForm.Visible) return;
 
                 Color bg = Color.FromArgb(15, 23, 42);
                 Color fg = Color.White;
@@ -87,27 +87,37 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     ForeColor = fg,
                     Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
                     AutoSize = true,
-                    Dock = DockStyle.Fill
+                    Dock = DockStyle.Fill,
+                    Cursor = Cursors.Hand
                 };
                 toast.Controls.Add(lbl);
 
-                toast.Location = new Point(parentForm.ClientSize.Width - 340, parentForm.ClientSize.Height - 65);
+                toast.Location = new Point(Math.Max(10, parentForm.ClientSize.Width - 360), Math.Max(10, parentForm.ClientSize.Height - 68));
                 toast.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
 
                 parentForm.Controls.Add(toast);
                 toast.BringToFront();
 
-                System.Windows.Forms.Timer tmr = new System.Windows.Forms.Timer { Interval = 2400 };
-                tmr.Tick += (s, e) =>
+                System.Windows.Forms.Timer tmr = new System.Windows.Forms.Timer { Interval = 3200 };
+                Action dismiss = () =>
                 {
-                    tmr.Stop();
-                    tmr.Dispose();
-                    if (!parentForm.IsDisposed && parentForm.Controls.Contains(toast))
+                    try
                     {
-                        parentForm.Controls.Remove(toast);
-                        toast.Dispose();
+                        tmr.Stop();
+                        tmr.Dispose();
+                        if (!parentForm.IsDisposed && parentForm.Controls.Contains(toast))
+                        {
+                            parentForm.Controls.Remove(toast);
+                            toast.Dispose();
+                        }
                     }
+                    catch { }
                 };
+
+                toast.Click += (s, e) => dismiss();
+                lbl.Click += (s, e) => dismiss();
+
+                tmr.Tick += (s, e) => dismiss();
                 tmr.Start();
             }
             catch { }
@@ -501,7 +511,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             val = b ? "Active" : "Inactive";
                             if (colHeader.Contains("Avail", StringComparison.OrdinalIgnoreCase))
                             {
-                                val = b ? "Available" : "On Trip";
+                                val = b ? "Active" : "On Trip";
                             }
                         }
 
@@ -529,7 +539,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         }
                         else if (valUpper.Contains("MAINTENANCE") || valUpper.Contains("REPAIR") || valUpper.Contains("UNAVAILABLE") ||
                                  valUpper.Contains("NOT AVAILABLE") || valUpper.Contains("CANCEL") || valUpper.Contains("OVERDUE") ||
-                                 valUpper.Contains("UNPAID") || valUpper == "OPEN")
+                                 valUpper.Contains("UNPAID") || valUpper == "OPEN" || valUpper.Contains("INACTIVE"))
                         {
                             bg = Color.FromArgb(254, 226, 226);
                             fg = Color.FromArgb(185, 28, 28);

@@ -23,6 +23,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblSubtitle = new Label();
             lblTitle = new Label();
             panelBody = new Panel();
+            lnkForgotPassword = new LinkLabel();
             lnkRegister = new LinkLabel();
             pnlButtons = new TableLayoutPanel();
             btnLogin = new Button();
@@ -76,6 +77,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblTitle.Visible = false;
             panelBody.AutoScroll = true;
             panelBody.BackColor = Color.White;
+            panelBody.Controls.Add(lnkForgotPassword);
             panelBody.Controls.Add(lnkRegister);
             panelBody.Controls.Add(pnlButtons);
             panelBody.Controls.Add(lblError);
@@ -187,6 +189,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lnkRegister.Text = "👤 New Office Staff? Register Account";
             lnkRegister.TextAlign = ContentAlignment.MiddleCenter;
             lnkRegister.LinkClicked += lnkRegister_LinkClicked;
+            lnkForgotPassword.ActiveLinkColor = Color.FromArgb(127, 29, 29);
+            lnkForgotPassword.Dock = DockStyle.Top;
+            lnkForgotPassword.Font = new Font("Segoe UI", 9F);
+            lnkForgotPassword.LinkColor = Color.FromArgb(71, 85, 105);
+            lnkForgotPassword.Location = new Point(36, 244);
+            lnkForgotPassword.Name = "lnkForgotPassword";
+            lnkForgotPassword.Padding = new Padding(0, 6, 0, 0);
+            lnkForgotPassword.Size = new Size(408, 28);
+            lnkForgotPassword.TabIndex = 9;
+            lnkForgotPassword.TabStop = true;
+            lnkForgotPassword.Text = "🔑 Forgot Password? Recover Account";
+            lnkForgotPassword.TextAlign = ContentAlignment.MiddleCenter;
+            lnkForgotPassword.LinkClicked += lnkForgotPassword_LinkClicked;
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.White;
@@ -223,6 +238,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Button btnLogin;
         private Button btnExit;
         private LinkLabel lnkRegister;
+        private LinkLabel lnkForgotPassword;
         private Label lblError;
     }
 }

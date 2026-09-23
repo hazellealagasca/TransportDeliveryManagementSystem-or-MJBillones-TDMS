@@ -26,6 +26,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.BackColor = Color.FromArgb(15, 23, 42);
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.MinimumSize = new Size(400, 300);
+            this.MaximizeBox = true;
+            this.MinimizeBox = false;
 
             Panel pnlTop = new Panel
             {

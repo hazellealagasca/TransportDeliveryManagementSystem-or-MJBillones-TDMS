@@ -122,6 +122,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string Details { get; set; } = string.Empty;
     }
 
+    public class AuditTrailEntry
+    {
+        public int Id { get; set; }
+        public DateTime Timestamp { get; set; } = DateTime.Now;
+        public string Username { get; set; } = string.Empty;
+        public string UserRole { get; set; } = string.Empty;
+        public string ActionType { get; set; } = string.Empty;
+        public string TableName { get; set; } = string.Empty;
+        public int RecordId { get; set; }
+        public string RecordIdentifier { get; set; } = string.Empty;
+        public string FieldName { get; set; } = string.Empty;
+        public string OldValue { get; set; } = string.Empty;
+        public string NewValue { get; set; } = string.Empty;
+        public string ReasonOrNotes { get; set; } = string.Empty;
+        public string IpOrMachine { get; set; } = string.Empty;
+    }
+
     public class Crew
     {
         public int Id { get; set; }
@@ -138,7 +155,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public bool IsActive { get; set; } = true;
         public bool IsSeasonal { get; set; } = false;
         public string PhotoPath { get; set; } = string.Empty;
-        public string AvailabilityStatus => !IsActive ? "Inactive" : (IsAvailable ? "Available" : "On Trip");
+        public string AvailabilityStatus => !IsActive ? "Inactive" : (IsAvailable ? "Active" : "On Trip");
     }
 
     public class Truck
@@ -147,7 +164,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string PlateNumber { get; set; } = string.Empty;
         public string TruckType { get; set; } = "Refrigerated Van";
         public int CapacityCrates { get; set; } = 300;
-        public string Status { get; set; } = "Available";
+        public string Status { get; set; } = "Active";
         public string Remarks { get; set; } = string.Empty;
         public string CargoType { get; set; } = "Cold / Chilled";
     }
@@ -191,6 +208,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string Remarks { get; set; } = string.Empty;
         public string CancellationReason { get; set; } = string.Empty;
         public string CargoType { get; set; } = "Cold / Chilled";
+        public int RescheduleCount { get; set; } = 0;
+        public DateTime? OriginalScheduleDate { get; set; }
+        public string RescheduleReason { get; set; } = string.Empty;
     }
 
     public class Delivery
@@ -216,6 +236,37 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string Remarks { get; set; } = string.Empty;
         public string CancellationReason { get; set; } = string.Empty;
         public string CargoType { get; set; } = "Cold / Chilled";
+        public bool IsMultiDrop { get; set; } = false;
+        public int TotalStopsCount { get; set; } = 1;
+        public List<DispatchStop> Stops { get; set; } = new List<DispatchStop>();
+        public string RouteTypeDisplay => IsMultiDrop ? $"🗺️ Multi-Drop ({TotalStopsCount})" : "📍 Direct";
+    }
+
+    public class DispatchStop
+    {
+        public int Id { get; set; }
+        public int DeliveryId { get; set; }
+        public int StopSequence { get; set; } = 1;
+        public int? LoadingScheduleId { get; set; }
+        public string ClientName { get; set; } = string.Empty;
+        public string Destination { get; set; } = string.Empty;
+        public int GCrate { get; set; }
+        public int ECrate { get; set; }
+        public int TotalCrates { get; set; }
+        public string Status { get; set; } = "Pending";
+        public string ArrivalTime { get; set; } = string.Empty;
+        public string DepartureTime { get; set; } = string.Empty;
+        public int DeliveredGCrates { get; set; }
+        public int DeliveredECrates { get; set; }
+        public int DeliveredCrates { get; set; }
+        public int ReturnedGCrates { get; set; }
+        public int ReturnedECrates { get; set; }
+        public int ReturnedCrates { get; set; }
+        public string StoreManagerLastName { get; set; } = string.Empty;
+        public string StoreManagerFirstName { get; set; } = string.Empty;
+        public string StoreManagerMiddleName { get; set; } = string.Empty;
+        public string StoreManagerName { get; set; } = string.Empty;
+        public string Remarks { get; set; } = string.Empty;
     }
 
     public class TripReport
@@ -304,5 +355,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string RecommendationMessage { get; set; } = string.Empty;
         public double CapacityUtilization { get; set; }
         public bool IsMultiTruckNeeded { get; set; }
+    }
+
+    public class TruckRecommendation : FleetRecommendation
+    {
     }
 }

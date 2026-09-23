@@ -59,9 +59,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridHeaderBar.SuspendLayout();
             pnlGridActionsFlow.SuspendLayout();
             SuspendLayout();
-            // 
-            // lblTitle
-            // 
             lblTitle.AutoSize = true;
             lblTitle.Dock = DockStyle.Top;
             lblTitle.Font = new Font("Segoe UI", 16F, FontStyle.Bold);
@@ -71,12 +68,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblTitle.Padding = new Padding(0, 0, 0, 10);
             lblTitle.Size = new Size(334, 47);
             lblTitle.TabIndex = 0;
-            lblTitle.Text = "Fleet Truck Management";
-            // 
-            // tblMasterContent
-            // 
+            lblTitle.Text = "Truck & Vehicle Management";
             tblMasterContent.ColumnCount = 2;
-            tblMasterContent.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 480F));
+            tblMasterContent.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 580F));
             tblMasterContent.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tblMasterContent.Controls.Add(pnlForm, 0, 0);
             tblMasterContent.Controls.Add(pnlGridCard, 1, 0);
@@ -87,9 +81,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblMasterContent.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tblMasterContent.Size = new Size(1148, 631);
             tblMasterContent.TabIndex = 1;
-            // 
-            // pnlForm
-            // 
             pnlForm.AutoScroll = true;
             pnlForm.BackColor = Color.White;
             pnlForm.Controls.Add(btnClear);
@@ -109,9 +100,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Padding = new Padding(16);
             pnlForm.Size = new Size(468, 631);
             pnlForm.TabIndex = 0;
-            // 
-            // btnClear
-            // 
             btnClear.BackColor = Color.FromArgb(241, 245, 249);
             btnClear.Cursor = Cursors.Hand;
             btnClear.Dock = DockStyle.Top;
@@ -127,9 +115,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnClear.Text = "\U0001f9f9 CLEAR FORM";
             btnClear.UseVisualStyleBackColor = false;
             btnClear.Click += BtnClear_Click;
-            // 
-            // tblUpdateDelete
-            // 
             tblUpdateDelete.ColumnCount = 2;
             tblUpdateDelete.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tblUpdateDelete.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -143,9 +128,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblUpdateDelete.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tblUpdateDelete.Size = new Size(436, 42);
             tblUpdateDelete.TabIndex = 8;
-            // 
-            // btnUpdate
-            // 
             btnUpdate.BackColor = Color.FromArgb(16, 185, 129);
             btnUpdate.Cursor = Cursors.Hand;
             btnUpdate.Dock = DockStyle.Fill;
@@ -161,9 +143,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnUpdate.Text = "✏ UPDATE";
             btnUpdate.UseVisualStyleBackColor = false;
             btnUpdate.Click += BtnUpdate_Click;
-            // 
-            // btnDelete
-            // 
             btnDelete.BackColor = Color.FromArgb(239, 68, 68);
             btnDelete.Cursor = Cursors.Hand;
             btnDelete.Dock = DockStyle.Fill;
@@ -179,9 +158,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnDelete.Text = "🗑 DELETE";
             btnDelete.UseVisualStyleBackColor = false;
             btnDelete.Click += BtnDelete_Click;
-            // 
-            // btnAdd
-            // 
             btnAdd.BackColor = Color.FromArgb(37, 99, 235);
             btnAdd.Cursor = Cursors.Hand;
             btnAdd.Dock = DockStyle.Top;
@@ -197,9 +173,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnAdd.Text = "+ ADD TRUCK";
             btnAdd.UseVisualStyleBackColor = false;
             btnAdd.Click += BtnSave_Click;
-            // 
-            // txtRemarks
-            // 
             txtRemarks.Dock = DockStyle.Top;
             txtRemarks.Font = new Font("Segoe UI", 9.5F);
             txtRemarks.Location = new Point(16, 244);
@@ -209,9 +182,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtRemarks.PlaceholderText = "Vehicle condition notes, repair history, special instructions...";
             txtRemarks.Size = new Size(436, 56);
             txtRemarks.TabIndex = 6;
-            // 
-            // lblRemarks
-            // 
             lblRemarks.AutoSize = true;
             lblRemarks.Dock = DockStyle.Top;
             lblRemarks.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
@@ -222,9 +192,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblRemarks.Size = new Size(163, 27);
             lblRemarks.TabIndex = 5;
             lblRemarks.Text = "Remarks / Condition:";
-            // 
-            // numCapacity
-            // 
             numCapacity.Dock = DockStyle.Top;
             numCapacity.Font = new Font("Segoe UI", 9.5F);
             numCapacity.Location = new Point(16, 188);
@@ -235,9 +202,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numCapacity.Size = new Size(436, 29);
             numCapacity.TabIndex = 4;
             numCapacity.Value = new decimal(new int[] { 300, 0, 0, 0 });
-            // 
-            // lblCap
-            // 
             lblCap.AutoSize = true;
             lblCap.Dock = DockStyle.Top;
             lblCap.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
@@ -248,9 +212,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblCap.Size = new Size(147, 27);
             lblCap.TabIndex = 3;
             lblCap.Text = "Capacity (Crates) *:";
-            // 
-            // tblCargoStatus
-            // 
             tblCargoStatus.ColumnCount = 2;
             tblCargoStatus.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tblCargoStatus.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -267,9 +228,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblCargoStatus.RowStyles.Add(new RowStyle());
             tblCargoStatus.Size = new Size(436, 56);
             tblCargoStatus.TabIndex = 2;
-            // 
-            // lblCargoType
-            // 
             lblCargoType.AutoSize = true;
             lblCargoType.Dock = DockStyle.Fill;
             lblCargoType.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
@@ -280,9 +238,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblCargoType.Size = new Size(214, 21);
             lblCargoType.TabIndex = 0;
             lblCargoType.Text = "Cargo / Temp Type *:";
-            // 
-            // lblStatus
-            // 
             lblStatus.AutoSize = true;
             lblStatus.Dock = DockStyle.Fill;
             lblStatus.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
@@ -293,9 +248,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblStatus.Size = new Size(214, 21);
             lblStatus.TabIndex = 1;
             lblStatus.Text = "Operational Status *:";
-            // 
-            // cbCargoType
-            // 
             cbCargoType.Dock = DockStyle.Fill;
             cbCargoType.DropDownStyle = ComboBoxStyle.DropDownList;
             cbCargoType.Font = new Font("Segoe UI", 9.5F);
@@ -306,22 +258,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbCargoType.Name = "cbCargoType";
             cbCargoType.Size = new Size(214, 29);
             cbCargoType.TabIndex = 2;
-            // 
-            // cbStatus
-            // 
             cbStatus.Dock = DockStyle.Fill;
             cbStatus.DropDownStyle = ComboBoxStyle.DropDownList;
             cbStatus.Font = new Font("Segoe UI", 9.5F);
             cbStatus.FormattingEnabled = true;
-            cbStatus.Items.AddRange(new object[] { "Available", "In Use", "Under Maintenance" });
+            cbStatus.Items.AddRange(new object[] { "Active", "In Use", "Under Maintenance", "Inactive" });
             cbStatus.Location = new Point(222, 25);
             cbStatus.Margin = new Padding(4, 2, 0, 6);
             cbStatus.Name = "cbStatus";
             cbStatus.Size = new Size(214, 29);
             cbStatus.TabIndex = 3;
-            // 
-            // tblPlateType
-            // 
             tblPlateType.ColumnCount = 2;
             tblPlateType.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tblPlateType.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -338,9 +284,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblPlateType.RowStyles.Add(new RowStyle());
             tblPlateType.Size = new Size(436, 56);
             tblPlateType.TabIndex = 1;
-            // 
-            // lblPlate
-            // 
             lblPlate.AutoSize = true;
             lblPlate.Dock = DockStyle.Fill;
             lblPlate.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
@@ -351,9 +294,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblPlate.Size = new Size(214, 21);
             lblPlate.TabIndex = 0;
             lblPlate.Text = "Plate Number *:";
-            // 
-            // lblType
-            // 
             lblType.AutoSize = true;
             lblType.Dock = DockStyle.Fill;
             lblType.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
@@ -364,9 +304,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblType.Size = new Size(214, 21);
             lblType.TabIndex = 1;
             lblType.Text = "Truck Category *:";
-            // 
-            // txtPlate
-            // 
             txtPlate.CharacterCasing = CharacterCasing.Upper;
             txtPlate.Dock = DockStyle.Fill;
             txtPlate.Font = new Font("Segoe UI", 9.5F);
@@ -376,9 +313,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtPlate.PlaceholderText = "e.g. ABC 1234";
             txtPlate.Size = new Size(214, 29);
             txtPlate.TabIndex = 2;
-            // 
-            // cbType
-            // 
             cbType.Dock = DockStyle.Fill;
             cbType.DropDownStyle = ComboBoxStyle.DropDownList;
             cbType.Font = new Font("Segoe UI", 9.5F);
@@ -388,9 +322,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbType.Name = "cbType";
             cbType.Size = new Size(214, 29);
             cbType.TabIndex = 3;
-            // 
-            // lblFormHeader
-            // 
             lblFormHeader.AutoSize = true;
             lblFormHeader.Dock = DockStyle.Top;
             lblFormHeader.Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold);
@@ -401,23 +332,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblFormHeader.Size = new Size(187, 33);
             lblFormHeader.TabIndex = 0;
             lblFormHeader.Text = "Truck Vehicle Details";
-            // 
-            // pnlGridCard
-            // 
             pnlGridCard.BackColor = Color.White;
             pnlGridCard.Controls.Add(gridTrucks);
             pnlGridCard.Controls.Add(pnlGridHeaderBar);
             pnlGridCard.Dock = DockStyle.Fill;
-            pnlGridCard.Location = new Point(480, 0);
+            pnlGridCard.Location = new Point(580, 0);
             pnlGridCard.Margin = new Padding(0);
             pnlGridCard.MinimumSize = new Size(480, 300);
             pnlGridCard.Name = "pnlGridCard";
             pnlGridCard.Padding = new Padding(16);
             pnlGridCard.Size = new Size(668, 631);
             pnlGridCard.TabIndex = 1;
-            // 
-            // gridTrucks
-            // 
             gridTrucks.AllowUserToAddRows = false;
             gridTrucks.AllowUserToDeleteRows = false;
             gridTrucks.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
@@ -437,9 +362,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridTrucks.Size = new Size(636, 525);
             gridTrucks.TabIndex = 1;
             gridTrucks.SelectionChanged += GridTrucks_SelectionChanged;
-            // 
-            // pnlGridHeaderBar
-            // 
             pnlGridHeaderBar.AutoSize = true;
             pnlGridHeaderBar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             pnlGridHeaderBar.Controls.Add(pnlGridActionsFlow);
@@ -450,9 +372,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridHeaderBar.Padding = new Padding(0, 0, 0, 8);
             pnlGridHeaderBar.Size = new Size(636, 74);
             pnlGridHeaderBar.TabIndex = 0;
-            // 
-            // pnlGridActionsFlow
-            // 
             pnlGridActionsFlow.AutoSize = true;
             pnlGridActionsFlow.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             pnlGridActionsFlow.Controls.Add(txtGridSearch);
@@ -463,9 +382,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridActionsFlow.Name = "pnlGridActionsFlow";
             pnlGridActionsFlow.Size = new Size(636, 33);
             pnlGridActionsFlow.TabIndex = 1;
-            // 
-            // txtGridSearch
-            // 
             txtGridSearch.Font = new Font("Segoe UI", 9.5F);
             txtGridSearch.Location = new Point(0, 4);
             txtGridSearch.Margin = new Padding(0, 4, 4, 0);
@@ -474,9 +390,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtGridSearch.Size = new Size(220, 29);
             txtGridSearch.TabIndex = 0;
             txtGridSearch.TextChanged += TxtGridSearch_TextChanged;
-            // 
-            // btnClearSearch
-            // 
             btnClearSearch.BackColor = Color.FromArgb(241, 245, 249);
             btnClearSearch.Cursor = Cursors.Hand;
             btnClearSearch.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
@@ -491,9 +404,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnClearSearch.Text = "✖";
             btnClearSearch.UseVisualStyleBackColor = false;
             btnClearSearch.Click += BtnClearSearch_Click;
-            // 
-            // btnPrint
-            // 
             btnPrint.BackColor = Color.FromArgb(71, 85, 105);
             btnPrint.Cursor = Cursors.Hand;
             btnPrint.FlatAppearance.BorderSize = 0;
@@ -505,12 +415,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnPrint.Name = "btnPrint";
             btnPrint.Size = new Size(180, 28);
             btnPrint.TabIndex = 2;
-            btnPrint.Text = "🖨 PRINT FLEET REPORT";
+            btnPrint.Text = "🖨 PRINT TRUCK REPORT";
             btnPrint.UseVisualStyleBackColor = false;
             btnPrint.Click += BtnPrint_Click;
-            // 
-            // lblGridHeader
-            // 
             lblGridHeader.AutoSize = true;
             lblGridHeader.Dock = DockStyle.Top;
             lblGridHeader.Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold);
@@ -520,10 +427,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblGridHeader.Padding = new Padding(0, 0, 0, 8);
             lblGridHeader.Size = new Size(215, 33);
             lblGridHeader.TabIndex = 0;
-            lblGridHeader.Text = "Registered Vehicle Fleet";
-            // 
-            // TruckManagementView
-            // 
+            lblGridHeader.Text = "Registered Trucks";
             AutoScroll = true;
             AutoScrollMinSize = new Size(1000, 620);
             BackColor = Color.FromArgb(241, 245, 249);

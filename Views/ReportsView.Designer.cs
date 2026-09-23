@@ -114,7 +114,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             "Delivery Dispatches (All/Completed/Cancelled)",
             "Loading Schedules Manifest",
             "Plant & Store Trip Reports",
-            "Fleet & Truck Status",
+            "Truck Status & Inventory",
             "Crew & Driver Assignments",
             "Billing & Invoices Log",
             "Collection Receipts Summary",

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
+using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Forms;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
 
@@ -17,6 +18,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private List<LoadingSchedule> allSchedules = new List<LoadingSchedule>();
         private string currentSortColumn = "ScheduleNumber";
         private bool isSortAscending = true;
+        private System.Windows.Forms.Timer? tmrAutoSaveDraft;
+        private Panel? pnlDraftBanner;
+        private Button btnToggleForm = null!;
+        private Button btnCloseForm = null!;
 
         public LoadingManagementView()
         {
@@ -62,7 +67,109 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             SetupEvents();
             LoadSchedules();
+            Button btnExport = new Button
+            {
+                Text = "📊 Export",
+                Size = new Size(88, 30),
+                BackColor = Color.FromArgb(15, 23, 42),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnExport.FlatAppearance.BorderSize = 0;
+            btnExport.Click += (s, e) => DataExportHelper.ExportToCsv(gridSchedules, "Loading_Schedules", "Cargo Loading Schedules");
+            pnlGridActionsFlow.Controls.Add(btnExport);
+
+            Button btnReschedule = new Button
+            {
+                Text = "📅 Reschedule",
+                Size = new Size(118, 30),
+                BackColor = Color.FromArgb(234, 88, 12),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnReschedule.FlatAppearance.BorderSize = 0;
+            btnReschedule.Click += (s, e) => OpenRescheduleDialog();
+            pnlGridActionsFlow.Controls.Add(btnReschedule);
+
+            Button btnDispatchOrder = new Button
+            {
+                Text = "🚚 Dispatch Now",
+                Size = new Size(130, 30),
+                BackColor = Color.FromArgb(5, 150, 105),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnDispatchOrder.FlatAppearance.BorderSize = 0;
+            btnDispatchOrder.Click += (s, e) => DispatchSelectedSchedule();
+            pnlGridActionsFlow.Controls.Add(btnDispatchOrder);
+
+            InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
+        }
+
+        private void InitializeFormToggle()
+        {
+            btnToggleForm = new Button
+            {
+                Text = "📝 Input Form ▾",
+                Size = new Size(130, 30),
+                BackColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 4, 8, 4)
+            };
+            btnToggleForm.FlatAppearance.BorderSize = 0;
+            btnToggleForm.Click += (s, e) => SetFormVisibility(!pnlForm.Visible);
+            pnlGridActionsFlow.Controls.Add(btnToggleForm);
+            pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
+
+            btnCloseForm = new Button
+            {
+                Text = "✖ Hide Form",
+                Dock = DockStyle.Top,
+                Height = 28,
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(71, 85, 105),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 0, 0, 8)
+            };
+            btnCloseForm.FlatAppearance.BorderSize = 0;
+            btnCloseForm.Click += (s, e) => SetFormVisibility(false);
+            pnlForm.Controls.Add(btnCloseForm);
+            pnlForm.Controls.SetChildIndex(btnCloseForm, 0);
+
+            SetFormVisibility(false);
+        }
+
+        private void SetFormVisibility(bool visible)
+        {
+            pnlForm.Visible = visible;
+            if (tblMasterContent.ColumnStyles.Count > 0)
+            {
+                tblMasterContent.ColumnStyles[0].Width = visible ? 580F : 0F;
+                tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
+            }
+            if (tblMasterContent.ColumnStyles.Count > 1)
+            {
+                tblMasterContent.ColumnStyles[1].Width = 100F;
+                tblMasterContent.ColumnStyles[1].SizeType = SizeType.Percent;
+            }
+            if (btnToggleForm != null)
+            {
+                btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 Input Form ▾";
+                btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
+                btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
+            }
         }
 
         public void RefreshData()
@@ -77,6 +184,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             dtpScheduleDate.ValueChanged += (s, e) => { if (!isBindingForm) CalculateCratesAndRecommendation(); };
             cbClient.TextChanged += (s, e) => { if (!isBindingForm) UpdateClientContactHint(); };
             cbClient.SelectedIndexChanged += (s, e) => { if (!isBindingForm) UpdateClientContactHint(); };
+            btnAddStop.Click += BtnAddStop_Click;
+            cbDestination.TextChanged += (s, e) => { if (!isBindingForm) CalculateCratesAndRecommendation(); };
+            cbDestination.SelectedIndexChanged += (s, e) => { if (!isBindingForm) CalculateCratesAndRecommendation(); };
+            chkIsPeak.CheckedChanged += (s, e) => { if (!isBindingForm) CalculateCratesAndRecommendation(); };
             btnTimePicker.Click += (s, e) =>
             {
                 string? pickedTime = AnalogClockTimePickerDialog.ShowTimePicker(this.FindForm() ?? this.ParentForm!, txtDepartureTime.Text);
@@ -85,6 +196,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     txtDepartureTime.Text = pickedTime;
                 }
             };
+            SetupDraftAutoSave();
         }
 
         private void UpdateClientContactHint()
@@ -109,7 +221,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int total = g + ec;
             txtTotalCrates.Text = $"{total} Crates ({g} G-Crates + {ec} E-Crates)";
 
-            var rec = MJdatabase.GetFleetRecommendation(total, dtpScheduleDate.Value);
+            var rec = MJdatabase.GetTruckRecommendation(total, dtpScheduleDate.Value);
             string dest = cbDestination.Text.Trim();
             var matchedRate = MJdatabase.FindMatchingRate(dest, chkIsPeak.Checked);
             string rateNotice = matchedRate != null
@@ -149,6 +261,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridSchedules.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ECrate", HeaderText = "E-Crates", FillWeight = 65, MinimumWidth = 70, ReadOnly = true });
             gridSchedules.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TotalCrates", HeaderText = "Total", FillWeight = 70, MinimumWidth = 75, ReadOnly = true });
             gridSchedules.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 80, MinimumWidth = 90, ReadOnly = true });
+            gridSchedules.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "RescheduleCount", HeaderText = "Resched", FillWeight = 60, MinimumWidth = 65, ReadOnly = true });
         }
 
                 private void GridSchedules_SelectionChanged(object? sender, EventArgs e)
@@ -183,10 +296,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 foreach (var c in clients) cbClient.Items.Add(c);
 
                 var destinations = MJdatabase.GetLookupItems("Destination Route");
+                var rateDestinations = MJdatabase.GetRateMatrix().Select(r => r.Destination).Where(d => !string.IsNullOrWhiteSpace(d));
+                var defaultHubs = new[] { "Batangas / Lipa", "Cavite / Dasmariñas", "Laguna / Calamba", "Pampanga / San Fernando", "Bulacan / Meycauayan", "Metro Manila / NCR", "Tarlac / Capas", "Pangasinan / Urdaneta", "Nueva Ecija / Cabanatuan", "Rizal / Antipolo", "Quezon / Lucena" };
+
+                var allDestList = destinations.Concat(rateDestinations).Concat(defaultHubs).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
+
                 cbDestination.Items.Clear();
-                foreach (var d in destinations) cbDestination.Items.Add(d);
+                foreach (var d in allDestList) cbDestination.Items.Add(d);
 
                 allSchedules = await MJdatabase.GetLoadingSchedulesAsync();
+                foreach (var sch in allSchedules)
+                {
+                    if (!string.IsNullOrWhiteSpace(sch.Destination) && !cbDestination.Items.Contains(sch.Destination))
+                    {
+                        cbDestination.Items.Add(sch.Destination);
+                    }
+                }
                 FilterGridData();
                 var schedules = allSchedules;
                 CalculateCratesAndRecommendation();
@@ -197,6 +322,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int totalCratesSum = schedules.Sum(s => s.TotalCrates);
 
                 lblSummary.Text = $"📊 Total Schedules: {schedules.Count:N0}  |  ⏳ Pending: {pendingCount}  |  🚚 In Transit: {transitCount}  |  ✅ Completed: {completedCount}  |  📦 Total Volume: {totalCratesSum:N0} Crates";
+                CheckAndPromptDraft();
             }
             catch (Exception ex)
             {
@@ -253,7 +379,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
 
                 MJdatabase.SaveLookupItem("Client Company", client);
-                MJdatabase.SaveLookupItem("Destination Route", dest);
+                SaveNewDestinationIfNeeded(dest);
 
                 LoadingSchedule ls = new LoadingSchedule
                 {
@@ -271,6 +397,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 };
 
                 MJdatabase.SaveLoadingSchedule(ls);
+                MJdatabase.ClearFormDraft("LoadingSchedule", SessionContext.CurrentUsername);
+                if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
                 MessageBox.Show("Loading Schedule created successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadSchedules();
@@ -312,7 +440,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
 
                 MJdatabase.SaveLookupItem("Client Company", client);
-                MJdatabase.SaveLookupItem("Destination Route", dest);
+                SaveNewDestinationIfNeeded(dest);
 
                 selectedSchedule.ClientName = client;
                 selectedSchedule.Destination = dest;
@@ -488,6 +616,36 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
         public Action<LoadingSchedule>? OnDispatchScheduleRequested { get; set; }
 
+        private void DispatchSelectedSchedule()
+        {
+            if (selectedSchedule == null)
+            {
+                if (gridSchedules.SelectedRows.Count > 0 && gridSchedules.SelectedRows[0].DataBoundItem is LoadingSchedule rowSched)
+                {
+                    selectedSchedule = rowSched;
+                }
+                else
+                {
+                    MessageBox.Show("Please select a loading schedule to dispatch.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+            }
+
+            if (selectedSchedule.Status == "Completed")
+            {
+                MessageBox.Show($"Loading Order '{selectedSchedule.ScheduleNumber}' is already completed and delivered.", "Already Delivered", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (selectedSchedule.Status == "Cancelled")
+            {
+                MessageBox.Show($"Loading Order '{selectedSchedule.ScheduleNumber}' is cancelled and cannot be dispatched.", "Order Cancelled", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            OnDispatchScheduleRequested?.Invoke(selectedSchedule);
+        }
+
         private void SetupContextMenu()
         {
             var menu = new ContextMenuStrip();
@@ -499,10 +657,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var itemCopySch = new ToolStripMenuItem("📋 Copy Schedule #", null, (s, e) => {
                 if (selectedSchedule != null) { Clipboard.SetText(selectedSchedule.ScheduleNumber); ToastHelper.ShowToast(this, "Schedule # copied ✓"); }
             });
-            var itemDispatch = new ToolStripMenuItem("🚚 Create Dispatch for This Order", null, (s, e) => {
-                if (selectedSchedule != null) OnDispatchScheduleRequested?.Invoke(selectedSchedule);
-            });
+            var itemDispatch = new ToolStripMenuItem("🚚 Create Dispatch for This Order", null, (s, e) => DispatchSelectedSchedule());
+            var itemReschedule = new ToolStripMenuItem("📅 Reschedule Loading Order...", null, (s, e) => OpenRescheduleDialog());
             var itemEdit = new ToolStripMenuItem("✏️ Edit Schedule Details", null, (s, e) => {
+                SetFormVisibility(true);
                 cbClient.Focus();
             });
             var itemPrint = new ToolStripMenuItem("📄 Print Loading Slip / Report", null, BtnPrint_Click);
@@ -514,8 +672,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             });
             var itemDelete = new ToolStripMenuItem("🗑️ Delete Schedule", null, BtnDelete_Click);
+            var itemExportCsv = new ToolStripMenuItem("📊 Export Table to CSV...", null, (s, e) => {
+                DataExportHelper.ExportToCsv(gridSchedules, "Loading_Schedules", "Cargo Loading Schedules");
+            });
+            var itemExportExcel = new ToolStripMenuItem("📑 Export Table to Excel (.xml)...", null, (s, e) => {
+                DataExportHelper.ExportToExcelXml(gridSchedules, "Loading_Schedules", "Cargo Loading Schedules");
+            });
 
-            menu.Items.AddRange(new ToolStripItem[] { itemDetails, itemCopySch, new ToolStripSeparator(), itemDispatch, new ToolStripSeparator(), itemEdit, itemPrint, itemCancel, new ToolStripSeparator(), itemDelete });
+            menu.Items.AddRange(new ToolStripItem[] { itemDetails, itemCopySch, new ToolStripSeparator(), itemDispatch, itemReschedule, new ToolStripSeparator(), itemEdit, itemPrint, itemExportCsv, itemExportExcel, new ToolStripSeparator(), itemCancel, new ToolStripSeparator(), itemDelete });
 
             gridSchedules.CellMouseDown += (s, e) => {
                 if (e.Button == MouseButtons.Right && e.RowIndex >= 0) {
@@ -524,6 +688,319 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     menu.Show(gridSchedules, gridSchedules.PointToClient(Cursor.Position));
                 }
             };
+        }
+
+        private void OpenRescheduleDialog()
+        {
+            if (selectedSchedule == null)
+            {
+                if (gridSchedules.SelectedRows.Count > 0 && gridSchedules.SelectedRows[0].DataBoundItem is LoadingSchedule ls)
+                {
+                    selectedSchedule = ls;
+                }
+            }
+
+            if (selectedSchedule == null)
+            {
+                MessageBox.Show("Please select a loading schedule order to reschedule.", "Select Order", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (selectedSchedule.Status.Equals("In Transit", StringComparison.OrdinalIgnoreCase) ||
+                selectedSchedule.Status.Equals("Completed", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show($"Loading Order #{selectedSchedule.ScheduleNumber} is currently '{selectedSchedule.Status}' and cannot be rescheduled.", "Reschedule Blocked", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (selectedSchedule.Status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show($"Loading Order #{selectedSchedule.ScheduleNumber} is Cancelled and cannot be rescheduled.", "Reschedule Blocked", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            using (var dlg = new RescheduleScheduleDialog(selectedSchedule))
+            {
+                if (dlg.ShowDialog(this.FindForm() ?? this.ParentForm) == DialogResult.OK)
+                {
+                    LoadSchedules();
+                }
+            }
+        }
+
+        private void SetupDraftAutoSave()
+        {
+            tmrAutoSaveDraft = new System.Windows.Forms.Timer { Interval = 15000 };
+            tmrAutoSaveDraft.Tick += (s, e) => SaveCurrentDraft();
+            tmrAutoSaveDraft.Start();
+        }
+
+        private void CheckAndPromptDraft()
+        {
+            try
+            {
+                var draft = MJdatabase.GetFormDraft("LoadingSchedule", SessionContext.CurrentUsername);
+                if (draft != null && !string.IsNullOrWhiteSpace(draft.Value.Data))
+                {
+                    if (pnlDraftBanner != null) pnlForm.Controls.Remove(pnlDraftBanner);
+                    pnlDraftBanner = DraftAutoSaveService.CreateDraftBanner("Loading Schedule", draft.Value.LastSaved, RestoreDraft, DiscardDraft);
+                    pnlForm.Controls.Add(pnlDraftBanner);
+                    pnlDraftBanner.BringToFront();
+                }
+            }
+            catch { }
+        }
+
+        private void RestoreDraft()
+        {
+            try
+            {
+                var draft = MJdatabase.GetFormDraft("LoadingSchedule", SessionContext.CurrentUsername);
+                if (draft == null || string.IsNullOrWhiteSpace(draft.Value.Data)) return;
+                var map = DraftAutoSaveService.DeserializeDraft(draft.Value.Data);
+                isBindingForm = true;
+
+                if (map.TryGetValue("Client", out var cl) && !string.IsNullOrWhiteSpace(cl))
+                {
+                    cbClient.Text = cl;
+                }
+                if (map.TryGetValue("Destination", out var dest) && !string.IsNullOrWhiteSpace(dest))
+                {
+                    cbDestination.Text = dest;
+                }
+                if (map.TryGetValue("ScheduleDate", out var sd) && DateTime.TryParse(sd, out var sdate) && sdate >= dtpScheduleDate.MinDate && sdate <= dtpScheduleDate.MaxDate)
+                {
+                    dtpScheduleDate.Value = sdate;
+                }
+                if (map.TryGetValue("DepartureTime", out var dt) && !string.IsNullOrWhiteSpace(dt))
+                {
+                    txtDepartureTime.Text = dt;
+                }
+                if (map.TryGetValue("GCrate", out var gc) && decimal.TryParse(gc, out var gval))
+                {
+                    numGCrate.Value = Math.Min(numGCrate.Maximum, Math.Max(numGCrate.Minimum, gval));
+                }
+                if (map.TryGetValue("ECrate", out var ec) && decimal.TryParse(ec, out var eval))
+                {
+                    numECrate.Value = Math.Min(numECrate.Maximum, Math.Max(numECrate.Minimum, eval));
+                }
+                if (map.TryGetValue("CargoType", out var ct) && !string.IsNullOrWhiteSpace(ct))
+                {
+                    cbCargoType.SelectedItem = ct;
+                }
+                if (map.TryGetValue("IsPeak", out var ip) && bool.TryParse(ip, out var isPeakVal))
+                {
+                    chkIsPeak.Checked = isPeakVal;
+                }
+
+                isBindingForm = false;
+                CalculateCratesAndRecommendation();
+                ToastHelper.ShowToast(this, "Loading Schedule draft restored ✓", ToastType.Success);
+            }
+            catch { isBindingForm = false; }
+        }
+
+        private void DiscardDraft()
+        {
+            MJdatabase.ClearFormDraft("LoadingSchedule", SessionContext.CurrentUsername);
+            if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
+            ToastHelper.ShowToast(this, "Loading Schedule draft discarded ✓", ToastType.Info);
+        }
+
+        private void SaveNewDestinationIfNeeded(string fullDest)
+        {
+            if (string.IsNullOrWhiteSpace(fullDest)) return;
+            var stops = fullDest.Split(new[] { "➔", "->", " / ", ", " }, StringSplitOptions.RemoveEmptyEntries)
+                                .Select(s => s.Trim())
+                                .Where(s => !string.IsNullOrWhiteSpace(s))
+                                .Distinct();
+
+            var existing = MJdatabase.GetLookupItems("Destination Route");
+            foreach (var stop in stops)
+            {
+                if (!existing.Any(e => e.Equals(stop, StringComparison.OrdinalIgnoreCase)))
+                {
+                    MJdatabase.SaveLookupItem("Destination Route", stop);
+                    if (!cbDestination.Items.Contains(stop))
+                    {
+                        cbDestination.Items.Add(stop);
+                    }
+                }
+            }
+            if (!fullDest.Contains("➔") && !fullDest.Contains("->") && !existing.Any(e => e.Equals(fullDest, StringComparison.OrdinalIgnoreCase)))
+            {
+                MJdatabase.SaveLookupItem("Destination Route", fullDest);
+                if (!cbDestination.Items.Contains(fullDest))
+                {
+                    cbDestination.Items.Add(fullDest);
+                }
+            }
+        }
+
+        private void BtnAddStop_Click(object? sender, EventArgs e)
+        {
+            var cms = new ContextMenuStrip();
+            var allDestinations = cbDestination.Items.Cast<object>().Select(o => o.ToString() ?? "").Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList();
+
+            var titleItem = new ToolStripMenuItem("➕ Add Next Delivery Stop / Destination Address") { Enabled = false, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold) };
+            cms.Items.Add(titleItem);
+            cms.Items.Add(new ToolStripSeparator());
+
+            var customInputItem = new ToolStripMenuItem("✏️ Type Custom Stop Address...", null, (s, ev) =>
+            {
+                using var prompt = new Form
+                {
+                    Text = "Add Destination Drop / Stop Address",
+                    Size = new Size(520, 220),
+                    StartPosition = FormStartPosition.CenterParent,
+                    FormBorderStyle = FormBorderStyle.FixedDialog,
+                    MaximizeBox = false,
+                    MinimizeBox = false,
+                    BackColor = Color.FromArgb(248, 250, 252),
+                    Font = new Font("Segoe UI", 9.5F)
+                };
+
+                var pnlHeader = new Panel { Dock = DockStyle.Top, Height = 52, BackColor = Color.FromArgb(30, 41, 59), Padding = new Padding(16, 12, 16, 12) };
+                var lblPrompt = new Label { Text = "Enter next destination address, branch, or landmark:", Dock = DockStyle.Fill, ForeColor = Color.White, Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold) };
+                pnlHeader.Controls.Add(lblPrompt);
+
+                var pnlContent = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 16, 20, 16) };
+                var txtInput = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 10F) };
+                var btnAdd = new Button { Text = "Add Stop to Route ➔", Dock = DockStyle.Bottom, Height = 36, BackColor = Color.FromArgb(22, 101, 52), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold), Cursor = Cursors.Hand };
+                btnAdd.FlatAppearance.BorderSize = 0;
+                btnAdd.Click += (bs, be) =>
+                {
+                    string val = txtInput.Text.Trim();
+                    if (!string.IsNullOrWhiteSpace(val))
+                    {
+                        AppendDestinationStop(val);
+                        prompt.DialogResult = DialogResult.OK;
+                        prompt.Close();
+                    }
+                };
+
+                pnlContent.Controls.Add(btnAdd);
+                pnlContent.Controls.Add(txtInput);
+                prompt.Controls.Add(pnlContent);
+                prompt.Controls.Add(pnlHeader);
+                prompt.AcceptButton = btnAdd;
+                prompt.ShowDialog(this.FindForm() ?? this.ParentForm);
+            });
+            cms.Items.Add(customInputItem);
+            cms.Items.Add(new ToolStripSeparator());
+
+            var presetMenu = new ToolStripMenuItem("📋 Select from Preset Routes / Destinations");
+            foreach (var d in allDestinations.Take(30))
+            {
+                string destName = d;
+                presetMenu.DropDownItems.Add(new ToolStripMenuItem(destName, null, (s, ev) => AppendDestinationStop(destName)));
+            }
+            cms.Items.Add(presetMenu);
+
+            var multiBuilderItem = new ToolStripMenuItem("🗺️ Multi-Route Stops Checklist...", null, (s, ev) => ShowMultiRouteBuilderDialog());
+            cms.Items.Add(multiBuilderItem);
+
+            if (!string.IsNullOrWhiteSpace(cbDestination.Text))
+            {
+                cms.Items.Add(new ToolStripSeparator());
+                cms.Items.Add(new ToolStripMenuItem("🧹 Clear Destination Address", null, (s, ev) => cbDestination.Text = ""));
+            }
+
+            cms.Show(btnAddStop, new Point(0, btnAddStop.Height));
+        }
+
+        private void AppendDestinationStop(string nextStop)
+        {
+            string current = cbDestination.Text.Trim();
+            if (string.IsNullOrWhiteSpace(current))
+            {
+                cbDestination.Text = nextStop;
+            }
+            else
+            {
+                cbDestination.Text = $"{current} ➔ {nextStop}";
+            }
+            if (!cbDestination.Items.Contains(nextStop))
+            {
+                cbDestination.Items.Add(nextStop);
+            }
+            cbDestination.Focus();
+            cbDestination.SelectionStart = cbDestination.Text.Length;
+        }
+
+        private void ShowMultiRouteBuilderDialog()
+        {
+            using var dlg = new Form
+            {
+                Text = "Multi-Stop Delivery Route Builder",
+                Size = new Size(540, 520),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false,
+                BackColor = Color.FromArgb(248, 250, 252),
+                Font = new Font("Segoe UI", 9.5F)
+            };
+
+            var pnlHeader = new Panel { Dock = DockStyle.Top, Height = 56, BackColor = Color.FromArgb(30, 41, 59), Padding = new Padding(16, 12, 16, 12) };
+            var lblTitle = new Label { Text = "Check delivery stops in sequence to build the route:", Dock = DockStyle.Fill, ForeColor = Color.White, Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold) };
+            pnlHeader.Controls.Add(lblTitle);
+
+            var pnlBottom = new Panel { Dock = DockStyle.Bottom, Height = 54, Padding = new Padding(16, 8, 16, 8) };
+            var btnApply = new Button { Text = "Apply Route to Order ✓", Dock = DockStyle.Right, Width = 180, BackColor = Color.FromArgb(22, 101, 52), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold), Cursor = Cursors.Hand };
+            btnApply.FlatAppearance.BorderSize = 0;
+            var btnCancel = new Button { Text = "Cancel", Dock = DockStyle.Left, Width = 100, BackColor = Color.FromArgb(241, 245, 249), ForeColor = Color.FromArgb(71, 85, 105), FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
+            btnCancel.FlatAppearance.BorderSize = 0;
+            btnCancel.Click += (s, e) => dlg.Close();
+            pnlBottom.Controls.Add(btnCancel);
+            pnlBottom.Controls.Add(btnApply);
+
+            var chkList = new CheckedListBox { Dock = DockStyle.Fill, CheckOnClick = true, Font = new Font("Segoe UI", 10F) };
+            var allDests = cbDestination.Items.Cast<object>().Select(o => o.ToString() ?? "").Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList();
+            foreach (var d in allDests)
+            {
+                chkList.Items.Add(d);
+            }
+
+            btnApply.Click += (s, e) =>
+            {
+                var selected = chkList.CheckedItems.Cast<object>().Select(o => o.ToString() ?? "").Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+                if (selected.Count > 0)
+                {
+                    cbDestination.Text = string.Join(" ➔ ", selected);
+                }
+                dlg.DialogResult = DialogResult.OK;
+                dlg.Close();
+            };
+
+            dlg.Controls.Add(chkList);
+            dlg.Controls.Add(pnlBottom);
+            dlg.Controls.Add(pnlHeader);
+            dlg.ShowDialog(this.FindForm() ?? this.ParentForm);
+        }
+
+        private void SaveCurrentDraft()
+        {
+            if (isBindingForm || selectedSchedule != null) return;
+            if (string.IsNullOrWhiteSpace(cbClient.Text) && string.IsNullOrWhiteSpace(cbDestination.Text) && numGCrate.Value == 0 && numECrate.Value == 0) return;
+
+            try
+            {
+                var map = new Dictionary<string, string>
+                {
+                    ["Client"] = cbClient.Text.Trim(),
+                    ["Destination"] = cbDestination.Text.Trim(),
+                    ["ScheduleDate"] = dtpScheduleDate.Value.ToString("yyyy-MM-dd"),
+                    ["DepartureTime"] = txtDepartureTime.Text.Trim(),
+                    ["GCrate"] = numGCrate.Value.ToString(),
+                    ["ECrate"] = numECrate.Value.ToString(),
+                    ["CargoType"] = cbCargoType.SelectedItem?.ToString() ?? cbCargoType.Text,
+                    ["IsPeak"] = chkIsPeak.Checked.ToString()
+                };
+                string json = DraftAutoSaveService.SerializeDraft(map);
+                MJdatabase.SaveFormDraft("LoadingSchedule", SessionContext.CurrentUsername, json);
+            }
+            catch { }
         }
     }
 }

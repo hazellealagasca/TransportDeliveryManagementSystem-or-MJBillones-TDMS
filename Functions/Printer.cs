@@ -54,7 +54,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 sb.AppendLine($"<img src='{logoSrc}' alt='M.J. Billones Transport Service Logo'/>");
             }
             sb.AppendLine("<h1>M.J. BILLONES TRANSPORT SERVICE</h1>");
-            sb.AppendLine("<h2>24/7 Delivery & Freight Hauling Services | Depots: Tarlac, Pampanga & Northern Luzon</h2>");
+            sb.AppendLine("<h2>24/7 Delivery & Transport Hauling Services | Depots: Tarlac, Pampanga & Northern Luzon</h2>");
             sb.AppendLine("<p>Garage & Depot: Jasmine St., San Francisco, 2300 City of Tarlac | Phone: (045) 982-1234 / 0917-123-4567</p>");
             sb.AppendLine($"<h3>{moduleTitle.ToUpper()} {(selectedOnly ? "(SELECTED SELECTION ONLY)" : "")}</h3>");
             sb.AppendLine("</div>");
@@ -204,7 +204,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 sb.AppendLine($"<tr><td class='label'>FULL NAME:</td><td><b>{crew.FullName}</b></td><td class='label'>CREW ROLE:</td><td><b>{crew.Role}</b></td></tr>");
                 sb.AppendLine($"<tr><td class='label'>CONTACT NUMBER:</td><td>{crew.ContactNumber}</td><td class='label'>LICENSE NUMBER:</td><td>{crew.LicenseNumber}</td></tr>");
                 sb.AppendLine($"<tr><td class='label'>EMPLOYMENT STATUS:</td><td><b>{(crew.IsSeasonal ? "SEASONAL / TEMPORARY" : "REGULAR ACTIVE")}</b></td><td class='label'>ASSIGNED ROLE:</td><td><b>{crew.Role}</b></td></tr>");
-                sb.AppendLine($"<tr><td class='label'>CURRENT STATUS:</td><td><b>{(crew.IsAvailable ? "AVAILABLE FOR DEPLOYMENT" : "ON TRIP / DEPLOYED")}</b></td><td class='label'>TOTAL COMPLETED TRIPS:</td><td><b>{history.Count} Trips</b></td></tr>");
+                sb.AppendLine($"<tr><td class='label'>CURRENT STATUS:</td><td><b>{(crew.IsAvailable ? "ACTIVE (DUTY READY)" : "INACTIVE / ON TRIP")}</b></td><td class='label'>TOTAL COMPLETED TRIPS:</td><td><b>{history.Count} Trips</b></td></tr>");
                 sb.AppendLine("</table>");
                 sb.AppendLine("</div>");
 
@@ -316,7 +316,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             sb.AppendLine("<td style='vertical-align:top; width:65%;'>");
             sb.AppendLine("<div class='company-title'>M.J. BILLONES TRANSPORT SERVICE</div>");
             sb.AppendLine("<div class='company-sub'>Jasmine St., San Francisco, 2300 City of Tarlac</div>");
-            sb.AppendLine("<div class='company-sub'>Proprietor: MARIE ANN J. BILLONES | 24/7 Cargo & Delivery Freight</div>");
+            sb.AppendLine("<div class='company-sub'>Proprietor: MARIE ANN J. BILLONES | 24/7 Cargo & Delivery Transport</div>");
             sb.AppendLine("<div class='company-sub'>TIN: 708-839-875-00000 Non-VAT Delivery Services</div>");
             sb.AppendLine("</td>");
             sb.AppendLine("<td style='vertical-align:top; text-align:right; width:35%;'>");
@@ -337,7 +337,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             sb.AppendLine("<div class='box-panel'>");
             sb.AppendLine("<table style='width:100%; font-size:13px;'>");
             sb.AppendLine($"<tr><td style='width:120px; font-weight:700;'>RECEIVED FROM:</td><td style='font-weight:700; color:#000000; font-size:14px; text-transform:uppercase;'><u>{clientName}</u></td></tr>");
-            sb.AppendLine($"<tr><td style='font-weight:700;'>SERVICE TYPE:</td><td>Hauling & Cargo Delivery Freight Services</td></tr>");
+            sb.AppendLine($"<tr><td style='font-weight:700;'>SERVICE TYPE:</td><td>Hauling & Cargo Delivery Services</td></tr>");
             sb.AppendLine($"<tr><td style='font-weight:700;'>INVOICE APPLIED:</td><td><b>SI NO. {invoiceNo}</b></td></tr>");
             sb.AppendLine("</table>");
             sb.AppendLine("</div>");
@@ -383,7 +383,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             sb.AppendLine("<div class='footer-disclaimer'>");
             sb.AppendLine("DIOLAZO Printing Press & Gen. Mdse. Corp. | F. Tañedo Street, San Nicolas, 2300 City of Tarlac<br/>");
-            sb.AppendLine("BIR Authority to Print OCN: 17AAU20240000004957 | Official Cargo Freight Collection Slip");
+            sb.AppendLine("BIR Authority to Print OCN: 17AAU20240000004957 | Official Cargo Delivery Collection Slip");
             sb.AppendLine("</div>");
 
             sb.AppendLine("</div></body></html>");
@@ -463,7 +463,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (!string.IsNullOrEmpty(logoSrc)) sb.AppendLine($"<img src='{logoSrc}'/>");
             sb.AppendLine("<div class='company-title'>M.J. BILLONES TRANSPORT SERVICE</div>");
             sb.AppendLine("<div class='company-sub'>Jasmine St., San Francisco, 2300 City of Tarlac | Phone: (045) 982-1234</div>");
-            sb.AppendLine("<div class='company-sub'>24/7 Cold Chain & Dry Freight Hauling Services</div>");
+            sb.AppendLine("<div class='company-sub'>24/7 Cold Chain & Dry Cargo Hauling Services</div>");
             sb.AppendLine("</td>");
             sb.AppendLine("<td style='width:35%; text-align:right; vertical-align:top;'>");
             sb.AppendLine("<div style='font-size:11px; font-weight:bold; color:#000000; margin-bottom:4px;'>STATEMENT OF ACCOUNT</div>");
@@ -475,7 +475,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             sb.AppendLine($"<td style='width:60%;'><b>BILLED TO:</b> <span style='font-size:15px; font-weight:800; color:#000000;'>{soa.ClientName.ToUpper()}</span></td>");
             sb.AppendLine($"<td style='width:40%;'><b>PERIOD COVERED:</b> {(!string.IsNullOrEmpty(soa.PeriodCovered) ? soa.PeriodCovered : "Current Billing Cycle")}</td>");
             sb.AppendLine("</tr><tr>");
-            sb.AppendLine("<td><b>SERVICE DESCRIPTION:</b> Hauling, Logistics & Truck Delivery Freight</td>");
+            sb.AppendLine("<td><b>SERVICE DESCRIPTION:</b> Hauling, Logistics & Truck Delivery Transport</td>");
             sb.AppendLine($"<td><b>STATUS:</b> <b>{soa.Status.ToUpper()}</b></td>");
             sb.AppendLine("</tr></table>");
 
@@ -509,7 +509,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             sb.AppendLine("<div class='summary-box'>");
             sb.AppendLine("<table>");
-            sb.AppendLine($"<tr><td>Total Gross Freight:</td><td style='text-align:right; font-weight:600;'>PHP {totalGross:N2}</td></tr>");
+            sb.AppendLine($"<tr><td>Total Gross Transport:</td><td style='text-align:right; font-weight:600;'>PHP {totalGross:N2}</td></tr>");
             if (totalDeductions > 0)
             {
                 sb.AppendLine($"<tr><td>Less Incident Deductions:</td><td style='text-align:right; font-weight:600;'>- PHP {totalDeductions:N2}</td></tr>");

@@ -18,11 +18,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private string currentSortColumn = "TripReportNumber";
         private bool isSortAscending = true;
         private List<Delivery> allDeliveries = new List<Delivery>();
+        private System.Windows.Forms.Timer? tmrAutoSaveDraft;
+        private Panel? pnlDraftBanner;
+        private Button btnToggleForm = null!;
+        private Button btnCloseForm = null!;
+        private Panel pnlMultiDropInfo = null!;
+        private Label lblMultiDropDetails = null!;
 
         public TripReportView()
         {
             InitializeComponent();
             gridTripReports.BringToFront();
+            InitializeMultiDropTripPanel();
             SetupGridColumns();
             SetupContextMenu();
             gridTripReports.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && gridTripReports.Rows[e.RowIndex].DataBoundItem is TripReport item) RecordDetailsDialog.ShowDetails(this, item); };
@@ -36,12 +43,130 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             SetupEvents();
             LoadData();
+            Button btnExport = new Button
+            {
+                Text = "📊 Export",
+                Size = new Size(88, 30),
+                BackColor = Color.FromArgb(15, 23, 42),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnExport.FlatAppearance.BorderSize = 0;
+            btnExport.Click += (s, e) => DataExportHelper.ExportToCsv(gridTripReports, "Trip_Reports", "Completed Trip Reports");
+            pnlGridActionsFlow.Controls.Add(btnExport);
+
+            InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
+        }
+
+        private void InitializeFormToggle()
+        {
+            btnToggleForm = new Button
+            {
+                Text = "📝 Input Form ▾",
+                Size = new Size(130, 30),
+                BackColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 4, 8, 4)
+            };
+            btnToggleForm.FlatAppearance.BorderSize = 0;
+            btnToggleForm.Click += (s, e) => SetFormVisibility(!pnlForm.Visible);
+            pnlGridActionsFlow.Controls.Add(btnToggleForm);
+            pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
+
+            btnCloseForm = new Button
+            {
+                Text = "✖ Hide Form",
+                Dock = DockStyle.Top,
+                Height = 28,
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(71, 85, 105),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 0, 0, 8)
+            };
+            btnCloseForm.FlatAppearance.BorderSize = 0;
+            btnCloseForm.Click += (s, e) => SetFormVisibility(false);
+            pnlForm.Controls.Add(btnCloseForm);
+            pnlForm.Controls.SetChildIndex(btnCloseForm, 0);
+
+            SetFormVisibility(false);
+        }
+
+        private void SetFormVisibility(bool visible)
+        {
+            pnlForm.Visible = visible;
+            if (tblMasterContent.ColumnStyles.Count > 0)
+            {
+                tblMasterContent.ColumnStyles[0].Width = visible ? 580F : 0F;
+                tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
+            }
+            if (tblMasterContent.ColumnStyles.Count > 1)
+            {
+                tblMasterContent.ColumnStyles[1].Width = 100F;
+                tblMasterContent.ColumnStyles[1].SizeType = SizeType.Percent;
+            }
+            if (btnToggleForm != null)
+            {
+                btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 Input Form ▾";
+                btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
+                btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
+            }
         }
 
         public void RefreshData()
         {
             LoadData();
+        }
+
+        private void InitializeMultiDropTripPanel()
+        {
+            pnlMultiDropInfo = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 60,
+                Visible = false,
+                BackColor = Color.FromArgb(240, 253, 244),
+                Padding = new Padding(10),
+                Margin = new Padding(0, 0, 0, 8)
+            };
+            lblMultiDropDetails = new Label
+            {
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 8.5F),
+                ForeColor = Color.FromArgb(22, 101, 52),
+                Text = ""
+            };
+            pnlMultiDropInfo.Controls.Add(lblMultiDropDetails);
+            pnlForm.Controls.Add(pnlMultiDropInfo);
+            int dIdx = pnlForm.Controls.IndexOf(cbDelivery);
+            if (dIdx >= 0)
+            {
+                pnlForm.Controls.SetChildIndex(pnlMultiDropInfo, dIdx + 1);
+            }
+        }
+
+        private void UpdateMultiDropTripInfo(Delivery d)
+        {
+            if (d.IsMultiDrop)
+            {
+                var stops = MJdatabase.GetDispatchStops(d.Id);
+                string stopsSummary = stops.Count > 0
+                    ? string.Join(" ➔ ", stops.Select(s => $"{s.StopSequence}. {s.ClientName} ({s.TotalCrates} cr)"))
+                    : d.LoadingScheduleInfo;
+                lblMultiDropDetails.Text = $"🗺️ Consolidated Multi-Drop Route ({d.TotalStopsCount} stops):\n{stopsSummary}";
+                pnlMultiDropInfo.Visible = true;
+            }
+            else
+            {
+                pnlMultiDropInfo.Visible = false;
+            }
         }
 
         private void SetupEvents()
@@ -57,6 +182,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     numReturnedGCrates.Value = 0;
                     numReturnedECrates.Value = 0;
                     CheckCrateVariance();
+                    UpdateMultiDropTripInfo(d);
                 }
             };
 
@@ -64,6 +190,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numDeliveredECrates.ValueChanged += (s, e) => { if (!isBindingForm) CheckCrateVariance(); };
             numReturnedGCrates.ValueChanged += (s, e) => { if (!isBindingForm) CheckCrateVariance(); };
             numReturnedECrates.ValueChanged += (s, e) => { if (!isBindingForm) CheckCrateVariance(); };
+            SetupDraftAutoSave();
         }
 
         private void CheckCrateVariance()
@@ -157,6 +284,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 txtStoreManagerFirstName.Text = selectedTripReport.StoreManagerFirstName ?? "";
                 txtStoreManagerMiddleName.Text = selectedTripReport.StoreManagerMiddleName ?? "";
                 txtRemarks.Text = selectedTripReport.Remarks;
+                var del = allDeliveries.FirstOrDefault(d => d.Id == selectedTripReport.DeliveryId);
+                if (del != null) UpdateMultiDropTripInfo(del);
                 lblFormHeader.Text = "Trip Completion Record";
                 isBindingForm = false;
             }
@@ -202,6 +331,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int totalDel = reports.Sum(r => r.DeliveredCrates);
                 int totalRet = reports.Sum(r => r.ReturnedCrates);
                 lblSummary.Text = $"📊 Total Completed Trips: {reports.Count:N0}  |  📥 Delivered: {totalDel:N0} Crates  |  🔄 Returned Empties: {totalRet:N0} Crates";
+                CheckAndPromptDraft();
             }
             catch (Exception ex)
             {
@@ -306,6 +436,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 };
 
                 MJdatabase.SaveTripReport(tr);
+                MJdatabase.ClearFormDraft("TripReport", SessionContext.CurrentUsername);
+                if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
                 MessageBox.Show("Trip Report saved and Delivery marked Completed successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 if (totalDispatched > totalDelivered)
@@ -532,6 +664,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtStoreManagerMiddleName.Text = "";
             txtRemarks.Text = "";
             if (cbDelivery.Items.Count > 0) cbDelivery.SelectedIndex = 0;
+            if (pnlMultiDropInfo != null) pnlMultiDropInfo.Visible = false;
         }
 
         [System.ComponentModel.Browsable(false)]
@@ -552,10 +685,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var itemInvoice = new ToolStripMenuItem("💰 Issue Billing Invoice for Trip", null, (s, e) => {
                 if (selectedTripReport != null) OnCreateInvoiceRequested?.Invoke(selectedTripReport);
             });
+            var itemEdit = new ToolStripMenuItem("✏️ Edit Trip Report", null, (s, e) => {
+                SetFormVisibility(true);
+                cbDelivery.Focus();
+            });
             var itemPrint = new ToolStripMenuItem("📄 Print Trip Summary Report", null, BtnPrint_Click);
             var itemDelete = new ToolStripMenuItem("🗑️ Delete Trip Report", null, BtnDelete_Click);
+            var itemExportCsv = new ToolStripMenuItem("📊 Export Table to CSV...", null, (s, e) => {
+                DataExportHelper.ExportToCsv(gridTripReports, "Trip_Reports", "Completed Trip Reports");
+            });
+            var itemExportExcel = new ToolStripMenuItem("📑 Export Table to Excel (.xml)...", null, (s, e) => {
+                DataExportHelper.ExportToExcelXml(gridTripReports, "Trip_Reports", "Completed Trip Reports");
+            });
 
-            menu.Items.AddRange(new ToolStripItem[] { itemDetails, itemCopyTrip, new ToolStripSeparator(), itemInvoice, new ToolStripSeparator(), itemPrint, new ToolStripSeparator(), itemDelete });
+            menu.Items.AddRange(new ToolStripItem[] { itemDetails, itemCopyTrip, new ToolStripSeparator(), itemEdit, itemInvoice, new ToolStripSeparator(), itemPrint, itemExportCsv, itemExportExcel, new ToolStripSeparator(), itemDelete });
 
             gridTripReports.CellMouseDown += (s, e) => {
                 if (e.Button == MouseButtons.Right && e.RowIndex >= 0) {
@@ -564,6 +707,124 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     menu.Show(gridTripReports, gridTripReports.PointToClient(Cursor.Position));
                 }
             };
+        }
+
+        private void SetupDraftAutoSave()
+        {
+            tmrAutoSaveDraft = new System.Windows.Forms.Timer { Interval = 15000 };
+            tmrAutoSaveDraft.Tick += (s, e) => SaveCurrentDraft();
+            tmrAutoSaveDraft.Start();
+        }
+
+        private void CheckAndPromptDraft()
+        {
+            try
+            {
+                var draft = MJdatabase.GetFormDraft("TripReport", SessionContext.CurrentUsername);
+                if (draft != null && !string.IsNullOrWhiteSpace(draft.Value.Data))
+                {
+                    if (pnlDraftBanner != null) pnlForm.Controls.Remove(pnlDraftBanner);
+                    pnlDraftBanner = DraftAutoSaveService.CreateDraftBanner("Trip Report", draft.Value.LastSaved, RestoreDraft, DiscardDraft);
+                    pnlForm.Controls.Add(pnlDraftBanner);
+                    pnlDraftBanner.BringToFront();
+                }
+            }
+            catch { }
+        }
+
+        private void RestoreDraft()
+        {
+            try
+            {
+                var draft = MJdatabase.GetFormDraft("TripReport", SessionContext.CurrentUsername);
+                if (draft == null || string.IsNullOrWhiteSpace(draft.Value.Data)) return;
+                var map = DraftAutoSaveService.DeserializeDraft(draft.Value.Data);
+                isBindingForm = true;
+
+                if (map.TryGetValue("DeliveryIndex", out var dIdx) && int.TryParse(dIdx, out int idx) && idx >= 0 && idx < cbDelivery.Items.Count)
+                {
+                    cbDelivery.SelectedIndex = idx;
+                }
+                if (map.TryGetValue("ArrivalTime", out var at) && !string.IsNullOrWhiteSpace(at))
+                {
+                    txtArrivalTime.Text = at;
+                }
+                if (map.TryGetValue("DepartureTime", out var dt) && !string.IsNullOrWhiteSpace(dt))
+                {
+                    txtDepartureTime.Text = dt;
+                }
+                if (map.TryGetValue("DeliveredGCrates", out var dgc) && decimal.TryParse(dgc, out var dgcVal))
+                {
+                    numDeliveredGCrates.Value = Math.Min(numDeliveredGCrates.Maximum, Math.Max(numDeliveredGCrates.Minimum, dgcVal));
+                }
+                if (map.TryGetValue("DeliveredECrates", out var dec) && decimal.TryParse(dec, out var decVal))
+                {
+                    numDeliveredECrates.Value = Math.Min(numDeliveredECrates.Maximum, Math.Max(numDeliveredECrates.Minimum, decVal));
+                }
+                if (map.TryGetValue("ReturnedGCrates", out var rgc) && decimal.TryParse(rgc, out var rgcVal))
+                {
+                    numReturnedGCrates.Value = Math.Min(numReturnedGCrates.Maximum, Math.Max(numReturnedGCrates.Minimum, rgcVal));
+                }
+                if (map.TryGetValue("ReturnedECrates", out var rec) && decimal.TryParse(rec, out var recVal))
+                {
+                    numReturnedECrates.Value = Math.Min(numReturnedECrates.Maximum, Math.Max(numReturnedECrates.Minimum, recVal));
+                }
+                if (map.TryGetValue("StoreManagerLastName", out var sml) && !string.IsNullOrWhiteSpace(sml))
+                {
+                    txtStoreManagerLastName.Text = sml;
+                }
+                if (map.TryGetValue("StoreManagerFirstName", out var smf) && !string.IsNullOrWhiteSpace(smf))
+                {
+                    txtStoreManagerFirstName.Text = smf;
+                }
+                if (map.TryGetValue("StoreManagerMiddleName", out var smm) && !string.IsNullOrWhiteSpace(smm))
+                {
+                    txtStoreManagerMiddleName.Text = smm;
+                }
+                if (map.TryGetValue("Remarks", out var rem) && !string.IsNullOrWhiteSpace(rem))
+                {
+                    txtRemarks.Text = rem;
+                }
+
+                isBindingForm = false;
+                CheckCrateVariance();
+                ToastHelper.ShowToast(this, "Trip Report draft restored ✓", ToastType.Success);
+            }
+            catch { isBindingForm = false; }
+        }
+
+        private void DiscardDraft()
+        {
+            MJdatabase.ClearFormDraft("TripReport", SessionContext.CurrentUsername);
+            if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
+            ToastHelper.ShowToast(this, "Trip Report draft discarded ✓", ToastType.Info);
+        }
+
+        private void SaveCurrentDraft()
+        {
+            if (isBindingForm || selectedTripReport != null) return;
+            if (string.IsNullOrWhiteSpace(txtStoreManagerLastName.Text) && string.IsNullOrWhiteSpace(txtStoreManagerFirstName.Text) && string.IsNullOrWhiteSpace(txtRemarks.Text) && numDeliveredGCrates.Value == 0 && numDeliveredECrates.Value == 0) return;
+
+            try
+            {
+                var map = new Dictionary<string, string>
+                {
+                    ["DeliveryIndex"] = cbDelivery.SelectedIndex.ToString(),
+                    ["ArrivalTime"] = txtArrivalTime.Text.Trim(),
+                    ["DepartureTime"] = txtDepartureTime.Text.Trim(),
+                    ["DeliveredGCrates"] = numDeliveredGCrates.Value.ToString(),
+                    ["DeliveredECrates"] = numDeliveredECrates.Value.ToString(),
+                    ["ReturnedGCrates"] = numReturnedGCrates.Value.ToString(),
+                    ["ReturnedECrates"] = numReturnedECrates.Value.ToString(),
+                    ["StoreManagerLastName"] = txtStoreManagerLastName.Text.Trim(),
+                    ["StoreManagerFirstName"] = txtStoreManagerFirstName.Text.Trim(),
+                    ["StoreManagerMiddleName"] = txtStoreManagerMiddleName.Text.Trim(),
+                    ["Remarks"] = txtRemarks.Text.Trim()
+                };
+                string json = DraftAutoSaveService.SerializeDraft(map);
+                MJdatabase.SaveFormDraft("TripReport", SessionContext.CurrentUsername, json);
+            }
+            catch { }
         }
     }
 }

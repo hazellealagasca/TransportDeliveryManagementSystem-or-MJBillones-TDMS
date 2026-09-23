@@ -90,7 +90,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblTitle.Text = "User Accounts & Security";
 
             this.tblMasterContent.ColumnCount = 2;
-            this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 480F));
+            this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 580F));
             this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tblMasterContent.Controls.Add(this.pnlForm, 0, 0);
             this.tblMasterContent.Controls.Add(this.pnlGridCard, 1, 0);
@@ -109,7 +109,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlForm.Margin = new System.Windows.Forms.Padding(0, 0, 16, 0);
             this.pnlForm.Name = "pnlForm";
             this.pnlForm.Padding = new System.Windows.Forms.Padding(16);
-            this.pnlForm.Size = new System.Drawing.Size(464, 748);
+            this.pnlForm.Size = new System.Drawing.Size(564, 748);
             this.pnlForm.TabIndex = 0;
 
             this.lblFormHeader.AutoSize = true;
@@ -458,12 +458,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlGridCard.Controls.Add(this.gridUsers);
             this.pnlGridCard.Controls.Add(this.pnlGridHeaderBar);
             this.pnlGridCard.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pnlGridCard.Location = new System.Drawing.Point(480, 0);
+            this.pnlGridCard.Location = new System.Drawing.Point(580, 0);
             this.pnlGridCard.Margin = new System.Windows.Forms.Padding(0);
             this.pnlGridCard.MinimumSize = new System.Drawing.Size(480, 300);
             this.pnlGridCard.Name = "pnlGridCard";
             this.pnlGridCard.Padding = new System.Windows.Forms.Padding(16);
-            this.pnlGridCard.Size = new System.Drawing.Size(908, 748);
+            this.pnlGridCard.Size = new System.Drawing.Size(808, 748);
             this.pnlGridCard.TabIndex = 1;
 
             this.pnlGridHeaderBar.AutoSize = true;

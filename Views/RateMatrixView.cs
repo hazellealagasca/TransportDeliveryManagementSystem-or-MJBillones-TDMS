@@ -14,12 +14,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private RateMatrix? selectedRate = null;
         private bool isBindingForm = false;
         private List<RateMatrix> allRates = new List<RateMatrix>();
+        private Button btnToggleForm = null!;
+        private Button btnCloseForm = null!;
 
         public RateMatrixView()
         {
             InitializeComponent();
             gridRates.BringToFront();
             SetupGridColumns();
+            gridRates.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0) SetFormVisibility(true); };
             gridRates.CurrentCellDirtyStateChanged += (s, e) => { if (gridRates.IsCurrentCellDirty && gridRates.CurrentCell is DataGridViewCheckBoxCell) gridRates.CommitEdit(DataGridViewDataErrorContexts.Commit); };
             gridRates.CellValueChanged += (s, e) => {
                 if (isBindingForm) return;
@@ -32,7 +35,69 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             LoadRates();
             SetupMultiDestinationMode();
+            DataExportHelper.AttachExportContextMenu(gridRates, "Transport_Rate_Matrix", "Transport and Route Rates Matrix");
+
+            InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
+        }
+
+        private void InitializeFormToggle()
+        {
+            btnToggleForm = new Button
+            {
+                Text = "📝 Input Form ▾",
+                Size = new Size(130, 30),
+                BackColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 4, 8, 4)
+            };
+            btnToggleForm.FlatAppearance.BorderSize = 0;
+            btnToggleForm.Click += (s, e) => SetFormVisibility(!pnlForm.Visible);
+            pnlGridActionsFlow.Controls.Add(btnToggleForm);
+            pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
+
+            btnCloseForm = new Button
+            {
+                Text = "✖ Hide Form",
+                Dock = DockStyle.Top,
+                Height = 28,
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(71, 85, 105),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 0, 0, 8)
+            };
+            btnCloseForm.FlatAppearance.BorderSize = 0;
+            btnCloseForm.Click += (s, e) => SetFormVisibility(false);
+            pnlForm.Controls.Add(btnCloseForm);
+            pnlForm.Controls.SetChildIndex(btnCloseForm, 0);
+
+            SetFormVisibility(false);
+        }
+
+        private void SetFormVisibility(bool visible)
+        {
+            pnlForm.Visible = visible;
+            if (tblMasterContent.ColumnStyles.Count > 0)
+            {
+                tblMasterContent.ColumnStyles[0].Width = visible ? 580F : 0F;
+                tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
+            }
+            if (tblMasterContent.ColumnStyles.Count > 1)
+            {
+                tblMasterContent.ColumnStyles[1].Width = 100F;
+                tblMasterContent.ColumnStyles[1].SizeType = SizeType.Percent;
+            }
+            if (btnToggleForm != null)
+            {
+                btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 Input Form ▾";
+                btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
+                btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
+            }
         }
 
         public void RefreshData()
@@ -40,9 +105,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             LoadRates();
         }
 
+        private bool isPopulatingDestinations = false;
+
         private void SetupMultiDestinationMode()
         {
-            chkMultiDest.CheckedChanged += (s, e) => ToggleMultiDestMode(chkMultiDest.Checked);
+            chkMultiDest.CheckedChanged += (s, e) =>
+            {
+                ToggleMultiDestMode(chkMultiDest.Checked);
+            };
 
             lnkSelectAllDest.LinkClicked += (s, e) =>
             {
@@ -64,7 +134,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             clbDestinations.ItemCheck += (s, e) =>
             {
-                this.BeginInvoke((MethodInvoker)delegate { UpdateMultiCount(); });
+                if (isPopulatingDestinations) return;
+                if (this.IsHandleCreated && !this.IsDisposed)
+                {
+                    this.BeginInvoke((MethodInvoker)delegate { UpdateMultiCount(); });
+                }
+                else
+                {
+                    UpdateMultiCount();
+                }
             };
 
             btnAddQuickDest.Click += (s, e) => AddQuickDestinations();
@@ -173,40 +251,49 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void PopulateMultiDestinationList()
         {
-            string currentSingle = cbDestination.Text.Trim();
-            var existingChecked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < clbDestinations.Items.Count; i++)
+            isPopulatingDestinations = true;
+            try
             {
-                if (clbDestinations.GetItemChecked(i))
+                string currentSingle = cbDestination.Text.Trim();
+                var existingChecked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                for (int i = 0; i < clbDestinations.Items.Count; i++)
                 {
-                    existingChecked.Add(clbDestinations.Items[i].ToString() ?? "");
+                    if (clbDestinations.GetItemChecked(i))
+                    {
+                        existingChecked.Add(clbDestinations.Items[i].ToString() ?? "");
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(currentSingle))
+                {
+                    existingChecked.Add(currentSingle);
+                }
+
+                clbDestinations.Items.Clear();
+                var routes = MJdatabase.GetLookupItems("Destination Route");
+                if (routes.Count == 0)
+                {
+                    routes = new List<string> { "Batangas / Lipa", "Cavite / Dasmariñas", "Laguna / Calamba", "Pampanga / San Fernando", "Bulacan / Meycauayan", "Metro Manila / NCR" };
+                }
+
+                foreach (var r in routes)
+                {
+                    bool shouldCheck = existingChecked.Contains(r);
+                    clbDestinations.Items.Add(r, shouldCheck);
+                }
+
+                foreach (var extra in existingChecked)
+                {
+                    if (!routes.Contains(extra, StringComparer.OrdinalIgnoreCase))
+                    {
+                        clbDestinations.Items.Add(extra, true);
+                    }
                 }
             }
-
-            if (!string.IsNullOrEmpty(currentSingle))
+            finally
             {
-                existingChecked.Add(currentSingle);
-            }
-
-            clbDestinations.Items.Clear();
-            var routes = MJdatabase.GetLookupItems("Destination Route");
-            if (routes.Count == 0)
-            {
-                routes = new List<string> { "Batangas / Lipa", "Cavite / Dasmariñas", "Laguna / Calamba", "Pampanga / San Fernando", "Bulacan / Meycauayan", "Metro Manila / NCR" };
-            }
-
-            foreach (var r in routes)
-            {
-                bool shouldCheck = existingChecked.Contains(r);
-                clbDestinations.Items.Add(r, shouldCheck);
-            }
-
-            foreach (var extra in existingChecked)
-            {
-                if (!routes.Contains(extra, StringComparer.OrdinalIgnoreCase))
-                {
-                    clbDestinations.Items.Add(extra, true);
-                }
+                isPopulatingDestinations = false;
+                UpdateMultiCount();
             }
         }
 
@@ -258,7 +345,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbTruckType.SelectedItem = selectedRate.TruckType;
                 chkPeak.Checked = selectedRate.IsPeakSeason;
                 numRate.Value = selectedRate.RateAmount;
-                lblFormHeader.Text = "Freight Rate Details";
+                lblFormHeader.Text = "Transport Rate Details";
                 isBindingForm = false;
             }
         }
@@ -464,8 +551,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridRates.DataSource = null;
             gridRates.DataSource = filtered;
             lblGridHeader.Text = string.IsNullOrEmpty(q)
-                ? $"Active Freight Pricing Rates ({allRates.Count})"
-                : $"Active Freight Pricing Rates - Showing {filtered.Count} of {allRates.Count}";
+                ? $"Active Transport Pricing Rates ({allRates.Count})"
+                : $"Active Transport Pricing Rates - Showing {filtered.Count} of {allRates.Count}";
 
             if (filtered.Count > 0)
             {
@@ -478,7 +565,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedRate = null;
                 cbDestination.Text = "";
                 numRate.Value = 0;
-                lblFormHeader.Text = "Freight Rate Details";
+                lblFormHeader.Text = "Transport Rate Details";
                 isBindingForm = false;
             }
         }
@@ -496,7 +583,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void BtnPrint_Click(object? sender, EventArgs e)
         {
-            PrintHelper.PrintGridReport("Standard Freight Rate Matrix Schedule", gridRates, "Official haulage rate schedule organized by destination coverage, vehicle type, and peak season rates.");
+            PrintHelper.PrintGridReport("Standard Transport Rate Matrix Schedule", gridRates, "Official haulage rate schedule organized by destination coverage, vehicle type, and peak season rates.");
         }
 
         private void ClearFields()

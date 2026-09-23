@@ -78,7 +78,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblSubtitle = new Label
             {
-                Text = "Configure hauling freight rates, dropdown categories & client profiles, user account permissions, and database backup.",
+                Text = "Configure hauling transport rates, dropdown categories & client profiles, user account permissions, and database backup.",
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Color.FromArgb(100, 116, 139),
                 AutoSize = true,
@@ -119,9 +119,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             AddTabButton(flowTabs, "Reports", "📈  Reports & Analytics", (s, e) => LoadChildView(new ReportsView(), (Button)s!));
+            AddTabButton(flowTabs, "Customization", "🎨  Preferences & Customization", (s, e) => LoadChildView(new SystemCustomizationView(currentUser), (Button)s!));
 
             if (isAdmin)
             {
+                AddTabButton(flowTabs, "SystemHistory", "📜  System Change History", (s, e) => LoadChildView(new ModuleHistoryView("Master System Change Tracking (Add, Update, Delete)", null, isAdminOnly: true), (Button)s!));
                 AddTabButton(flowTabs, "Backup", "💾  Backup & Restore", (s, e) => LoadChildView(new BackupRestoreView(), (Button)s!));
                 AddTabButton(flowTabs, "Audit", "🛡️  Security Audit Logs", (s, e) => LoadChildView(new SecurityAuditView(), (Button)s!));
             }

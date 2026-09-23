@@ -12,9 +12,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 {
     public static class RecordDetailsDialog
     {
+        private static Form? _activeInspector = null;
+
         public static void ShowDetails(Control parent, object record)
         {
             if (record == null) return;
+
+            if (_activeInspector != null && !_activeInspector.IsDisposed)
+            {
+                _activeInspector.Close();
+                _activeInspector = null;
+            }
 
             Form? parentForm = parent.FindForm();
 
@@ -22,12 +30,74 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "🔍 System Record Details & Activity Inspector",
                 Size = new Size(880, 640),
-                StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.Sizable,
                 MinimumSize = new Size(760, 520),
                 BackColor = Color.FromArgb(248, 250, 252),
-                ShowIcon = false,
-                ShowInTaskbar = false
+                MaximizeBox = true,
+                MinimizeBox = true,
+                ShowInTaskbar = true
+            };
+
+            if (parentForm?.Icon != null)
+            {
+                dlg.Icon = parentForm.Icon;
+                dlg.ShowIcon = true;
+            }
+            else
+            {
+                try
+                {
+                    dlg.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+                    dlg.ShowIcon = true;
+                }
+                catch
+                {
+                    dlg.ShowIcon = false;
+                }
+            }
+
+            if (parentForm != null && !parentForm.IsDisposed)
+            {
+                dlg.StartPosition = FormStartPosition.Manual;
+                int x = parentForm.Location.X + (parentForm.Width - dlg.Width) / 2;
+                int y = parentForm.Location.Y + (parentForm.Height - dlg.Height) / 2;
+                Rectangle screenArea = Screen.FromControl(parentForm).WorkingArea;
+                x = Math.Max(screenArea.X, Math.Min(x, screenArea.Right - dlg.Width));
+                y = Math.Max(screenArea.Y, Math.Min(y, screenArea.Bottom - dlg.Height));
+                dlg.Location = new Point(x, y);
+
+                parentForm.SizeChanged += (s, e) =>
+                {
+                    if (dlg.IsDisposed) return;
+                    if (parentForm.WindowState == FormWindowState.Minimized && dlg.WindowState != FormWindowState.Minimized)
+                    {
+                        dlg.WindowState = FormWindowState.Minimized;
+                    }
+                };
+
+                parentForm.FormClosed += (s, e) =>
+                {
+                    if (!dlg.IsDisposed) dlg.Close();
+                };
+            }
+            else
+            {
+                dlg.StartPosition = FormStartPosition.CenterScreen;
+            }
+
+            dlg.Resize += (s, e) =>
+            {
+                if (dlg.WindowState == FormWindowState.Minimized)
+                {
+                    if (parentForm != null && !parentForm.IsDisposed)
+                    {
+                        if (parentForm.WindowState == FormWindowState.Minimized)
+                        {
+                            parentForm.WindowState = FormWindowState.Normal;
+                        }
+                        parentForm.Activate();
+                    }
+                }
             };
 
             string title = "Record Details";
@@ -43,9 +113,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (record is Truck truck)
             {
                 title = $"🚚 Vehicle Profile: {truck.PlateNumber}";
-                subtitle = $"Fleet Vehicle • Category: {truck.TruckType}";
+                subtitle = $"Vehicle • Category: {truck.TruckType}";
                 statusBadge = truck.Status;
-                if (truck.Status == "Available") { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
+                if (truck.Status == "Available" || truck.Status == "Active") { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
                 else if (truck.Status == "In Use" || truck.Status == "On Trip") { badgeBg = Color.FromArgb(254, 243, 199); badgeFg = Color.FromArgb(180, 83, 9); }
                 else { badgeBg = Color.FromArgb(254, 226, 226); badgeFg = Color.FromArgb(185, 28, 28); }
 
@@ -111,6 +181,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 statusBadge = sch.Status;
                 if (sch.Status == "Dispatched" || sch.Status == "Completed") { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
                 else if (sch.Status == "Cancelled") { badgeBg = Color.FromArgb(254, 226, 226); badgeFg = Color.FromArgb(185, 28, 28); }
+                else if (sch.Status == "Rescheduled") { badgeBg = Color.FromArgb(254, 243, 199); badgeFg = Color.FromArgb(180, 83, 9); }
                 else { badgeBg = Color.FromArgb(241, 245, 249); badgeFg = Color.FromArgb(51, 65, 85); }
 
                 var matchDel = MJdatabase.GetDeliveries().FirstOrDefault(d => d.LoadingScheduleId == sch.Id || (!string.IsNullOrEmpty(d.LoadingScheduleInfo) && d.LoadingScheduleInfo.Contains(sch.ScheduleNumber)));
@@ -126,6 +197,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 keyValues.Add(("Season Rate Tier", sch.IsPeak ? "🔥 Peak Season Rate" : "Regular Season Rate"));
                 keyValues.Add(("Cargo / Temp Category", sch.CargoType));
                 keyValues.Add(("Schedule Status", sch.Status));
+                if (sch.RescheduleCount > 0)
+                {
+                    keyValues.Add(("Reschedule Count", $"{sch.RescheduleCount} time(s)"));
+                    if (sch.OriginalScheduleDate.HasValue)
+                    {
+                        keyValues.Add(("Original Scheduled Date", sch.OriginalScheduleDate.Value.ToString("MMMM dd, yyyy")));
+                    }
+                    if (!string.IsNullOrWhiteSpace(sch.RescheduleReason))
+                    {
+                        keyValues.Add(("Reschedule Reason", sch.RescheduleReason));
+                    }
+                }
                 keyValues.Add(("Dispatched Vehicle Order", matchDel != null ? matchDel.DispatchNumber : "Not yet dispatched"));
 
                 historyTitle = "Linked Dispatch & Haul Record";
@@ -229,7 +312,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             else if (record is Invoice inv)
             {
                 title = $"💰 Billing Invoice: {inv.InvoiceNumber}";
-                subtitle = $"Client Freight Statement • {inv.ClientName}";
+                subtitle = $"Client Delivery Statement • {inv.ClientName}";
                 statusBadge = inv.Status;
                 if (inv.Status == "Paid") { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
                 else if (inv.Status == "Partial") { badgeBg = Color.FromArgb(254, 243, 199); badgeFg = Color.FromArgb(180, 83, 9); }
@@ -251,7 +334,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 keyValues.Add(("Client / Account Name", inv.ClientName));
                 keyValues.Add(("Invoice Date", inv.IssueDate.ToString("MMMM dd, yyyy")));
                 keyValues.Add(("Due Date", inv.DueDate.ToString("MMMM dd, yyyy")));
-                keyValues.Add(("Gross Freight Tariff", $"₱{inv.TotalAmount:N2}"));
+                keyValues.Add(("Gross Delivery Tariff", $"₱{inv.TotalAmount:N2}"));
                 keyValues.Add(("Damage Deductions", $"-₱{inv.Deductions:N2}"));
                 keyValues.Add(("Net Total Amount Due", $"₱{inv.NetAmount:N2}"));
                 keyValues.Add(("Total Amount Paid", $"₱{totalPaid:N2}"));
@@ -580,7 +663,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             dlg.Controls.Add(pnlFooter);
             dlg.Controls.Add(pnlHeader);
 
-            dlg.ShowDialog(parentForm);
+            _activeInspector = dlg;
+            dlg.FormClosed += (s, e) =>
+            {
+                if (_activeInspector == dlg)
+                {
+                    _activeInspector = null;
+                }
+            };
+
+            dlg.Show();
+            dlg.BringToFront();
+            dlg.Activate();
         }
     }
 }

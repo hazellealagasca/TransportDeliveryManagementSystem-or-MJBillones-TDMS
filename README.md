@@ -1,6 +1,6 @@
 # Transport Delivery Management System for M.J. Billones Transport Service
 
-An enterprise-grade desktop transport, logistics, and fleet delivery management system custom-engineered for **M.J. Billones Transport Service**. Designed with a modern Mild Red and Burgundy aesthetic, responsive high-contrast data grids, embedded SQLite database engine with WAL concurrency, interactive analog clock time pickers, dual capacity/temperature recommendation algorithms, and tax-free official collection receipts.
+An enterprise-grade desktop transport, logistics, and delivery management system custom-engineered for **M.J. Billones Transport Service**. Designed with a modern Mild Red and Burgundy aesthetic, responsive high-contrast data grids, embedded SQLite database engine with WAL concurrency, interactive analog clock time pickers, dual capacity/temperature recommendation algorithms, and tax-free official collection receipts.
 
 ---
 
@@ -8,9 +8,9 @@ An enterprise-grade desktop transport, logistics, and fleet delivery management 
 
 - **Role-Based Access Control**: Strict separation between **Admin** (complete system access, user account management, categories, and database backup/restore) and **Office Staff** (daily hauling, dispatching, and billing workflows).
 - **Standardized Crate Accounting**: Specialized hauling breakdown tracking **G-Crates** and **E-Crates** across loading orders, vehicle limits, and trip completion returns.
-- **Cargo Temperature & Storage Intelligence**: Fleet capability and order matching for **Cold / Chilled** (active chiller refrigeration: 0°C to 4°C) vs. **Dry Goods** (ambient hauling), with automated temperature mismatch warnings.
+- **Cargo Temperature & Storage Intelligence**: Truck capability and order matching for **Cold / Chilled** (active chiller refrigeration: 0°C to 4°C) vs. **Dry Goods** (ambient hauling), with automated temperature mismatch warnings.
 - **Interactive Analog Clock Time Pickers (`🕒`)**: Intuitive draggable clock face dialogs for setting departure and store arrival timestamps with minute-level precision.
-- **Clean Official Collection Receipts**: Generates print-ready Official Collection Receipts itemizing Gross Freight Amount, Incident Loss Deductions, Net Amount Due, Amount Paid, and Remaining Balance.
+- **Clean Official Collection Receipts**: Generates print-ready Official Collection Receipts itemizing Gross Transport Amount, Incident Loss Deductions, Net Amount Due, Amount Paid, and Remaining Balance.
 - **Responsive 100% Full-Width Data Grids**: Proportional column distribution (`AutoSizeColumnsMode = Fill`) with smooth horizontal/vertical scrolling across all 12 operational views.
 - **Reliable Local Storage**: Embedded SQLite database (`mj_billones.db`) with Write-Ahead Logging (`WAL`), transactional lifecycle transitions, and automatic schema migrations.
 
@@ -29,16 +29,16 @@ Transport Delivery Management System
 ├── Models/
 │   └── Models.cs         # Data models (User, Crew, Truck, Schedule, Delivery, Invoice, etc.)
 └── Views/
-    ├── DashboardView               # Real-time KPIs, fleet status counters & revenue widgets
+    ├── DashboardView               # Real-time KPIs, truck status counters & revenue widgets
     ├── LoadingManagementView       # Client delivery orders, G-Crate/E-Crate loads & Cold/Dry types
-    ├── TruckManagementView         # Vehicle fleet, plate numbers, capacities & Cold/Dry specs
+    ├── TruckManagementView         # Truck units, plate numbers, capacities & Cold/Dry specs
     ├── CrewManagementView          # Drivers & aides, contact numbers, licenses, wages & allowances
     ├── DispatchManagementView      # Trip assignment with dynamic capacity & temperature matching
     ├── TripReportView              # Delivery completion, delivered/returned crates & manager sign-offs
     ├── IncidentReportView          # Damage/delay logging, repair estimates & photo evidence
-    ├── BillingView                 # 15-day freight service billing invoices & deduction clamping
+    ├── BillingView                 # 15-day delivery service billing invoices & deduction clamping
     ├── CollectionView              # Payment receipts (Cash, Check, Transfer) & receipt printing
-    ├── RateMatrixView              # Fixed/per-crate freight pricing by route and season
+    ├── RateMatrixView              # Fixed/per-crate transport pricing by route and season
     ├── UserManagementView          # Admin user account creation, role assignment & password updates
     ├── ReportsView                 # 8 audit reports with date range filtering and CSV export
     ├── BackupRestoreView           # Database snapshot creation and single-click restoration
@@ -58,7 +58,7 @@ Transport Delivery Management System
              │
              ▼
 [ 2. Delivery Dispatch ]
-      • Fleet Recommendation: Capacity Fit + Temperature Match (Cold / Dry)
+      • Truck Recommendation: Capacity Fit + Temperature Match (Cold / Dry)
       • Assign Available Truck + Driver + Aides
       • Status: "In Transit" (Truck marked "In Use", Crew locked)
              │
@@ -91,14 +91,14 @@ The system operates on an embedded SQLite database (`mj_billones.db`) with zero 
 | Table Name | Primary Purpose |
 | :--- | :--- |
 | **`Users`** | System accounts, SHA-256 password hashes, legal names, contact numbers, and roles (`Admin`, `Office Staff`). |
-| **`Trucks`** | Fleet vehicles, plate numbers, categories, crate capacities, storage types (`Cold / Chilled`, `Dry Goods`), and statuses (`Available`, `In Use`, `Under Maintenance`, `Inactive`). |
+| **`Trucks`** | Truck vehicles, plate numbers, categories, crate capacities, storage types (`Cold / Chilled`, `Dry Goods`), and statuses (`Available`, `In Use`, `Under Maintenance`, `Inactive`). |
 | **`Crews`** | Driver and aide personnel, licenses, contact numbers, daily wages, food allowances, availability, and photo attachments. |
 | **`LoadingSchedules`** | Client delivery orders, destination branches, schedule dates, departure times, G-Crate/E-Crate counts, cargo types, and peak season tags. |
 | **`Deliveries`** | Operational dispatch records connecting loading schedules with assigned trucks, drivers, and aides. |
 | **`TripReports`** | Trip completion registers recording store arrival/departure times, delivered/returned crates, and store manager sign-offs. |
 | **`IncidentReports`** | Cargo damage, vehicle breakdowns, route delays, estimated repair costs, crew liability flags, and photo documentation. |
-| **`RateMatrix`** | Freight rate schedule by route, destination, vehicle category, and seasonal surcharge. |
-| **`Invoices`** | Freight service billing invoices, gross freight amounts, incident deductions, net amounts due, and payment statuses. |
+| **`RateMatrix`** | Transport rate schedule by route, destination, vehicle category, and seasonal surcharge. |
+| **`Invoices`** | Delivery service billing invoices, gross transport amounts, incident deductions, net amounts due, and payment statuses. |
 | **`CollectionReceipts`** | Payment transaction logs, official receipt numbers (`CRV-...`), payment modes, and collector details. |
 | **`LookupCategories`** | Dynamic dropdown list items (Truck categories, destinations, clients, incident causes) managed via the top bar. |
 

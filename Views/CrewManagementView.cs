@@ -18,6 +18,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private bool isSortAscending = true;
         private string currentPhotoPath = string.Empty;
         private bool isBindingForm = false;
+        private Button btnToggleForm = null!;
+        private Button btnCloseForm = null!;
         public CrewManagementView()
         {
             InitializeComponent();
@@ -65,8 +67,68 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtFirstName.KeyPress += (s, e) => { if (char.IsDigit(e.KeyChar)) e.Handled = true; };
             txtMiddleName.KeyPress += (s, e) => { if (char.IsDigit(e.KeyChar)) e.Handled = true; };
             LoadCrew();
-            UIThemeHelper.ApplyTheme(this);
 
+            InitializeFormToggle();
+            UIThemeHelper.ApplyTheme(this);
+        }
+
+        private void InitializeFormToggle()
+        {
+            btnToggleForm = new Button
+            {
+                Text = "📝 Input Form ▾",
+                Size = new Size(130, 30),
+                BackColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 4, 8, 4)
+            };
+            btnToggleForm.FlatAppearance.BorderSize = 0;
+            btnToggleForm.Click += (s, e) => SetFormVisibility(!pnlForm.Visible);
+            pnlGridActionsFlow.Controls.Add(btnToggleForm);
+            pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
+
+            btnCloseForm = new Button
+            {
+                Text = "✖ Hide Form",
+                Dock = DockStyle.Top,
+                Height = 28,
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(71, 85, 105),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 0, 0, 8)
+            };
+            btnCloseForm.FlatAppearance.BorderSize = 0;
+            btnCloseForm.Click += (s, e) => SetFormVisibility(false);
+            pnlForm.Controls.Add(btnCloseForm);
+            pnlForm.Controls.SetChildIndex(btnCloseForm, 0);
+
+            SetFormVisibility(false);
+        }
+
+        private void SetFormVisibility(bool visible)
+        {
+            pnlForm.Visible = visible;
+            if (tblMasterContent.ColumnStyles.Count > 0)
+            {
+                tblMasterContent.ColumnStyles[0].Width = visible ? 580F : 0F;
+                tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
+            }
+            if (tblMasterContent.ColumnStyles.Count > 1)
+            {
+                tblMasterContent.ColumnStyles[1].Width = 100F;
+                tblMasterContent.ColumnStyles[1].SizeType = SizeType.Percent;
+            }
+            if (btnToggleForm != null)
+            {
+                btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 Input Form ▾";
+                btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
+                btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
+            }
         }
 
         public void RefreshData()
@@ -153,7 +215,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridCrew.AllowUserToResizeColumns = true;
             gridCrew.ShowCellToolTips = true;
             gridCrew.Columns.Clear();
-            gridCrew.Columns.Add(new DataGridViewCheckBoxColumn { DataPropertyName = "IsAvailable", HeaderText = "Available", FillWeight = 9F, MinimumWidth = 75, ReadOnly = false });
+            gridCrew.Columns.Add(new DataGridViewCheckBoxColumn { DataPropertyName = "IsAvailable", HeaderText = "Active", FillWeight = 9F, MinimumWidth = 75, ReadOnly = false });
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "FullName", HeaderText = "Full Name", FillWeight = 26F, MinimumWidth = 145, ReadOnly = true });
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Role", HeaderText = "Role", FillWeight = 16F, MinimumWidth = 110, ReadOnly = true });
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ContactNumber", HeaderText = "Contact #", FillWeight = 16F, MinimumWidth = 110, ReadOnly = true });
@@ -694,13 +756,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (selectedCrew != null) { Clipboard.SetText(selectedCrew.FullName); ToastHelper.ShowToast(this, "Crew name copied ✓"); }
             });
             var itemEdit = new ToolStripMenuItem("✏️ Edit Crew Details", null, (s, e) => {
+                SetFormVisibility(true);
                 txtLastName.Focus();
             });
-            var itemAvail = new ToolStripMenuItem("🟢 Set Status: Available in Yard", null, (s, e) => {
+            var itemAvail = new ToolStripMenuItem("🟢 Set Status: Active (Duty Ready)", null, (s, e) => {
                 try
                 {
                     if (selectedCrew != null) {
                         selectedCrew.IsAvailable = true;
+                        selectedCrew.IsActive = true;
                         MJdatabase.SaveCrew(selectedCrew);
                         LoadCrew();
                     }
@@ -710,10 +774,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     MessageBox.Show($"Failed to update crew availability: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             });
+            var itemInactive = new ToolStripMenuItem("⚪ Set Status: Inactive", null, (s, e) => {
+                try
+                {
+                    if (selectedCrew != null) {
+                        selectedCrew.IsActive = false;
+                        selectedCrew.IsAvailable = false;
+                        MJdatabase.SaveCrew(selectedCrew);
+                        LoadCrew();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to update crew status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            });
             var itemPrint = new ToolStripMenuItem("📄 Print Personnel Register", null, BtnPrint_Click);
             var itemDelete = new ToolStripMenuItem("🗑️ Delete Personnel Record", null, BtnDelete_Click);
+            var itemExportCsv = new ToolStripMenuItem("📊 Export Table to CSV...", null, (s, e) => {
+                DataExportHelper.ExportToCsv(gridCrew, "Crew_Personnel", "Registered Drivers and Aides");
+            });
+            var itemExportExcel = new ToolStripMenuItem("📑 Export Table to Excel (.xml)...", null, (s, e) => {
+                DataExportHelper.ExportToExcelXml(gridCrew, "Crew_Personnel", "Registered Drivers and Aides");
+            });
 
-            menu.Items.AddRange(new ToolStripItem[] { itemDetails, itemCopyName, new ToolStripSeparator(), itemEdit, itemAvail, itemPrint, new ToolStripSeparator(), itemDelete });
+            menu.Items.AddRange(new ToolStripItem[] { itemDetails, itemCopyName, new ToolStripSeparator(), itemEdit, itemAvail, itemInactive, itemPrint, new ToolStripSeparator(), itemExportCsv, itemExportExcel, new ToolStripSeparator(), itemDelete });
 
             gridCrew.CellMouseDown += (s, e) => {
                 if (e.Button == MouseButtons.Right && e.RowIndex >= 0) {

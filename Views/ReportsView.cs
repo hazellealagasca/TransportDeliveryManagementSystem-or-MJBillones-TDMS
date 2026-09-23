@@ -186,8 +186,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }).ToList();
 
                     gridReport.DataSource = cleanTrucks;
-                    int totalFleetCapacity = trucks.Sum(t => t.CapacityCrates);
-                    lblSummary.Text = $"🚛 Total Registered Trucks: {trucks.Count:N0}  |  🟢 Available: {trucks.Count(t => t.Status == "Available"):N0}  |  🔴 In Use: {trucks.Count(t => t.Status == "In Use"):N0}  |  📦 Total Fleet Capacity: {totalFleetCapacity:N0} Crates";
+                    int totalTruckCapacity = trucks.Sum(t => t.CapacityCrates);
+                    lblSummary.Text = $"🚛 Total Registered Trucks: {trucks.Count:N0}  |  🟢 Active: {trucks.Count(t => t.Status == "Active" || t.Status == "Available"):N0}  |  🔴 In Use: {trucks.Count(t => t.Status == "In Use"):N0}  |  📦 Total Truck Capacity: {totalTruckCapacity:N0} Crates";
                     break;
 
                 case 4:
@@ -207,12 +207,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         Contact_Number = c.ContactNumber,
                         Drivers_License = c.LicenseNumber,
                         Employment_Type = c.IsSeasonal ? "Seasonal / Extra" : "Regular Active",
-                        Availability = c.IsAvailable ? "Available" : "On Trip",
+                        Availability = c.IsAvailable ? "Active" : "On Trip",
                         Status = c.IsActive ? "Active" : "Inactive"
                     }).ToList();
 
                     gridReport.DataSource = cleanCrews;
-                    lblSummary.Text = $"👤 Total Personnel: {crews.Count:N0}  |  🚗 Drivers: {crews.Count(c => c.Role.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0):N0}  |  🤝 Aides/Helpers: {crews.Count(c => c.Role.IndexOf("Aide", StringComparison.OrdinalIgnoreCase) >= 0 || c.Role.IndexOf("Helper", StringComparison.OrdinalIgnoreCase) >= 0):N0}  |  🟢 Available: {crews.Count(c => c.IsAvailable):N0}";
+                    lblSummary.Text = $"👤 Total Personnel: {crews.Count:N0}  |  🚗 Drivers: {crews.Count(c => c.Role.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0):N0}  |  🤝 Aides/Helpers: {crews.Count(c => c.Role.IndexOf("Aide", StringComparison.OrdinalIgnoreCase) >= 0 || c.Role.IndexOf("Helper", StringComparison.OrdinalIgnoreCase) >= 0):N0}  |  🟢 Active: {crews.Count(c => c.IsAvailable):N0}";
                     break;
 
                 case 5:

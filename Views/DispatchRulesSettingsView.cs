@@ -116,7 +116,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             chkAutoFillCrates = new CheckBox
             {
-                Text = "Automatically Recommend Optimal Fleet Truck based on Total Volume (G-Crates + E-Crates)",
+                Text = "Automatically Recommend Optimal Truck based on Total Volume (G-Crates + E-Crates)",
                 Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(51, 65, 85),
                 AutoSize = true,
@@ -200,7 +200,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 MJdatabase.SetSystemSetting("AllowMultiDestDispatch", chkAllowMultiDest.Checked ? "True" : "False", "Allow multiple destinations in 1 dispatch trip");
                 MJdatabase.SetSystemSetting("RequireCrateReturnTracking", chkRequireCrateReturn.Checked ? "True" : "False", "Require empty crates return tracking");
-                MJdatabase.SetSystemSetting("AutoFleetRecommendation", chkAutoFillCrates.Checked ? "True" : "False", "Automatically recommend optimal fleet truck");
+                MJdatabase.SetSystemSetting("AutoFleetRecommendation", chkAutoFillCrates.Checked ? "True" : "False", "Automatically recommend optimal truck");
+
+                EventNotificationService.Publish("Dispatch Rules Saved", "Dispatch routing preferences updated successfully.", ToastType.Success, this);
 
                 lblStatusToast.Text = "✅ Dispatch routing preferences successfully saved!";
                 lblStatusToast.ForeColor = Color.FromArgb(22, 101, 52);

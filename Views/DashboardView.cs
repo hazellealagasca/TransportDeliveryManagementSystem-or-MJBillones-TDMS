@@ -121,7 +121,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnPrintTable.Click += (s, e) =>
             {
                 if (activeTab == "Dispatches")
-                    PrintHelper.PrintGridReport("Active Dispatch Operations Summary", gridOperations, "Real-time delivery dispatches and fleet status summary.");
+                    PrintHelper.PrintGridReport("Active Dispatch Operations Summary", gridOperations, "Real-time delivery dispatches and truck status summary.");
                 else
                     PrintHelper.PrintGridReport("Daily Loading Manifest Summary", gridOperations, "Daily loading schedule and crate manifest summary.");
             };
@@ -195,7 +195,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlKpis.Controls.Clear();
             pnlKpis.Controls.Add(CreateExecutiveKpiCard("Today's Deliveries", "0 Planned", "0 In Transit", Color.FromArgb(37, 99, 235), "Dispatch", out lblDeliveriesTitle, out lblDeliveriesVal, out lblDeliveriesSub), 0, 0);
             pnlKpis.Controls.Add(CreateExecutiveKpiCard("Crew Available", "0 Ready", "0 Active Drivers", Color.FromArgb(5, 150, 105), "Crew", out _, out lblCrewVal, out lblCrewSub), 1, 0);
-            pnlKpis.Controls.Add(CreateExecutiveKpiCard("Fleet Utilization", "0%", "0 / 0 Vehicles Ready", Color.FromArgb(217, 119, 6), "Trucks", out _, out lblFleetVal, out lblFleetSub), 2, 0);
+            pnlKpis.Controls.Add(CreateExecutiveKpiCard("Truck Utilization", "0%", "0 / 0 Trucks Ready", Color.FromArgb(217, 119, 6), "Trucks", out _, out lblFleetVal, out lblFleetSub), 2, 0);
             pnlKpis.Controls.Add(CreateExecutiveKpiCard("Receivables to Collect", "₱0.00", "Outstanding Balance", Color.FromArgb(220, 38, 38), "Billing", out _, out lblFinanceVal, out lblFinanceSub), 3, 0);
         }
 
@@ -365,7 +365,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblCrewSub.Text = $"{activeDrivers} Drivers • {onTripCrew} On Route";
 
                 int totalTrucks = trucks.Count;
-                int availableTrucks = trucks.Count(t => t.Status.Equals("Available", StringComparison.OrdinalIgnoreCase));
+                int availableTrucks = trucks.Count(t => t.Status.Equals("Active", StringComparison.OrdinalIgnoreCase) || t.Status.Equals("Available", StringComparison.OrdinalIgnoreCase));
                 int inUseTrucks = trucks.Count(t => t.Status.Equals("In Use", StringComparison.OrdinalIgnoreCase) || t.Status.Equals("On Trip", StringComparison.OrdinalIgnoreCase));
                 double utilRate = totalTrucks > 0 ? (double)inUseTrucks / totalTrucks * 100 : 0;
 

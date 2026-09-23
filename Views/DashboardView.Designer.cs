@@ -47,9 +47,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             flowTabs.SuspendLayout();
             flowSearchPrint.SuspendLayout();
             SuspendLayout();
-            // 
-            // pnlTopHeader
-            // 
+
             pnlTopHeader.AutoSize = true;
             pnlTopHeader.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             pnlTopHeader.Controls.Add(tblTopHeader);
@@ -59,9 +57,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlTopHeader.Padding = new Padding(24, 14, 24, 8);
             pnlTopHeader.Size = new Size(1420, 86);
             pnlTopHeader.TabIndex = 3;
-            // 
-            // tblTopHeader
-            // 
+
             tblTopHeader.AutoSize = true;
             tblTopHeader.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             tblTopHeader.ColumnCount = 2;
@@ -76,9 +72,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblTopHeader.RowStyles.Add(new RowStyle());
             tblTopHeader.Size = new Size(1372, 64);
             tblTopHeader.TabIndex = 0;
-            // 
-            // pnlTitleBlock
-            // 
+
             pnlTitleBlock.AutoSize = true;
             pnlTitleBlock.Controls.Add(lblSubtitle);
             pnlTitleBlock.Controls.Add(lblTitle);
@@ -87,9 +81,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlTitleBlock.Name = "pnlTitleBlock";
             pnlTitleBlock.Size = new Size(611, 58);
             pnlTitleBlock.TabIndex = 0;
-            // 
-            // lblSubtitle
-            // 
+
             lblSubtitle.AutoSize = true;
             lblSubtitle.Dock = DockStyle.Top;
             lblSubtitle.Font = new Font("Segoe UI", 9.5F);
@@ -99,10 +91,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblSubtitle.Name = "lblSubtitle";
             lblSubtitle.Size = new Size(549, 21);
             lblSubtitle.TabIndex = 1;
-            lblSubtitle.Text = "Executive overview of fleet logistics, dispatch operations, and financial metrics.";
-            // 
-            // lblTitle
-            // 
+            lblSubtitle.Text = "Executive overview of truck logistics, dispatch operations, and payment collections.";
+
             lblTitle.AutoSize = true;
             lblTitle.Dock = DockStyle.Top;
             lblTitle.Font = new Font("Segoe UI", 16F, FontStyle.Bold);
@@ -113,19 +103,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblTitle.Size = new Size(157, 37);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Dashboard";
-            // 
-            // flowFilterControls
-            // 
+
             flowFilterControls.AutoSize = true;
+            flowFilterControls.WrapContents = true;
             flowFilterControls.Dock = DockStyle.Right;
             flowFilterControls.Location = new Point(1372, 0);
             flowFilterControls.Margin = new Padding(0);
             flowFilterControls.Name = "flowFilterControls";
             flowFilterControls.Size = new Size(0, 64);
             flowFilterControls.TabIndex = 2;
-            // 
-            // lblSystemBadge
-            // 
+
             lblSystemBadge.BackColor = Color.FromArgb(240, 253, 244);
             lblSystemBadge.BorderStyle = BorderStyle.FixedSingle;
             lblSystemBadge.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
@@ -138,9 +125,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblSystemBadge.TabIndex = 3;
             lblSystemBadge.Text = "● Database: Online (SQLite)";
             lblSystemBadge.TextAlign = ContentAlignment.MiddleCenter;
-            // 
-            // pnlKpiContainer
-            // 
+            lblSystemBadge.Visible = false;
+
             pnlKpiContainer.Controls.Add(pnlKpis);
             pnlKpiContainer.Dock = DockStyle.Top;
             pnlKpiContainer.Location = new Point(0, 86);
@@ -148,9 +134,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlKpiContainer.Padding = new Padding(24, 6, 24, 12);
             pnlKpiContainer.Size = new Size(1420, 145);
             pnlKpiContainer.TabIndex = 1;
-            // 
-            // pnlKpis
-            // 
+
             pnlKpis.ColumnCount = 4;
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
@@ -163,9 +147,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlKpis.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             pnlKpis.Size = new Size(1372, 127);
             pnlKpis.TabIndex = 0;
-            // 
-            // pnlMainTableCard
-            // 
+
             pnlMainTableCard.BackColor = Color.White;
             pnlMainTableCard.Controls.Add(gridOperations);
             pnlMainTableCard.Controls.Add(pnlTableHeader);
@@ -175,12 +157,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlMainTableCard.Padding = new Padding(24, 16, 24, 20);
             pnlMainTableCard.Size = new Size(1420, 589);
             pnlMainTableCard.TabIndex = 2;
-            // 
-            // gridOperations
-            // 
+
             gridOperations.AllowUserToAddRows = false;
             gridOperations.AllowUserToDeleteRows = false;
-            gridOperations.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            gridOperations.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             gridOperations.BackgroundColor = Color.White;
             gridOperations.BorderStyle = BorderStyle.None;
             gridOperations.ColumnHeadersHeight = 44;
@@ -195,9 +175,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridOperations.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             gridOperations.Size = new Size(1372, 463);
             gridOperations.TabIndex = 4;
-            // 
-            // pnlTableHeader
-            // 
+
             pnlTableHeader.AutoSize = true;
             pnlTableHeader.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             pnlTableHeader.Controls.Add(tblTableToolbar);
@@ -207,9 +185,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlTableHeader.Padding = new Padding(0, 0, 0, 10);
             pnlTableHeader.Size = new Size(1372, 90);
             pnlTableHeader.TabIndex = 5;
-            // 
-            // tblTableToolbar
-            // 
+
             tblTableToolbar.AutoSize = true;
             tblTableToolbar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             tblTableToolbar.ColumnCount = 2;
@@ -224,10 +200,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblTableToolbar.RowStyles.Add(new RowStyle());
             tblTableToolbar.Size = new Size(1372, 40);
             tblTableToolbar.TabIndex = 0;
-            // 
-            // flowTabs
-            // 
+
             flowTabs.AutoSize = true;
+            flowTabs.WrapContents = true;
             flowTabs.Controls.Add(btnTabDispatches);
             flowTabs.Controls.Add(btnTabLoading);
             flowTabs.Dock = DockStyle.Fill;
@@ -236,9 +211,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             flowTabs.Name = "flowTabs";
             flowTabs.Size = new Size(686, 40);
             flowTabs.TabIndex = 0;
-            // 
-            // btnTabDispatches
-            // 
+
             btnTabDispatches.BackColor = Color.FromArgb(15, 23, 42);
             btnTabDispatches.Cursor = Cursors.Hand;
             btnTabDispatches.FlatAppearance.BorderSize = 0;
@@ -252,9 +225,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnTabDispatches.TabIndex = 0;
             btnTabDispatches.Text = "🚚  Active Dispatches";
             btnTabDispatches.UseVisualStyleBackColor = false;
-            // 
-            // btnTabLoading
-            // 
+
             btnTabLoading.BackColor = Color.FromArgb(241, 245, 249);
             btnTabLoading.Cursor = Cursors.Hand;
             btnTabLoading.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
@@ -268,10 +239,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnTabLoading.TabIndex = 1;
             btnTabLoading.Text = "📝  Daily Loading Orders";
             btnTabLoading.UseVisualStyleBackColor = false;
-            // 
-            // flowSearchPrint
-            // 
+
             flowSearchPrint.AutoSize = true;
+            flowSearchPrint.WrapContents = true;
             flowSearchPrint.Controls.Add(txtQuickSearch);
             flowSearchPrint.Controls.Add(btnPrintTable);
             flowSearchPrint.Dock = DockStyle.Right;
@@ -280,9 +250,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             flowSearchPrint.Name = "flowSearchPrint";
             flowSearchPrint.Size = new Size(408, 40);
             flowSearchPrint.TabIndex = 1;
-            // 
-            // txtQuickSearch
-            // 
+
             txtQuickSearch.Font = new Font("Segoe UI", 9.5F);
             txtQuickSearch.Location = new Point(0, 3);
             txtQuickSearch.Margin = new Padding(0, 3, 8, 4);
@@ -290,9 +258,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtQuickSearch.PlaceholderText = "🔍 Quick filter live operations...";
             txtQuickSearch.Size = new Size(260, 29);
             txtQuickSearch.TabIndex = 2;
-            // 
-            // btnPrintTable
-            // 
+
             btnPrintTable.BackColor = Color.FromArgb(248, 250, 252);
             btnPrintTable.Cursor = Cursors.Hand;
             btnPrintTable.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
@@ -306,9 +272,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnPrintTable.TabIndex = 3;
             btnPrintTable.Text = "🖨️ Print Report";
             btnPrintTable.UseVisualStyleBackColor = false;
-            // 
-            // DashboardView
-            // 
+
             AutoScaleDimensions = new SizeF(9F, 23F);
             AutoScaleMode = AutoScaleMode.Font;
             AutoScroll = true;

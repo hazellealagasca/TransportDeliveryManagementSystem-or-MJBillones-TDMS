@@ -14,15 +14,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     {
         private DataGridView gridAudit = new DataGridView();
         private TextBox txtSearch = new TextBox();
+        private ComboBox cbAuditCategory = new ComboBox();
         private ComboBox cbFilterEvent = new ComboBox();
         private Button btnRefresh = new Button();
+        private Button btnExport = new Button();
         private Label lblCount = new Label();
-        private List<LoginAudit> rawLogs = new List<LoginAudit>();
+        private List<LoginAudit> rawLoginLogs = new List<LoginAudit>();
+        private List<AuditTrailEntry> rawDataAuditLogs = new List<AuditTrailEntry>();
 
         public SecurityAuditView()
         {
             InitializeComponent();
-            SetupGrid();
+            SetupGridColumns();
+            DataExportHelper.AttachExportContextMenu(gridAudit, "Audit_Logs", "Security and Business Audit Trail");
             LoadAuditLogs();
             UIThemeHelper.ApplyTheme(this);
         }
@@ -48,6 +52,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 BackColor = Color.White
             };
 
+            Label lblCat = new Label
+            {
+                Text = "Log Type:",
+                AutoSize = true,
+                Margin = new Padding(0, 7, 4, 0),
+                Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(51, 65, 85)
+            };
+
+            cbAuditCategory.Size = new Size(240, 26);
+            cbAuditCategory.Margin = new Padding(0, 4, 16, 0);
+            cbAuditCategory.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbAuditCategory.Items.AddRange(new object[]
+            {
+                "📋 Business Data Changes (Audit Trail)",
+                "🛡️ Access & Authentication Logs"
+            });
+            cbAuditCategory.SelectedIndex = 0;
+            cbAuditCategory.SelectedIndexChanged += (s, e) =>
+            {
+                UpdateEventFilterOptions();
+                SetupGridColumns();
+                ApplyFilter();
+            };
+
             Label lblSearch = new Label
             {
                 Text = "🔍 Search:",
@@ -57,30 +86,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ForeColor = Color.FromArgb(51, 65, 85)
             };
 
-            txtSearch.Size = new Size(200, 26);
+            txtSearch.Size = new Size(180, 26);
             txtSearch.Margin = new Padding(0, 4, 16, 0);
-            txtSearch.PlaceholderText = "Username or machine...";
+            txtSearch.PlaceholderText = "Search username, ID...";
             txtSearch.TextChanged += (s, e) => ApplyFilter();
 
             Label lblFilter = new Label
             {
-                Text = "Event Type:",
+                Text = "Action / Event:",
                 AutoSize = true,
                 Margin = new Padding(0, 7, 4, 0),
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(51, 65, 85)
             };
 
-            cbFilterEvent.Size = new Size(180, 26);
+            cbFilterEvent.Size = new Size(160, 26);
             cbFilterEvent.Margin = new Padding(0, 4, 16, 0);
             cbFilterEvent.DropDownStyle = ComboBoxStyle.DropDownList;
-            cbFilterEvent.Items.AddRange(new object[] { "All Events", "LOGIN_SUCCESS", "LOGIN_FAILED", "LOCKED_OUT", "ACCOUNT_REGISTERED", "USER_APPROVED", "USER_REJECTED" });
-            cbFilterEvent.SelectedIndex = 0;
+            UpdateEventFilterOptions();
             cbFilterEvent.SelectedIndexChanged += (s, e) => ApplyFilter();
 
             btnRefresh.Text = "🔄 Refresh";
             btnRefresh.Size = new Size(95, 28);
-            btnRefresh.Margin = new Padding(0, 3, 16, 0);
+            btnRefresh.Margin = new Padding(0, 3, 8, 0);
             btnRefresh.BackColor = Color.FromArgb(241, 245, 249);
             btnRefresh.ForeColor = Color.FromArgb(51, 65, 85);
             btnRefresh.FlatStyle = FlatStyle.Flat;
@@ -89,13 +117,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnRefresh.Cursor = Cursors.Hand;
             btnRefresh.Click += (s, e) => LoadAuditLogs();
 
+            btnExport.Text = "📊 Export";
+            btnExport.Size = new Size(95, 28);
+            btnExport.Margin = new Padding(0, 3, 16, 0);
+            btnExport.BackColor = Color.FromArgb(15, 23, 42);
+            btnExport.ForeColor = Color.White;
+            btnExport.FlatStyle = FlatStyle.Flat;
+            btnExport.FlatAppearance.BorderSize = 0;
+            btnExport.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
+            btnExport.Cursor = Cursors.Hand;
+            btnExport.Click += (s, e) =>
+            {
+                string title = cbAuditCategory.SelectedIndex == 0 ? "Business Data Change Audit Trail" : "System Access Logs";
+                DataExportHelper.ExportToCsv(gridAudit, cbAuditCategory.SelectedIndex == 0 ? "AuditTrail" : "AccessLogs", title);
+            };
+
             lblCount.AutoSize = true;
             lblCount.Margin = new Padding(0, 7, 0, 0);
             lblCount.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
             lblCount.ForeColor = Color.FromArgb(71, 85, 105);
             lblCount.Text = "Logs: 0";
 
-            pnlTop.Controls.AddRange(new Control[] { lblSearch, txtSearch, lblFilter, cbFilterEvent, btnRefresh, lblCount });
+            pnlTop.Controls.AddRange(new Control[] { lblCat, cbAuditCategory, lblSearch, txtSearch, lblFilter, cbFilterEvent, btnRefresh, btnExport, lblCount });
 
             Panel pnlGridCard = new Panel
             {
@@ -112,8 +155,47 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridCard.SendToBack();
         }
 
-        private void SetupGrid()
+        private void UpdateEventFilterOptions()
         {
+            cbFilterEvent.Items.Clear();
+            if (cbAuditCategory.SelectedIndex == 0)
+            {
+                cbFilterEvent.Items.AddRange(new object[]
+                {
+                    "All Actions",
+                    "ADD",
+                    "UPDATE",
+                    "DELETE",
+                    "INVOICE_CREATED",
+                    "DISPATCH_CREATED",
+                    "PAYMENT_COLLECTED",
+                    "COMPLETED",
+                    "CANCEL",
+                    "SECURITY_UPDATE",
+                    "PASSWORD_CHANGE"
+                });
+            }
+            else
+            {
+                cbFilterEvent.Items.AddRange(new object[]
+                {
+                    "All Events",
+                    "LOGIN_SUCCESS",
+                    "LOGIN_FAILED",
+                    "LOCKED_OUT",
+                    "ACCOUNT_REGISTERED",
+                    "USER_APPROVED",
+                    "USER_REJECTED",
+                    "PASSWORD_RESET_SUCCESS",
+                    "PASSWORD_RESET_FAILED"
+                });
+            }
+            cbFilterEvent.SelectedIndex = 0;
+        }
+
+        private void SetupGridColumns()
+        {
+            gridAudit.Columns.Clear();
             gridAudit.ReadOnly = true;
             gridAudit.AllowUserToAddRows = false;
             gridAudit.AllowUserToDeleteRows = false;
@@ -125,41 +207,39 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridAudit.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             gridAudit.RowTemplate.Height = 32;
 
-            gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Timestamp", HeaderText = "Timestamp", FillWeight = 16, MinimumWidth = 120, DefaultCellStyle = { Format = "yyyy-MM-dd HH:mm:ss" } });
-            gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "EventType", HeaderText = "Event", FillWeight = 16, MinimumWidth = 110 });
-            gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Username", HeaderText = "Username", FillWeight = 16, MinimumWidth = 110 });
-            gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "IpOrMachine", HeaderText = "Workstation", FillWeight = 16, MinimumWidth = 110 });
-            gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Details", HeaderText = "Details", FillWeight = 36, MinimumWidth = 160 });
-
-            gridAudit.CellFormatting += (s, e) =>
+            if (cbAuditCategory.SelectedIndex == 0)
             {
-                if (e.RowIndex >= 0 && gridAudit.Columns[e.ColumnIndex].HeaderText == "Security Event" && e.Value != null)
-                {
-                    string ev = e.Value.ToString() ?? "";
-                    if (ev == "LOGIN_SUCCESS" || ev == "USER_APPROVED")
-                    {
-                        e.CellStyle.ForeColor = Color.FromArgb(22, 101, 52);
-                        e.CellStyle.Font = new Font(gridAudit.Font, FontStyle.Bold);
-                    }
-                    else if (ev == "LOGIN_FAILED" || ev == "LOCKED_OUT" || ev == "USER_REJECTED")
-                    {
-                        e.CellStyle.ForeColor = Color.FromArgb(185, 28, 28);
-                        e.CellStyle.Font = new Font(gridAudit.Font, FontStyle.Bold);
-                    }
-                    else if (ev == "ACCOUNT_REGISTERED")
-                    {
-                        e.CellStyle.ForeColor = Color.FromArgb(180, 83, 9);
-                        e.CellStyle.Font = new Font(gridAudit.Font, FontStyle.Bold);
-                    }
-                }
-            };
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Timestamp", HeaderText = "Timestamp", FillWeight = 14, MinimumWidth = 125, DefaultCellStyle = { Format = "yyyy-MM-dd HH:mm:ss" } });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Username", HeaderText = "User", FillWeight = 11, MinimumWidth = 90 });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ActionType", HeaderText = "Action", FillWeight = 13, MinimumWidth = 100 });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TableName", HeaderText = "Module / Table", FillWeight = 12, MinimumWidth = 95 });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "RecordIdentifier", HeaderText = "Reference #", FillWeight = 15, MinimumWidth = 115 });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "FieldName", HeaderText = "Field Changed", FillWeight = 12, MinimumWidth = 95 });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "NewValue", HeaderText = "New Value", FillWeight = 12, MinimumWidth = 95 });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ReasonOrNotes", HeaderText = "Activity Notes", FillWeight = 25, MinimumWidth = 150 });
+            }
+            else
+            {
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Timestamp", HeaderText = "Timestamp", FillWeight = 16, MinimumWidth = 120, DefaultCellStyle = { Format = "yyyy-MM-dd HH:mm:ss" } });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "EventType", HeaderText = "Event", FillWeight = 16, MinimumWidth = 110 });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Username", HeaderText = "Username", FillWeight = 16, MinimumWidth = 110 });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "IpOrMachine", HeaderText = "Workstation", FillWeight = 16, MinimumWidth = 110 });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Details", HeaderText = "Details", FillWeight = 36, MinimumWidth = 160 });
+            }
         }
 
         private async void LoadAuditLogs()
         {
             try
             {
-                rawLogs = await MJdatabase.GetSecurityAuditLogsAsync(300);
+                if (cbAuditCategory.SelectedIndex == 0)
+                {
+                    rawDataAuditLogs = await MJdatabase.GetAuditTrailAsync(500);
+                }
+                else
+                {
+                    rawLoginLogs = await MJdatabase.GetSecurityAuditLogsAsync(300);
+                }
                 ApplyFilter();
             }
             catch (Exception ex)
@@ -171,22 +251,47 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void ApplyFilter()
         {
             string q = txtSearch.Text.Trim().ToLowerInvariant();
-            string filterEvent = cbFilterEvent.SelectedItem?.ToString() ?? "All Events";
+            string filterItem = cbFilterEvent.SelectedItem?.ToString() ?? "";
 
-            var filtered = rawLogs.Where(l =>
+            if (cbAuditCategory.SelectedIndex == 0)
             {
-                bool matchQuery = string.IsNullOrEmpty(q) ||
-                    l.Username.ToLowerInvariant().Contains(q) ||
-                    l.IpOrMachine.ToLowerInvariant().Contains(q) ||
-                    l.Details.ToLowerInvariant().Contains(q);
+                var filtered = rawDataAuditLogs.Where(l =>
+                {
+                    bool matchQuery = string.IsNullOrEmpty(q) ||
+                        (l.Username ?? "").ToLowerInvariant().Contains(q) ||
+                        (l.TableName ?? "").ToLowerInvariant().Contains(q) ||
+                        (l.RecordIdentifier ?? "").ToLowerInvariant().Contains(q) ||
+                        (l.FieldName ?? "").ToLowerInvariant().Contains(q) ||
+                        (l.NewValue ?? "").ToLowerInvariant().Contains(q) ||
+                        (l.ReasonOrNotes ?? "").ToLowerInvariant().Contains(q);
 
-                bool matchEvent = filterEvent == "All Events" || l.EventType.Equals(filterEvent, StringComparison.OrdinalIgnoreCase);
+                    bool matchAction = string.IsNullOrEmpty(filterItem) || filterItem == "All Actions" ||
+                        (l.ActionType ?? "").Equals(filterItem, StringComparison.OrdinalIgnoreCase);
 
-                return matchQuery && matchEvent;
-            }).ToList();
+                    return matchQuery && matchAction;
+                }).ToList();
 
-            gridAudit.DataSource = filtered;
-            lblCount.Text = $"Total Security Logs: {filtered.Count} of {rawLogs.Count}";
+                gridAudit.DataSource = filtered;
+                lblCount.Text = $"Audit Records: {filtered.Count} of {rawDataAuditLogs.Count}";
+            }
+            else
+            {
+                var filtered = rawLoginLogs.Where(l =>
+                {
+                    bool matchQuery = string.IsNullOrEmpty(q) ||
+                        (l.Username ?? "").ToLowerInvariant().Contains(q) ||
+                        (l.IpOrMachine ?? "").ToLowerInvariant().Contains(q) ||
+                        (l.Details ?? "").ToLowerInvariant().Contains(q);
+
+                    bool matchEvent = string.IsNullOrEmpty(filterItem) || filterItem == "All Events" ||
+                        (l.EventType ?? "").Equals(filterItem, StringComparison.OrdinalIgnoreCase);
+
+                    return matchQuery && matchEvent;
+                }).ToList();
+
+                gridAudit.DataSource = filtered;
+                lblCount.Text = $"Security Logs: {filtered.Count} of {rawLoginLogs.Count}";
+            }
         }
     }
 }

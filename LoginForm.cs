@@ -141,6 +141,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+        private void lnkForgotPassword_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            using (var dlg = new Forms.ForgotPasswordDialog(txtUsername.Text.Trim()))
+            {
+                if (dlg.ShowDialog(this) == DialogResult.OK)
+                {
+                    lblError.ForeColor = Color.FromArgb(22, 101, 52);
+                    lblError.Text = "Password reset successfully. Please enter your new password.";
+                    lblError.Visible = true;
+                    txtPassword.Clear();
+                    txtPassword.Focus();
+                }
+            }
+        }
+
         private void btnExit_Click(object sender, EventArgs e)
         {
             Application.Exit();

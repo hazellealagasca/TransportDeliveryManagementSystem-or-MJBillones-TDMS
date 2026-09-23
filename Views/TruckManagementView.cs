@@ -15,6 +15,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private List<Truck> allTrucks = new List<Truck>();
         private string currentSortColumn = "PlateNumber";
         private bool isSortAscending = true;
+        private Button btnToggleForm = null!;
+        private Button btnCloseForm = null!;
         [System.ComponentModel.Browsable(false)]
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
         public Action<Truck>? OnDispatchTruckRequested { get; set; }
@@ -52,8 +54,69 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetupEvents();
             LoadTrucks();
             MJdatabase.OnCategoriesChanged += () => { if (!this.IsDisposed && this.IsHandleCreated) this.Invoke(new Action(LoadTrucks)); };
+
+            InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
             txtPlate.Leave += (s, e) => txtPlate.Text = txtPlate.Text.Trim().ToUpper();
+        }
+
+        private void InitializeFormToggle()
+        {
+            btnToggleForm = new Button
+            {
+                Text = "📝 Input Form ▾",
+                Size = new Size(130, 30),
+                BackColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 4, 8, 4)
+            };
+            btnToggleForm.FlatAppearance.BorderSize = 0;
+            btnToggleForm.Click += (s, e) => SetFormVisibility(!pnlForm.Visible);
+            pnlGridActionsFlow.Controls.Add(btnToggleForm);
+            pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
+
+            btnCloseForm = new Button
+            {
+                Text = "✖ Hide Form",
+                Dock = DockStyle.Top,
+                Height = 28,
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(71, 85, 105),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 0, 0, 8)
+            };
+            btnCloseForm.FlatAppearance.BorderSize = 0;
+            btnCloseForm.Click += (s, e) => SetFormVisibility(false);
+            pnlForm.Controls.Add(btnCloseForm);
+            pnlForm.Controls.SetChildIndex(btnCloseForm, 0);
+
+            SetFormVisibility(false);
+        }
+
+        private void SetFormVisibility(bool visible)
+        {
+            pnlForm.Visible = visible;
+            if (tblMasterContent.ColumnStyles.Count > 0)
+            {
+                tblMasterContent.ColumnStyles[0].Width = visible ? 580F : 0F;
+                tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
+            }
+            if (tblMasterContent.ColumnStyles.Count > 1)
+            {
+                tblMasterContent.ColumnStyles[1].Width = 100F;
+                tblMasterContent.ColumnStyles[1].SizeType = SizeType.Percent;
+            }
+            if (btnToggleForm != null)
+            {
+                btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 Input Form ▾";
+                btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
+                btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
+            }
         }
 
         public void RefreshData()
@@ -87,7 +150,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbType.SelectedItem = selectedTruck.TruckType;
                 cbCargoType.SelectedItem = string.IsNullOrEmpty(selectedTruck.CargoType) ? "Cold / Chilled" : selectedTruck.CargoType;
                 numCapacity.Value = selectedTruck.CapacityCrates;
-                cbStatus.SelectedItem = selectedTruck.Status;
+                string curStatus = selectedTruck.Status;
+                if (curStatus.Equals("Available", StringComparison.OrdinalIgnoreCase)) curStatus = "Active";
+                cbStatus.SelectedItem = curStatus;
                 txtRemarks.Text = selectedTruck.Remarks;
                 lblFormHeader.Text = "Truck Vehicle Details";
                 isBindingForm = false;
@@ -115,7 +180,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (MJdatabase.IsPlateNumberExists(plateNumber, 0))
                 {
-                    MessageBox.Show($"DUPLICATE VEHICLE PLATE NUMBER BLOCKED:\nA truck with Plate Number '{plateNumber}' is already registered in the fleet. Duplicate plate numbers are strictly prohibited.", "Duplicate Plate Number Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    MessageBox.Show($"DUPLICATE VEHICLE PLATE NUMBER BLOCKED:\nA truck with Plate Number '{plateNumber}' is already registered in the system. Duplicate plate numbers are strictly prohibited.", "Duplicate Plate Number Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                     txtPlate.Focus();
                     return;
                 }
@@ -143,7 +208,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     PlateNumber = plateNumber,
                     TruckType = truckType,
                     CapacityCrates = capacity,
-                    Status = cbStatus.SelectedItem?.ToString() ?? "Available",
+                    Status = cbStatus.SelectedItem?.ToString() ?? "Active",
                     Remarks = txtRemarks.Text.Trim()
                 };
 
@@ -185,7 +250,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (MJdatabase.IsPlateNumberExists(plateNumber, selectedTruck.Id))
                 {
-                    MessageBox.Show($"DUPLICATE VEHICLE PLATE NUMBER BLOCKED:\nA different truck with Plate Number '{plateNumber}' already exists in the fleet. Duplicate plate numbers are strictly prohibited.", "Duplicate Plate Number Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    MessageBox.Show($"DUPLICATE VEHICLE PLATE NUMBER BLOCKED:\nA different truck with Plate Number '{plateNumber}' already exists in the system. Duplicate plate numbers are strictly prohibited.", "Duplicate Plate Number Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                     txtPlate.Focus();
                     return;
                 }
@@ -210,7 +275,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedTruck.PlateNumber = plateNumber;
                 selectedTruck.TruckType = truckType;
                 selectedTruck.CapacityCrates = capacity;
-                selectedTruck.Status = cbStatus.SelectedItem?.ToString() ?? "Available";
+                selectedTruck.Status = cbStatus.SelectedItem?.ToString() ?? "Active";
                 selectedTruck.Remarks = txtRemarks.Text.Trim();
                 selectedTruck.CargoType = cbCargoType.SelectedItem?.ToString() ?? "Cold / Chilled";
 
@@ -314,8 +379,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridTrucks.DataSource = null;
             gridTrucks.DataSource = filtered;
             lblGridHeader.Text = string.IsNullOrEmpty(q)
-                ? $"Registered Vehicle Fleet ({allTrucks.Count})"
-                : $"Registered Vehicle Fleet - Showing {filtered.Count} of {allTrucks.Count}";
+                ? $"Registered Trucks ({allTrucks.Count})"
+                : $"Registered Trucks - Showing {filtered.Count} of {allTrucks.Count}";
 
             if (filtered.Count > 0)
             {
@@ -359,7 +424,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
-                PrintHelper.PrintGridReport("Fleet & Truck Vehicle Inventory Report", gridTrucks, "Official fleet inventory statement including plate numbers, crate capacities, and operational statuses.");
+                PrintHelper.PrintGridReport("Truck & Vehicle Inventory Report", gridTrucks, "Official truck inventory statement including plate numbers, crate capacities, and operational statuses.");
             }
             catch (Exception ex)
             {
@@ -402,7 +467,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (cbStatus.Items.Count == 0)
                 {
-                    cbStatus.Items.AddRange(new object[] { "Available", "In Use", "Under Maintenance" });
+                    cbStatus.Items.AddRange(new object[] { "Active", "In Use", "Under Maintenance", "Inactive" });
                 }
                 if (cbStatus.SelectedIndex < 0) cbStatus.SelectedIndex = 0;
 
@@ -411,7 +476,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to load truck fleet data: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Failed to load truck data: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -419,7 +484,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (selectedTruck == null)
             {
-                MessageBox.Show("Please select a vehicle from the fleet table first.", "Select Vehicle", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Please select a vehicle from the trucks table first.", "Select Vehicle", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -441,13 +506,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (selectedTruck != null) OnDispatchTruckRequested?.Invoke(selectedTruck);
             });
             var itemEdit = new ToolStripMenuItem("✏️ Edit Vehicle Details", null, (s, e) => {
+                SetFormVisibility(true);
                 txtPlate.Focus();
             });
-            var itemAvail = new ToolStripMenuItem("🟢 Set Status: Available", null, (s, e) => {
+            var itemAvail = new ToolStripMenuItem("🟢 Set Status: Active", null, (s, e) => {
                 try
                 {
                     if (selectedTruck != null) {
-                        selectedTruck.Status = "Available";
+                        selectedTruck.Status = "Active";
+                        MJdatabase.SaveTruck(selectedTruck);
+                        LoadTrucks();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to update truck status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            });
+            var itemInactive = new ToolStripMenuItem("⚪ Set Status: Inactive", null, (s, e) => {
+                try
+                {
+                    if (selectedTruck != null) {
+                        selectedTruck.Status = "Inactive";
                         MJdatabase.SaveTruck(selectedTruck);
                         LoadTrucks();
                     }
@@ -472,8 +552,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             });
             var itemDelete = new ToolStripMenuItem("🗑️ Delete Vehicle Record", null, BtnDelete_Click);
+            var itemExportCsv = new ToolStripMenuItem("📊 Export Table to CSV...", null, (s, e) => {
+                DataExportHelper.ExportToCsv(gridTrucks, "Truck_Vehicles", "Registered Trucks");
+            });
+            var itemExportExcel = new ToolStripMenuItem("📑 Export Table to Excel (.xml)...", null, (s, e) => {
+                DataExportHelper.ExportToExcelXml(gridTrucks, "Truck_Vehicles", "Registered Trucks");
+            });
 
-            menu.Items.AddRange(new ToolStripItem[] { itemDetails, itemCopyPlate, new ToolStripSeparator(), itemDispatch, new ToolStripSeparator(), itemEdit, itemAvail, itemMaint, new ToolStripSeparator(), itemDelete });
+            menu.Items.AddRange(new ToolStripItem[] { itemDetails, itemCopyPlate, new ToolStripSeparator(), itemDispatch, new ToolStripSeparator(), itemEdit, itemAvail, itemInactive, itemMaint, new ToolStripSeparator(), itemExportCsv, itemExportExcel, new ToolStripSeparator(), itemDelete });
 
             gridTrucks.CellMouseDown += (s, e) => {
                 if (e.Button == MouseButtons.Right && e.RowIndex >= 0) {

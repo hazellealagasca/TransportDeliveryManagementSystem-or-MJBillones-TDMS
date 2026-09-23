@@ -30,6 +30,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Button btnClearSearch = null!;
         private Label lblSummary = null!;
         private DataGridView gridItems = null!;
+        private GroupBox grpForm = null!;
+        private Button btnToggleForm = null!;
+        private Button btnCloseForm = null!;
 
         private string selectedCategory = "Client Company";
         private List<ClientCompany> allClients = new List<ClientCompany>();
@@ -41,7 +44,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             InitializeComponent();
             SetupGridColumns();
             LoadCategoryData();
+            gridItems.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0) SetFormVisibility(true); };
+            SetFormVisibility(false);
             UIThemeHelper.ApplyTheme(this);
+        }
+
+        private void SetFormVisibility(bool visible)
+        {
+            grpForm.Visible = visible;
+            if (btnToggleForm != null)
+            {
+                btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 Input Form ▾";
+                btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
+                btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
+            }
         }
 
         public void RefreshData()
@@ -89,7 +105,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblHeaderSub = new Label
             {
-                Text = "Manage client company contacts, freight destinations, fleet vehicle classifications, and crew operational roles.",
+                Text = "Manage client company contacts, delivery destinations, truck vehicle classifications, and crew operational roles.",
                 Font = new Font("Segoe UI", 8.5F),
                 ForeColor = Color.FromArgb(100, 116, 139),
                 AutoSize = true,
@@ -106,7 +122,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Padding = new Padding(24, 16, 24, 16)
             };
 
-            GroupBox grpForm = new GroupBox
+            grpForm = new GroupBox
             {
                 Text = "Category Configuration & Input Form",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
@@ -277,10 +293,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnClear.FlatAppearance.BorderSize = 0;
             btnClear.Click += (s, e) => ClearInputFields();
 
+            btnCloseForm = new Button
+            {
+                Text = "✖ HIDE FORM",
+                Size = new Size(110, 32),
+                Margin = new Padding(8, 0, 0, 0),
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(71, 85, 105),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnCloseForm.FlatAppearance.BorderSize = 0;
+            btnCloseForm.Click += (s, e) => SetFormVisibility(false);
+
             flowButtons.Controls.Add(btnAdd);
             flowButtons.Controls.Add(btnUpdate);
             flowButtons.Controls.Add(btnDelete);
             flowButtons.Controls.Add(btnClear);
+            flowButtons.Controls.Add(btnCloseForm);
 
             tblFormRows.Controls.Add(tblRow1, 0, 0);
             tblFormRows.Controls.Add(tblRow2, 0, 1);
@@ -302,8 +333,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ForeColor = Color.FromArgb(30, 41, 59),
                 Dock = DockStyle.Left,
                 TextAlign = ContentAlignment.MiddleLeft,
-                AutoSize = true
+                AutoSize = true,
+                Padding = new Padding(12, 6, 0, 0)
             };
+
+            btnToggleForm = new Button
+            {
+                Text = "📝 Input Form ▾",
+                Size = new Size(130, 30),
+                BackColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Dock = DockStyle.Left
+            };
+            btnToggleForm.FlatAppearance.BorderSize = 0;
+            btnToggleForm.Click += (s, e) => SetFormVisibility(!grpForm.Visible);
 
             FlowLayoutPanel flowSearch = new FlowLayoutPanel
             {
@@ -347,8 +393,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             flowSearch.Controls.Add(txtGridSearch);
             flowSearch.Controls.Add(btnClearSearch);
 
-            pnlGridToolbar.Controls.Add(lblSummary);
             pnlGridToolbar.Controls.Add(flowSearch);
+            pnlGridToolbar.Controls.Add(lblSummary);
+            pnlGridToolbar.Controls.Add(btnToggleForm);
 
             gridItems = new DataGridView
             {

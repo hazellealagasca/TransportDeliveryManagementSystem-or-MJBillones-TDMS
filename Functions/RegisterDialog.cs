@@ -17,6 +17,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private TextBox txtPassword = new TextBox();
         private TextBox txtConfirmPassword = new TextBox();
         private ComboBox cbSecurityQuestion = new ComboBox();
+        private TextBox txtCustomQuestion = new TextBox();
         private TextBox txtSecurityAnswer = new TextBox();
         private Button btnShowPassword = new Button();
         private Button btnSubmit = new Button();
@@ -172,10 +173,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 "What is your primary delivery destination in Luzon?",
                 "What was the name of your first childhood pet?",
                 "What is your mother's maiden name?",
-                "What was the model or brand of your first vehicle?"
+                "What was the model or brand of your first vehicle?",
+                "Write my own custom security question..."
             });
             cbSecurityQuestion.SelectedIndex = 0;
-            cbSecurityQuestion.Margin = new Padding(0, 0, 0, 10);
+            cbSecurityQuestion.Margin = new Padding(0, 0, 0, 6);
+
+            txtCustomQuestion.Dock = DockStyle.Top;
+            txtCustomQuestion.Font = new Font("Segoe UI", 10F);
+            txtCustomQuestion.PlaceholderText = "Type your custom security question here...";
+            txtCustomQuestion.Visible = false;
+            txtCustomQuestion.Margin = new Padding(0, 0, 0, 8);
+
+            cbSecurityQuestion.SelectedIndexChanged += (s, e) =>
+            {
+                txtCustomQuestion.Visible = cbSecurityQuestion.SelectedIndex == cbSecurityQuestion.Items.Count - 1;
+            };
 
             Label lblAnswer = new Label { Text = "Security Answer *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
             txtSecurityAnswer.Dock = DockStyle.Top;
@@ -229,6 +242,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlBody.Controls.Add(lblError);
             pnlBody.Controls.Add(txtSecurityAnswer);
             pnlBody.Controls.Add(lblAnswer);
+            pnlBody.Controls.Add(txtCustomQuestion);
             pnlBody.Controls.Add(cbSecurityQuestion);
             pnlBody.Controls.Add(lblQuestion);
             pnlBody.Controls.Add(txtConfirmPassword);
@@ -254,7 +268,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string username = txtUsername.Text.Trim();
             string password = txtPassword.Text;
             string confirmPassword = txtConfirmPassword.Text;
-            string question = cbSecurityQuestion.SelectedItem?.ToString() ?? "";
+            string question = cbSecurityQuestion.SelectedIndex == cbSecurityQuestion.Items.Count - 1
+                ? txtCustomQuestion.Text.Trim()
+                : (cbSecurityQuestion.SelectedItem?.ToString() ?? "");
             string answer = txtSecurityAnswer.Text.Trim();
 
             if (string.IsNullOrWhiteSpace(lastName) ||
