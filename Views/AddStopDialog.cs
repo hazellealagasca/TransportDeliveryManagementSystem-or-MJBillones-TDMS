@@ -116,7 +116,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtClientName = new TextBox
             {
                 Dock = DockStyle.Top,
-                Font = new Font("Segoe UI", 10F)
+                Font = new Font("Segoe UI", 10F),
+                MaxLength = 150
             };
 
             Label lblDest = new Label
@@ -132,7 +133,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtDestination = new TextBox
             {
                 Dock = DockStyle.Top,
-                Font = new Font("Segoe UI", 10F)
+                Font = new Font("Segoe UI", 10F),
+                MaxLength = 200
             };
 
             TableLayoutPanel tblCrates = new TableLayoutPanel
@@ -168,7 +170,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtRemarks = new TextBox
             {
                 Dock = DockStyle.Top,
-                Font = new Font("Segoe UI", 10F)
+                Font = new Font("Segoe UI", 10F),
+                MaxLength = 500
             };
 
             pnlBody.Controls.Add(txtRemarks);
@@ -257,10 +260,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
 
+            if (client.Length > 150)
+            {
+                MessageBox.Show("Client name cannot exceed 150 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtClientName.Focus();
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(dest))
             {
                 MessageBox.Show("Please enter the destination address for this drop.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtDestination.Focus();
+                return;
+            }
+
+            if (dest.Length > 200)
+            {
+                MessageBox.Show("Destination cannot exceed 200 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtDestination.Focus();
+                return;
+            }
+
+            if (txtRemarks.Text.Trim().Length > 500)
+            {
+                MessageBox.Show("Remarks cannot exceed 500 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtRemarks.Focus();
                 return;
             }
 

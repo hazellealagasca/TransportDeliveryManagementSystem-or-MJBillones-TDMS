@@ -22,14 +22,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private ComboBox cbRefreshInterval = null!;
         private CheckBox chkAllowMultiDest = null!;
         private CheckBox chkRequireCrates = null!;
-        private CheckBox chkAutoFleet = null!;
+        private CheckBox chkAutoTruck = null!;
 
         private ComboBox cbCurrency = null!;
         private ComboBox cbDateFormat = null!;
         private CheckBox chkEnableToasts = null!;
         private CheckBox chkStartCollapsed = null!;
         private CheckBox chkEnableProactiveAlerts = null!;
-        private CheckBox chkNotifyLowFleet = null!;
+        private CheckBox chkNotifyLowTrucks = null!;
 
         private Button btnSave = null!;
         private Button btnAccountSecurity = null!;
@@ -138,7 +138,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 6, 0, 6)
             };
 
-            chkAutoFleet = new CheckBox
+            chkAutoTruck = new CheckBox
             {
                 Text = "Automatically Recommend Optimal Vehicle from Active Trucks",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
@@ -154,7 +154,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblOps.Controls.Add(chkRequireCrates, 0, 3);
             tblOps.SetColumnSpan(chkRequireCrates, 2);
 
-            cardOps.Controls.Add(chkAutoFleet);
+            cardOps.Controls.Add(chkAutoTruck);
             cardOps.Controls.Add(tblOps);
 
             Panel cardDisplay = CreateCard("🎨 Display & Notification Preferences", "Configure localization formats, currency indicators, and application notification alerts.");
@@ -215,7 +215,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 6, 0, 6)
             };
 
-            chkNotifyLowFleet = new CheckBox
+            chkNotifyLowTrucks = new CheckBox
             {
                 Text = "Alert When Ready Available Trucks Fall to 1 Vehicle",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
@@ -234,7 +234,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblDisplay.Controls.Add(chkEnableToasts, 0, 2);
             tblDisplay.Controls.Add(chkStartCollapsed, 1, 2);
             tblDisplay.Controls.Add(chkEnableProactiveAlerts, 0, 3);
-            tblDisplay.Controls.Add(chkNotifyLowFleet, 1, 3);
+            tblDisplay.Controls.Add(chkNotifyLowTrucks, 1, 3);
 
             cardDisplay.Controls.Add(tblDisplay);
 
@@ -315,11 +315,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblMain.Controls.Add(cardActions, 0, 4);
             chkAllowMultiDest.CheckedChanged += (s, e) => AutoSavePreferences();
             chkRequireCrates.CheckedChanged += (s, e) => AutoSavePreferences();
-            chkAutoFleet.CheckedChanged += (s, e) => AutoSavePreferences();
+            chkAutoTruck.CheckedChanged += (s, e) => AutoSavePreferences();
             chkEnableToasts.CheckedChanged += (s, e) => AutoSavePreferences();
             chkStartCollapsed.CheckedChanged += (s, e) => AutoSavePreferences();
             chkEnableProactiveAlerts.CheckedChanged += (s, e) => AutoSavePreferences();
-            chkNotifyLowFleet.CheckedChanged += (s, e) => AutoSavePreferences();
+            chkNotifyLowTrucks.CheckedChanged += (s, e) => AutoSavePreferences();
 
             cbDefaultDeparture.SelectedIndexChanged += (s, e) => AutoSavePreferences();
             cbRefreshInterval.SelectedIndexChanged += (s, e) => AutoSavePreferences();
@@ -392,7 +392,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Top,
                 Font = new Font("Segoe UI", 9.5F),
                 Text = defaultVal,
-                Margin = new Padding(0, 0, col == 0 && !spanTwo ? 12 : 0, 10)
+                Margin = new Padding(0, 0, col == 0 && !spanTwo ? 12 : 0, 10),
+                MaxLength = 200
             };
 
             parent.Controls.Add(lbl, col, row * 2);
@@ -433,8 +434,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string crates = MJdatabase.GetSystemSetting("RequireCrateReturnTracking", "True");
                 chkRequireCrates.Checked = crates.Equals("True", StringComparison.OrdinalIgnoreCase) || crates == "1";
 
-                string autoF = MJdatabase.GetSystemSetting("AutoFleetRecommendation", "True");
-                chkAutoFleet.Checked = autoF.Equals("True", StringComparison.OrdinalIgnoreCase) || autoF == "1";
+                string autoTruck = MJdatabase.GetSystemSetting("AutoTruckRecommendation", "True");
+                chkAutoTruck.Checked = autoTruck.Equals("True", StringComparison.OrdinalIgnoreCase) || autoTruck == "1";
 
                 string cur = MJdatabase.GetSystemSetting("CurrencySymbol", "PHP (Philippine Peso)");
                 int curIdx = cbCurrency.Items.IndexOf(cur);
@@ -453,8 +454,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string proAlerts = MJdatabase.GetSystemSetting("EnableProactiveAlerts", "True");
                 chkEnableProactiveAlerts.Checked = proAlerts.Equals("True", StringComparison.OrdinalIgnoreCase) || proAlerts == "1";
 
-                string lowFleet = MJdatabase.GetSystemSetting("NotifyLowFleet", "True");
-                chkNotifyLowFleet.Checked = lowFleet.Equals("True", StringComparison.OrdinalIgnoreCase) || lowFleet == "1";
+                string lowTrucks = MJdatabase.GetSystemSetting("NotifyLowTrucks", "True");
+                chkNotifyLowTrucks.Checked = lowTrucks.Equals("True", StringComparison.OrdinalIgnoreCase) || lowTrucks == "1";
             }
             catch { }
             finally
@@ -479,13 +480,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.SetSystemSetting("AutoRefreshRate", cbRefreshInterval.SelectedItem?.ToString() ?? "Manual Refresh Only", "Table grid refresh frequency");
                 MJdatabase.SetSystemSetting("AllowMultiDestDispatch", chkAllowMultiDest.Checked ? "True" : "False", "Multi-drop dispatch preference");
                 MJdatabase.SetSystemSetting("RequireCrateReturnTracking", chkRequireCrates.Checked ? "True" : "False", "Empty crate return tracking");
-                MJdatabase.SetSystemSetting("AutoFleetRecommendation", chkAutoFleet.Checked ? "True" : "False", "Truck recommendation helper");
+                MJdatabase.SetSystemSetting("AutoTruckRecommendation", chkAutoTruck.Checked ? "True" : "False", "Truck recommendation helper");
                 MJdatabase.SetSystemSetting("CurrencySymbol", cbCurrency.SelectedItem?.ToString() ?? "PHP (Philippine Peso)", "Default currency representation");
                 MJdatabase.SetSystemSetting("DateFormat", cbDateFormat.SelectedItem?.ToString() ?? "yyyy-MM-dd (ISO Standard)", "Standard date format");
                 MJdatabase.SetSystemSetting("EnableToastPopups", chkEnableToasts.Checked ? "True" : "False", "Enable notification toast popups");
                 MJdatabase.SetSystemSetting("StartMenuCollapsed", chkStartCollapsed.Checked ? "True" : "False", "Start sidebar menu in collapsed state");
                 MJdatabase.SetSystemSetting("EnableProactiveAlerts", chkEnableProactiveAlerts.Checked ? "True" : "False", "Automated truck & aging invoice alerts");
-                MJdatabase.SetSystemSetting("NotifyLowFleet", chkNotifyLowFleet.Checked ? "True" : "False", "Alert when available trucks fall to 1 vehicle");
+                MJdatabase.SetSystemSetting("NotifyLowTrucks", chkNotifyLowTrucks.Checked ? "True" : "False", "Alert when available trucks fall to 1 vehicle");
 
                 lblStatus.Text = "⚡ Auto-saved!";
                 lblStatus.ForeColor = Color.FromArgb(22, 101, 52);

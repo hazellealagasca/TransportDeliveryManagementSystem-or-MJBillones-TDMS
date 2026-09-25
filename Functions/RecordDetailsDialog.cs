@@ -180,23 +180,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 subtitle = $"Client Haul Order • {sch.ClientName}";
                 statusBadge = sch.Status;
                 if (sch.Status == "Dispatched" || sch.Status == "Completed") { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
-                else if (sch.Status == "Cancelled") { badgeBg = Color.FromArgb(254, 226, 226); badgeFg = Color.FromArgb(185, 28, 28); }
-                else if (sch.Status == "Rescheduled") { badgeBg = Color.FromArgb(254, 243, 199); badgeFg = Color.FromArgb(180, 83, 9); }
-                else { badgeBg = Color.FromArgb(241, 245, 249); badgeFg = Color.FromArgb(51, 65, 85); }
+                else if (sch.Status == "Cancelled" || sch.Status == "Past Due") { badgeBg = Color.FromArgb(254, 226, 226); badgeFg = Color.FromArgb(185, 28, 28); }
+                else if (sch.Status == "Rescheduled") { badgeBg = Color.FromArgb(238, 242, 255); badgeFg = Color.FromArgb(67, 56, 202); }
+                else { badgeBg = Color.FromArgb(254, 243, 199); badgeFg = Color.FromArgb(180, 83, 9); }
 
                 var matchDel = MJdatabase.GetDeliveries().FirstOrDefault(d => d.LoadingScheduleId == sch.Id || (!string.IsNullOrEmpty(d.LoadingScheduleInfo) && d.LoadingScheduleInfo.Contains(sch.ScheduleNumber)));
+                var cl = MJdatabase.GetClientByCompanyName(sch.ClientName);
 
-                keyValues.Add(("Schedule Number", sch.ScheduleNumber));
                 keyValues.Add(("Client / Principal", sch.ClientName));
+                if (cl != null && (!string.IsNullOrEmpty(cl.ContactPerson) || !string.IsNullOrEmpty(cl.ContactNumber)))
+                {
+                    keyValues.Add(("Client Contact Person", $"{cl.ContactPerson} {cl.ContactNumber}".Trim()));
+                    if (!string.IsNullOrEmpty(cl.Address)) keyValues.Add(("Client Head Office Address", cl.Address));
+                }
                 keyValues.Add(("Delivery Destination", sch.Destination));
+                keyValues.Add(("Schedule Reference Number", sch.ScheduleNumber));
                 keyValues.Add(("Scheduled Date", sch.ScheduleDate.ToString("MMMM dd, yyyy")));
-                keyValues.Add(("Target Departure", sch.DepartureTime));
+                keyValues.Add(("Target Departure Time", sch.DepartureTime));
                 keyValues.Add(("G-Crates (Goods)", $"{sch.GCrate:N0} Crates"));
                 keyValues.Add(("E-Crates (Empty)", $"{sch.ECrate:N0} Crates"));
-                keyValues.Add(("Total Crates", $"{sch.TotalCrates:N0} Crates"));
+                keyValues.Add(("Total Crates Volume", $"{sch.TotalCrates:N0} Crates"));
                 keyValues.Add(("Season Rate Tier", sch.IsPeak ? "🔥 Peak Season Rate" : "Regular Season Rate"));
-                keyValues.Add(("Cargo / Temp Category", sch.CargoType));
+                keyValues.Add(("Cargo / Temperature Zone", sch.CargoType));
                 keyValues.Add(("Schedule Status", sch.Status));
+                keyValues.Add(("Operational Remarks", string.IsNullOrEmpty(sch.Remarks) ? "None" : sch.Remarks));
+                if (!string.IsNullOrEmpty(sch.CancellationReason))
+                {
+                    keyValues.Add(("Cancellation Reason", sch.CancellationReason));
+                }
                 if (sch.RescheduleCount > 0)
                 {
                     keyValues.Add(("Reschedule Count", $"{sch.RescheduleCount} time(s)"));
@@ -210,6 +221,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
                 keyValues.Add(("Dispatched Vehicle Order", matchDel != null ? matchDel.DispatchNumber : "Not yet dispatched"));
+                if (matchDel != null)
+                {
+                    keyValues.Add(("Assigned Truck", matchDel.TruckInfo));
+                    keyValues.Add(("Assigned Driver", matchDel.DriverName));
+                    keyValues.Add(("Assigned Helpers / Aides", string.IsNullOrEmpty(matchDel.AideNames) ? (string.IsNullOrEmpty(matchDel.AideName) ? "None" : matchDel.AideName) : matchDel.AideNames));
+                }
 
                 historyTitle = "Linked Dispatch & Haul Record";
                 if (matchDel != null)
@@ -225,19 +242,44 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (record is Delivery del)
             {
+                var matchSched = del.LoadingScheduleId > 0
+                    ? MJdatabase.GetLoadingSchedules().FirstOrDefault(s => s.Id == del.LoadingScheduleId)
+                    : null;
+                string clientName = !string.IsNullOrWhiteSpace(del.ClientName) ? del.ClientName : (matchSched?.ClientName ?? "");
+                if (string.IsNullOrEmpty(clientName) && del.Stops != null && del.Stops.Count > 0)
+                {
+                    clientName = string.Join(", ", del.Stops.Select(s => s.ClientName).Where(c => !string.IsNullOrEmpty(c)).Distinct());
+                }
+                if (string.IsNullOrEmpty(clientName)) clientName = "General / Direct Client";
+                var cl = MJdatabase.GetClientByCompanyName(clientName);
+
                 title = $"📦 Delivery Dispatch: {del.DispatchNumber}";
-                subtitle = $"Transit Order • Destination: {del.LoadingScheduleInfo}";
+                subtitle = $"Transit Order • Client: {clientName}";
                 statusBadge = del.Status;
                 if (del.Status == "Completed") { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
+                else if (del.Status == "Delayed") { badgeBg = Color.FromArgb(254, 226, 226); badgeFg = Color.FromArgb(185, 28, 28); }
                 else if (del.Status == "In Transit") { badgeBg = Color.FromArgb(254, 243, 199); badgeFg = Color.FromArgb(180, 83, 9); }
                 else { badgeBg = Color.FromArgb(241, 245, 249); badgeFg = Color.FromArgb(51, 65, 85); }
 
                 var matchTrip = MJdatabase.GetTripReports().FirstOrDefault(t => t.DeliveryId == del.Id || (!string.IsNullOrEmpty(t.DispatchNumber) && t.DispatchNumber == del.DispatchNumber));
                 var matchInv = MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == del.Id);
 
-                keyValues.Add(("Dispatch Number", del.DispatchNumber));
+                keyValues.Add(("Client / Account Name", clientName));
+                if (cl != null && (!string.IsNullOrEmpty(cl.ContactPerson) || !string.IsNullOrEmpty(cl.ContactNumber)))
+                {
+                    keyValues.Add(("Client Contact Person", $"{cl.ContactPerson} {cl.ContactNumber}".Trim()));
+                }
+                string destDisplay = !string.IsNullOrWhiteSpace(del.Destination) ? del.Destination : (string.IsNullOrEmpty(del.LoadingScheduleInfo) ? (matchSched?.Destination ?? "N/A") : del.LoadingScheduleInfo);
+                keyValues.Add(("Delivery Destination", destDisplay));
+                keyValues.Add(("Tariff / Peak Rate", del.IsPeak ? "⚡ Peak Season Surcharge Applied" : "Standard Tariff Rate"));
+                keyValues.Add(("Route Type", del.RouteTypeDisplay));
+                keyValues.Add(("Order Reference #", del.DispatchNumber));
+                if (matchSched != null || del.LoadingScheduleId > 0)
+                {
+                    keyValues.Add(("Legacy Schedule Reference", matchSched != null ? matchSched.ScheduleNumber : $"#{del.LoadingScheduleId}"));
+                }
                 keyValues.Add(("Dispatch Date", del.DispatchDate.ToString("MMMM dd, yyyy")));
-                keyValues.Add(("Departure Time", del.DepartureTime));
+                keyValues.Add(("Scheduled Departure Time", del.DepartureTime));
                 keyValues.Add(("Assigned Truck", del.TruckInfo));
                 keyValues.Add(("Assigned Driver", del.DriverName));
                 keyValues.Add(("Assigned Helpers / Aides", string.IsNullOrEmpty(del.AideNames) ? (string.IsNullOrEmpty(del.AideName) ? "None" : del.AideName) : del.AideNames));
@@ -246,10 +288,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 keyValues.Add(("Total Dispatched Crates", $"{del.TotalCrates:N0} Crates"));
                 keyValues.Add(("Cargo / Temp Category", del.CargoType));
                 keyValues.Add(("Current Dispatch Status", del.Status));
+                keyValues.Add(("Delivery Remarks", string.IsNullOrEmpty(del.Remarks) ? "None" : del.Remarks));
+                if (!string.IsNullOrEmpty(del.CancellationReason))
+                {
+                    keyValues.Add(("Cancellation Reason", del.CancellationReason));
+                }
                 keyValues.Add(("Linked Invoice", matchInv != null ? $"{matchInv.InvoiceNumber} ({matchInv.Status} - ₱{matchInv.NetAmount:N2})" : "Not yet billed"));
                 keyValues.Add(("Trip Completion Sign-Off", matchTrip != null ? $"Delivered by {matchTrip.StoreManagerName} on {matchTrip.ReportDate:yyyy-MM-dd}" : "Pending Trip Report"));
 
-                historyTitle = "Linked Downstream Documents";
+                historyTitle = "Linked Downstream Documents & Route Stops";
+                if (del.Stops != null && del.Stops.Count > 0)
+                {
+                    foreach (var stop in del.Stops)
+                    {
+                        historyData.Add(new {
+                            Type = $"Stop #{stop.StopSequence}",
+                            Reference = stop.ClientName,
+                            Delivered = stop.Destination,
+                            Returned = $"{stop.TotalCrates} Crates",
+                            SignOff = stop.Status
+                        });
+                    }
+                }
                 if (matchTrip != null)
                 {
                     historyData.Add(new {
@@ -273,20 +333,36 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (record is TripReport tr)
             {
+                var matchDel = MJdatabase.GetDeliveries().FirstOrDefault(d => d.Id == tr.DeliveryId || d.DispatchNumber == tr.DispatchNumber);
+                var matchSched = matchDel != null && matchDel.LoadingScheduleId > 0
+                    ? MJdatabase.GetLoadingSchedules().FirstOrDefault(s => s.Id == matchDel.LoadingScheduleId)
+                    : null;
+                string clientName = matchSched?.ClientName ?? "";
+                if (string.IsNullOrEmpty(clientName) && matchDel?.Stops != null && matchDel.Stops.Count > 0)
+                {
+                    clientName = string.Join(", ", matchDel.Stops.Select(s => s.ClientName).Where(c => !string.IsNullOrEmpty(c)).Distinct());
+                }
+                if (string.IsNullOrEmpty(clientName)) clientName = "M.J. Billones Client Partner";
+
                 title = $"📝 Trip Report: {tr.TripReportNumber}";
-                subtitle = $"Delivery Audit • Dispatch: {tr.DispatchNumber}";
+                subtitle = $"Delivery Audit • Client: {clientName}";
                 statusBadge = "Recorded";
                 badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52);
 
-                var matchDel = MJdatabase.GetDeliveries().FirstOrDefault(d => d.Id == tr.DeliveryId || d.DispatchNumber == tr.DispatchNumber);
                 int totalDisp = matchDel != null ? matchDel.TotalCrates : (tr.DeliveredCrates);
                 int variance = totalDisp - tr.DeliveredCrates;
 
+                keyValues.Add(("Client / Account Name", clientName));
+                keyValues.Add(("Delivery Destination", matchSched?.Destination ?? (matchDel?.LoadingScheduleInfo ?? "N/A")));
                 keyValues.Add(("Trip Report #", tr.TripReportNumber));
                 keyValues.Add(("Dispatch Reference #", tr.DispatchNumber));
+                keyValues.Add(("Assigned Truck", matchDel?.TruckInfo ?? "N/A"));
+                keyValues.Add(("Assigned Driver", matchDel?.DriverName ?? "N/A"));
+                keyValues.Add(("Assigned Helpers / Aides", matchDel != null ? (string.IsNullOrEmpty(matchDel.AideNames) ? (string.IsNullOrEmpty(matchDel.AideName) ? "None" : matchDel.AideName) : matchDel.AideNames) : "None"));
                 keyValues.Add(("Report / Audit Date", tr.ReportDate.ToString("MMMM dd, yyyy")));
                 keyValues.Add(("Store Arrival Time", tr.ArrivalTime));
                 keyValues.Add(("Store Departure Time", tr.DepartureTime));
+                keyValues.Add(("Dispatched Volume", $"{totalDisp:N0} Crates"));
                 keyValues.Add(("Delivered G-Crates", $"{tr.DeliveredGCrates:N0}"));
                 keyValues.Add(("Delivered E-Crates", $"{tr.DeliveredECrates:N0}"));
                 keyValues.Add(("Total Delivered Crates", $"{tr.DeliveredCrates:N0}"));
@@ -316,7 +392,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 statusBadge = inv.Status;
                 if (inv.Status == "Paid") { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
                 else if (inv.Status == "Partial") { badgeBg = Color.FromArgb(254, 243, 199); badgeFg = Color.FromArgb(180, 83, 9); }
-                else { badgeBg = Color.FromArgb(254, 226, 226); badgeFg = Color.FromArgb(185, 28, 28); }
+                else if (inv.Status == "Overdue") { badgeBg = Color.FromArgb(254, 226, 226); badgeFg = Color.FromArgb(185, 28, 28); }
+                else { badgeBg = Color.FromArgb(241, 245, 249); badgeFg = Color.FromArgb(51, 65, 85); }
 
                 var matchReceipts = MJdatabase.GetCollectionReceipts().Where(c => c.InvoiceId == inv.Id).ToList();
                 decimal totalPaid = matchReceipts.Sum(c => c.AmountPaid);
@@ -386,23 +463,37 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (record is IncidentReport inc)
             {
+                var matchDel = MJdatabase.GetDeliveries().FirstOrDefault(d => d.Id == inc.DeliveryId || d.DispatchNumber == inc.DispatchNumber);
+                var matchSched = matchDel != null && matchDel.LoadingScheduleId > 0
+                    ? MJdatabase.GetLoadingSchedules().FirstOrDefault(s => s.Id == matchDel.LoadingScheduleId)
+                    : null;
+                string clientName = matchSched?.ClientName ?? "";
+                if (string.IsNullOrEmpty(clientName) && matchDel?.Stops != null && matchDel.Stops.Count > 0)
+                {
+                    clientName = string.Join(", ", matchDel.Stops.Select(s => s.ClientName).Where(c => !string.IsNullOrEmpty(c)).Distinct());
+                }
+                if (string.IsNullOrEmpty(clientName)) clientName = "M.J. Billones Client Partner";
+
                 title = $"⚠️ Incident Report: #{inc.Id}";
-                subtitle = $"Transit Discrepancy & Claims • Dispatch: {inc.DispatchNumber}";
+                subtitle = $"Transit Discrepancy & Claims • Client: {clientName}";
                 statusBadge = inc.Status;
                 if (inc.Status == "Resolved") { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
                 else { badgeBg = Color.FromArgb(254, 226, 226); badgeFg = Color.FromArgb(185, 28, 28); }
 
-                var matchDel = MJdatabase.GetDeliveries().FirstOrDefault(d => d.Id == inc.DeliveryId || d.DispatchNumber == inc.DispatchNumber);
-
+                keyValues.Add(("Client / Account Name", clientName));
+                keyValues.Add(("Delivery Destination", matchSched?.Destination ?? (matchDel?.LoadingScheduleInfo ?? "N/A")));
                 keyValues.Add(("Incident ID", $"INC-{inc.Id:D5}"));
                 keyValues.Add(("Dispatch Number", inc.DispatchNumber));
+                keyValues.Add(("Assigned Truck", matchDel?.TruckInfo ?? "N/A"));
+                keyValues.Add(("Assigned Driver", matchDel?.DriverName ?? "N/A"));
+                keyValues.Add(("Assigned Helpers / Aides", matchDel != null ? (string.IsNullOrEmpty(matchDel.AideNames) ? (string.IsNullOrEmpty(matchDel.AideName) ? "None" : matchDel.AideName) : matchDel.AideNames) : "None"));
                 keyValues.Add(("Incident Date", inc.IncidentDate.ToString("MMMM dd, yyyy")));
                 keyValues.Add(("Damaged Crates Quantity", $"{inc.DamagedQuantity:N0} Crates"));
                 keyValues.Add(("Estimated Damage Cost", $"₱{inc.EstimatedCost:N2}"));
                 keyValues.Add(("Root Cause / Category", inc.Cause));
                 keyValues.Add(("Chargeable to Crew", inc.ChargeableToCrew ? "Yes (Deducted from driver/aide)" : "No (Company Liability / Client Damage)"));
                 keyValues.Add(("Investigation Status", inc.Status));
-                keyValues.Add(("Photo Evidence Attached", !string.IsNullOrEmpty(inc.PhotoPath) ? "Attached ✓" : "None"));
+                keyValues.Add(("Photo Evidence Attached", !string.IsNullOrEmpty(inc.PhotoPath) ? $"Attached ✓ ({System.IO.Path.GetFileName(inc.PhotoPath)})" : "None"));
                 keyValues.Add(("Incident Narrative", inc.Description));
 
                 historyTitle = "Dispatched Haul Context";
@@ -414,6 +505,118 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         Truck = matchDel.TruckInfo,
                         Driver = matchDel.DriverName,
                         Status = matchDel.Status
+                    });
+                }
+            }
+            else if (record is AuditTrailEntry log)
+            {
+                title = $"📜 Audit Log: {log.ActionType} on {log.TableName}";
+                subtitle = $"Operational History Entry • Reference: {log.RecordIdentifier}";
+                statusBadge = log.ActionType;
+                if (log.ActionType.Equals("ADD", StringComparison.OrdinalIgnoreCase)) { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
+                else if (log.ActionType.Equals("DELETE", StringComparison.OrdinalIgnoreCase) || log.ActionType.Equals("CANCEL", StringComparison.OrdinalIgnoreCase)) { badgeBg = Color.FromArgb(254, 226, 226); badgeFg = Color.FromArgb(185, 28, 28); }
+                else if (log.ActionType.Equals("RESCHEDULE", StringComparison.OrdinalIgnoreCase)) { badgeBg = Color.FromArgb(254, 243, 199); badgeFg = Color.FromArgb(180, 83, 9); }
+                else { badgeBg = Color.FromArgb(224, 231, 255); badgeFg = Color.FromArgb(49, 46, 129); }
+
+                keyValues.Add(("Audit Log ID", $"#LOG-{log.Id:D6}"));
+                keyValues.Add(("Logged Timestamp", log.Timestamp.ToString("MMMM dd, yyyy HH:mm:ss")));
+                keyValues.Add(("Operator Username", log.Username));
+                keyValues.Add(("Operator Role", log.UserRole));
+                keyValues.Add(("Action Executed", log.ActionType));
+                keyValues.Add(("Target Module / Table", log.TableName));
+                keyValues.Add(("Target Reference #", log.RecordIdentifier));
+                keyValues.Add(("Target Record ID", log.RecordId.ToString()));
+                keyValues.Add(("Field Name Modified", string.IsNullOrEmpty(log.FieldName) ? "Entire Record" : log.FieldName));
+                keyValues.Add(("Previous Recorded Value", string.IsNullOrEmpty(log.OldValue) ? "N/A" : log.OldValue));
+                keyValues.Add(("New / Updated Value", string.IsNullOrEmpty(log.NewValue) ? "N/A" : log.NewValue));
+                keyValues.Add(("Activity Notes / Reason", string.IsNullOrEmpty(log.ReasonOrNotes) ? "None" : log.ReasonOrNotes));
+                keyValues.Add(("Workstation / Host Machine", string.IsNullOrEmpty(log.IpOrMachine) ? "Local Station" : log.IpOrMachine));
+
+                historyTitle = $"Related Audit Trail for {log.RecordIdentifier}";
+                var relatedLogs = MJdatabase.GetAuditTrail(new[] { log.TableName }, null, 50).Where(a => a.RecordIdentifier == log.RecordIdentifier && a.Id != log.Id).ToList();
+                foreach (var rl in relatedLogs)
+                {
+                    historyData.Add(new {
+                        Timestamp = rl.Timestamp.ToString("yyyy-MM-dd HH:mm"),
+                        User = rl.Username,
+                        Action = rl.ActionType,
+                        Field = rl.FieldName,
+                        Details = rl.ReasonOrNotes
+                    });
+                }
+            }
+            else if (record is RateMatrix rm)
+            {
+                title = $"🏷️ Rate Tariff: {rm.RouteName}";
+                subtitle = $"Delivery Rate Matrix • Destination: {rm.Destination}";
+                statusBadge = rm.IsPeakSeason ? "Peak Season" : "Regular";
+                badgeBg = rm.IsPeakSeason ? Color.FromArgb(254, 243, 199) : Color.FromArgb(220, 252, 231);
+                badgeFg = rm.IsPeakSeason ? Color.FromArgb(180, 83, 9) : Color.FromArgb(22, 101, 52);
+
+                keyValues.Add(("Route Name / Code", rm.RouteName));
+                keyValues.Add(("Destination Drop", rm.Destination));
+                keyValues.Add(("Truck Category / Type", rm.TruckType));
+                keyValues.Add(("Season Rate Tier", rm.IsPeakSeason ? "🔥 Peak Season Rate" : "Regular Season Rate"));
+                keyValues.Add(("Tariff Rate Amount", $"₱{rm.RateAmount:N2}"));
+
+                historyTitle = "Tariff Rate Details";
+            }
+            else if (record is User usr)
+            {
+                title = $"👤 User Account: {usr.Username}";
+                subtitle = $"System User Profile • {usr.FullName}";
+                statusBadge = usr.IsActive ? "Active" : "Inactive";
+                badgeBg = usr.IsActive ? Color.FromArgb(220, 252, 231) : Color.FromArgb(254, 226, 226);
+                badgeFg = usr.IsActive ? Color.FromArgb(22, 101, 52) : Color.FromArgb(185, 28, 28);
+
+                keyValues.Add(("Username", usr.Username));
+                keyValues.Add(("Full Name", usr.FullName));
+                keyValues.Add(("Designated System Role", usr.Role));
+                keyValues.Add(("Contact Number", string.IsNullOrEmpty(usr.ContactNumber) ? "N/A" : usr.ContactNumber));
+                keyValues.Add(("Account Status", usr.IsActive ? "Active" : "Inactive"));
+                keyValues.Add(("Account Created On", usr.CreatedAt.ToString("MMMM dd, yyyy HH:mm")));
+
+                historyTitle = $"Audit Activity for User {usr.Username}";
+                var userLogs = MJdatabase.GetAuditTrail(null, null, 30).Where(a => a.Username.Equals(usr.Username, StringComparison.OrdinalIgnoreCase)).ToList();
+                foreach (var ul in userLogs)
+                {
+                    historyData.Add(new {
+                        Timestamp = ul.Timestamp.ToString("yyyy-MM-dd HH:mm"),
+                        Action = ul.ActionType,
+                        Module = ul.TableName,
+                        RefNo = ul.RecordIdentifier,
+                        Details = ul.ReasonOrNotes
+                    });
+                }
+            }
+            else if (record is ClientCompany cc)
+            {
+                title = $"🏢 Client Profile: {cc.CompanyName}";
+                subtitle = $"Registered Client Company • Contact: {cc.ContactPerson}";
+                statusBadge = "Registered";
+                badgeBg = Color.FromArgb(220, 252, 231);
+                badgeFg = Color.FromArgb(22, 101, 52);
+
+                keyValues.Add(("Company Name", cc.CompanyName));
+                keyValues.Add(("Primary Contact Person", string.IsNullOrEmpty(cc.ContactPerson) ? "N/A" : cc.ContactPerson));
+                keyValues.Add(("Contact Number / Mobile", string.IsNullOrEmpty(cc.ContactNumber) ? "N/A" : cc.ContactNumber));
+                keyValues.Add(("Office / Delivery Address", string.IsNullOrEmpty(cc.Address) ? "N/A" : cc.Address));
+                keyValues.Add(("Email Address", string.IsNullOrEmpty(cc.Email) ? "N/A" : cc.Email));
+
+                var clientSchedules = MJdatabase.GetLoadingSchedules().Where(s => s.ClientName.Equals(cc.CompanyName, StringComparison.OrdinalIgnoreCase)).ToList();
+                int totalCrates = clientSchedules.Sum(s => s.TotalCrates);
+                keyValues.Add(("Total Loading Orders", $"{clientSchedules.Count} Orders"));
+                keyValues.Add(("Total Crate Volume", $"{totalCrates:N0} Crates"));
+
+                historyTitle = $"Recent Loading Orders for {cc.CompanyName}";
+                foreach (var clientSched in clientSchedules.Take(10))
+                {
+                    historyData.Add(new {
+                        Order = clientSched.ScheduleNumber,
+                        Date = clientSched.ScheduleDate.ToString("yyyy-MM-dd"),
+                        Destination = clientSched.Destination,
+                        Crates = $"{clientSched.TotalCrates} Crates",
+                        Status = clientSched.Status
                     });
                 }
             }

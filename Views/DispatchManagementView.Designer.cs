@@ -6,9 +6,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing)
             {
-                components.Dispose();
+                tmrAutoSaveDraft?.Stop();
+                tmrAutoSaveDraft?.Dispose();
+                tmrAutoSaveDraft = null;
+                if (components != null)
+                {
+                    components.Dispose();
+                }
             }
             base.Dispose(disposing);
         }
@@ -17,714 +23,1047 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void InitializeComponent()
         {
-            this.lblTitle = new System.Windows.Forms.Label();
-            this.tblMasterContent = new System.Windows.Forms.TableLayoutPanel();
-            this.pnlForm = new System.Windows.Forms.Panel();
-            this.lblFormHeader = new System.Windows.Forms.Label();
-            this.lblLs = new System.Windows.Forms.Label();
-            this.cbLoadSchedule = new System.Windows.Forms.ComboBox();
-            this.tblCrates = new System.Windows.Forms.TableLayoutPanel();
-            this.lblGCrate = new System.Windows.Forms.Label();
-            this.lblECrate = new System.Windows.Forms.Label();
-            this.numGCrate = new System.Windows.Forms.NumericUpDown();
-            this.numECrate = new System.Windows.Forms.NumericUpDown();
-            this.lblTotalCrates = new System.Windows.Forms.Label();
-            this.txtTotalCrates = new System.Windows.Forms.TextBox();
-            this.pnlRec = new System.Windows.Forms.Panel();
-            this.lblRec = new System.Windows.Forms.Label();
-            this.lblTr = new System.Windows.Forms.Label();
-            this.cbTruck = new System.Windows.Forms.ComboBox();
-            this.lblDr = new System.Windows.Forms.Label();
-            this.cbDriver = new System.Windows.Forms.ComboBox();
-            this.lblAi = new System.Windows.Forms.Label();
-            this.pnlAidesSearchRow = new System.Windows.Forms.Panel();
-            this.txtSearchAides = new System.Windows.Forms.TextBox();
-            this.btnClearAides = new System.Windows.Forms.Button();
-            this.flowAidesModule = new System.Windows.Forms.FlowLayoutPanel();
-            this.lblAidesSummary = new System.Windows.Forms.Label();
-            this.tblDateTime = new System.Windows.Forms.TableLayoutPanel();
-            this.lblDd = new System.Windows.Forms.Label();
-            this.lblDepartureTime = new System.Windows.Forms.Label();
-            this.dtpDispatchDate = new System.Windows.Forms.DateTimePicker();
-            this.pnlTimeRow = new System.Windows.Forms.Panel();
-            this.cbDepartureTime = new System.Windows.Forms.ComboBox();
-            this.btnPickAnalogTime = new System.Windows.Forms.Button();
-            this.lblSt = new System.Windows.Forms.Label();
-            this.cbStatus = new System.Windows.Forms.ComboBox();
-            this.btnSave = new System.Windows.Forms.Button();
-            this.tblUpdateDelete = new System.Windows.Forms.TableLayoutPanel();
-            this.btnUpdate = new System.Windows.Forms.Button();
-            this.btnDelete = new System.Windows.Forms.Button();
-            this.btnClear = new System.Windows.Forms.Button();
-            this.pnlGridCard = new System.Windows.Forms.Panel();
-            this.pnlGridHeaderBar = new System.Windows.Forms.Panel();
-            this.lblGridHeader = new System.Windows.Forms.Label();
-            this.pnlGridActionsFlow = new System.Windows.Forms.FlowLayoutPanel();
-            this.txtGridSearch = new System.Windows.Forms.TextBox();
-            this.btnClearSearch = new System.Windows.Forms.Button();
-            this.btnPrint = new System.Windows.Forms.Button();
-            this.gridDispatch = new System.Windows.Forms.DataGridView();
-            this.pnlSummary = new System.Windows.Forms.Panel();
-            this.lblSummary = new System.Windows.Forms.Label();
-            this.tblMasterContent.SuspendLayout();
-            this.pnlForm.SuspendLayout();
-            this.tblCrates.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.numGCrate)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numECrate)).BeginInit();
-            this.pnlRec.SuspendLayout();
-            this.pnlAidesSearchRow.SuspendLayout();
-            this.tblDateTime.SuspendLayout();
-            this.pnlTimeRow.SuspendLayout();
-            this.tblUpdateDelete.SuspendLayout();
-            this.pnlGridCard.SuspendLayout();
-            this.pnlGridHeaderBar.SuspendLayout();
-            this.pnlGridActionsFlow.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.gridDispatch)).BeginInit();
-            this.pnlSummary.SuspendLayout();
-            this.SuspendLayout();
-
-            this.AutoScroll = true;
-            this.AutoScrollMinSize = new System.Drawing.Size(1000, 620);
-            this.BackColor = System.Drawing.Color.FromArgb(241, 245, 249);
-            this.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.Padding = new System.Windows.Forms.Padding(16);
-            this.Size = new System.Drawing.Size(1420, 840);
-
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
-            this.lblTitle.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            this.lblTitle.Location = new System.Drawing.Point(16, 16);
-            this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Padding = new System.Windows.Forms.Padding(0, 0, 0, 10);
-            this.lblTitle.Size = new System.Drawing.Size(395, 40);
-            this.lblTitle.TabIndex = 0;
-            this.lblTitle.Text = "Delivery & Dispatch Management";
-
-            this.tblMasterContent.ColumnCount = 2;
-            this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 580F));
-            this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblMasterContent.Controls.Add(this.pnlForm, 0, 0);
-            this.tblMasterContent.Controls.Add(this.pnlGridCard, 1, 0);
-            this.tblMasterContent.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tblMasterContent.Location = new System.Drawing.Point(16, 56);
-            this.tblMasterContent.Name = "tblMasterContent";
-            this.tblMasterContent.RowCount = 1;
-            this.tblMasterContent.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblMasterContent.Size = new System.Drawing.Size(1388, 768);
-            this.tblMasterContent.TabIndex = 1;
-
-            this.pnlForm.AutoScroll = true;
-            this.pnlForm.BackColor = System.Drawing.Color.White;
-            this.pnlForm.Controls.Add(this.btnClear);
-            this.pnlForm.Controls.Add(this.tblUpdateDelete);
-            this.pnlForm.Controls.Add(this.btnSave);
-            this.pnlForm.Controls.Add(this.cbStatus);
-            this.pnlForm.Controls.Add(this.lblSt);
-            this.pnlForm.Controls.Add(this.tblDateTime);
-            this.pnlForm.Controls.Add(this.lblAidesSummary);
-            this.pnlForm.Controls.Add(this.flowAidesModule);
-            this.pnlForm.Controls.Add(this.pnlAidesSearchRow);
-            this.pnlForm.Controls.Add(this.lblAi);
-            this.pnlForm.Controls.Add(this.cbDriver);
-            this.pnlForm.Controls.Add(this.lblDr);
-            this.pnlForm.Controls.Add(this.cbTruck);
-            this.pnlForm.Controls.Add(this.lblTr);
-            this.pnlForm.Controls.Add(this.pnlRec);
-            this.pnlForm.Controls.Add(this.txtTotalCrates);
-            this.pnlForm.Controls.Add(this.lblTotalCrates);
-            this.pnlForm.Controls.Add(this.tblCrates);
-            this.pnlForm.Controls.Add(this.cbLoadSchedule);
-            this.pnlForm.Controls.Add(this.lblLs);
-            this.pnlForm.Controls.Add(this.lblFormHeader);
-            this.pnlForm.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pnlForm.Location = new System.Drawing.Point(0, 0);
-            this.pnlForm.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
-            this.pnlForm.Name = "pnlForm";
-            this.pnlForm.Padding = new System.Windows.Forms.Padding(16);
-            this.pnlForm.Size = new System.Drawing.Size(468, 768);
-            this.pnlForm.TabIndex = 0;
-
-            this.lblFormHeader.AutoSize = true;
-            this.lblFormHeader.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblFormHeader.Font = new System.Drawing.Font("Segoe UI Semibold", 11F, System.Drawing.FontStyle.Bold);
-            this.lblFormHeader.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblFormHeader.Location = new System.Drawing.Point(16, 16);
-            this.lblFormHeader.Name = "lblFormHeader";
-            this.lblFormHeader.Padding = new System.Windows.Forms.Padding(0, 0, 0, 8);
-            this.lblFormHeader.Size = new System.Drawing.Size(155, 28);
-            this.lblFormHeader.TabIndex = 0;
-            this.lblFormHeader.Text = "Dispatch Order Form";
-
-            this.lblLs.AutoSize = true;
-            this.lblLs.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblLs.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.lblLs.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblLs.Location = new System.Drawing.Point(16, 44);
-            this.lblLs.Name = "lblLs";
-            this.lblLs.Padding = new System.Windows.Forms.Padding(0, 4, 0, 2);
-            this.lblLs.Size = new System.Drawing.Size(158, 23);
-            this.lblLs.TabIndex = 1;
-            this.lblLs.Text = "Select Loading Schedule:";
-
-            this.cbLoadSchedule.Dock = System.Windows.Forms.DockStyle.Top;
-            this.cbLoadSchedule.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cbLoadSchedule.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.cbLoadSchedule.FormattingEnabled = true;
-            this.cbLoadSchedule.Location = new System.Drawing.Point(16, 67);
-            this.cbLoadSchedule.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
-            this.cbLoadSchedule.Name = "cbLoadSchedule";
-            this.cbLoadSchedule.Size = new System.Drawing.Size(436, 25);
-            this.cbLoadSchedule.TabIndex = 2;
-
-            this.tblCrates.ColumnCount = 2;
-            this.tblCrates.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tblCrates.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tblCrates.Controls.Add(this.lblGCrate, 0, 0);
-            this.tblCrates.Controls.Add(this.lblECrate, 1, 0);
-            this.tblCrates.Controls.Add(this.numGCrate, 0, 1);
-            this.tblCrates.Controls.Add(this.numECrate, 1, 1);
-            this.tblCrates.Dock = System.Windows.Forms.DockStyle.Top;
-            this.tblCrates.Location = new System.Drawing.Point(16, 92);
-            this.tblCrates.Margin = new System.Windows.Forms.Padding(0, 4, 0, 4);
-            this.tblCrates.Name = "tblCrates";
-            this.tblCrates.RowCount = 2;
-            this.tblCrates.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            this.tblCrates.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            this.tblCrates.Size = new System.Drawing.Size(436, 56);
-            this.tblCrates.TabIndex = 3;
-
-            this.lblGCrate.AutoSize = true;
-            this.lblGCrate.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lblGCrate.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.lblGCrate.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblGCrate.Location = new System.Drawing.Point(0, 0);
-            this.lblGCrate.Margin = new System.Windows.Forms.Padding(0, 0, 4, 2);
-            this.lblGCrate.Name = "lblGCrate";
-            this.lblGCrate.Size = new System.Drawing.Size(214, 17);
-            this.lblGCrate.TabIndex = 0;
-            this.lblGCrate.Text = "G-Crates:";
-
-            this.lblECrate.AutoSize = true;
-            this.lblECrate.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lblECrate.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.lblECrate.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblECrate.Location = new System.Drawing.Point(222, 0);
-            this.lblECrate.Margin = new System.Windows.Forms.Padding(4, 0, 0, 2);
-            this.lblECrate.Name = "lblECrate";
-            this.lblECrate.Size = new System.Drawing.Size(214, 17);
-            this.lblECrate.TabIndex = 1;
-            this.lblECrate.Text = "E-Crates:";
-
-            this.numGCrate.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.numGCrate.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.numGCrate.Location = new System.Drawing.Point(0, 21);
-            this.numGCrate.Margin = new System.Windows.Forms.Padding(0, 2, 4, 6);
-            this.numGCrate.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
-            this.numGCrate.Name = "numGCrate";
-            this.numGCrate.Size = new System.Drawing.Size(214, 24);
-            this.numGCrate.TabIndex = 2;
-            this.numGCrate.Value = new decimal(new int[] { 150, 0, 0, 0 });
-
-            this.numECrate.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.numECrate.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.numECrate.Location = new System.Drawing.Point(222, 21);
-            this.numECrate.Margin = new System.Windows.Forms.Padding(4, 2, 0, 6);
-            this.numECrate.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
-            this.numECrate.Name = "numECrate";
-            this.numECrate.Size = new System.Drawing.Size(214, 24);
-            this.numECrate.TabIndex = 3;
-
-            this.lblTotalCrates.AutoSize = true;
-            this.lblTotalCrates.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblTotalCrates.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.lblTotalCrates.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblTotalCrates.Location = new System.Drawing.Point(16, 148);
-            this.lblTotalCrates.Name = "lblTotalCrates";
-            this.lblTotalCrates.Padding = new System.Windows.Forms.Padding(0, 4, 0, 2);
-            this.lblTotalCrates.Size = new System.Drawing.Size(147, 23);
-            this.lblTotalCrates.TabIndex = 4;
-            this.lblTotalCrates.Text = "Total Combined Crates:";
-
-            this.txtTotalCrates.Dock = System.Windows.Forms.DockStyle.Top;
-            this.txtTotalCrates.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.txtTotalCrates.Location = new System.Drawing.Point(16, 171);
-            this.txtTotalCrates.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
-            this.txtTotalCrates.Name = "txtTotalCrates";
-            this.txtTotalCrates.ReadOnly = true;
-            this.txtTotalCrates.Size = new System.Drawing.Size(436, 24);
-            this.txtTotalCrates.TabIndex = 5;
-            this.txtTotalCrates.Text = "150 Crates";
-
-            this.pnlRec.BackColor = System.Drawing.Color.FromArgb(240, 253, 244);
-            this.pnlRec.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.pnlRec.Controls.Add(this.lblRec);
-            this.pnlRec.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlRec.Location = new System.Drawing.Point(16, 203);
-            this.pnlRec.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
-            this.pnlRec.Name = "pnlRec";
-            this.pnlRec.Padding = new System.Windows.Forms.Padding(10, 6, 10, 6);
-            this.pnlRec.Size = new System.Drawing.Size(436, 48);
-            this.pnlRec.TabIndex = 6;
-
-            this.lblRec.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lblRec.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.lblRec.ForeColor = System.Drawing.Color.FromArgb(22, 101, 52);
-            this.lblRec.Location = new System.Drawing.Point(10, 6);
-            this.lblRec.Name = "lblRec";
-            this.lblRec.Size = new System.Drawing.Size(414, 34);
-            this.lblRec.TabIndex = 0;
-            this.lblRec.Text = "Truck Recommendation...";
-
-            this.lblTr.AutoSize = true;
-            this.lblTr.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblTr.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.lblTr.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblTr.Location = new System.Drawing.Point(16, 251);
-            this.lblTr.Name = "lblTr";
-            this.lblTr.Padding = new System.Windows.Forms.Padding(0, 4, 0, 2);
-            this.lblTr.Size = new System.Drawing.Size(104, 23);
-            this.lblTr.TabIndex = 7;
-            this.lblTr.Text = "Assigned Truck:";
-
-            this.cbTruck.Dock = System.Windows.Forms.DockStyle.Top;
-            this.cbTruck.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cbTruck.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.cbTruck.FormattingEnabled = true;
-            this.cbTruck.Location = new System.Drawing.Point(16, 274);
-            this.cbTruck.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
-            this.cbTruck.Name = "cbTruck";
-            this.cbTruck.Size = new System.Drawing.Size(436, 25);
-            this.cbTruck.TabIndex = 8;
-
-            this.lblDr.AutoSize = true;
-            this.lblDr.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblDr.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.lblDr.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblDr.Location = new System.Drawing.Point(16, 307);
-            this.lblDr.Name = "lblDr";
-            this.lblDr.Padding = new System.Windows.Forms.Padding(0, 4, 0, 2);
-            this.lblDr.Size = new System.Drawing.Size(107, 23);
-            this.lblDr.TabIndex = 9;
-            this.lblDr.Text = "Assigned Driver:";
-
-            this.cbDriver.Dock = System.Windows.Forms.DockStyle.Top;
-            this.cbDriver.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cbDriver.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.cbDriver.FormattingEnabled = true;
-            this.cbDriver.Location = new System.Drawing.Point(16, 330);
-            this.cbDriver.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
-            this.cbDriver.Name = "cbDriver";
-            this.cbDriver.Size = new System.Drawing.Size(436, 25);
-            this.cbDriver.TabIndex = 10;
-
-            this.lblAi.AutoSize = true;
-            this.lblAi.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblAi.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.lblAi.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblAi.Location = new System.Drawing.Point(16, 363);
-            this.lblAi.Name = "lblAi";
-            this.lblAi.Padding = new System.Windows.Forms.Padding(0, 4, 0, 2);
-            this.lblAi.Size = new System.Drawing.Size(262, 23);
-            this.lblAi.TabIndex = 11;
-            this.lblAi.Text = "Assigned Helper/Aides (Select 1 or more):";
-
-            this.pnlAidesSearchRow.Controls.Add(this.txtSearchAides);
-            this.pnlAidesSearchRow.Controls.Add(this.btnClearAides);
-            this.pnlAidesSearchRow.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlAidesSearchRow.Location = new System.Drawing.Point(16, 386);
-            this.pnlAidesSearchRow.Margin = new System.Windows.Forms.Padding(0, 2, 0, 4);
-            this.pnlAidesSearchRow.Name = "pnlAidesSearchRow";
-            this.pnlAidesSearchRow.Size = new System.Drawing.Size(436, 28);
-            this.pnlAidesSearchRow.TabIndex = 12;
-
-            this.txtSearchAides.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.txtSearchAides.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.txtSearchAides.Location = new System.Drawing.Point(0, 0);
-            this.txtSearchAides.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
-            this.txtSearchAides.Name = "txtSearchAides";
-            this.txtSearchAides.PlaceholderText = "🔍 Type aide name to filter...";
-            this.txtSearchAides.Size = new System.Drawing.Size(400, 26);
-            this.txtSearchAides.TabIndex = 0;
-
-            this.btnClearAides.BackColor = System.Drawing.Color.FromArgb(241, 245, 249);
-            this.btnClearAides.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnClearAides.Dock = System.Windows.Forms.DockStyle.Right;
-            this.btnClearAides.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(203, 213, 225);
-            this.btnClearAides.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnClearAides.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
-            this.btnClearAides.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-            this.btnClearAides.Location = new System.Drawing.Point(404, 0);
-            this.btnClearAides.Margin = new System.Windows.Forms.Padding(4, 0, 0, 0);
-            this.btnClearAides.Name = "btnClearAides";
-            this.btnClearAides.Size = new System.Drawing.Size(32, 28);
-            this.btnClearAides.TabIndex = 1;
-            this.btnClearAides.Text = "✖";
-            this.btnClearAides.UseVisualStyleBackColor = false;
-
-            this.flowAidesModule.AutoScroll = true;
-            this.flowAidesModule.BackColor = System.Drawing.Color.FromArgb(248, 250, 252);
-            this.flowAidesModule.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.flowAidesModule.Dock = System.Windows.Forms.DockStyle.Top;
-            this.flowAidesModule.Location = new System.Drawing.Point(16, 414);
-            this.flowAidesModule.Margin = new System.Windows.Forms.Padding(0, 0, 0, 4);
-            this.flowAidesModule.Name = "flowAidesModule";
-            this.flowAidesModule.Padding = new System.Windows.Forms.Padding(6);
-            this.flowAidesModule.Size = new System.Drawing.Size(436, 92);
-            this.flowAidesModule.TabIndex = 13;
-
-            this.lblAidesSummary.AutoSize = true;
-            this.lblAidesSummary.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblAidesSummary.Font = new System.Drawing.Font("Segoe UI Semibold", 8.5F, System.Drawing.FontStyle.Bold);
-            this.lblAidesSummary.ForeColor = System.Drawing.Color.FromArgb(22, 101, 52);
-            this.lblAidesSummary.Location = new System.Drawing.Point(16, 506);
-            this.lblAidesSummary.Margin = new System.Windows.Forms.Padding(0, 2, 0, 8);
-            this.lblAidesSummary.Name = "lblAidesSummary";
-            this.lblAidesSummary.Padding = new System.Windows.Forms.Padding(0, 2, 0, 4);
-            this.lblAidesSummary.Size = new System.Drawing.Size(120, 21);
-            this.lblAidesSummary.TabIndex = 14;
-            this.lblAidesSummary.Text = "✓ 0 Aides Selected";
-
-            this.tblDateTime.ColumnCount = 2;
-            this.tblDateTime.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tblDateTime.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tblDateTime.Controls.Add(this.lblDd, 0, 0);
-            this.tblDateTime.Controls.Add(this.lblDepartureTime, 1, 0);
-            this.tblDateTime.Controls.Add(this.dtpDispatchDate, 0, 1);
-            this.tblDateTime.Controls.Add(this.pnlTimeRow, 1, 1);
-            this.tblDateTime.Dock = System.Windows.Forms.DockStyle.Top;
-            this.tblDateTime.Location = new System.Drawing.Point(16, 527);
-            this.tblDateTime.Margin = new System.Windows.Forms.Padding(0, 4, 0, 4);
-            this.tblDateTime.Name = "tblDateTime";
-            this.tblDateTime.RowCount = 2;
-            this.tblDateTime.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            this.tblDateTime.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            this.tblDateTime.Size = new System.Drawing.Size(436, 56);
-            this.tblDateTime.TabIndex = 15;
-
-            this.lblDd.AutoSize = true;
-            this.lblDd.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lblDd.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.lblDd.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblDd.Location = new System.Drawing.Point(0, 0);
-            this.lblDd.Margin = new System.Windows.Forms.Padding(0, 0, 4, 2);
-            this.lblDd.Name = "lblDd";
-            this.lblDd.Size = new System.Drawing.Size(214, 17);
-            this.lblDd.TabIndex = 0;
-            this.lblDd.Text = "Dispatch Date:";
-
-            this.lblDepartureTime.AutoSize = true;
-            this.lblDepartureTime.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lblDepartureTime.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.lblDepartureTime.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblDepartureTime.Location = new System.Drawing.Point(222, 0);
-            this.lblDepartureTime.Margin = new System.Windows.Forms.Padding(4, 0, 0, 2);
-            this.lblDepartureTime.Name = "lblDepartureTime";
-            this.lblDepartureTime.Size = new System.Drawing.Size(214, 17);
-            this.lblDepartureTime.TabIndex = 1;
-            this.lblDepartureTime.Text = "Departure Time:";
-
-            this.dtpDispatchDate.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.dtpDispatchDate.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.dtpDispatchDate.Format = System.Windows.Forms.DateTimePickerFormat.Short;
-            this.dtpDispatchDate.Location = new System.Drawing.Point(0, 21);
-            this.dtpDispatchDate.Margin = new System.Windows.Forms.Padding(0, 2, 4, 6);
-            this.dtpDispatchDate.Name = "dtpDispatchDate";
-            this.dtpDispatchDate.Size = new System.Drawing.Size(214, 24);
-            this.dtpDispatchDate.TabIndex = 2;
-
-            this.pnlTimeRow.Controls.Add(this.cbDepartureTime);
-            this.pnlTimeRow.Controls.Add(this.btnPickAnalogTime);
-            this.pnlTimeRow.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pnlTimeRow.Location = new System.Drawing.Point(222, 21);
-            this.pnlTimeRow.Margin = new System.Windows.Forms.Padding(4, 2, 0, 6);
-            this.pnlTimeRow.Name = "pnlTimeRow";
-            this.pnlTimeRow.Size = new System.Drawing.Size(214, 26);
-            this.pnlTimeRow.TabIndex = 3;
-
-            this.cbDepartureTime.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.cbDepartureTime.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDown;
-            this.cbDepartureTime.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.cbDepartureTime.FormattingEnabled = true;
-            this.cbDepartureTime.Items.AddRange(new object[] {
-            "06:00 AM",
-            "08:00 AM",
-            "10:00 AM",
-            "01:00 PM",
-            "04:00 PM",
-            "08:00 PM"});
-            this.cbDepartureTime.Location = new System.Drawing.Point(0, 0);
-            this.cbDepartureTime.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
-            this.cbDepartureTime.Name = "cbDepartureTime";
-            this.cbDepartureTime.Size = new System.Drawing.Size(174, 25);
-            this.cbDepartureTime.TabIndex = 0;
-            this.cbDepartureTime.Text = "08:00 AM";
-
-            this.btnPickAnalogTime.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnPickAnalogTime.Dock = System.Windows.Forms.DockStyle.Right;
-            this.btnPickAnalogTime.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.btnPickAnalogTime.Location = new System.Drawing.Point(178, 0);
-            this.btnPickAnalogTime.Margin = new System.Windows.Forms.Padding(4, 0, 0, 0);
-            this.btnPickAnalogTime.Name = "btnPickAnalogTime";
-            this.btnPickAnalogTime.Size = new System.Drawing.Size(36, 26);
-            this.btnPickAnalogTime.TabIndex = 1;
-            this.btnPickAnalogTime.Text = "🕒";
-            this.btnPickAnalogTime.UseVisualStyleBackColor = true;
-
-            this.lblSt.AutoSize = true;
-            this.lblSt.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblSt.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.lblSt.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblSt.Location = new System.Drawing.Point(16, 583);
-            this.lblSt.Name = "lblSt";
-            this.lblSt.Padding = new System.Windows.Forms.Padding(0, 4, 0, 2);
-            this.lblSt.Size = new System.Drawing.Size(104, 23);
-            this.lblSt.TabIndex = 16;
-            this.lblSt.Text = "Dispatch Status:";
-
-            this.cbStatus.Dock = System.Windows.Forms.DockStyle.Top;
-            this.cbStatus.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cbStatus.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.cbStatus.FormattingEnabled = true;
-            this.cbStatus.Items.AddRange(new object[] {
-            "Pending",
-            "In Transit",
-            "Completed",
-            "Cancelled"});
-            this.cbStatus.Location = new System.Drawing.Point(16, 606);
-            this.cbStatus.Margin = new System.Windows.Forms.Padding(0, 0, 0, 10);
-            this.cbStatus.Name = "cbStatus";
-            this.cbStatus.Size = new System.Drawing.Size(436, 25);
-            this.cbStatus.TabIndex = 17;
-
-            this.btnSave.BackColor = System.Drawing.Color.FromArgb(185, 28, 28);
-            this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnSave.Dock = System.Windows.Forms.DockStyle.Top;
-            this.btnSave.FlatAppearance.BorderSize = 0;
-            this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnSave.Font = new System.Drawing.Font("Segoe UI Semibold", 10F, System.Drawing.FontStyle.Bold);
-            this.btnSave.ForeColor = System.Drawing.Color.White;
-            this.btnSave.Location = new System.Drawing.Point(16, 641);
-            this.btnSave.Margin = new System.Windows.Forms.Padding(0, 4, 0, 8);
-            this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(436, 40);
-            this.btnSave.TabIndex = 18;
-            this.btnSave.Text = "Save Dispatch Order";
-            this.btnSave.UseVisualStyleBackColor = false;
-            this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
-
-            this.tblUpdateDelete.ColumnCount = 2;
-            this.tblUpdateDelete.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tblUpdateDelete.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tblUpdateDelete.Controls.Add(this.btnUpdate, 0, 0);
-            this.tblUpdateDelete.Controls.Add(this.btnDelete, 1, 0);
-            this.tblUpdateDelete.Dock = System.Windows.Forms.DockStyle.Top;
-            this.tblUpdateDelete.Location = new System.Drawing.Point(16, 689);
-            this.tblUpdateDelete.Margin = new System.Windows.Forms.Padding(0, 4, 0, 6);
-            this.tblUpdateDelete.Name = "tblUpdateDelete";
-            this.tblUpdateDelete.RowCount = 1;
-            this.tblUpdateDelete.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblUpdateDelete.Size = new System.Drawing.Size(436, 42);
-            this.tblUpdateDelete.TabIndex = 19;
-
-            this.btnUpdate.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnUpdate.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnUpdate.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.btnUpdate.Location = new System.Drawing.Point(0, 0);
-            this.btnUpdate.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
-            this.btnUpdate.Name = "btnUpdate";
-            this.btnUpdate.Size = new System.Drawing.Size(214, 42);
-            this.btnUpdate.TabIndex = 0;
-            this.btnUpdate.Text = "Update";
-            this.btnUpdate.UseVisualStyleBackColor = true;
-            this.btnUpdate.Click += new System.EventHandler(this.BtnUpdate_Click);
-
-            this.btnDelete.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnDelete.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnDelete.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.btnDelete.Location = new System.Drawing.Point(222, 0);
-            this.btnDelete.Margin = new System.Windows.Forms.Padding(4, 0, 0, 0);
-            this.btnDelete.Name = "btnDelete";
-            this.btnDelete.Size = new System.Drawing.Size(214, 42);
-            this.btnDelete.TabIndex = 1;
-            this.btnDelete.Text = "Delete";
-            this.btnDelete.UseVisualStyleBackColor = true;
-            this.btnDelete.Click += new System.EventHandler(this.BtnDelete_Click);
-
-            this.btnClear.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnClear.Dock = System.Windows.Forms.DockStyle.Top;
-            this.btnClear.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.btnClear.Location = new System.Drawing.Point(16, 737);
-            this.btnClear.Margin = new System.Windows.Forms.Padding(0, 4, 0, 6);
-            this.btnClear.Name = "btnClear";
-            this.btnClear.Size = new System.Drawing.Size(436, 36);
-            this.btnClear.TabIndex = 20;
-            this.btnClear.Text = "Clear Form";
-            this.btnClear.UseVisualStyleBackColor = true;
-            this.btnClear.Click += new System.EventHandler(this.BtnClear_Click);
-
-            this.pnlGridCard.BackColor = System.Drawing.Color.White;
-            this.pnlGridCard.Controls.Add(this.gridDispatch);
-            this.pnlGridCard.Controls.Add(this.pnlSummary);
-            this.pnlGridCard.Controls.Add(this.pnlGridHeaderBar);
-            this.pnlGridCard.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pnlGridCard.Location = new System.Drawing.Point(580, 0);
-            this.pnlGridCard.Margin = new System.Windows.Forms.Padding(0);
-            this.pnlGridCard.MinimumSize = new System.Drawing.Size(480, 300);
-            this.pnlGridCard.Name = "pnlGridCard";
-            this.pnlGridCard.Padding = new System.Windows.Forms.Padding(16);
-            this.pnlGridCard.Size = new System.Drawing.Size(908, 768);
-            this.pnlGridCard.TabIndex = 1;
-
-            this.pnlGridHeaderBar.AutoSize = true;
-            this.pnlGridHeaderBar.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.pnlGridHeaderBar.Controls.Add(this.pnlGridActionsFlow);
-            this.pnlGridHeaderBar.Controls.Add(this.lblGridHeader);
-            this.pnlGridHeaderBar.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlGridHeaderBar.Location = new System.Drawing.Point(16, 16);
-            this.pnlGridHeaderBar.Name = "pnlGridHeaderBar";
-            this.pnlGridHeaderBar.Padding = new System.Windows.Forms.Padding(0, 0, 0, 8);
-            this.pnlGridHeaderBar.Size = new System.Drawing.Size(876, 44);
-            this.pnlGridHeaderBar.TabIndex = 0;
-
-            this.lblGridHeader.AutoSize = true;
-            this.lblGridHeader.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblGridHeader.Font = new System.Drawing.Font("Segoe UI Semibold", 11F, System.Drawing.FontStyle.Bold);
-            this.lblGridHeader.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblGridHeader.Location = new System.Drawing.Point(0, 0);
-            this.lblGridHeader.Name = "lblGridHeader";
-            this.lblGridHeader.Padding = new System.Windows.Forms.Padding(0, 0, 0, 8);
-            this.lblGridHeader.Size = new System.Drawing.Size(155, 28);
-            this.lblGridHeader.TabIndex = 0;
-            this.lblGridHeader.Text = "Active Dispatches List";
-
-            this.pnlGridActionsFlow.AutoSize = true;
-            this.pnlGridActionsFlow.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.pnlGridActionsFlow.Controls.Add(this.txtGridSearch);
-            this.pnlGridActionsFlow.Controls.Add(this.btnClearSearch);
-            this.pnlGridActionsFlow.Controls.Add(this.btnPrint);
-            this.pnlGridActionsFlow.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlGridActionsFlow.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
-            this.pnlGridActionsFlow.Location = new System.Drawing.Point(0, 28);
-            this.pnlGridActionsFlow.Name = "pnlGridActionsFlow";
-            this.pnlGridActionsFlow.Size = new System.Drawing.Size(876, 36);
-            this.pnlGridActionsFlow.TabIndex = 1;
-            this.pnlGridActionsFlow.WrapContents = true;
-
-            this.txtGridSearch.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.txtGridSearch.Location = new System.Drawing.Point(0, 4);
-            this.txtGridSearch.Margin = new System.Windows.Forms.Padding(0, 4, 4, 0);
-            this.txtGridSearch.Name = "txtGridSearch";
-            this.txtGridSearch.PlaceholderText = "🔍 Search dispatch #, driver, truck...";
-            this.txtGridSearch.Size = new System.Drawing.Size(220, 24);
-            this.txtGridSearch.TabIndex = 0;
-            this.txtGridSearch.TextChanged += new System.EventHandler(this.TxtGridSearch_TextChanged);
-
-            this.btnClearSearch.BackColor = System.Drawing.Color.FromArgb(241, 245, 249);
-            this.btnClearSearch.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnClearSearch.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(203, 213, 225);
-            this.btnClearSearch.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnClearSearch.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
-            this.btnClearSearch.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-            this.btnClearSearch.Location = new System.Drawing.Point(228, 4);
-            this.btnClearSearch.Margin = new System.Windows.Forms.Padding(4, 4, 8, 0);
-            this.btnClearSearch.Name = "btnClearSearch";
-            this.btnClearSearch.Size = new System.Drawing.Size(28, 26);
-            this.btnClearSearch.TabIndex = 1;
-            this.btnClearSearch.Text = "✖";
-            this.btnClearSearch.UseVisualStyleBackColor = false;
-            this.btnClearSearch.Click += new System.EventHandler(this.BtnClearSearch_Click);
-
-            this.btnPrint.BackColor = System.Drawing.Color.FromArgb(71, 85, 105);
-            this.btnPrint.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnPrint.FlatAppearance.BorderSize = 0;
-            this.btnPrint.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnPrint.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.btnPrint.ForeColor = System.Drawing.Color.White;
-            this.btnPrint.Location = new System.Drawing.Point(268, 2);
-            this.btnPrint.Margin = new System.Windows.Forms.Padding(4, 2, 0, 0);
-            this.btnPrint.Name = "btnPrint";
-            this.btnPrint.Size = new System.Drawing.Size(160, 30);
-            this.btnPrint.TabIndex = 2;
-            this.btnPrint.Text = "🖨️ Print Report";
-            this.btnPrint.UseVisualStyleBackColor = false;
-            this.btnPrint.Click += new System.EventHandler(this.BtnPrint_Click);
-
-            this.gridDispatch.AllowUserToAddRows = false;
-            this.gridDispatch.AllowUserToDeleteRows = false;
-            this.gridDispatch.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
-            this.gridDispatch.BackgroundColor = System.Drawing.Color.White;
-            this.gridDispatch.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.gridDispatch.ColumnHeadersHeight = 40;
-            this.gridDispatch.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.gridDispatch.EnableHeadersVisualStyles = false;
-            this.gridDispatch.Location = new System.Drawing.Point(16, 60);
-            this.gridDispatch.MultiSelect = false;
-            this.gridDispatch.Name = "gridDispatch";
-            this.gridDispatch.ReadOnly = true;
-            this.gridDispatch.RowHeadersVisible = false;
-            this.gridDispatch.RowTemplate.Height = 36;
-            this.gridDispatch.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.gridDispatch.Size = new System.Drawing.Size(876, 654);
-            this.gridDispatch.TabIndex = 1;
-            this.gridDispatch.SelectionChanged += new System.EventHandler(this.GridDispatch_SelectionChanged);
-
-            this.pnlSummary.BackColor = System.Drawing.Color.FromArgb(248, 250, 252);
-            this.pnlSummary.Controls.Add(this.lblSummary);
-            this.pnlSummary.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.pnlSummary.Location = new System.Drawing.Point(16, 714);
-            this.pnlSummary.Name = "pnlSummary";
-            this.pnlSummary.Padding = new System.Windows.Forms.Padding(12, 8, 12, 8);
-            this.pnlSummary.Size = new System.Drawing.Size(876, 38);
-            this.pnlSummary.TabIndex = 2;
-
-            this.lblSummary.AutoSize = true;
-            this.lblSummary.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lblSummary.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.lblSummary.ForeColor = System.Drawing.Color.FromArgb(51, 65, 85);
-            this.lblSummary.Location = new System.Drawing.Point(12, 8);
-            this.lblSummary.Name = "lblSummary";
-            this.lblSummary.Size = new System.Drawing.Size(46, 17);
-            this.lblSummary.TabIndex = 0;
-            this.lblSummary.Text = "Ready";
-
-            this.Controls.Add(this.tblMasterContent);
-            this.Controls.Add(this.lblTitle);
-
-            this.tblMasterContent.ResumeLayout(false);
-            this.pnlForm.ResumeLayout(false);
-            this.pnlForm.PerformLayout();
-            this.tblCrates.ResumeLayout(false);
-            this.tblCrates.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.numGCrate)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numECrate)).EndInit();
-            this.pnlRec.ResumeLayout(false);
-            this.pnlAidesSearchRow.ResumeLayout(false);
-            this.pnlAidesSearchRow.PerformLayout();
-            this.tblDateTime.ResumeLayout(false);
-            this.tblDateTime.PerformLayout();
-            this.pnlTimeRow.ResumeLayout(false);
-            this.tblUpdateDelete.ResumeLayout(false);
-            this.pnlGridCard.ResumeLayout(false);
-            this.pnlGridHeaderBar.ResumeLayout(false);
-            this.pnlGridHeaderBar.PerformLayout();
-            this.pnlGridActionsFlow.ResumeLayout(false);
-            this.pnlGridActionsFlow.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.gridDispatch)).EndInit();
-            this.pnlSummary.ResumeLayout(false);
-            this.pnlSummary.PerformLayout();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            tblMasterContent = new TableLayoutPanel();
+            pnlForm = new Panel();
+            pnlFormBody = new Panel();
+            pnlStatusSpacer = new Panel();
+            cbStatus = new ComboBox();
+            lblSt = new Label();
+            tblDateTime = new TableLayoutPanel();
+            lblDd = new Label();
+            lblDepartureTime = new Label();
+            dtpDispatchDate = new DateTimePicker();
+            pnlTimeRow = new Panel();
+            cbDepartureTime = new ComboBox();
+            btnPickAnalogTime = new Button();
+            lblAidesSummary = new Label();
+            flowAidesModule = new FlowLayoutPanel();
+            pnlAidesSearchRow = new Panel();
+            txtSearchAides = new TextBox();
+            btnClearAides = new Button();
+            lblAi = new Label();
+            cbDriver = new ComboBox();
+            lblDr = new Label();
+            cbTruck = new ComboBox();
+            lblTr = new Label();
+            pnlRec = new Panel();
+            lblRec = new Label();
+            txtTotalCrates = new TextBox();
+            lblTotalCrates = new Label();
+            tblCrates = new TableLayoutPanel();
+            lblGCrate = new Label();
+            lblECrate = new Label();
+            numGCrate = new NumericUpDown();
+            numECrate = new NumericUpDown();
+            tblCargoPeak = new TableLayoutPanel();
+            lblCargoType = new Label();
+            lblPeakHeader = new Label();
+            cbCargoType = new ComboBox();
+            chkIsPeak = new CheckBox();
+            lblDestHint = new Label();
+            cbDestination = new ComboBox();
+            lblDest = new Label();
+            cbClient = new ComboBox();
+            lblClient = new Label();
+            txtDispatchNumber = new TextBox();
+            lblDispatchNumber = new Label();
+            pnlFormActionsBar = new Panel();
+            btnClear = new Button();
+            pnlUpdateSpacer = new Panel();
+            tblUpdateDelete = new TableLayoutPanel();
+            btnUpdate = new Button();
+            btnDelete = new Button();
+            pnlSaveSpacer = new Panel();
+            btnSave = new Button();
+            pnlFormHeaderBar = new Panel();
+            lblFormHeader = new Label();
+            btnCloseForm = new Button();
+            pnlGridCard = new Panel();
+            gridDispatch = new DataGridView();
+            pnlSummary = new Panel();
+            lblSummary = new Label();
+            pnlGridHeaderBar = new Panel();
+            pnlGridActionsFlow = new FlowLayoutPanel();
+            txtGridSearch = new TextBox();
+            btnClearSearch = new Button();
+            btnPrint = new Button();
+            lblGridHeader = new Label();
+            tblMasterContent.SuspendLayout();
+            pnlForm.SuspendLayout();
+            pnlFormBody.SuspendLayout();
+            tblDateTime.SuspendLayout();
+            pnlTimeRow.SuspendLayout();
+            pnlAidesSearchRow.SuspendLayout();
+            pnlRec.SuspendLayout();
+            tblCrates.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)numGCrate).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)numECrate).BeginInit();
+            tblCargoPeak.SuspendLayout();
+            pnlFormActionsBar.SuspendLayout();
+            tblUpdateDelete.SuspendLayout();
+            pnlFormHeaderBar.SuspendLayout();
+            pnlGridCard.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)gridDispatch).BeginInit();
+            pnlSummary.SuspendLayout();
+            pnlGridHeaderBar.SuspendLayout();
+            pnlGridActionsFlow.SuspendLayout();
+            SuspendLayout();
+            // 
+            // tblMasterContent
+            // 
+            tblMasterContent.ColumnCount = 2;
+            tblMasterContent.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 480F));
+            tblMasterContent.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tblMasterContent.Controls.Add(pnlForm, 0, 0);
+            tblMasterContent.Controls.Add(pnlGridCard, 1, 0);
+            tblMasterContent.Dock = DockStyle.Fill;
+            tblMasterContent.Location = new Point(16, 16);
+            tblMasterContent.Name = "tblMasterContent";
+            tblMasterContent.RowCount = 1;
+            tblMasterContent.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tblMasterContent.Size = new Size(1388, 808);
+            tblMasterContent.TabIndex = 1;
+            // 
+            // pnlForm
+            // 
+            pnlForm.BackColor = Color.White;
+            pnlForm.Controls.Add(pnlFormBody);
+            pnlForm.Controls.Add(pnlFormActionsBar);
+            pnlForm.Controls.Add(pnlFormHeaderBar);
+            pnlForm.Dock = DockStyle.Fill;
+            pnlForm.Location = new Point(0, 0);
+            pnlForm.Margin = new Padding(0, 0, 12, 0);
+            pnlForm.Name = "pnlForm";
+            pnlForm.Size = new Size(468, 808);
+            pnlForm.TabIndex = 0;
+            // 
+            // pnlFormBody
+            // 
+            pnlFormBody.AutoScroll = true;
+            pnlFormBody.BackColor = Color.White;
+            pnlFormBody.Controls.Add(pnlStatusSpacer);
+            pnlFormBody.Controls.Add(cbStatus);
+            pnlFormBody.Controls.Add(lblSt);
+            pnlFormBody.Controls.Add(tblDateTime);
+            pnlFormBody.Controls.Add(lblAidesSummary);
+            pnlFormBody.Controls.Add(flowAidesModule);
+            pnlFormBody.Controls.Add(pnlAidesSearchRow);
+            pnlFormBody.Controls.Add(lblAi);
+            pnlFormBody.Controls.Add(cbDriver);
+            pnlFormBody.Controls.Add(lblDr);
+            pnlFormBody.Controls.Add(cbTruck);
+            pnlFormBody.Controls.Add(lblTr);
+            pnlFormBody.Controls.Add(pnlRec);
+            pnlFormBody.Controls.Add(txtTotalCrates);
+            pnlFormBody.Controls.Add(lblTotalCrates);
+            pnlFormBody.Controls.Add(tblCrates);
+            pnlFormBody.Controls.Add(tblCargoPeak);
+            pnlFormBody.Controls.Add(lblDestHint);
+            pnlFormBody.Controls.Add(cbDestination);
+            pnlFormBody.Controls.Add(lblDest);
+            pnlFormBody.Controls.Add(cbClient);
+            pnlFormBody.Controls.Add(lblClient);
+            pnlFormBody.Controls.Add(txtDispatchNumber);
+            pnlFormBody.Controls.Add(lblDispatchNumber);
+            pnlFormBody.Dock = DockStyle.Fill;
+            pnlFormBody.Location = new Point(0, 38);
+            pnlFormBody.Name = "pnlFormBody";
+            pnlFormBody.Padding = new Padding(16, 4, 16, 8);
+            pnlFormBody.Size = new Size(468, 620);
+            pnlFormBody.TabIndex = 1;
+            // 
+            // pnlStatusSpacer
+            // 
+            pnlStatusSpacer.Dock = DockStyle.Top;
+            pnlStatusSpacer.Location = new Point(16, 822);
+            pnlStatusSpacer.Name = "pnlStatusSpacer";
+            pnlStatusSpacer.Size = new Size(415, 10);
+            pnlStatusSpacer.TabIndex = 18;
+            // 
+            // cbStatus
+            // 
+            cbStatus.Dock = DockStyle.Top;
+            cbStatus.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbStatus.Font = new Font("Segoe UI", 9.5F);
+            cbStatus.FormattingEnabled = true;
+            cbStatus.Items.AddRange(new object[] { "Pending", "In Transit", "Delayed", "Completed", "Cancelled" });
+            cbStatus.Location = new Point(16, 793);
+            cbStatus.Margin = new Padding(0, 0, 0, 8);
+            cbStatus.Name = "cbStatus";
+            cbStatus.Size = new Size(415, 29);
+            cbStatus.TabIndex = 17;
+            // 
+            // lblSt
+            // 
+            lblSt.AutoSize = true;
+            lblSt.Dock = DockStyle.Top;
+            lblSt.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblSt.ForeColor = Color.FromArgb(30, 41, 59);
+            lblSt.Location = new Point(16, 766);
+            lblSt.Name = "lblSt";
+            lblSt.Padding = new Padding(0, 4, 0, 2);
+            lblSt.Size = new Size(126, 27);
+            lblSt.TabIndex = 16;
+            lblSt.Text = "Dispatch Status:";
+            // 
+            // tblDateTime
+            // 
+            tblDateTime.ColumnCount = 2;
+            tblDateTime.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblDateTime.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblDateTime.Controls.Add(lblDd, 0, 0);
+            tblDateTime.Controls.Add(lblDepartureTime, 1, 0);
+            tblDateTime.Controls.Add(dtpDispatchDate, 0, 1);
+            tblDateTime.Controls.Add(pnlTimeRow, 1, 1);
+            tblDateTime.Dock = DockStyle.Top;
+            tblDateTime.Location = new Point(16, 710);
+            tblDateTime.Margin = new Padding(0, 4, 0, 4);
+            tblDateTime.Name = "tblDateTime";
+            tblDateTime.RowCount = 2;
+            tblDateTime.RowStyles.Add(new RowStyle());
+            tblDateTime.RowStyles.Add(new RowStyle());
+            tblDateTime.Size = new Size(415, 56);
+            tblDateTime.TabIndex = 15;
+            // 
+            // lblDd
+            // 
+            lblDd.AutoSize = true;
+            lblDd.Dock = DockStyle.Fill;
+            lblDd.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblDd.ForeColor = Color.FromArgb(30, 41, 59);
+            lblDd.Location = new Point(0, 0);
+            lblDd.Margin = new Padding(0, 0, 4, 2);
+            lblDd.Name = "lblDd";
+            lblDd.Size = new Size(203, 21);
+            lblDd.TabIndex = 0;
+            lblDd.Text = "Dispatch Date:";
+            // 
+            // lblDepartureTime
+            // 
+            lblDepartureTime.AutoSize = true;
+            lblDepartureTime.Dock = DockStyle.Fill;
+            lblDepartureTime.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblDepartureTime.ForeColor = Color.FromArgb(30, 41, 59);
+            lblDepartureTime.Location = new Point(211, 0);
+            lblDepartureTime.Margin = new Padding(4, 0, 0, 2);
+            lblDepartureTime.Name = "lblDepartureTime";
+            lblDepartureTime.Size = new Size(204, 21);
+            lblDepartureTime.TabIndex = 1;
+            lblDepartureTime.Text = "Departure Time:";
+            // 
+            // dtpDispatchDate
+            // 
+            dtpDispatchDate.Dock = DockStyle.Fill;
+            dtpDispatchDate.Font = new Font("Segoe UI", 9.5F);
+            dtpDispatchDate.Format = DateTimePickerFormat.Short;
+            dtpDispatchDate.Location = new Point(0, 25);
+            dtpDispatchDate.Margin = new Padding(0, 2, 4, 6);
+            dtpDispatchDate.Name = "dtpDispatchDate";
+            dtpDispatchDate.Size = new Size(203, 29);
+            dtpDispatchDate.TabIndex = 2;
+            // 
+            // pnlTimeRow
+            // 
+            pnlTimeRow.Controls.Add(cbDepartureTime);
+            pnlTimeRow.Controls.Add(btnPickAnalogTime);
+            pnlTimeRow.Dock = DockStyle.Fill;
+            pnlTimeRow.Location = new Point(211, 25);
+            pnlTimeRow.Margin = new Padding(4, 2, 0, 6);
+            pnlTimeRow.Name = "pnlTimeRow";
+            pnlTimeRow.Size = new Size(204, 29);
+            pnlTimeRow.TabIndex = 3;
+            // 
+            // cbDepartureTime
+            // 
+            cbDepartureTime.Dock = DockStyle.Fill;
+            cbDepartureTime.Font = new Font("Segoe UI", 9.5F);
+            cbDepartureTime.FormattingEnabled = true;
+            cbDepartureTime.Items.AddRange(new object[] { "06:00 AM", "08:00 AM", "10:00 AM", "01:00 PM", "04:00 PM", "08:00 PM" });
+            cbDepartureTime.Location = new Point(0, 0);
+            cbDepartureTime.Margin = new Padding(0, 0, 4, 0);
+            cbDepartureTime.Name = "cbDepartureTime";
+            cbDepartureTime.Size = new Size(168, 29);
+            cbDepartureTime.TabIndex = 0;
+            cbDepartureTime.Text = "08:00 AM";
+            // 
+            // btnPickAnalogTime
+            // 
+            btnPickAnalogTime.Cursor = Cursors.Hand;
+            btnPickAnalogTime.Dock = DockStyle.Right;
+            btnPickAnalogTime.Font = new Font("Segoe UI", 9F);
+            btnPickAnalogTime.Location = new Point(168, 0);
+            btnPickAnalogTime.Margin = new Padding(4, 0, 0, 0);
+            btnPickAnalogTime.Name = "btnPickAnalogTime";
+            btnPickAnalogTime.Size = new Size(36, 29);
+            btnPickAnalogTime.TabIndex = 1;
+            btnPickAnalogTime.Text = "🕒";
+            btnPickAnalogTime.UseVisualStyleBackColor = true;
+            // 
+            // lblAidesSummary
+            // 
+            lblAidesSummary.AutoSize = true;
+            lblAidesSummary.Dock = DockStyle.Top;
+            lblAidesSummary.Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold);
+            lblAidesSummary.ForeColor = Color.FromArgb(22, 101, 52);
+            lblAidesSummary.Location = new Point(16, 684);
+            lblAidesSummary.Margin = new Padding(0, 2, 0, 8);
+            lblAidesSummary.Name = "lblAidesSummary";
+            lblAidesSummary.Padding = new Padding(0, 2, 0, 4);
+            lblAidesSummary.Size = new Size(135, 26);
+            lblAidesSummary.TabIndex = 14;
+            lblAidesSummary.Text = "✓ 0 Aides Selected";
+            // 
+            // flowAidesModule
+            // 
+            flowAidesModule.AutoScroll = true;
+            flowAidesModule.BackColor = Color.FromArgb(248, 250, 252);
+            flowAidesModule.BorderStyle = BorderStyle.FixedSingle;
+            flowAidesModule.Dock = DockStyle.Top;
+            flowAidesModule.Location = new Point(16, 592);
+            flowAidesModule.Margin = new Padding(0, 0, 0, 4);
+            flowAidesModule.Name = "flowAidesModule";
+            flowAidesModule.Padding = new Padding(6);
+            flowAidesModule.Size = new Size(415, 92);
+            flowAidesModule.TabIndex = 13;
+            // 
+            // pnlAidesSearchRow
+            // 
+            pnlAidesSearchRow.Controls.Add(txtSearchAides);
+            pnlAidesSearchRow.Controls.Add(btnClearAides);
+            pnlAidesSearchRow.Dock = DockStyle.Top;
+            pnlAidesSearchRow.Location = new Point(16, 564);
+            pnlAidesSearchRow.Margin = new Padding(0, 2, 0, 4);
+            pnlAidesSearchRow.Name = "pnlAidesSearchRow";
+            pnlAidesSearchRow.Size = new Size(415, 28);
+            pnlAidesSearchRow.TabIndex = 12;
+            // 
+            // txtSearchAides
+            // 
+            txtSearchAides.Dock = DockStyle.Fill;
+            txtSearchAides.Font = new Font("Segoe UI", 9F);
+            txtSearchAides.Location = new Point(0, 0);
+            txtSearchAides.Margin = new Padding(0, 0, 4, 0);
+            txtSearchAides.MaxLength = 100;
+            txtSearchAides.Name = "txtSearchAides";
+            txtSearchAides.PlaceholderText = "🔍 Type aide name to filter...";
+            txtSearchAides.Size = new Size(383, 27);
+            txtSearchAides.TabIndex = 0;
+            // 
+            // btnClearAides
+            // 
+            btnClearAides.BackColor = Color.FromArgb(241, 245, 249);
+            btnClearAides.Cursor = Cursors.Hand;
+            btnClearAides.Dock = DockStyle.Right;
+            btnClearAides.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            btnClearAides.FlatStyle = FlatStyle.Flat;
+            btnClearAides.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
+            btnClearAides.ForeColor = Color.FromArgb(100, 116, 139);
+            btnClearAides.Location = new Point(383, 0);
+            btnClearAides.Margin = new Padding(4, 0, 0, 0);
+            btnClearAides.Name = "btnClearAides";
+            btnClearAides.Size = new Size(32, 28);
+            btnClearAides.TabIndex = 1;
+            btnClearAides.Text = "✖";
+            btnClearAides.UseVisualStyleBackColor = false;
+            // 
+            // lblAi
+            // 
+            lblAi.AutoSize = true;
+            lblAi.Dock = DockStyle.Top;
+            lblAi.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblAi.ForeColor = Color.FromArgb(30, 41, 59);
+            lblAi.Location = new Point(16, 537);
+            lblAi.Name = "lblAi";
+            lblAi.Padding = new Padding(0, 4, 0, 2);
+            lblAi.Size = new Size(315, 27);
+            lblAi.TabIndex = 11;
+            lblAi.Text = "Assigned Helper/Aides (Select 1 or more):";
+            // 
+            // cbDriver
+            // 
+            cbDriver.Dock = DockStyle.Top;
+            cbDriver.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbDriver.Font = new Font("Segoe UI", 9.5F);
+            cbDriver.FormattingEnabled = true;
+            cbDriver.Location = new Point(16, 508);
+            cbDriver.Margin = new Padding(0, 0, 0, 8);
+            cbDriver.Name = "cbDriver";
+            cbDriver.Size = new Size(415, 29);
+            cbDriver.TabIndex = 10;
+            // 
+            // lblDr
+            // 
+            lblDr.AutoSize = true;
+            lblDr.Dock = DockStyle.Top;
+            lblDr.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblDr.ForeColor = Color.FromArgb(30, 41, 59);
+            lblDr.Location = new Point(16, 481);
+            lblDr.Name = "lblDr";
+            lblDr.Padding = new Padding(0, 4, 0, 2);
+            lblDr.Size = new Size(130, 27);
+            lblDr.TabIndex = 9;
+            lblDr.Text = "Assigned Driver:";
+            // 
+            // cbTruck
+            // 
+            cbTruck.Dock = DockStyle.Top;
+            cbTruck.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbTruck.Font = new Font("Segoe UI", 9.5F);
+            cbTruck.FormattingEnabled = true;
+            cbTruck.Location = new Point(16, 452);
+            cbTruck.Margin = new Padding(0, 0, 0, 8);
+            cbTruck.Name = "cbTruck";
+            cbTruck.Size = new Size(415, 29);
+            cbTruck.TabIndex = 8;
+            // 
+            // lblTr
+            // 
+            lblTr.AutoSize = true;
+            lblTr.Dock = DockStyle.Top;
+            lblTr.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblTr.ForeColor = Color.FromArgb(30, 41, 59);
+            lblTr.Location = new Point(16, 425);
+            lblTr.Name = "lblTr";
+            lblTr.Padding = new Padding(0, 4, 0, 2);
+            lblTr.Size = new Size(125, 27);
+            lblTr.TabIndex = 7;
+            lblTr.Text = "Assigned Truck:";
+            // 
+            // pnlRec
+            // 
+            pnlRec.BackColor = Color.FromArgb(240, 253, 244);
+            pnlRec.BorderStyle = BorderStyle.FixedSingle;
+            pnlRec.Controls.Add(lblRec);
+            pnlRec.Dock = DockStyle.Top;
+            pnlRec.Location = new Point(16, 367);
+            pnlRec.Margin = new Padding(0, 0, 0, 8);
+            pnlRec.Name = "pnlRec";
+            pnlRec.Padding = new Padding(10, 6, 10, 6);
+            pnlRec.Size = new Size(415, 58);
+            pnlRec.TabIndex = 6;
+            // 
+            // lblRec
+            // 
+            lblRec.AutoEllipsis = true;
+            lblRec.Dock = DockStyle.Fill;
+            lblRec.Font = new Font("Segoe UI", 9F);
+            lblRec.ForeColor = Color.FromArgb(22, 101, 52);
+            lblRec.Location = new Point(10, 6);
+            lblRec.Name = "lblRec";
+            lblRec.Size = new Size(393, 44);
+            lblRec.TabIndex = 0;
+            lblRec.Text = "Truck Recommendation...";
+            // 
+            // txtTotalCrates
+            // 
+            txtTotalCrates.Dock = DockStyle.Top;
+            txtTotalCrates.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            txtTotalCrates.Location = new Point(16, 338);
+            txtTotalCrates.Margin = new Padding(0, 0, 0, 8);
+            txtTotalCrates.Name = "txtTotalCrates";
+            txtTotalCrates.ReadOnly = true;
+            txtTotalCrates.Size = new Size(415, 29);
+            txtTotalCrates.TabIndex = 5;
+            txtTotalCrates.Text = "150 Crates";
+            // 
+            // lblTotalCrates
+            // 
+            lblTotalCrates.AutoSize = true;
+            lblTotalCrates.Dock = DockStyle.Top;
+            lblTotalCrates.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblTotalCrates.ForeColor = Color.FromArgb(30, 41, 59);
+            lblTotalCrates.Location = new Point(16, 311);
+            lblTotalCrates.Name = "lblTotalCrates";
+            lblTotalCrates.Padding = new Padding(0, 4, 0, 2);
+            lblTotalCrates.Size = new Size(179, 27);
+            lblTotalCrates.TabIndex = 4;
+            lblTotalCrates.Text = "Total Combined Crates:";
+            // 
+            // tblCrates
+            // 
+            tblCrates.ColumnCount = 2;
+            tblCrates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblCrates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblCrates.Controls.Add(lblGCrate, 0, 0);
+            tblCrates.Controls.Add(lblECrate, 1, 0);
+            tblCrates.Controls.Add(numGCrate, 0, 1);
+            tblCrates.Controls.Add(numECrate, 1, 1);
+            tblCrates.Dock = DockStyle.Top;
+            tblCrates.Location = new Point(16, 255);
+            tblCrates.Margin = new Padding(0, 4, 0, 4);
+            tblCrates.Name = "tblCrates";
+            tblCrates.RowCount = 2;
+            tblCrates.RowStyles.Add(new RowStyle());
+            tblCrates.RowStyles.Add(new RowStyle());
+            tblCrates.Size = new Size(415, 56);
+            tblCrates.TabIndex = 3;
+            // 
+            // lblGCrate
+            // 
+            lblGCrate.AutoSize = true;
+            lblGCrate.Dock = DockStyle.Fill;
+            lblGCrate.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblGCrate.ForeColor = Color.FromArgb(30, 41, 59);
+            lblGCrate.Location = new Point(0, 0);
+            lblGCrate.Margin = new Padding(0, 0, 4, 2);
+            lblGCrate.Name = "lblGCrate";
+            lblGCrate.Size = new Size(203, 21);
+            lblGCrate.TabIndex = 0;
+            lblGCrate.Text = "G-Crates:";
+            // 
+            // lblECrate
+            // 
+            lblECrate.AutoSize = true;
+            lblECrate.Dock = DockStyle.Fill;
+            lblECrate.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblECrate.ForeColor = Color.FromArgb(30, 41, 59);
+            lblECrate.Location = new Point(211, 0);
+            lblECrate.Margin = new Padding(4, 0, 0, 2);
+            lblECrate.Name = "lblECrate";
+            lblECrate.Size = new Size(204, 21);
+            lblECrate.TabIndex = 1;
+            lblECrate.Text = "E-Crates:";
+            // 
+            // numGCrate
+            // 
+            numGCrate.Dock = DockStyle.Fill;
+            numGCrate.Font = new Font("Segoe UI", 9.5F);
+            numGCrate.Location = new Point(0, 25);
+            numGCrate.Margin = new Padding(0, 2, 4, 6);
+            numGCrate.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
+            numGCrate.Name = "numGCrate";
+            numGCrate.Size = new Size(203, 29);
+            numGCrate.TabIndex = 2;
+            numGCrate.Value = new decimal(new int[] { 150, 0, 0, 0 });
+            // 
+            // numECrate
+            // 
+            numECrate.Dock = DockStyle.Fill;
+            numECrate.Font = new Font("Segoe UI", 9.5F);
+            numECrate.Location = new Point(211, 25);
+            numECrate.Margin = new Padding(4, 2, 0, 6);
+            numECrate.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
+            numECrate.Name = "numECrate";
+            numECrate.Size = new Size(204, 29);
+            numECrate.TabIndex = 3;
+            // 
+            // tblCargoPeak
+            // 
+            tblCargoPeak.ColumnCount = 2;
+            tblCargoPeak.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblCargoPeak.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblCargoPeak.Controls.Add(lblCargoType, 0, 0);
+            tblCargoPeak.Controls.Add(lblPeakHeader, 1, 0);
+            tblCargoPeak.Controls.Add(cbCargoType, 0, 1);
+            tblCargoPeak.Controls.Add(chkIsPeak, 1, 1);
+            tblCargoPeak.Dock = DockStyle.Top;
+            tblCargoPeak.Location = new Point(16, 199);
+            tblCargoPeak.Margin = new Padding(0, 4, 0, 8);
+            tblCargoPeak.Name = "tblCargoPeak";
+            tblCargoPeak.RowCount = 2;
+            tblCargoPeak.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));
+            tblCargoPeak.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
+            tblCargoPeak.Size = new Size(415, 56);
+            tblCargoPeak.TabIndex = 8;
+            // 
+            // lblCargoType
+            // 
+            lblCargoType.AutoSize = true;
+            lblCargoType.Dock = DockStyle.Fill;
+            lblCargoType.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblCargoType.ForeColor = Color.FromArgb(30, 41, 59);
+            lblCargoType.Location = new Point(0, 0);
+            lblCargoType.Margin = new Padding(0, 0, 4, 2);
+            lblCargoType.Name = "lblCargoType";
+            lblCargoType.Size = new Size(203, 20);
+            lblCargoType.TabIndex = 0;
+            lblCargoType.Text = "Cargo / Temp Type:";
+            // 
+            // lblPeakHeader
+            // 
+            lblPeakHeader.AutoSize = true;
+            lblPeakHeader.Dock = DockStyle.Fill;
+            lblPeakHeader.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblPeakHeader.ForeColor = Color.FromArgb(30, 41, 59);
+            lblPeakHeader.Location = new Point(211, 0);
+            lblPeakHeader.Margin = new Padding(4, 0, 0, 2);
+            lblPeakHeader.Name = "lblPeakHeader";
+            lblPeakHeader.Size = new Size(204, 20);
+            lblPeakHeader.TabIndex = 1;
+            lblPeakHeader.Text = "Tariff Season:";
+            // 
+            // cbCargoType
+            // 
+            cbCargoType.Dock = DockStyle.Fill;
+            cbCargoType.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbCargoType.Font = new Font("Segoe UI", 9.5F);
+            cbCargoType.FormattingEnabled = true;
+            cbCargoType.Items.AddRange(new object[] { "Cold / Chilled", "Dry Goods", "Dry and Chilled Mix" });
+            cbCargoType.Location = new Point(0, 22);
+            cbCargoType.Margin = new Padding(0, 0, 4, 0);
+            cbCargoType.Name = "cbCargoType";
+            cbCargoType.Size = new Size(203, 29);
+            cbCargoType.TabIndex = 2;
+            // 
+            // chkIsPeak
+            // 
+            chkIsPeak.AutoSize = true;
+            chkIsPeak.Dock = DockStyle.Fill;
+            chkIsPeak.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
+            chkIsPeak.ForeColor = Color.FromArgb(30, 41, 59);
+            chkIsPeak.Location = new Point(211, 22);
+            chkIsPeak.Margin = new Padding(4, 0, 0, 0);
+            chkIsPeak.Name = "chkIsPeak";
+            chkIsPeak.Size = new Size(204, 34);
+            chkIsPeak.TabIndex = 3;
+            chkIsPeak.Text = "Is Peak Season Rate";
+            chkIsPeak.UseVisualStyleBackColor = true;
+            // 
+            // lblDestHint
+            // 
+            lblDestHint.AutoSize = true;
+            lblDestHint.Dock = DockStyle.Top;
+            lblDestHint.Font = new Font("Segoe UI", 8.25F);
+            lblDestHint.ForeColor = Color.FromArgb(100, 116, 139);
+            lblDestHint.Location = new Point(16, 172);
+            lblDestHint.Name = "lblDestHint";
+            lblDestHint.Padding = new Padding(0, 2, 0, 6);
+            lblDestHint.Size = new Size(466, 27);
+            lblDestHint.TabIndex = 7;
+            lblDestHint.Text = "💡 Type or select branch/drop. Check Multi-Drop below for multiple stops.";
+            // 
+            // cbDestination
+            // 
+            cbDestination.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+            cbDestination.AutoCompleteSource = AutoCompleteSource.ListItems;
+            cbDestination.Dock = DockStyle.Top;
+            cbDestination.Font = new Font("Segoe UI", 9.5F);
+            cbDestination.FormattingEnabled = true;
+            cbDestination.Location = new Point(16, 143);
+            cbDestination.Margin = new Padding(0, 0, 0, 2);
+            cbDestination.Name = "cbDestination";
+            cbDestination.Size = new Size(415, 29);
+            cbDestination.TabIndex = 6;
+            // 
+            // lblDest
+            // 
+            lblDest.AutoSize = true;
+            lblDest.Dock = DockStyle.Top;
+            lblDest.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblDest.ForeColor = Color.FromArgb(30, 41, 59);
+            lblDest.Location = new Point(16, 116);
+            lblDest.Name = "lblDest";
+            lblDest.Padding = new Padding(0, 4, 0, 2);
+            lblDest.Size = new Size(161, 27);
+            lblDest.TabIndex = 5;
+            lblDest.Text = "Delivery Destination:";
+            // 
+            // cbClient
+            // 
+            cbClient.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+            cbClient.AutoCompleteSource = AutoCompleteSource.ListItems;
+            cbClient.Dock = DockStyle.Top;
+            cbClient.Font = new Font("Segoe UI", 9.5F);
+            cbClient.FormattingEnabled = true;
+            cbClient.Location = new Point(16, 87);
+            cbClient.Margin = new Padding(0, 0, 0, 8);
+            cbClient.Name = "cbClient";
+            cbClient.Size = new Size(415, 29);
+            cbClient.TabIndex = 4;
+            // 
+            // lblClient
+            // 
+            lblClient.AutoSize = true;
+            lblClient.Dock = DockStyle.Top;
+            lblClient.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblClient.ForeColor = Color.FromArgb(30, 41, 59);
+            lblClient.Location = new Point(16, 60);
+            lblClient.Name = "lblClient";
+            lblClient.Padding = new Padding(0, 4, 0, 2);
+            lblClient.Size = new Size(129, 27);
+            lblClient.TabIndex = 3;
+            lblClient.Text = "Client Company:";
+            // 
+            // txtDispatchNumber
+            // 
+            txtDispatchNumber.Dock = DockStyle.Top;
+            txtDispatchNumber.Font = new Font("Segoe UI", 9.5F);
+            txtDispatchNumber.Location = new Point(16, 31);
+            txtDispatchNumber.Margin = new Padding(0, 0, 0, 8);
+            txtDispatchNumber.MaxLength = 50;
+            txtDispatchNumber.Name = "txtDispatchNumber";
+            txtDispatchNumber.PlaceholderText = "e.g. REF-2026-001 (Leave empty to auto-generate)";
+            txtDispatchNumber.Size = new Size(415, 29);
+            txtDispatchNumber.TabIndex = 2;
+            // 
+            // lblDispatchNumber
+            // 
+            lblDispatchNumber.AutoSize = true;
+            lblDispatchNumber.Dock = DockStyle.Top;
+            lblDispatchNumber.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblDispatchNumber.ForeColor = Color.FromArgb(30, 41, 59);
+            lblDispatchNumber.Location = new Point(16, 4);
+            lblDispatchNumber.Name = "lblDispatchNumber";
+            lblDispatchNumber.Padding = new Padding(0, 4, 0, 2);
+            lblDispatchNumber.Size = new Size(227, 27);
+            lblDispatchNumber.TabIndex = 1;
+            lblDispatchNumber.Text = "Order Reference / Dispatch #:";
+            // 
+            // pnlFormActionsBar
+            // 
+            pnlFormActionsBar.BackColor = Color.White;
+            pnlFormActionsBar.Controls.Add(btnClear);
+            pnlFormActionsBar.Controls.Add(pnlUpdateSpacer);
+            pnlFormActionsBar.Controls.Add(tblUpdateDelete);
+            pnlFormActionsBar.Controls.Add(pnlSaveSpacer);
+            pnlFormActionsBar.Controls.Add(btnSave);
+            pnlFormActionsBar.Dock = DockStyle.Bottom;
+            pnlFormActionsBar.Location = new Point(0, 658);
+            pnlFormActionsBar.Name = "pnlFormActionsBar";
+            pnlFormActionsBar.Padding = new Padding(16, 4, 16, 8);
+            pnlFormActionsBar.Size = new Size(468, 150);
+            pnlFormActionsBar.TabIndex = 2;
+            // 
+            // btnClear
+            // 
+            btnClear.Cursor = Cursors.Hand;
+            btnClear.Dock = DockStyle.Top;
+            btnClear.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            btnClear.Location = new Point(16, 102);
+            btnClear.Margin = new Padding(0);
+            btnClear.Name = "btnClear";
+            btnClear.Size = new Size(436, 36);
+            btnClear.TabIndex = 23;
+            btnClear.Text = "Clear Form";
+            btnClear.UseVisualStyleBackColor = true;
+            btnClear.Click += BtnClear_Click;
+            // 
+            // pnlUpdateSpacer
+            // 
+            pnlUpdateSpacer.Dock = DockStyle.Top;
+            pnlUpdateSpacer.Location = new Point(16, 94);
+            pnlUpdateSpacer.Name = "pnlUpdateSpacer";
+            pnlUpdateSpacer.Size = new Size(436, 8);
+            pnlUpdateSpacer.TabIndex = 22;
+            // 
+            // tblUpdateDelete
+            // 
+            tblUpdateDelete.ColumnCount = 2;
+            tblUpdateDelete.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblUpdateDelete.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblUpdateDelete.Controls.Add(btnUpdate, 0, 0);
+            tblUpdateDelete.Controls.Add(btnDelete, 1, 0);
+            tblUpdateDelete.Dock = DockStyle.Top;
+            tblUpdateDelete.Location = new Point(16, 54);
+            tblUpdateDelete.Margin = new Padding(0);
+            tblUpdateDelete.Name = "tblUpdateDelete";
+            tblUpdateDelete.RowCount = 1;
+            tblUpdateDelete.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tblUpdateDelete.Size = new Size(436, 40);
+            tblUpdateDelete.TabIndex = 21;
+            // 
+            // btnUpdate
+            // 
+            btnUpdate.Cursor = Cursors.Hand;
+            btnUpdate.Dock = DockStyle.Fill;
+            btnUpdate.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            btnUpdate.Location = new Point(0, 0);
+            btnUpdate.Margin = new Padding(0, 0, 4, 0);
+            btnUpdate.Name = "btnUpdate";
+            btnUpdate.Size = new Size(214, 40);
+            btnUpdate.TabIndex = 0;
+            btnUpdate.Text = "Update";
+            btnUpdate.UseVisualStyleBackColor = true;
+            btnUpdate.Click += BtnUpdate_Click;
+            // 
+            // btnDelete
+            // 
+            btnDelete.Cursor = Cursors.Hand;
+            btnDelete.Dock = DockStyle.Fill;
+            btnDelete.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            btnDelete.Location = new Point(222, 0);
+            btnDelete.Margin = new Padding(4, 0, 0, 0);
+            btnDelete.Name = "btnDelete";
+            btnDelete.Size = new Size(214, 40);
+            btnDelete.TabIndex = 1;
+            btnDelete.Text = "Delete";
+            btnDelete.UseVisualStyleBackColor = true;
+            btnDelete.Click += BtnDelete_Click;
+            // 
+            // pnlSaveSpacer
+            // 
+            pnlSaveSpacer.Dock = DockStyle.Top;
+            pnlSaveSpacer.Location = new Point(16, 46);
+            pnlSaveSpacer.Name = "pnlSaveSpacer";
+            pnlSaveSpacer.Size = new Size(436, 8);
+            pnlSaveSpacer.TabIndex = 20;
+            // 
+            // btnSave
+            // 
+            btnSave.BackColor = Color.FromArgb(185, 28, 28);
+            btnSave.Cursor = Cursors.Hand;
+            btnSave.Dock = DockStyle.Top;
+            btnSave.FlatAppearance.BorderSize = 0;
+            btnSave.FlatStyle = FlatStyle.Flat;
+            btnSave.Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold);
+            btnSave.ForeColor = Color.White;
+            btnSave.Location = new Point(16, 4);
+            btnSave.Margin = new Padding(0);
+            btnSave.Name = "btnSave";
+            btnSave.Size = new Size(436, 42);
+            btnSave.TabIndex = 19;
+            btnSave.Text = "Save Dispatch Order";
+            btnSave.UseVisualStyleBackColor = false;
+            btnSave.Click += BtnSave_Click;
+            // 
+            // pnlFormHeaderBar
+            // 
+            pnlFormHeaderBar.BackColor = Color.FromArgb(248, 250, 252);
+            pnlFormHeaderBar.Controls.Add(lblFormHeader);
+            pnlFormHeaderBar.Controls.Add(btnCloseForm);
+            pnlFormHeaderBar.Dock = DockStyle.Top;
+            pnlFormHeaderBar.Location = new Point(0, 0);
+            pnlFormHeaderBar.Name = "pnlFormHeaderBar";
+            pnlFormHeaderBar.Padding = new Padding(12, 6, 12, 6);
+            pnlFormHeaderBar.Size = new Size(468, 38);
+            pnlFormHeaderBar.TabIndex = 0;
+            // 
+            // lblFormHeader
+            // 
+            lblFormHeader.AutoSize = true;
+            lblFormHeader.Dock = DockStyle.Left;
+            lblFormHeader.Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold);
+            lblFormHeader.ForeColor = Color.FromArgb(15, 23, 42);
+            lblFormHeader.Location = new Point(12, 6);
+            lblFormHeader.Name = "lblFormHeader";
+            lblFormHeader.Size = new Size(210, 23);
+            lblFormHeader.TabIndex = 0;
+            lblFormHeader.Text = "📝 Dispatch Order Details";
+            lblFormHeader.UseMnemonic = false;
+            // 
+            // btnCloseForm
+            // 
+            btnCloseForm.BackColor = Color.FromArgb(241, 245, 249);
+            btnCloseForm.Cursor = Cursors.Hand;
+            btnCloseForm.Dock = DockStyle.Right;
+            btnCloseForm.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
+            btnCloseForm.FlatStyle = FlatStyle.Flat;
+            btnCloseForm.Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold);
+            btnCloseForm.ForeColor = Color.FromArgb(100, 116, 139);
+            btnCloseForm.Location = new Point(388, 6);
+            btnCloseForm.Name = "btnCloseForm";
+            btnCloseForm.Size = new Size(68, 26);
+            btnCloseForm.TabIndex = 1;
+            btnCloseForm.Text = "✕ Close";
+            btnCloseForm.UseVisualStyleBackColor = false;
+            // 
+            // pnlGridCard
+            // 
+            pnlGridCard.BackColor = Color.White;
+            pnlGridCard.Controls.Add(gridDispatch);
+            pnlGridCard.Controls.Add(pnlSummary);
+            pnlGridCard.Controls.Add(pnlGridHeaderBar);
+            pnlGridCard.Dock = DockStyle.Fill;
+            pnlGridCard.Location = new Point(480, 0);
+            pnlGridCard.Margin = new Padding(0);
+            pnlGridCard.MinimumSize = new Size(480, 300);
+            pnlGridCard.Name = "pnlGridCard";
+            pnlGridCard.Padding = new Padding(16);
+            pnlGridCard.Size = new Size(908, 808);
+            pnlGridCard.TabIndex = 1;
+            // 
+            // gridDispatch
+            // 
+            gridDispatch.AllowUserToAddRows = false;
+            gridDispatch.AllowUserToDeleteRows = false;
+            gridDispatch.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            gridDispatch.BackgroundColor = Color.White;
+            gridDispatch.BorderStyle = BorderStyle.None;
+            gridDispatch.ColumnHeadersHeight = 40;
+            gridDispatch.Dock = DockStyle.Fill;
+            gridDispatch.EnableHeadersVisualStyles = false;
+            gridDispatch.Location = new Point(16, 90);
+            gridDispatch.MultiSelect = false;
+            gridDispatch.Name = "gridDispatch";
+            gridDispatch.ReadOnly = true;
+            gridDispatch.RowHeadersVisible = false;
+            gridDispatch.RowHeadersWidth = 51;
+            gridDispatch.RowTemplate.Height = 32;
+            gridDispatch.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            gridDispatch.Size = new Size(876, 664);
+            gridDispatch.TabIndex = 1;
+            gridDispatch.SelectionChanged += GridDispatch_SelectionChanged;
+            // 
+            // pnlSummary
+            // 
+            pnlSummary.BackColor = Color.FromArgb(248, 250, 252);
+            pnlSummary.Controls.Add(lblSummary);
+            pnlSummary.Dock = DockStyle.Bottom;
+            pnlSummary.Location = new Point(16, 754);
+            pnlSummary.Name = "pnlSummary";
+            pnlSummary.Padding = new Padding(12, 8, 12, 8);
+            pnlSummary.Size = new Size(876, 38);
+            pnlSummary.TabIndex = 2;
+            // 
+            // lblSummary
+            // 
+            lblSummary.AutoSize = true;
+            lblSummary.Dock = DockStyle.Fill;
+            lblSummary.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            lblSummary.ForeColor = Color.FromArgb(51, 65, 85);
+            lblSummary.Location = new Point(12, 8);
+            lblSummary.Name = "lblSummary";
+            lblSummary.Size = new Size(55, 21);
+            lblSummary.TabIndex = 0;
+            lblSummary.Text = "Ready";
+            // 
+            // pnlGridHeaderBar
+            // 
+            pnlGridHeaderBar.AutoSize = true;
+            pnlGridHeaderBar.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            pnlGridHeaderBar.Controls.Add(pnlGridActionsFlow);
+            pnlGridHeaderBar.Controls.Add(lblGridHeader);
+            pnlGridHeaderBar.Dock = DockStyle.Top;
+            pnlGridHeaderBar.Location = new Point(16, 16);
+            pnlGridHeaderBar.Name = "pnlGridHeaderBar";
+            pnlGridHeaderBar.Padding = new Padding(0, 0, 0, 8);
+            pnlGridHeaderBar.Size = new Size(876, 74);
+            pnlGridHeaderBar.TabIndex = 0;
+            // 
+            // pnlGridActionsFlow
+            // 
+            pnlGridActionsFlow.AutoSize = true;
+            pnlGridActionsFlow.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            pnlGridActionsFlow.Controls.Add(txtGridSearch);
+            pnlGridActionsFlow.Controls.Add(btnClearSearch);
+            pnlGridActionsFlow.Controls.Add(btnPrint);
+            pnlGridActionsFlow.Dock = DockStyle.Top;
+            pnlGridActionsFlow.Location = new Point(0, 33);
+            pnlGridActionsFlow.Name = "pnlGridActionsFlow";
+            pnlGridActionsFlow.Size = new Size(876, 33);
+            pnlGridActionsFlow.TabIndex = 1;
+            // 
+            // txtGridSearch
+            // 
+            txtGridSearch.Font = new Font("Segoe UI", 9.5F);
+            txtGridSearch.Location = new Point(0, 4);
+            txtGridSearch.Margin = new Padding(0, 4, 4, 0);
+            txtGridSearch.MaxLength = 100;
+            txtGridSearch.Name = "txtGridSearch";
+            txtGridSearch.PlaceholderText = "🔍 Search order #, client, destination, driver, truck...";
+            txtGridSearch.Size = new Size(220, 29);
+            txtGridSearch.TabIndex = 0;
+            txtGridSearch.TextChanged += TxtGridSearch_TextChanged;
+            // 
+            // btnClearSearch
+            // 
+            btnClearSearch.BackColor = Color.FromArgb(241, 245, 249);
+            btnClearSearch.Cursor = Cursors.Hand;
+            btnClearSearch.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            btnClearSearch.FlatStyle = FlatStyle.Flat;
+            btnClearSearch.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
+            btnClearSearch.ForeColor = Color.FromArgb(100, 116, 139);
+            btnClearSearch.Location = new Point(228, 4);
+            btnClearSearch.Margin = new Padding(4, 4, 8, 0);
+            btnClearSearch.Name = "btnClearSearch";
+            btnClearSearch.Size = new Size(28, 26);
+            btnClearSearch.TabIndex = 1;
+            btnClearSearch.Text = "✖";
+            btnClearSearch.UseVisualStyleBackColor = false;
+            btnClearSearch.Click += BtnClearSearch_Click;
+            // 
+            // btnPrint
+            // 
+            btnPrint.BackColor = Color.FromArgb(71, 85, 105);
+            btnPrint.Cursor = Cursors.Hand;
+            btnPrint.FlatAppearance.BorderSize = 0;
+            btnPrint.FlatStyle = FlatStyle.Flat;
+            btnPrint.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            btnPrint.ForeColor = Color.White;
+            btnPrint.Location = new Point(268, 2);
+            btnPrint.Margin = new Padding(4, 2, 0, 0);
+            btnPrint.Name = "btnPrint";
+            btnPrint.Size = new Size(160, 30);
+            btnPrint.TabIndex = 2;
+            btnPrint.Text = "🖨️ Print Report";
+            btnPrint.UseVisualStyleBackColor = false;
+            btnPrint.Click += BtnPrint_Click;
+            // 
+            // lblGridHeader
+            // 
+            lblGridHeader.AutoSize = true;
+            lblGridHeader.Dock = DockStyle.Top;
+            lblGridHeader.Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold);
+            lblGridHeader.ForeColor = Color.FromArgb(30, 41, 59);
+            lblGridHeader.Location = new Point(0, 0);
+            lblGridHeader.Name = "lblGridHeader";
+            lblGridHeader.Padding = new Padding(0, 0, 0, 8);
+            lblGridHeader.Size = new Size(279, 33);
+            lblGridHeader.TabIndex = 0;
+            lblGridHeader.Text = "Delivery & Dispatch Orders List";
+            lblGridHeader.UseMnemonic = false;
+            // 
+            // DispatchManagementView
+            // 
+            BackColor = Color.FromArgb(241, 245, 249);
+            Controls.Add(tblMasterContent);
+            Font = new Font("Segoe UI", 10F);
+            Name = "DispatchManagementView";
+            Padding = new Padding(16);
+            Size = new Size(1420, 840);
+            tblMasterContent.ResumeLayout(false);
+            pnlForm.ResumeLayout(false);
+            pnlFormBody.ResumeLayout(false);
+            pnlFormBody.PerformLayout();
+            tblDateTime.ResumeLayout(false);
+            tblDateTime.PerformLayout();
+            pnlTimeRow.ResumeLayout(false);
+            pnlAidesSearchRow.ResumeLayout(false);
+            pnlAidesSearchRow.PerformLayout();
+            pnlRec.ResumeLayout(false);
+            tblCrates.ResumeLayout(false);
+            tblCrates.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)numGCrate).EndInit();
+            ((System.ComponentModel.ISupportInitialize)numECrate).EndInit();
+            tblCargoPeak.ResumeLayout(false);
+            tblCargoPeak.PerformLayout();
+            pnlFormActionsBar.ResumeLayout(false);
+            tblUpdateDelete.ResumeLayout(false);
+            pnlFormHeaderBar.ResumeLayout(false);
+            pnlFormHeaderBar.PerformLayout();
+            pnlGridCard.ResumeLayout(false);
+            pnlGridCard.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)gridDispatch).EndInit();
+            pnlSummary.ResumeLayout(false);
+            pnlSummary.PerformLayout();
+            pnlGridHeaderBar.ResumeLayout(false);
+            pnlGridHeaderBar.PerformLayout();
+            pnlGridActionsFlow.ResumeLayout(false);
+            pnlGridActionsFlow.PerformLayout();
+            ResumeLayout(false);
         }
 
         #endregion
 
-        private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.TableLayoutPanel tblMasterContent;
         private System.Windows.Forms.Panel pnlForm;
+        private System.Windows.Forms.Panel pnlFormHeaderBar;
         private System.Windows.Forms.Label lblFormHeader;
-        private System.Windows.Forms.Label lblLs;
-        private System.Windows.Forms.ComboBox cbLoadSchedule;
+        private System.Windows.Forms.Button btnCloseForm;
+        private System.Windows.Forms.Panel pnlFormActionsBar;
+        private System.Windows.Forms.Panel pnlFormBody;
+        private System.Windows.Forms.Label lblDispatchNumber;
+        private System.Windows.Forms.TextBox txtDispatchNumber;
+        private System.Windows.Forms.Label lblClient;
+        private System.Windows.Forms.ComboBox cbClient;
+        private System.Windows.Forms.Label lblDest;
+        private System.Windows.Forms.ComboBox cbDestination;
+        private System.Windows.Forms.Label lblDestHint;
+        private System.Windows.Forms.TableLayoutPanel tblCargoPeak;
+        private System.Windows.Forms.Label lblCargoType;
+        private System.Windows.Forms.Label lblPeakHeader;
+        private System.Windows.Forms.ComboBox cbCargoType;
+        private System.Windows.Forms.CheckBox chkIsPeak;
         private System.Windows.Forms.TableLayoutPanel tblCrates;
         private System.Windows.Forms.Label lblGCrate;
         private System.Windows.Forms.NumericUpDown numGCrate;
@@ -753,10 +1092,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private System.Windows.Forms.Button btnPickAnalogTime;
         private System.Windows.Forms.Label lblSt;
         private System.Windows.Forms.ComboBox cbStatus;
+        private System.Windows.Forms.Panel pnlStatusSpacer;
         private System.Windows.Forms.Button btnSave;
+        private System.Windows.Forms.Panel pnlSaveSpacer;
         private System.Windows.Forms.TableLayoutPanel tblUpdateDelete;
         private System.Windows.Forms.Button btnUpdate;
         private System.Windows.Forms.Button btnDelete;
+        private System.Windows.Forms.Panel pnlUpdateSpacer;
         private System.Windows.Forms.Button btnClear;
         private System.Windows.Forms.Panel pnlGridCard;
         private System.Windows.Forms.Panel pnlGridHeaderBar;

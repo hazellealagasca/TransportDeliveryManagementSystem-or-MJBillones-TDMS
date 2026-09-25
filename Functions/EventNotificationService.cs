@@ -61,6 +61,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+        public bool IsBusinessProcess
+        {
+            get
+            {
+                if (IsAdminOnly) return false;
+                if (!string.IsNullOrEmpty(Category))
+                {
+                    string cat = Category.ToLowerInvariant();
+                    if (cat == "operations" || cat == "payments" || cat == "finance" || cat == "trucks") return true;
+                    if (cat == "system" || cat == "security" || cat == "audit") return false;
+                }
+                if (!string.IsNullOrEmpty(TargetModule))
+                {
+                    string tm = TargetModule.ToLowerInvariant();
+                    if (tm == "dispatch" || tm == "loading" || tm == "tripreports" || tm == "incidents" || tm == "invoices" || tm == "billing" || tm == "collections" || tm == "trucks" || tm == "crew") return true;
+                    if (tm == "settings" || tm == "audit" || tm == "users") return false;
+                }
+                string t = (Title ?? string.Empty).ToLowerInvariant();
+                return t.Contains("dispatch") || t.Contains("loading") || t.Contains("trip") || t.Contains("invoice") || t.Contains("payment") || t.Contains("collection") || t.Contains("incident") || t.Contains("damage") || t.Contains("truck");
+            }
+        }
+
         public string RelativeTime
         {
             get
@@ -84,8 +106,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         case "operations": return "🚚";
                         case "payments":
                         case "finance": return "💰";
-                        case "trucks":
-                        case "fleet": return "🚛";
+                        case "trucks": return "🚛";
                         case "security": return "🛡️";
                     }
                 }
@@ -241,6 +262,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
 
+            if (!item.IsBusinessProcess)
+            {
+                try
+                {
+                    OnNotificationsChanged?.Invoke();
+                    OnNotificationPublished?.Invoke(item);
+                }
+                catch { }
+                return;
+            }
+
             try
             {
                 Control? target = contextControl;
@@ -329,7 +361,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 return "Operations";
             }
-            if (t.Contains("truck") || t.Contains("crew") || t.Contains("driver") || t.Contains("aide") || t.Contains("fleet") || t.Contains("vehicle"))
+            if (t.Contains("truck") || t.Contains("crew") || t.Contains("driver") || t.Contains("aide") || t.Contains("vehicle"))
             {
                 return "Trucks";
             }
@@ -379,9 +411,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         query = query.Where(n => n.Category.Equals("Payments", StringComparison.OrdinalIgnoreCase) || n.Category.Equals("Finance", StringComparison.OrdinalIgnoreCase));
                     }
-                    else if (categoryFilter.Equals("Trucks", StringComparison.OrdinalIgnoreCase) || categoryFilter.Equals("Fleet", StringComparison.OrdinalIgnoreCase))
+                    else if (categoryFilter.Equals("Trucks", StringComparison.OrdinalIgnoreCase))
                     {
-                        query = query.Where(n => n.Category.Equals("Trucks", StringComparison.OrdinalIgnoreCase) || n.Category.Equals("Fleet", StringComparison.OrdinalIgnoreCase));
+                        query = query.Where(n => n.Category.Equals("Trucks", StringComparison.OrdinalIgnoreCase));
                     }
                     else
                     {
@@ -400,6 +432,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lock (lockObj)
             {
                 return notifications.Count(n => !n.IsRead && (admin || !n.IsAdminOnly));
+            }
+        }
+
+        public static int GetBusinessProcessUnreadCount()
+        {
+            lock (lockObj)
+            {
+                return notifications.Count(n => !n.IsRead && n.IsBusinessProcess);
             }
         }
 
@@ -521,7 +561,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int readyTrucks = trucks.Count(t => t.Status.Equals("Active", StringComparison.OrdinalIgnoreCase));
                 if (readyTrucks <= 1 && trucks.Count > 0)
                 {
-                    if (!HasRecentAlert("Low Available Trucks", "vehicle") && !HasRecentAlert("Low Available Fleet", "vehicle"))
+                    if (!HasRecentAlert("Low Available Trucks", "vehicle"))
                     {
                         Publish("Low Available Trucks", $"Only {readyTrucks} active vehicle(s) ready for dispatch. Review truck availability.", ToastType.Warning, null, "Trucks", "Trucks", null);
                     }

@@ -22,7 +22,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             InitializeComponent();
             gridRates.BringToFront();
             SetupGridColumns();
-            gridRates.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0) SetFormVisibility(true); };
+            gridRates.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && gridRates.Rows[e.RowIndex].DataBoundItem is RateMatrix item) RecordDetailsDialog.ShowDetails(this, item); };
             gridRates.CurrentCellDirtyStateChanged += (s, e) => { if (gridRates.IsCurrentCellDirty && gridRates.CurrentCell is DataGridViewCheckBoxCell) gridRates.CommitEdit(DataGridViewDataErrorContexts.Commit); };
             gridRates.CellValueChanged += (s, e) => {
                 if (isBindingForm) return;
@@ -39,14 +39,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
+
+            btnPrint.Visible = false;
+            var menuActions = new ContextMenuStrip();
+            menuActions.Items.Add("📊 Export Table to CSV...", null, (s, e) => DataExportHelper.ExportToCsv(gridRates, "Rate_Matrix", "Rate Matrix"));
+            menuActions.Items.Add("🖨 Print Rate Matrix", null, BtnPrint_Click);
+            var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
+            pnlGridActionsFlow.Controls.Add(btnActions);
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape && pnlForm.Visible)
+            {
+                SetFormVisibility(false);
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         private void InitializeFormToggle()
         {
             btnToggleForm = new Button
             {
-                Text = "📝 Input Form ▾",
-                Size = new Size(130, 30),
+                Text = "📝 + New / Form ▾",
+                Size = new Size(150, 30),
                 BackColor = Color.FromArgb(30, 41, 59),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -61,20 +78,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnCloseForm = new Button
             {
-                Text = "✖ Hide Form",
-                Dock = DockStyle.Top,
-                Height = 28,
+                Name = "btnCloseForm",
+                Text = "✕ Close",
+                Size = new Size(80, 28),
+                Dock = DockStyle.Right,
                 BackColor = Color.FromArgb(241, 245, 249),
                 ForeColor = Color.FromArgb(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 0, 8)
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
             };
             btnCloseForm.FlatAppearance.BorderSize = 0;
             btnCloseForm.Click += (s, e) => SetFormVisibility(false);
-            pnlForm.Controls.Add(btnCloseForm);
-            pnlForm.Controls.SetChildIndex(btnCloseForm, 0);
+            pnlFormHeaderBar.Controls.Add(btnCloseForm);
 
             SetFormVisibility(false);
         }
@@ -84,7 +100,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Visible = visible;
             if (tblMasterContent.ColumnStyles.Count > 0)
             {
-                tblMasterContent.ColumnStyles[0].Width = visible ? 580F : 0F;
+                tblMasterContent.ColumnStyles[0].Width = visible ? 480F : 0F;
                 tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
             }
             if (tblMasterContent.ColumnStyles.Count > 1)
@@ -94,10 +110,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 Input Form ▾";
+                btnToggleForm.Text = visible ? "✕ Hide Form ▴" : "📝 + New / Form ▾";
                 btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
                 btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
             }
+            MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
         public void RefreshData()
@@ -208,8 +225,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (isMulti)
             {
-                pnlMultiDest.Location = new Point(16, 68);
-                int startY = pnlMultiDest.Bottom + 16;
+                pnlMultiDest.Location = new Point(16, 82);
+                int startY = pnlMultiDest.Bottom + 12;
 
                 lblTt.Location = new Point(16, startY);
                 cbTruckType.Location = new Point(16, startY + 22);
@@ -217,33 +234,35 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblRate.Location = new Point(16, startY + 90);
                 numRate.Location = new Point(16, startY + 114);
                 btnSave.Location = new Point(16, startY + 154);
+                btnSave.Size = new Size(432, 42);
                 btnUpdate.Visible = false;
                 btnDelete.Visible = false;
-                btnClear.Location = new Point(16, startY + 202);
-                btnClear.Size = new Size(432, 38);
+                btnClear.Location = new Point(16, startY + 204);
+                btnClear.Size = new Size(432, 36);
 
                 PopulateMultiDestinationList();
                 UpdateMultiCount();
             }
             else
             {
-                lblDest.Location = new Point(16, 46);
-                cbDestination.Location = new Point(16, 68);
-                lblTt.Location = new Point(16, 108);
-                cbTruckType.Location = new Point(16, 130);
-                chkPeak.Location = new Point(16, 172);
-                lblRate.Location = new Point(16, 206);
-                numRate.Location = new Point(16, 228);
-                btnSave.Location = new Point(16, 276);
+                lblDest.Location = new Point(16, 60);
+                cbDestination.Location = new Point(16, 82);
+                lblTt.Location = new Point(16, 118);
+                cbTruckType.Location = new Point(16, 140);
+                chkPeak.Location = new Point(16, 180);
+                lblRate.Location = new Point(16, 212);
+                numRate.Location = new Point(16, 234);
+                btnSave.Location = new Point(16, 280);
+                btnSave.Size = new Size(432, 42);
                 btnSave.Text = "➕ ADD RATE";
-                btnUpdate.Location = new Point(16, 324);
-                btnUpdate.Size = new Size(212, 38);
+                btnUpdate.Location = new Point(16, 330);
+                btnUpdate.Size = new Size(212, 40);
                 btnUpdate.Visible = true;
-                btnDelete.Location = new Point(236, 324);
-                btnDelete.Size = new Size(212, 38);
+                btnDelete.Location = new Point(236, 330);
+                btnDelete.Size = new Size(212, 40);
                 btnDelete.Visible = true;
-                btnClear.Location = new Point(16, 370);
-                btnClear.Size = new Size(432, 34);
+                btnClear.Location = new Point(16, 378);
+                btnClear.Size = new Size(432, 36);
             }
 
             pnlForm.ResumeLayout(true);
@@ -445,6 +464,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show("Rate Matrix entry added successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadRates();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
@@ -493,6 +513,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show("Rate Matrix entry updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadRates();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
@@ -601,7 +622,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numRate.Value = 8500;
         }
 
-                private void LoadRates()
+        private void LoadRates()
         {
             try
             {

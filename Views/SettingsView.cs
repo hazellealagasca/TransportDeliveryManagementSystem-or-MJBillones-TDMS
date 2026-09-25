@@ -18,9 +18,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public SettingsView(User? user = null, string initialTab = "RateMatrix")
         {
-            currentUser = user;
+            currentUser = user ?? SessionContext.ActiveUser;
             InitializeComponent();
             UIThemeHelper.ApplyTheme(this);
+            this.AutoScroll = false;
+            this.AutoScrollMinSize = Size.Empty;
             SelectTab(initialTab);
         }
 
@@ -51,7 +53,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Padding = new Padding(24, 12, 24, 10),
+                Padding = new Padding(24, 16, 24, 14),
                 BackColor = Color.White
             };
 
@@ -89,30 +91,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblHeaderFlow.Controls.Add(lblSubtitle, 0, 1);
             pnlHeader.Controls.Add(tblHeaderFlow);
 
-            pnlTabStrip = new Panel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Padding = new Padding(24, 8, 24, 8),
-                BackColor = Color.FromArgb(241, 245, 249)
-            };
-
             FlowLayoutPanel flowTabs = new FlowLayoutPanel
             {
+                Name = "flowTabs",
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
+                Padding = new Padding(24, 10, 24, 10),
+                BackColor = Color.FromArgb(241, 245, 249),
                 Margin = new Padding(0)
             };
+            pnlTabStrip = flowTabs;
+            pnlTabStrip.AutoSize = true;
 
             AddTabButton(flowTabs, "RateMatrix", "🏷️  Rate Matrix", (s, e) => LoadChildView(new RateMatrixView(), (Button)s!));
             AddTabButton(flowTabs, "Categories", "🏢  Categories & Clients", (s, e) => LoadChildView(new CategoryManagementView(), (Button)s!));
             AddTabButton(flowTabs, "DispatchRules", "🚚  Dispatch Rules", (s, e) => LoadChildView(new DispatchRulesSettingsView(), (Button)s!));
 
-            bool isAdmin = currentUser != null && (currentUser.Role == "Admin" || currentUser.Role == "Owner/Admin");
+            bool isAdmin = (currentUser != null && (currentUser.Role == "Admin" || currentUser.Role == "Owner/Admin")) || SessionContext.IsAdmin;
             if (isAdmin)
             {
                 AddTabButton(flowTabs, "Users", "👤  User Accounts", (s, e) => LoadChildView(new UserManagementView(), (Button)s!));
@@ -128,8 +126,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AddTabButton(flowTabs, "Audit", "🛡️  Security Audit Logs", (s, e) => LoadChildView(new SecurityAuditView(), (Button)s!));
             }
 
-            pnlTabStrip.Controls.Add(flowTabs);
-
             pnlContent = new Panel
             {
                 Dock = DockStyle.Fill,
@@ -137,10 +133,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AutoScroll = true
             };
 
-            this.Controls.Add(pnlHeader);
-            this.Controls.Add(pnlTabStrip);
             this.Controls.Add(pnlContent);
-            pnlContent.BringToFront();
+            this.Controls.Add(pnlTabStrip);
+            this.Controls.Add(pnlHeader);
             this.ResumeLayout(false);
             this.PerformLayout();
         }
@@ -171,12 +166,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public void SelectTab(string tabKey)
         {
-            if (tabButtons.ContainsKey(tabKey))
+            if (tabButtons.TryGetValue(tabKey, out var btn))
             {
-                tabButtons[tabKey].PerformClick();
+                btn.PerformClick();
             }
             else if (tabButtons.Count > 0)
             {
+                System.Diagnostics.Debug.WriteLine($"[SettingsView] Requested tab '{tabKey}' not found or unauthorized. Falling back to default.");
                 tabButtons.Values.First().PerformClick();
             }
         }
@@ -197,9 +193,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 activeTabButton.ForeColor = Color.White;
                 activeTabButton.FlatAppearance.BorderColor = Color.FromArgb(159, 18, 57);
 
+                foreach (Control c in pnlContent.Controls)
+                {
+                    c.Dispose();
+                }
                 pnlContent.Controls.Clear();
                 child.Dock = DockStyle.Fill;
                 pnlContent.Controls.Add(child);
+                if (child is IRefreshable refreshable)
+                {
+                    refreshable.RefreshData();
+                }
             }
             catch (Exception ex)
             {

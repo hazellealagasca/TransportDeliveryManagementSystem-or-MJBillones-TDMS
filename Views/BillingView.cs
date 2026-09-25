@@ -35,30 +35,37 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 FilterGridData();
             };
             LoadData();
-            Button btnExport = new Button
-            {
-                Text = "📊 Export",
-                Size = new Size(88, 30),
-                BackColor = Color.FromArgb(15, 23, 42),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            btnExport.FlatAppearance.BorderSize = 0;
-            btnExport.Click += (s, e) => DataExportHelper.ExportToCsv(gridInvoices, "Billing_Invoices", "Invoices and Accounts Receivable");
-            pnlGridActionsFlow.Controls.Add(btnExport);
+
+            btnGenerateSoa.Visible = false;
+            btnPrint.Visible = false;
+
+            var menuActions = new ContextMenuStrip();
+            menuActions.Items.Add("🧾 Generate Statement of Account (SOA)", null, (s, e) => btnGenerateSoa.PerformClick());
+            menuActions.Items.Add("📊 Export Invoices to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridInvoices, "Billing_Invoices", "Invoices and Accounts Receivable"));
+            menuActions.Items.Add("🖨️ Print Invoice Register", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
+            var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
+            pnlGridActionsFlow.Controls.Add(btnActions);
 
             InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape && pnlForm.Visible)
+            {
+                SetFormVisibility(false);
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         private void InitializeFormToggle()
         {
             btnToggleForm = new Button
             {
-                Text = "📝 Input Form ▾",
-                Size = new Size(130, 30),
+                Text = "📝 + New / Form ▾",
+                Size = new Size(150, 30),
                 BackColor = Color.FromArgb(30, 41, 59),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -73,20 +80,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnCloseForm = new Button
             {
-                Text = "✖ Hide Form",
-                Dock = DockStyle.Top,
-                Height = 28,
+                Text = "✕ Close",
+                Dock = DockStyle.Right,
+                Width = 72,
+                Height = 30,
                 BackColor = Color.FromArgb(241, 245, 249),
                 ForeColor = Color.FromArgb(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 0, 8)
+                Cursor = Cursors.Hand
             };
             btnCloseForm.FlatAppearance.BorderSize = 0;
             btnCloseForm.Click += (s, e) => SetFormVisibility(false);
-            pnlForm.Controls.Add(btnCloseForm);
-            pnlForm.Controls.SetChildIndex(btnCloseForm, 0);
+            pnlFormHeaderBar.Controls.Add(btnCloseForm);
 
             SetFormVisibility(false);
         }
@@ -96,7 +102,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Visible = visible;
             if (tblMasterContent.ColumnStyles.Count > 0)
             {
-                tblMasterContent.ColumnStyles[0].Width = visible ? 580F : 0F;
+                tblMasterContent.ColumnStyles[0].Width = visible ? 480F : 0F;
                 tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
             }
             if (tblMasterContent.ColumnStyles.Count > 1)
@@ -106,10 +112,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 Input Form ▾";
+                btnToggleForm.Text = visible ? "✕ Hide Form ▴" : "📝 + New / Form ▾";
                 btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
                 btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
             }
+            MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
         public void RefreshData()
@@ -134,6 +141,40 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Deductions", HeaderText = "Deductions", DefaultCellStyle = { Format = "N2" }, FillWeight = 11F, MinimumWidth = 85, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "NetAmount", HeaderText = "Net Due", DefaultCellStyle = { Format = "N2" }, FillWeight = 12F, MinimumWidth = 90, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 10F, MinimumWidth = 80, ReadOnly = true });
+            gridInvoices.CellFormatting -= GridInvoices_CellFormatting;
+            gridInvoices.CellFormatting += GridInvoices_CellFormatting;
+        }
+
+        private void GridInvoices_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (gridInvoices.Columns[e.ColumnIndex].DataPropertyName == "Status" && e.Value != null)
+            {
+                string status = e.Value.ToString() ?? "";
+                if (status.Equals("Paid", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.CellStyle.BackColor = Color.FromArgb(220, 252, 231);
+                    e.CellStyle.ForeColor = Color.FromArgb(22, 101, 52);
+                    e.CellStyle.Font = new Font(gridInvoices.Font, FontStyle.Bold);
+                }
+                else if (status.Equals("Partial", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.CellStyle.BackColor = Color.FromArgb(254, 243, 199);
+                    e.CellStyle.ForeColor = Color.FromArgb(180, 83, 9);
+                    e.CellStyle.Font = new Font(gridInvoices.Font, FontStyle.Bold);
+                }
+                else if (status.Equals("Overdue", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.CellStyle.BackColor = Color.FromArgb(254, 226, 226);
+                    e.CellStyle.ForeColor = Color.FromArgb(185, 28, 28);
+                    e.CellStyle.Font = new Font(gridInvoices.Font, FontStyle.Bold);
+                }
+                else if (status.Equals("Unpaid", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.CellStyle.BackColor = Color.FromArgb(241, 245, 249);
+                    e.CellStyle.ForeColor = Color.FromArgb(51, 65, 85);
+                }
+            }
         }
 
         private void CbDelivery_SelectedIndexChanged(object? sender, EventArgs e)
@@ -187,7 +228,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 string tariffDesc;
                 decimal calculatedAmount = MJdatabase.CalculateDeliveryTariff(del, out tariffDesc);
-                lblTariffMatch.Text = $"{tariffDesc} -> PHP {calculatedAmount:N2}";
+                lblTariffMatch.Text = $"✓ {tariffDesc} -> PHP {calculatedAmount:N2}";
+                lblTariffMatch.Visible = true;
 
                 if (calculatedAmount > numTotalAmount.Maximum) numTotalAmount.Maximum = calculatedAmount * 2;
                 numTotalAmount.Value = Math.Max(numTotalAmount.Minimum, Math.Min(numTotalAmount.Maximum, calculatedAmount));
@@ -221,6 +263,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (isBindingForm) return;
             decimal net = numTotalAmount.Value - numDeductions.Value;
             lblNetAmount.Text = $"Net Due Amount: PHP {net:N2}";
+            DateTime baseDate = selectedInvoice != null ? selectedInvoice.IssueDate : DateTime.Today;
+            lblDueDate.Text = $"Payment Due Date (15 Days): {(selectedInvoice != null ? selectedInvoice.DueDate : baseDate.AddDays(15)):MM/dd/yyyy}";
         }
 
         private void GridInvoices_SelectionChanged(object? sender, EventArgs e)
@@ -264,12 +308,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 numTotalAmount.Value = selectedInvoice.TotalAmount;
                 numDeductions.Value = selectedInvoice.Deductions;
                 RecalculateNet(sender, e);
+                lblDueDate.Text = $"Payment Due Date (15 Days): {selectedInvoice.DueDate:MM/dd/yyyy}";
                 lblFormHeader.Text = "Invoice Billing Form";
                 isBindingForm = false;
             }
         }
 
-                private void LoadData()
+        private void LoadData()
         {
             try
             {
@@ -321,13 +366,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 int unpaid = allInvoices.Count(i => i.Status == "Unpaid");
                 int partial = allInvoices.Count(i => i.Status == "Partial");
+                int overdue = allInvoices.Count(i => i.Status == "Overdue");
                 int paid = allInvoices.Count(i => i.Status == "Paid");
                 decimal totalNet = allInvoices.Sum(i => i.NetAmount);
 
-                lblSummary.Text = $"📊 Total Invoices: {allInvoices.Count:N0}  |  🔴 Unpaid: {unpaid}  |  🟡 Partial: {partial}  |  🟢 Paid: {paid}  |  💰 Total Billed: PHP {totalNet:N2}";
+                lblSummary.Text = $"📊 Total Invoices: {allInvoices.Count:N0}  |  ⏳ Unpaid: {unpaid}  |  🟡 Partial: {partial}  |  🚨 Overdue: {overdue}  |  🟢 Paid: {paid}  |  💰 Total Billed: PHP {totalNet:N2}";
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[BillingView] LoadData: {ex}");
                 MessageBox.Show($"Failed to load invoice billing records: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -385,9 +432,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show("Service Invoice generated and issued with 15-day credit terms!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadData();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[BillingView] BtnSave_Click: {ex}");
                 MessageBox.Show($"Failed to save invoice: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -434,9 +483,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show("Invoice updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadData();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[BillingView] BtnUpdate_Click: {ex}");
                 MessageBox.Show($"Failed to update invoice: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -476,6 +527,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[BillingView] BtnDelete_Click: {ex}");
                 MessageBox.Show($"Delete operation error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -562,6 +614,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbClient.Text = "";
             numTotalAmount.Value = 8500;
             numDeductions.Value = 0;
+            lblTariffMatch.Visible = false;
+            lblDueDate.Text = $"Payment Due Date (15 Days): {DateTime.Today.AddDays(15):MM/dd/yyyy}";
             RecalculateNet(this, EventArgs.Empty);
             if (cbDelivery.SelectedIndex >= 0 && cbDelivery.SelectedIndex < completedDeliveries.Count)
             {

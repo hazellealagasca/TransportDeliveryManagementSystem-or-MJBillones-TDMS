@@ -17,9 +17,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void InitializeComponent()
         {
-            this.lblTitle = new System.Windows.Forms.Label();
             this.tblMasterContent = new System.Windows.Forms.TableLayoutPanel();
             this.pnlForm = new System.Windows.Forms.Panel();
+            this.pnlFormHeaderBar = new System.Windows.Forms.Panel();
+            this.pnlFormActionsBar = new System.Windows.Forms.Panel();
+            this.pnlFormBody = new System.Windows.Forms.Panel();
+            this.pnlClientSpacer = new System.Windows.Forms.Panel();
+            this.pnlAmountsSpacer = new System.Windows.Forms.Panel();
+            this.pnlGrossCol = new System.Windows.Forms.Panel();
+            this.pnlDedCol = new System.Windows.Forms.Panel();
+            this.pnlNetDueSpacer = new System.Windows.Forms.Panel();
+            this.pnlSaveSpacer = new System.Windows.Forms.Panel();
+            this.pnlUpdateSpacer = new System.Windows.Forms.Panel();
             this.lblFormHeader = new System.Windows.Forms.Label();
             this.lblDel = new System.Windows.Forms.Label();
             this.cbDelivery = new System.Windows.Forms.ComboBox();
@@ -54,7 +63,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblTariffMatch = new System.Windows.Forms.Label();
             this.tblMasterContent.SuspendLayout();
             this.pnlForm.SuspendLayout();
+            this.pnlFormHeaderBar.SuspendLayout();
+            this.pnlFormActionsBar.SuspendLayout();
+            this.pnlFormBody.SuspendLayout();
             this.tblAmounts.SuspendLayout();
+            this.pnlGrossCol.SuspendLayout();
+            this.pnlDedCol.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numTotalAmount)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numDeductions)).BeginInit();
             this.pnlNetDue.SuspendLayout();
@@ -66,55 +80,51 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlSummary.SuspendLayout();
             this.SuspendLayout();
 
-            this.AutoScroll = true;
-            this.AutoScrollMinSize = new System.Drawing.Size(1000, 620);
+            this.AutoScroll = false;
+            this.AutoScrollMinSize = System.Drawing.Size.Empty;
             this.BackColor = System.Drawing.Color.FromArgb(241, 245, 249);
             this.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.Padding = new System.Windows.Forms.Padding(16);
             this.Size = new System.Drawing.Size(1420, 820);
 
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
-            this.lblTitle.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            this.lblTitle.Location = new System.Drawing.Point(16, 16);
-            this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Padding = new System.Windows.Forms.Padding(0, 0, 0, 10);
-            this.lblTitle.Size = new System.Drawing.Size(430, 40);
-            this.lblTitle.TabIndex = 0;
-            this.lblTitle.Text = "Billing & Service Invoicing (15-Day Window)";
-
             this.tblMasterContent.ColumnCount = 2;
-            this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 580F));
+            this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 480F));
             this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tblMasterContent.Controls.Add(this.pnlForm, 0, 0);
             this.tblMasterContent.Controls.Add(this.pnlGridCard, 1, 0);
             this.tblMasterContent.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tblMasterContent.Location = new System.Drawing.Point(16, 56);
+            this.tblMasterContent.Location = new System.Drawing.Point(16, 16);
             this.tblMasterContent.Name = "tblMasterContent";
             this.tblMasterContent.RowCount = 1;
             this.tblMasterContent.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblMasterContent.Size = new System.Drawing.Size(1388, 748);
+            this.tblMasterContent.Size = new System.Drawing.Size(1388, 788);
             this.tblMasterContent.TabIndex = 1;
 
-            this.pnlForm.AutoScroll = true;
+            this.pnlForm.AutoScroll = false;
             this.pnlForm.BackColor = System.Drawing.Color.White;
             this.pnlForm.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlForm.Location = new System.Drawing.Point(0, 0);
             this.pnlForm.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
             this.pnlForm.Name = "pnlForm";
-            this.pnlForm.Padding = new System.Windows.Forms.Padding(16);
-            this.pnlForm.Size = new System.Drawing.Size(468, 748);
+            this.pnlForm.Padding = new System.Windows.Forms.Padding(0);
+            this.pnlForm.Size = new System.Drawing.Size(480, 788);
             this.pnlForm.TabIndex = 0;
 
+            this.pnlFormHeaderBar.Controls.Add(this.lblFormHeader);
+            this.pnlFormHeaderBar.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlFormHeaderBar.Location = new System.Drawing.Point(16, 16);
+            this.pnlFormHeaderBar.Margin = new System.Windows.Forms.Padding(0, 0, 0, 10);
+            this.pnlFormHeaderBar.Name = "pnlFormHeaderBar";
+            this.pnlFormHeaderBar.Size = new System.Drawing.Size(432, 36);
+            this.pnlFormHeaderBar.TabIndex = 0;
+
             this.lblFormHeader.AutoSize = true;
-            this.lblFormHeader.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblFormHeader.Font = new System.Drawing.Font("Segoe UI Semibold", 11F, System.Drawing.FontStyle.Bold);
-            this.lblFormHeader.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblFormHeader.Location = new System.Drawing.Point(16, 16);
+            this.lblFormHeader.Dock = System.Windows.Forms.DockStyle.Left;
+            this.lblFormHeader.Font = new System.Drawing.Font("Segoe UI Semibold", 12F, System.Drawing.FontStyle.Bold);
+            this.lblFormHeader.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            this.lblFormHeader.Location = new System.Drawing.Point(0, 6);
             this.lblFormHeader.Name = "lblFormHeader";
-            this.lblFormHeader.Padding = new System.Windows.Forms.Padding(0, 0, 0, 8);
-            this.lblFormHeader.Size = new System.Drawing.Size(175, 28);
+            this.lblFormHeader.Size = new System.Drawing.Size(185, 21);
             this.lblFormHeader.TabIndex = 0;
             this.lblFormHeader.Text = "Generate Service Invoice";
 
@@ -186,75 +196,102 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             "BCS Group of Companies",
             "Bestbake Inc.",
             "Richbake Inc."});
-            this.cbClient.Location = new System.Drawing.Point(16, 123);
+            this.cbClient.Location = new System.Drawing.Point(16, 179);
             this.cbClient.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
             this.cbClient.Name = "cbClient";
             this.cbClient.Size = new System.Drawing.Size(436, 25);
             this.cbClient.TabIndex = 4;
 
+            this.pnlClientSpacer.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlClientSpacer.Location = new System.Drawing.Point(16, 148);
+            this.pnlClientSpacer.Name = "pnlClientSpacer";
+            this.pnlClientSpacer.Size = new System.Drawing.Size(436, 8);
+            this.pnlClientSpacer.TabIndex = 5;
+            this.tblAmounts.AutoSize = true;
+            this.tblAmounts.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.tblAmounts.ColumnCount = 2;
             this.tblAmounts.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.tblAmounts.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tblAmounts.Controls.Add(this.lblGross, 0, 0);
-            this.tblAmounts.Controls.Add(this.lblDed, 1, 0);
-            this.tblAmounts.Controls.Add(this.numTotalAmount, 0, 1);
-            this.tblAmounts.Controls.Add(this.numDeductions, 1, 1);
+            this.tblAmounts.Controls.Add(this.pnlGrossCol, 0, 0);
+            this.tblAmounts.Controls.Add(this.pnlDedCol, 1, 0);
             this.tblAmounts.Dock = System.Windows.Forms.DockStyle.Top;
             this.tblAmounts.Location = new System.Drawing.Point(16, 156);
-            this.tblAmounts.Margin = new System.Windows.Forms.Padding(0, 4, 0, 6);
+            this.tblAmounts.Margin = new System.Windows.Forms.Padding(0);
             this.tblAmounts.Name = "tblAmounts";
-            this.tblAmounts.RowCount = 2;
-            this.tblAmounts.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.tblAmounts.RowCount = 1;
             this.tblAmounts.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             this.tblAmounts.Size = new System.Drawing.Size(436, 56);
-            this.tblAmounts.TabIndex = 5;
-
+            this.tblAmounts.TabIndex = 6;
+            this.pnlGrossCol.AutoSize = true;
+            this.pnlGrossCol.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.pnlGrossCol.Controls.Add(this.numTotalAmount);
+            this.pnlGrossCol.Controls.Add(this.lblGross);
+            this.pnlGrossCol.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlGrossCol.Location = new System.Drawing.Point(0, 0);
+            this.pnlGrossCol.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
+            this.pnlGrossCol.Name = "pnlGrossCol";
+            this.pnlGrossCol.Size = new System.Drawing.Size(214, 56);
+            this.pnlGrossCol.TabIndex = 0;
             this.lblGross.AutoSize = true;
-            this.lblGross.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lblGross.Dock = System.Windows.Forms.DockStyle.Top;
             this.lblGross.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblGross.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
             this.lblGross.Location = new System.Drawing.Point(0, 0);
-            this.lblGross.Margin = new System.Windows.Forms.Padding(0, 0, 4, 2);
+            this.lblGross.Margin = new System.Windows.Forms.Padding(0);
             this.lblGross.Name = "lblGross";
-            this.lblGross.Size = new System.Drawing.Size(214, 17);
+            this.lblGross.Padding = new System.Windows.Forms.Padding(0, 2, 0, 4);
+            this.lblGross.Size = new System.Drawing.Size(142, 23);
             this.lblGross.TabIndex = 0;
             this.lblGross.Text = "Standard Gross (₱) *:";
-
-            this.lblDed.AutoSize = true;
-            this.lblDed.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lblDed.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.lblDed.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblDed.Location = new System.Drawing.Point(222, 0);
-            this.lblDed.Margin = new System.Windows.Forms.Padding(4, 0, 0, 2);
-            this.lblDed.Name = "lblDed";
-            this.lblDed.Size = new System.Drawing.Size(214, 17);
-            this.lblDed.TabIndex = 1;
-            this.lblDed.Text = "Deductions / Damage (₱):";
-
             this.numTotalAmount.DecimalPlaces = 2;
-            this.numTotalAmount.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.numTotalAmount.Dock = System.Windows.Forms.DockStyle.Top;
             this.numTotalAmount.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.numTotalAmount.Location = new System.Drawing.Point(0, 21);
-            this.numTotalAmount.Margin = new System.Windows.Forms.Padding(0, 2, 4, 6);
+            this.numTotalAmount.Location = new System.Drawing.Point(0, 23);
+            this.numTotalAmount.Margin = new System.Windows.Forms.Padding(0);
             this.numTotalAmount.Maximum = new decimal(new int[] { 100000000, 0, 0, 0 });
             this.numTotalAmount.Name = "numTotalAmount";
-            this.numTotalAmount.Size = new System.Drawing.Size(214, 24);
-            this.numTotalAmount.TabIndex = 2;
+            this.numTotalAmount.Size = new System.Drawing.Size(214, 25);
+            this.numTotalAmount.TabIndex = 1;
             this.numTotalAmount.ThousandsSeparator = true;
             this.numTotalAmount.Value = new decimal(new int[] { 8500, 0, 0, 0 });
             this.numTotalAmount.ValueChanged += new System.EventHandler(this.RecalculateNet);
-
+            this.pnlDedCol.AutoSize = true;
+            this.pnlDedCol.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.pnlDedCol.Controls.Add(this.numDeductions);
+            this.pnlDedCol.Controls.Add(this.lblDed);
+            this.pnlDedCol.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlDedCol.Location = new System.Drawing.Point(218, 0);
+            this.pnlDedCol.Margin = new System.Windows.Forms.Padding(4, 0, 0, 0);
+            this.pnlDedCol.Name = "pnlDedCol";
+            this.pnlDedCol.Size = new System.Drawing.Size(218, 56);
+            this.pnlDedCol.TabIndex = 1;
+            this.lblDed.AutoSize = true;
+            this.lblDed.Dock = System.Windows.Forms.DockStyle.Top;
+            this.lblDed.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
+            this.lblDed.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
+            this.lblDed.Location = new System.Drawing.Point(0, 0);
+            this.lblDed.Margin = new System.Windows.Forms.Padding(0);
+            this.lblDed.Name = "lblDed";
+            this.lblDed.Padding = new System.Windows.Forms.Padding(0, 2, 0, 4);
+            this.lblDed.Size = new System.Drawing.Size(167, 23);
+            this.lblDed.TabIndex = 0;
+            this.lblDed.Text = "Deductions / Damage (₱):";
             this.numDeductions.DecimalPlaces = 2;
-            this.numDeductions.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.numDeductions.Dock = System.Windows.Forms.DockStyle.Top;
             this.numDeductions.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.numDeductions.Location = new System.Drawing.Point(222, 21);
-            this.numDeductions.Margin = new System.Windows.Forms.Padding(4, 2, 0, 6);
+            this.numDeductions.Location = new System.Drawing.Point(0, 23);
+            this.numDeductions.Margin = new System.Windows.Forms.Padding(0);
             this.numDeductions.Maximum = new decimal(new int[] { 100000000, 0, 0, 0 });
             this.numDeductions.Name = "numDeductions";
-            this.numDeductions.Size = new System.Drawing.Size(214, 24);
-            this.numDeductions.TabIndex = 3;
+            this.numDeductions.Size = new System.Drawing.Size(218, 25);
+            this.numDeductions.TabIndex = 1;
             this.numDeductions.ThousandsSeparator = true;
             this.numDeductions.ValueChanged += new System.EventHandler(this.RecalculateNet);
+            this.pnlAmountsSpacer.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlAmountsSpacer.Location = new System.Drawing.Point(16, 212);
+            this.pnlAmountsSpacer.Name = "pnlAmountsSpacer";
+            this.pnlAmountsSpacer.Size = new System.Drawing.Size(436, 8);
+            this.pnlAmountsSpacer.TabIndex = 7;
 
             this.pnlNetDue.BackColor = System.Drawing.Color.FromArgb(238, 242, 255);
             this.pnlNetDue.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
@@ -289,6 +326,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblDueDate.TabIndex = 1;
             this.lblDueDate.Text = "Payment Due Date (15 Days): 08/25/2026";
 
+            this.pnlNetDueSpacer.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlNetDueSpacer.Location = new System.Drawing.Point(16, 274);
+            this.pnlNetDueSpacer.Name = "pnlNetDueSpacer";
+            this.pnlNetDueSpacer.Size = new System.Drawing.Size(436, 10);
+            this.pnlNetDueSpacer.TabIndex = 7;
+
             this.btnSave.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
             this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnSave.Dock = System.Windows.Forms.DockStyle.Top;
@@ -296,14 +339,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnSave.Font = new System.Drawing.Font("Segoe UI Semibold", 10F, System.Drawing.FontStyle.Bold);
             this.btnSave.ForeColor = System.Drawing.Color.White;
-            this.btnSave.Location = new System.Drawing.Point(16, 282);
-            this.btnSave.Margin = new System.Windows.Forms.Padding(0, 8, 0, 8);
+            this.btnSave.Location = new System.Drawing.Point(16, 284);
+            this.btnSave.Margin = new System.Windows.Forms.Padding(0);
             this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(436, 40);
-            this.btnSave.TabIndex = 7;
+            this.btnSave.Size = new System.Drawing.Size(436, 42);
+            this.btnSave.TabIndex = 8;
             this.btnSave.Text = "📄 ISSUE INVOICE";
             this.btnSave.UseVisualStyleBackColor = false;
             this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
+
+            this.pnlSaveSpacer.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlSaveSpacer.Location = new System.Drawing.Point(16, 326);
+            this.pnlSaveSpacer.Name = "pnlSaveSpacer";
+            this.pnlSaveSpacer.Size = new System.Drawing.Size(436, 8);
+            this.pnlSaveSpacer.TabIndex = 9;
 
             this.tblUpdateDelete.ColumnCount = 2;
             this.tblUpdateDelete.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
@@ -311,13 +360,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.tblUpdateDelete.Controls.Add(this.btnUpdate, 0, 0);
             this.tblUpdateDelete.Controls.Add(this.btnDelete, 1, 0);
             this.tblUpdateDelete.Dock = System.Windows.Forms.DockStyle.Top;
-            this.tblUpdateDelete.Location = new System.Drawing.Point(16, 330);
-            this.tblUpdateDelete.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
+            this.tblUpdateDelete.Location = new System.Drawing.Point(16, 334);
+            this.tblUpdateDelete.Margin = new System.Windows.Forms.Padding(0);
             this.tblUpdateDelete.Name = "tblUpdateDelete";
             this.tblUpdateDelete.RowCount = 1;
             this.tblUpdateDelete.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tblUpdateDelete.Size = new System.Drawing.Size(436, 40);
-            this.tblUpdateDelete.TabIndex = 8;
+            this.tblUpdateDelete.TabIndex = 10;
 
             this.btnUpdate.BackColor = System.Drawing.Color.FromArgb(16, 185, 129);
             this.btnUpdate.Cursor = System.Windows.Forms.Cursors.Hand;
@@ -351,6 +400,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnDelete.UseVisualStyleBackColor = false;
             this.btnDelete.Click += new System.EventHandler(this.BtnDelete_Click);
 
+            this.pnlUpdateSpacer.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlUpdateSpacer.Location = new System.Drawing.Point(16, 374);
+            this.pnlUpdateSpacer.Name = "pnlUpdateSpacer";
+            this.pnlUpdateSpacer.Size = new System.Drawing.Size(436, 8);
+            this.pnlUpdateSpacer.TabIndex = 11;
+
             this.btnClear.BackColor = System.Drawing.Color.FromArgb(241, 245, 249);
             this.btnClear.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnClear.Dock = System.Windows.Forms.DockStyle.Top;
@@ -358,42 +413,70 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnClear.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnClear.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.btnClear.ForeColor = System.Drawing.Color.FromArgb(71, 85, 105);
-            this.btnClear.Location = new System.Drawing.Point(16, 376);
-            this.btnClear.Margin = new System.Windows.Forms.Padding(0, 4, 0, 6);
+            this.btnClear.Location = new System.Drawing.Point(16, 382);
+            this.btnClear.Margin = new System.Windows.Forms.Padding(0);
             this.btnClear.Name = "btnClear";
             this.btnClear.Size = new System.Drawing.Size(436, 36);
-            this.btnClear.TabIndex = 9;
+            this.btnClear.TabIndex = 12;
             this.btnClear.Text = "🧹 CLEAR FORM";
             this.btnClear.UseVisualStyleBackColor = false;
             this.btnClear.Click += new System.EventHandler(this.BtnClear_Click);
 
             this.lblTariffMatch.AutoSize = true;
-            this.lblTariffMatch.Location = new System.Drawing.Point(0, 0);
+            this.lblTariffMatch.Font = new System.Drawing.Font("Segoe UI Semibold", 8.5F, System.Drawing.FontStyle.Bold);
+            this.lblTariffMatch.ForeColor = System.Drawing.Color.FromArgb(16, 185, 129);
+            this.lblTariffMatch.Location = new System.Drawing.Point(16, 230);
+            this.lblTariffMatch.Margin = new System.Windows.Forms.Padding(0, 2, 0, 4);
             this.lblTariffMatch.Name = "lblTariffMatch";
-            this.lblTariffMatch.Size = new System.Drawing.Size(0, 15);
+            this.lblTariffMatch.Padding = new System.Windows.Forms.Padding(4, 2, 4, 2);
+            this.lblTariffMatch.Size = new System.Drawing.Size(448, 20);
             this.lblTariffMatch.TabIndex = 15;
             this.lblTariffMatch.Visible = false;
 
-            this.pnlForm.Controls.Add(this.lblTariffMatch);
-            this.pnlForm.Controls.Add(this.btnClear);
-            this.pnlForm.Controls.Add(this.tblUpdateDelete);
-            this.pnlForm.Controls.Add(this.btnSave);
-            this.pnlForm.Controls.Add(this.pnlNetDue);
-            this.pnlForm.Controls.Add(this.tblAmounts);
-            this.pnlForm.Controls.Add(this.cbClient);
-            this.pnlForm.Controls.Add(this.lblClient);
-            this.pnlForm.Controls.Add(this.txtLoadingSchedule);
-            this.pnlForm.Controls.Add(this.lblLoadingSchedule);
-            this.pnlForm.Controls.Add(this.cbDelivery);
-            this.pnlForm.Controls.Add(this.lblDel);
-            this.pnlForm.Controls.Add(this.lblFormHeader);
+            this.pnlFormActionsBar.BackColor = System.Drawing.Color.White;
+            this.pnlFormActionsBar.Controls.Add(this.btnClear);
+            this.pnlFormActionsBar.Controls.Add(this.pnlUpdateSpacer);
+            this.pnlFormActionsBar.Controls.Add(this.tblUpdateDelete);
+            this.pnlFormActionsBar.Controls.Add(this.pnlSaveSpacer);
+            this.pnlFormActionsBar.Controls.Add(this.btnSave);
+            this.pnlFormActionsBar.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.pnlFormActionsBar.Location = new System.Drawing.Point(0, 668);
+            this.pnlFormActionsBar.Name = "pnlFormActionsBar";
+            this.pnlFormActionsBar.Padding = new System.Windows.Forms.Padding(16, 4, 16, 8);
+            this.pnlFormActionsBar.Size = new System.Drawing.Size(480, 120);
+            this.pnlFormActionsBar.TabIndex = 2;
+
+            this.pnlFormBody.AutoScroll = true;
+            this.pnlFormBody.BackColor = System.Drawing.Color.White;
+            this.pnlFormBody.Controls.Add(this.lblTariffMatch);
+            this.pnlFormBody.Controls.Add(this.pnlNetDueSpacer);
+            this.pnlFormBody.Controls.Add(this.pnlNetDue);
+            this.pnlFormBody.Controls.Add(this.pnlAmountsSpacer);
+            this.pnlFormBody.Controls.Add(this.tblAmounts);
+            this.pnlFormBody.Controls.Add(this.pnlClientSpacer);
+            this.pnlFormBody.Controls.Add(this.cbClient);
+            this.pnlFormBody.Controls.Add(this.lblClient);
+            this.pnlFormBody.Controls.Add(this.txtLoadingSchedule);
+            this.pnlFormBody.Controls.Add(this.lblLoadingSchedule);
+            this.pnlFormBody.Controls.Add(this.cbDelivery);
+            this.pnlFormBody.Controls.Add(this.lblDel);
+            this.pnlFormBody.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlFormBody.Location = new System.Drawing.Point(0, 36);
+            this.pnlFormBody.Name = "pnlFormBody";
+            this.pnlFormBody.Padding = new System.Windows.Forms.Padding(16, 4, 16, 8);
+            this.pnlFormBody.Size = new System.Drawing.Size(480, 632);
+            this.pnlFormBody.TabIndex = 1;
+
+            this.pnlForm.Controls.Add(this.pnlFormBody);
+            this.pnlForm.Controls.Add(this.pnlFormActionsBar);
+            this.pnlForm.Controls.Add(this.pnlFormHeaderBar);
 
             this.pnlGridCard.BackColor = System.Drawing.Color.White;
-            this.pnlGridCard.Controls.Add(this.gridInvoices);
             this.pnlGridCard.Controls.Add(this.pnlSummary);
+            this.pnlGridCard.Controls.Add(this.gridInvoices);
             this.pnlGridCard.Controls.Add(this.pnlGridHeaderBar);
             this.pnlGridCard.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pnlGridCard.Location = new System.Drawing.Point(580, 0);
+            this.pnlGridCard.Location = new System.Drawing.Point(480, 0);
             this.pnlGridCard.Margin = new System.Windows.Forms.Padding(0);
             this.pnlGridCard.MinimumSize = new System.Drawing.Size(480, 300);
             this.pnlGridCard.Name = "pnlGridCard";
@@ -441,6 +524,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtGridSearch.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.txtGridSearch.Location = new System.Drawing.Point(0, 4);
             this.txtGridSearch.Margin = new System.Windows.Forms.Padding(0, 4, 4, 4);
+            this.txtGridSearch.MaxLength = 100;
             this.txtGridSearch.Name = "txtGridSearch";
             this.txtGridSearch.PlaceholderText = "🔍 Search SOA, invoice, client...";
             this.txtGridSearch.Size = new System.Drawing.Size(190, 24);
@@ -505,7 +589,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.gridInvoices.Name = "gridInvoices";
             this.gridInvoices.ReadOnly = true;
             this.gridInvoices.RowHeadersVisible = false;
-            this.gridInvoices.RowTemplate.Height = 34;
+            this.gridInvoices.RowTemplate.Height = 32;
             this.gridInvoices.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.gridInvoices.Size = new System.Drawing.Size(876, 626);
             this.gridInvoices.TabIndex = 1;
@@ -520,24 +604,33 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlSummary.Size = new System.Drawing.Size(876, 38);
             this.pnlSummary.TabIndex = 2;
 
-            this.lblSummary.AutoSize = true;
+            this.lblSummary.AutoSize = false;
             this.lblSummary.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lblSummary.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblSummary.ForeColor = System.Drawing.Color.FromArgb(51, 65, 85);
             this.lblSummary.Location = new System.Drawing.Point(12, 8);
             this.lblSummary.Name = "lblSummary";
-            this.lblSummary.Size = new System.Drawing.Size(46, 17);
+            this.lblSummary.Size = new System.Drawing.Size(852, 22);
             this.lblSummary.TabIndex = 0;
             this.lblSummary.Text = "Ready";
+            this.lblSummary.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 
             this.Controls.Add(this.tblMasterContent);
-            this.Controls.Add(this.lblTitle);
             this.Name = "BillingView";
+            this.pnlFormActionsBar.ResumeLayout(false);
+            this.pnlFormBody.ResumeLayout(false);
+            this.pnlFormBody.PerformLayout();
             this.tblMasterContent.ResumeLayout(false);
             this.pnlForm.ResumeLayout(false);
             this.pnlForm.PerformLayout();
+            this.pnlFormHeaderBar.ResumeLayout(false);
+            this.pnlFormHeaderBar.PerformLayout();
             this.tblAmounts.ResumeLayout(false);
             this.tblAmounts.PerformLayout();
+            this.pnlGrossCol.ResumeLayout(false);
+            this.pnlGrossCol.PerformLayout();
+            this.pnlDedCol.ResumeLayout(false);
+            this.pnlDedCol.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numTotalAmount)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numDeductions)).EndInit();
             this.pnlNetDue.ResumeLayout(false);
@@ -558,9 +651,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         #endregion
 
-        private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.TableLayoutPanel tblMasterContent;
         private System.Windows.Forms.Panel pnlForm;
+        private System.Windows.Forms.Panel pnlFormHeaderBar;
+        private System.Windows.Forms.Panel pnlFormActionsBar;
+        private System.Windows.Forms.Panel pnlFormBody;
+        private System.Windows.Forms.Panel pnlClientSpacer;
+        private System.Windows.Forms.Panel pnlAmountsSpacer;
+        private System.Windows.Forms.Panel pnlGrossCol;
+        private System.Windows.Forms.Panel pnlDedCol;
+        private System.Windows.Forms.Panel pnlNetDueSpacer;
+        private System.Windows.Forms.Panel pnlSaveSpacer;
+        private System.Windows.Forms.Panel pnlUpdateSpacer;
         private System.Windows.Forms.Label lblFormHeader;
         private System.Windows.Forms.Label lblDel;
         private System.Windows.Forms.ComboBox cbDelivery;

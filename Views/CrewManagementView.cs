@@ -38,7 +38,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         gridCrew.CurrentCellDirtyStateChanged += (s, e) => { if (gridCrew.IsCurrentCellDirty && gridCrew.CurrentCell is DataGridViewCheckBoxCell) gridCrew.CommitEdit(DataGridViewDataErrorContexts.Commit); };
             gridCrew.CellValueChanged += (s, e) => {
                 if (isBindingForm) return;
-                if (e.RowIndex >= 0 && e.ColumnIndex == 0 && gridCrew.Rows[e.RowIndex].DataBoundItem is Crew c) {
+                if (e.RowIndex >= 0 && gridCrew.Columns[e.ColumnIndex].DataPropertyName == "IsAvailable" && gridCrew.Rows[e.RowIndex].DataBoundItem is Crew c) {
                     try
                     {
                         bool success = MJdatabase.ToggleCrewAvailable(c.Id, c.IsAvailable);
@@ -70,14 +70,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
+
+            btnPrint.Visible = false;
+            var menuActions = new ContextMenuStrip();
+            menuActions.Items.Add("📊 Export Table to CSV...", null, (s, e) => DataExportHelper.ExportToCsv(gridCrew, "Crew_Personnel", "Crew Personnel"));
+            menuActions.Items.Add("🖨️ Print Personnel Roster", null, BtnPrint_Click);
+            var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
+            pnlGridActionsFlow.Controls.Add(btnActions);
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape && pnlForm.Visible)
+            {
+                SetFormVisibility(false);
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         private void InitializeFormToggle()
         {
             btnToggleForm = new Button
             {
-                Text = "📝 Input Form ▾",
-                Size = new Size(130, 30),
+                Text = "📝 + New / Form ▾",
+                Size = new Size(150, 30),
                 BackColor = Color.FromArgb(30, 41, 59),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -92,20 +109,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnCloseForm = new Button
             {
-                Text = "✖ Hide Form",
-                Dock = DockStyle.Top,
-                Height = 28,
+                Text = "✕ Close",
+                Dock = DockStyle.Right,
+                Width = 72,
+                Height = 30,
                 BackColor = Color.FromArgb(241, 245, 249),
                 ForeColor = Color.FromArgb(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 0, 8)
+                Cursor = Cursors.Hand
             };
             btnCloseForm.FlatAppearance.BorderSize = 0;
             btnCloseForm.Click += (s, e) => SetFormVisibility(false);
-            pnlForm.Controls.Add(btnCloseForm);
-            pnlForm.Controls.SetChildIndex(btnCloseForm, 0);
+            pnlFormHeaderBar.Controls.Add(btnCloseForm);
 
             SetFormVisibility(false);
         }
@@ -115,7 +131,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Visible = visible;
             if (tblMasterContent.ColumnStyles.Count > 0)
             {
-                tblMasterContent.ColumnStyles[0].Width = visible ? 580F : 0F;
+                tblMasterContent.ColumnStyles[0].Width = visible ? 480F : 0F;
                 tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
             }
             if (tblMasterContent.ColumnStyles.Count > 1)
@@ -125,10 +141,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 Input Form ▾";
+                btnToggleForm.Text = visible ? "✕ Hide Form ▴" : "📝 + New / Form ▾";
                 btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
                 btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
             }
+            MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
         public void RefreshData()
@@ -140,43 +157,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void SetupLicenseAutoHyphen()
         {
-            {
-                if (isFormattingLicense) return;
-
-                string raw = txtLicense.Text.Trim().ToUpper();
-                if (string.IsNullOrEmpty(raw) || raw == "N/A" || raw == "NONE") return;
-
-                string clean = new string(raw.Where(c => char.IsLetterOrDigit(c)).ToArray());
-                if (clean.Length == 0) return;
-
-                string formatted;
-                if (clean.Length <= 3)
-                {
-                    formatted = clean;
-                }
-                else if (clean.Length <= 5)
-                {
-                    formatted = $"{clean.Substring(0, 3)}-{clean.Substring(3)}";
-                }
-                else if (clean.Length <= 11)
-                {
-                    formatted = $"{clean.Substring(0, 3)}-{clean.Substring(3, 2)}-{clean.Substring(5)}";
-                }
-                else
-                {
-                    clean = clean.Substring(0, 11);
-                    formatted = $"{clean.Substring(0, 3)}-{clean.Substring(3, 2)}-{clean.Substring(5)}";
-                }
-
-                if (formatted != txtLicense.Text)
-                {
-                    isFormattingLicense = true;
-                    txtLicense.Text = formatted;
-                    txtLicense.SelectionStart = formatted.Length;
-                    isFormattingLicense = false;
-                }
-            };
-
+            txtLicense.TextChanged += (s, e) => FormatLicenseNumber();
             txtLicense.Leave += (s, e) =>
             {
                 string raw = txtLicense.Text.Trim().ToUpper();
@@ -185,8 +166,52 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
         }
 
+        private void FormatLicenseNumber()
+        {
+            if (isFormattingLicense) return;
+
+            string raw = txtLicense.Text.Trim().ToUpper();
+            if (string.IsNullOrEmpty(raw) || raw == "N/A" || raw == "NONE") return;
+
+            string clean = new string(raw.Where(c => char.IsLetterOrDigit(c)).ToArray());
+            if (clean.Length == 0) return;
+
+            string formatted;
+            if (clean.Length <= 3)
+            {
+                formatted = clean;
+            }
+            else if (clean.Length <= 5)
+            {
+                formatted = $"{clean.Substring(0, 3)}-{clean.Substring(3)}";
+            }
+            else if (clean.Length <= 11)
+            {
+                formatted = $"{clean.Substring(0, 3)}-{clean.Substring(3, 2)}-{clean.Substring(5)}";
+            }
+            else
+            {
+                clean = clean.Substring(0, 11);
+                formatted = $"{clean.Substring(0, 3)}-{clean.Substring(3, 2)}-{clean.Substring(5)}";
+            }
+
+            if (formatted != txtLicense.Text)
+            {
+                isFormattingLicense = true;
+                txtLicense.Text = formatted;
+                txtLicense.SelectionStart = formatted.Length;
+                isFormattingLicense = false;
+            }
+        }
+
         private void SetupEvents()
         {
+            txtContact.KeyPress += (s, e) => {
+                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) && e.KeyChar != '+' && e.KeyChar != '-')
+                {
+                    e.Handled = true;
+                }
+            };
             txtLicense.CharacterCasing = CharacterCasing.Upper;
             SetupLicenseAutoHyphen();
             cbRole.SelectedIndexChanged += (s, e) =>
@@ -223,7 +248,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "AvailabilityStatus", HeaderText = "Status", FillWeight = 15F, MinimumWidth = 95, ReadOnly = true });
         }
 
-                private void GridCrew_SelectionChanged(object? sender, EventArgs e)
+        private void GridCrew_SelectionChanged(object? sender, EventArgs e)
         {
             if (gridCrew.SelectedRows.Count > 0 && gridCrew.SelectedRows[0].DataBoundItem is Crew c)
             {
@@ -270,8 +295,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     btnRemovePhoto.Enabled = false;
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[CrewManagementView] DisplayPhotoPreview: {ex.Message}");
                 picPhoto.Image = null;
                 btnViewPhoto.Enabled = false;
                 btnRemovePhoto.Enabled = false;
@@ -452,7 +478,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     MiddleName = middleName,
                     Role = role,
                     ContactNumber = contact,
-                    LicenseNumber = isDriver ? license : license,
+                    LicenseNumber = isDriver ? license : (string.IsNullOrWhiteSpace(license) || license == "N/A" || license == "NONE" ? string.Empty : license),
                     DailyWage = 0,
                     FoodAllowance = 0,
                     IsAvailable = chkAvailable.Checked,
@@ -465,6 +491,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show("Crew member registered successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadCrew();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
@@ -568,6 +595,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show("Crew member updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadCrew();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
@@ -619,7 +647,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ClearFields();
         }
 
-                        private void FilterGridData()
+        private void FilterGridData()
         {
             string q = txtGridSearch.Text.Trim().ToLowerInvariant();
             var filtered = string.IsNullOrEmpty(q)

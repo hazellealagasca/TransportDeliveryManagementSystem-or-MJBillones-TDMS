@@ -34,30 +34,35 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 FilterGridData();
             };
             LoadData();
-            Button btnExport = new Button
-            {
-                Text = "📊 Export",
-                Size = new Size(88, 30),
-                BackColor = Color.FromArgb(15, 23, 42),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            btnExport.FlatAppearance.BorderSize = 0;
-            btnExport.Click += (s, e) => DataExportHelper.ExportToCsv(gridCollections, "Collection_Receipts", "Collections and Payment Receipts");
-            pnlGridActionsFlow.Controls.Add(btnExport);
+
+            btnPrint.Visible = false;
+
+            var menuActions = new ContextMenuStrip();
+            menuActions.Items.Add("📊 Export Collections to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridCollections, "Collection_Receipts", "Collections and Payment Receipts"));
+            menuActions.Items.Add("🖨️ Print Collections Register", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
+            var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
+            pnlGridActionsFlow.Controls.Add(btnActions);
 
             InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape && pnlForm.Visible)
+            {
+                SetFormVisibility(false);
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         private void InitializeFormToggle()
         {
             btnToggleForm = new Button
             {
-                Text = "📝 Input Form ▾",
-                Size = new Size(130, 30),
+                Text = "📝 + New / Form ▾",
+                Size = new Size(150, 30),
                 BackColor = Color.FromArgb(30, 41, 59),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -72,20 +77,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnCloseForm = new Button
             {
-                Text = "✖ Hide Form",
-                Dock = DockStyle.Top,
-                Height = 28,
+                Text = "✕ Close",
+                Dock = DockStyle.Right,
+                Width = 72,
+                Height = 30,
                 BackColor = Color.FromArgb(241, 245, 249),
                 ForeColor = Color.FromArgb(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 0, 8)
+                Cursor = Cursors.Hand
             };
             btnCloseForm.FlatAppearance.BorderSize = 0;
             btnCloseForm.Click += (s, e) => SetFormVisibility(false);
-            pnlForm.Controls.Add(btnCloseForm);
-            pnlForm.Controls.SetChildIndex(btnCloseForm, 0);
+            pnlFormHeaderBar.Controls.Add(btnCloseForm);
 
             SetFormVisibility(false);
         }
@@ -95,7 +99,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Visible = visible;
             if (tblMasterContent.ColumnStyles.Count > 0)
             {
-                tblMasterContent.ColumnStyles[0].Width = visible ? 580F : 0F;
+                tblMasterContent.ColumnStyles[0].Width = visible ? 480F : 0F;
                 tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
             }
             if (tblMasterContent.ColumnStyles.Count > 1)
@@ -105,10 +109,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 Input Form ▾";
+                btnToggleForm.Text = visible ? "✕ Hide Form ▴" : "📝 + New / Form ▾";
                 btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
                 btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
             }
+            MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
         public void RefreshData()
@@ -116,7 +121,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             LoadData();
         }
 
-                private void SetupGridColumns()
+        private void SetupGridColumns()
         {
             gridCollections.AutoGenerateColumns = false;
             gridCollections.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
@@ -261,6 +266,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show("Collection Receipt issued successfully and Invoice marked as PAID!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadData();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
@@ -339,6 +345,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show("Collection Receipt updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadData();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {

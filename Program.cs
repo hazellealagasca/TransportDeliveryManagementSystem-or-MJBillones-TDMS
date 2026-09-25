@@ -98,7 +98,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return true;
                 }, IntPtr.Zero);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Program] EnumWindows error: {ex.Message}");
+            }
             return found;
         }
 
@@ -129,12 +132,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             {
                                 p.Kill();
                             }
-                            catch { }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[Program] Kill process error: {ex.Message}");
+                            }
                         }
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Program] ActivateExistingInstance error: {ex.Message}");
+            }
             return false;
         }
 
@@ -148,7 +157,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string errorEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{source}] {ex.GetType().FullName}: {ex.Message}{Environment.NewLine}{ex.StackTrace}{Environment.NewLine}{Environment.NewLine}";
                 File.AppendAllText(logPath, errorEntry);
             }
-            catch { }
+            catch (Exception exLog)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Program] Crash log write error: {exLog.Message}");
+            }
 
             MessageBox.Show(
                 $"An unexpected system error occurred:{Environment.NewLine}{Environment.NewLine}{ex.Message}{Environment.NewLine}{Environment.NewLine}Details have been recorded in the local log.",

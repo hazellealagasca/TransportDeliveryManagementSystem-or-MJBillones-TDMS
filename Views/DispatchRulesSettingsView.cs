@@ -185,7 +185,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string reqCrates = MJdatabase.GetSystemSetting("RequireCrateReturnTracking", "True");
                 chkRequireCrateReturn.Checked = reqCrates.Equals("True", StringComparison.OrdinalIgnoreCase) || reqCrates == "1";
 
-                string autoRec = MJdatabase.GetSystemSetting("AutoFleetRecommendation", "True");
+                string autoRec = MJdatabase.GetSystemSetting("AutoTruckRecommendation", "True");
                 chkAutoFillCrates.Checked = autoRec.Equals("True", StringComparison.OrdinalIgnoreCase) || autoRec == "1";
             }
             catch (Exception ex)
@@ -200,7 +200,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 MJdatabase.SetSystemSetting("AllowMultiDestDispatch", chkAllowMultiDest.Checked ? "True" : "False", "Allow multiple destinations in 1 dispatch trip");
                 MJdatabase.SetSystemSetting("RequireCrateReturnTracking", chkRequireCrateReturn.Checked ? "True" : "False", "Require empty crates return tracking");
-                MJdatabase.SetSystemSetting("AutoFleetRecommendation", chkAutoFillCrates.Checked ? "True" : "False", "Automatically recommend optimal truck");
+                MJdatabase.SetSystemSetting("AutoTruckRecommendation", chkAutoFillCrates.Checked ? "True" : "False", "Automatically recommend optimal truck");
 
                 EventNotificationService.Publish("Dispatch Rules Saved", "Dispatch routing preferences updated successfully.", ToastType.Success, this);
 

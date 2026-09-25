@@ -17,14 +17,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void InitializeComponent()
         {
-            lblTitle = new Label();
             tblMasterContent = new TableLayoutPanel();
             pnlForm = new Panel();
-            btnClear = new Button();
-            tblUpdateDelete = new TableLayoutPanel();
-            btnUpdate = new Button();
-            btnDelete = new Button();
-            btnSave = new Button();
+            pnlFormBody = new Panel();
+            pnlPhotoSpacer = new Panel();
             tblPhoto = new TableLayoutPanel();
             picPhoto = new PictureBox();
             pnlPhotoButtons = new Panel();
@@ -48,6 +44,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtLastName = new TextBox();
             txtFirstName = new TextBox();
             txtMiddleName = new TextBox();
+            pnlFormActionsBar = new Panel();
+            btnClear = new Button();
+            pnlUpdateSpacer = new Panel();
+            tblUpdateDelete = new TableLayoutPanel();
+            btnUpdate = new Button();
+            btnDelete = new Button();
+            pnlSaveSpacer = new Panel();
+            btnSave = new Button();
+            pnlFormHeaderBar = new Panel();
             lblFormHeader = new Label();
             pnlGridCard = new Panel();
             gridCrew = new DataGridView();
@@ -59,147 +64,77 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblGridHeader = new Label();
             tblMasterContent.SuspendLayout();
             pnlForm.SuspendLayout();
-            tblUpdateDelete.SuspendLayout();
+            pnlFormBody.SuspendLayout();
             tblPhoto.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picPhoto).BeginInit();
             pnlPhotoButtons.SuspendLayout();
             tblCheckboxes.SuspendLayout();
             tblNameFields.SuspendLayout();
+            pnlFormActionsBar.SuspendLayout();
+            tblUpdateDelete.SuspendLayout();
+            pnlFormHeaderBar.SuspendLayout();
             pnlGridCard.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)gridCrew).BeginInit();
             pnlGridHeaderBar.SuspendLayout();
             pnlGridActionsFlow.SuspendLayout();
             SuspendLayout();
             // 
-            // lblTitle
-            // 
-            lblTitle.AutoSize = true;
-            lblTitle.Dock = DockStyle.Top;
-            lblTitle.Font = new Font("Segoe UI", 16F, FontStyle.Bold);
-            lblTitle.ForeColor = Color.FromArgb(15, 23, 42);
-            lblTitle.Location = new Point(16, 16);
-            lblTitle.Name = "lblTitle";
-            lblTitle.Padding = new Padding(0, 0, 0, 10);
-            lblTitle.Size = new Size(464, 47);
-            lblTitle.TabIndex = 0;
-            lblTitle.Text = "Crew Management (Drivers & Aides)";
-            // 
             // tblMasterContent
             // 
             tblMasterContent.ColumnCount = 2;
-            tblMasterContent.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 580F));
+            tblMasterContent.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 480F));
             tblMasterContent.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tblMasterContent.Controls.Add(pnlForm, 0, 0);
             tblMasterContent.Controls.Add(pnlGridCard, 1, 0);
             tblMasterContent.Dock = DockStyle.Fill;
-            tblMasterContent.Location = new Point(16, 63);
+            tblMasterContent.Location = new Point(16, 16);
             tblMasterContent.Name = "tblMasterContent";
             tblMasterContent.RowCount = 1;
             tblMasterContent.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tblMasterContent.Size = new Size(1388, 741);
+            tblMasterContent.Size = new Size(1388, 788);
             tblMasterContent.TabIndex = 1;
             // 
             // pnlForm
             // 
-            pnlForm.AutoScroll = true;
             pnlForm.BackColor = Color.White;
-            pnlForm.Controls.Add(btnClear);
-            pnlForm.Controls.Add(tblUpdateDelete);
-            pnlForm.Controls.Add(btnSave);
-            pnlForm.Controls.Add(tblPhoto);
-            pnlForm.Controls.Add(lblPhoto);
-            pnlForm.Controls.Add(tblCheckboxes);
-            pnlForm.Controls.Add(txtLicense);
-            pnlForm.Controls.Add(lblLicense);
-            pnlForm.Controls.Add(txtContact);
-            pnlForm.Controls.Add(lblContact);
-            pnlForm.Controls.Add(cbRole);
-            pnlForm.Controls.Add(lblRole);
-            pnlForm.Controls.Add(tblNameFields);
-            pnlForm.Controls.Add(lblFormHeader);
+            pnlForm.Controls.Add(pnlFormBody);
+            pnlForm.Controls.Add(pnlFormActionsBar);
+            pnlForm.Controls.Add(pnlFormHeaderBar);
             pnlForm.Dock = DockStyle.Fill;
             pnlForm.Location = new Point(0, 0);
             pnlForm.Margin = new Padding(0, 0, 12, 0);
             pnlForm.Name = "pnlForm";
-            pnlForm.Padding = new Padding(16);
-            pnlForm.Size = new Size(568, 741);
+            pnlForm.Size = new Size(468, 788);
             pnlForm.TabIndex = 0;
             // 
-            // btnClear
+            // pnlFormBody
             // 
-            btnClear.Cursor = Cursors.Hand;
-            btnClear.Dock = DockStyle.Top;
-            btnClear.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
-            btnClear.Location = new Point(16, 528);
-            btnClear.Margin = new Padding(0, 4, 0, 6);
-            btnClear.Name = "btnClear";
-            btnClear.Size = new Size(536, 36);
-            btnClear.TabIndex = 13;
-            btnClear.Text = "\U0001f9f9 Clear Form";
-            btnClear.UseVisualStyleBackColor = true;
-            btnClear.Click += BtnClear_Click;
+            pnlFormBody.AutoScroll = true;
+            pnlFormBody.Controls.Add(pnlPhotoSpacer);
+            pnlFormBody.Controls.Add(tblPhoto);
+            pnlFormBody.Controls.Add(lblPhoto);
+            pnlFormBody.Controls.Add(tblCheckboxes);
+            pnlFormBody.Controls.Add(txtLicense);
+            pnlFormBody.Controls.Add(lblLicense);
+            pnlFormBody.Controls.Add(txtContact);
+            pnlFormBody.Controls.Add(lblContact);
+            pnlFormBody.Controls.Add(cbRole);
+            pnlFormBody.Controls.Add(lblRole);
+            pnlFormBody.Controls.Add(tblNameFields);
+            pnlFormBody.Dock = DockStyle.Fill;
+            pnlFormBody.Location = new Point(0, 38);
+            pnlFormBody.Name = "pnlFormBody";
+            pnlFormBody.Padding = new Padding(16, 8, 16, 8);
+            pnlFormBody.Size = new Size(468, 610);
+            pnlFormBody.TabIndex = 21;
             // 
-            // tblUpdateDelete
+            // pnlPhotoSpacer
             // 
-            tblUpdateDelete.ColumnCount = 2;
-            tblUpdateDelete.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tblUpdateDelete.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tblUpdateDelete.Controls.Add(btnUpdate, 0, 0);
-            tblUpdateDelete.Controls.Add(btnDelete, 1, 0);
-            tblUpdateDelete.Dock = DockStyle.Top;
-            tblUpdateDelete.Location = new Point(16, 488);
-            tblUpdateDelete.Margin = new Padding(0, 0, 0, 6);
-            tblUpdateDelete.Name = "tblUpdateDelete";
-            tblUpdateDelete.RowCount = 1;
-            tblUpdateDelete.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tblUpdateDelete.Size = new Size(536, 40);
-            tblUpdateDelete.TabIndex = 12;
-            // 
-            // btnUpdate
-            // 
-            btnUpdate.Cursor = Cursors.Hand;
-            btnUpdate.Dock = DockStyle.Fill;
-            btnUpdate.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
-            btnUpdate.Location = new Point(0, 0);
-            btnUpdate.Margin = new Padding(0, 0, 4, 0);
-            btnUpdate.Name = "btnUpdate";
-            btnUpdate.Size = new Size(264, 40);
-            btnUpdate.TabIndex = 0;
-            btnUpdate.Text = "✏ Update";
-            btnUpdate.UseVisualStyleBackColor = true;
-            btnUpdate.Click += BtnUpdate_Click;
-            // 
-            // btnDelete
-            // 
-            btnDelete.Cursor = Cursors.Hand;
-            btnDelete.Dock = DockStyle.Fill;
-            btnDelete.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
-            btnDelete.Location = new Point(272, 0);
-            btnDelete.Margin = new Padding(4, 0, 0, 0);
-            btnDelete.Name = "btnDelete";
-            btnDelete.Size = new Size(264, 40);
-            btnDelete.TabIndex = 1;
-            btnDelete.Text = "🗑 Delete";
-            btnDelete.UseVisualStyleBackColor = true;
-            btnDelete.Click += BtnDelete_Click;
-            // 
-            // btnSave
-            // 
-            btnSave.BackColor = Color.FromArgb(185, 28, 28);
-            btnSave.Cursor = Cursors.Hand;
-            btnSave.Dock = DockStyle.Top;
-            btnSave.FlatAppearance.BorderSize = 0;
-            btnSave.FlatStyle = FlatStyle.Flat;
-            btnSave.Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold);
-            btnSave.ForeColor = Color.White;
-            btnSave.Location = new Point(16, 448);
-            btnSave.Margin = new Padding(0, 8, 0, 8);
-            btnSave.Name = "btnSave";
-            btnSave.Size = new Size(536, 40);
-            btnSave.TabIndex = 11;
-            btnSave.Text = "Save Crew Member";
-            btnSave.UseVisualStyleBackColor = false;
-            btnSave.Click += BtnSave_Click;
+            pnlPhotoSpacer.Dock = DockStyle.Top;
+            pnlPhotoSpacer.Location = new Point(16, 407);
+            pnlPhotoSpacer.Name = "pnlPhotoSpacer";
+            pnlPhotoSpacer.Size = new Size(436, 10);
+            pnlPhotoSpacer.TabIndex = 11;
             // 
             // tblPhoto
             // 
@@ -209,12 +144,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblPhoto.Controls.Add(picPhoto, 0, 0);
             tblPhoto.Controls.Add(pnlPhotoButtons, 1, 0);
             tblPhoto.Dock = DockStyle.Top;
-            tblPhoto.Location = new Point(16, 330);
+            tblPhoto.Location = new Point(16, 289);
             tblPhoto.Margin = new Padding(0, 4, 0, 8);
             tblPhoto.Name = "tblPhoto";
             tblPhoto.RowCount = 1;
             tblPhoto.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tblPhoto.Size = new Size(536, 118);
+            tblPhoto.Size = new Size(436, 118);
             tblPhoto.TabIndex = 10;
             // 
             // picPhoto
@@ -239,7 +174,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlPhotoButtons.Location = new Point(140, 0);
             pnlPhotoButtons.Margin = new Padding(0);
             pnlPhotoButtons.Name = "pnlPhotoButtons";
-            pnlPhotoButtons.Size = new Size(396, 118);
+            pnlPhotoButtons.Size = new Size(296, 118);
             pnlPhotoButtons.TabIndex = 1;
             // 
             // btnRemovePhoto
@@ -249,7 +184,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnRemovePhoto.Location = new Point(0, 68);
             btnRemovePhoto.Margin = new Padding(0, 4, 0, 0);
             btnRemovePhoto.Name = "btnRemovePhoto";
-            btnRemovePhoto.Size = new Size(396, 34);
+            btnRemovePhoto.Size = new Size(296, 34);
             btnRemovePhoto.TabIndex = 2;
             btnRemovePhoto.Text = "🗑 Remove Photo";
             btnRemovePhoto.UseVisualStyleBackColor = true;
@@ -262,7 +197,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnViewPhoto.Location = new Point(0, 34);
             btnViewPhoto.Margin = new Padding(0, 4, 0, 4);
             btnViewPhoto.Name = "btnViewPhoto";
-            btnViewPhoto.Size = new Size(396, 34);
+            btnViewPhoto.Size = new Size(296, 34);
             btnViewPhoto.TabIndex = 1;
             btnViewPhoto.Text = "🔍 View Full Photo";
             btnViewPhoto.UseVisualStyleBackColor = true;
@@ -275,7 +210,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnUploadPhoto.Location = new Point(0, 0);
             btnUploadPhoto.Margin = new Padding(0, 0, 0, 4);
             btnUploadPhoto.Name = "btnUploadPhoto";
-            btnUploadPhoto.Size = new Size(396, 34);
+            btnUploadPhoto.Size = new Size(296, 34);
             btnUploadPhoto.TabIndex = 0;
             btnUploadPhoto.Text = "📁 Upload Photo...";
             btnUploadPhoto.UseVisualStyleBackColor = true;
@@ -287,7 +222,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblPhoto.Dock = DockStyle.Top;
             lblPhoto.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
             lblPhoto.ForeColor = Color.FromArgb(30, 41, 59);
-            lblPhoto.Location = new Point(16, 303);
+            lblPhoto.Location = new Point(16, 262);
             lblPhoto.Name = "lblPhoto";
             lblPhoto.Padding = new Padding(0, 4, 0, 2);
             lblPhoto.Size = new Size(193, 27);
@@ -302,12 +237,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblCheckboxes.Controls.Add(chkAvailable, 0, 0);
             tblCheckboxes.Controls.Add(chkIsSeasonal, 1, 0);
             tblCheckboxes.Dock = DockStyle.Top;
-            tblCheckboxes.Location = new Point(16, 273);
+            tblCheckboxes.Location = new Point(16, 232);
             tblCheckboxes.Margin = new Padding(0, 4, 0, 8);
             tblCheckboxes.Name = "tblCheckboxes";
             tblCheckboxes.RowCount = 1;
             tblCheckboxes.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tblCheckboxes.Size = new Size(536, 30);
+            tblCheckboxes.Size = new Size(436, 30);
             tblCheckboxes.TabIndex = 8;
             // 
             // chkAvailable
@@ -321,7 +256,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             chkAvailable.Location = new Point(0, 0);
             chkAvailable.Margin = new Padding(0, 0, 4, 0);
             chkAvailable.Name = "chkAvailable";
-            chkAvailable.Size = new Size(264, 30);
+            chkAvailable.Size = new Size(214, 30);
             chkAvailable.TabIndex = 0;
             chkAvailable.Text = "Active (Duty Ready)";
             chkAvailable.UseVisualStyleBackColor = true;
@@ -332,10 +267,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             chkIsSeasonal.Dock = DockStyle.Fill;
             chkIsSeasonal.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
             chkIsSeasonal.ForeColor = Color.FromArgb(30, 41, 59);
-            chkIsSeasonal.Location = new Point(272, 0);
+            chkIsSeasonal.Location = new Point(222, 0);
             chkIsSeasonal.Margin = new Padding(4, 0, 0, 0);
             chkIsSeasonal.Name = "chkIsSeasonal";
-            chkIsSeasonal.Size = new Size(264, 30);
+            chkIsSeasonal.Size = new Size(214, 30);
             chkIsSeasonal.TabIndex = 1;
             chkIsSeasonal.Text = "Seasonal / Temporary";
             chkIsSeasonal.UseVisualStyleBackColor = true;
@@ -345,11 +280,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtLicense.CharacterCasing = CharacterCasing.Upper;
             txtLicense.Dock = DockStyle.Top;
             txtLicense.Font = new Font("Segoe UI", 9.5F);
-            txtLicense.Location = new Point(16, 244);
+            txtLicense.Location = new Point(16, 203);
             txtLicense.Margin = new Padding(0, 0, 0, 8);
+            txtLicense.MaxLength = 14;
             txtLicense.Name = "txtLicense";
             txtLicense.PlaceholderText = "e.g. N01-23-456789";
-            txtLicense.Size = new Size(536, 29);
+            txtLicense.Size = new Size(436, 29);
             txtLicense.TabIndex = 7;
             // 
             // lblLicense
@@ -358,7 +294,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblLicense.Dock = DockStyle.Top;
             lblLicense.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
             lblLicense.ForeColor = Color.FromArgb(30, 41, 59);
-            lblLicense.Location = new Point(16, 217);
+            lblLicense.Location = new Point(16, 176);
             lblLicense.Name = "lblLicense";
             lblLicense.Padding = new Padding(0, 4, 0, 2);
             lblLicense.Size = new Size(294, 27);
@@ -369,11 +305,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // 
             txtContact.Dock = DockStyle.Top;
             txtContact.Font = new Font("Segoe UI", 9.5F);
-            txtContact.Location = new Point(16, 188);
+            txtContact.Location = new Point(16, 147);
             txtContact.Margin = new Padding(0, 0, 0, 8);
+            txtContact.MaxLength = 20;
             txtContact.Name = "txtContact";
             txtContact.PlaceholderText = "e.g. 09171234567";
-            txtContact.Size = new Size(536, 29);
+            txtContact.Size = new Size(436, 29);
             txtContact.TabIndex = 5;
             // 
             // lblContact
@@ -382,7 +319,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblContact.Dock = DockStyle.Top;
             lblContact.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
             lblContact.ForeColor = Color.FromArgb(30, 41, 59);
-            lblContact.Location = new Point(16, 161);
+            lblContact.Location = new Point(16, 120);
             lblContact.Name = "lblContact";
             lblContact.Padding = new Padding(0, 4, 0, 2);
             lblContact.Size = new Size(273, 27);
@@ -396,10 +333,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbRole.Font = new Font("Segoe UI", 9.5F);
             cbRole.FormattingEnabled = true;
             cbRole.Items.AddRange(new object[] { "Driver", "Aide/Helper" });
-            cbRole.Location = new Point(16, 132);
+            cbRole.Location = new Point(16, 91);
             cbRole.Margin = new Padding(0, 0, 0, 8);
             cbRole.Name = "cbRole";
-            cbRole.Size = new Size(536, 29);
+            cbRole.Size = new Size(436, 29);
             cbRole.TabIndex = 3;
             // 
             // lblRole
@@ -408,7 +345,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblRole.Dock = DockStyle.Top;
             lblRole.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
             lblRole.ForeColor = Color.FromArgb(30, 41, 59);
-            lblRole.Location = new Point(16, 105);
+            lblRole.Location = new Point(16, 64);
             lblRole.Name = "lblRole";
             lblRole.Padding = new Padding(0, 4, 0, 2);
             lblRole.Size = new Size(99, 27);
@@ -428,13 +365,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblNameFields.Controls.Add(txtFirstName, 1, 1);
             tblNameFields.Controls.Add(txtMiddleName, 2, 1);
             tblNameFields.Dock = DockStyle.Top;
-            tblNameFields.Location = new Point(16, 49);
+            tblNameFields.Location = new Point(16, 8);
             tblNameFields.Margin = new Padding(0, 4, 0, 6);
             tblNameFields.Name = "tblNameFields";
             tblNameFields.RowCount = 2;
             tblNameFields.RowStyles.Add(new RowStyle());
             tblNameFields.RowStyles.Add(new RowStyle());
-            tblNameFields.Size = new Size(536, 56);
+            tblNameFields.Size = new Size(436, 56);
             tblNameFields.TabIndex = 1;
             // 
             // lblLastName
@@ -446,7 +383,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblLastName.Location = new Point(0, 0);
             lblLastName.Margin = new Padding(0, 0, 4, 2);
             lblLastName.Name = "lblLastName";
-            lblLastName.Size = new Size(174, 20);
+            lblLastName.Size = new Size(141, 20);
             lblLastName.TabIndex = 0;
             lblLastName.Text = "Last Name *:";
             // 
@@ -456,10 +393,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblFirstName.Dock = DockStyle.Fill;
             lblFirstName.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
             lblFirstName.ForeColor = Color.FromArgb(30, 41, 59);
-            lblFirstName.Location = new Point(182, 0);
+            lblFirstName.Location = new Point(149, 0);
             lblFirstName.Margin = new Padding(4, 0, 4, 2);
             lblFirstName.Name = "lblFirstName";
-            lblFirstName.Size = new Size(170, 20);
+            lblFirstName.Size = new Size(137, 20);
             lblFirstName.TabIndex = 1;
             lblFirstName.Text = "First Name *:";
             // 
@@ -469,10 +406,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblMiddleName.Dock = DockStyle.Fill;
             lblMiddleName.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
             lblMiddleName.ForeColor = Color.FromArgb(30, 41, 59);
-            lblMiddleName.Location = new Point(360, 0);
+            lblMiddleName.Location = new Point(294, 0);
             lblMiddleName.Margin = new Padding(4, 0, 0, 2);
             lblMiddleName.Name = "lblMiddleName";
-            lblMiddleName.Size = new Size(176, 20);
+            lblMiddleName.Size = new Size(142, 20);
             lblMiddleName.TabIndex = 2;
             lblMiddleName.Text = "Middle Name:";
             // 
@@ -482,43 +419,163 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtLastName.Font = new Font("Segoe UI", 9.5F);
             txtLastName.Location = new Point(0, 24);
             txtLastName.Margin = new Padding(0, 2, 4, 6);
+            txtLastName.MaxLength = 100;
             txtLastName.Name = "txtLastName";
             txtLastName.PlaceholderText = "e.g. Santos";
-            txtLastName.Size = new Size(174, 29);
+            txtLastName.Size = new Size(141, 29);
             txtLastName.TabIndex = 3;
             // 
             // txtFirstName
             // 
             txtFirstName.Dock = DockStyle.Fill;
             txtFirstName.Font = new Font("Segoe UI", 9.5F);
-            txtFirstName.Location = new Point(182, 24);
+            txtFirstName.Location = new Point(149, 24);
             txtFirstName.Margin = new Padding(4, 2, 4, 6);
+            txtFirstName.MaxLength = 100;
             txtFirstName.Name = "txtFirstName";
             txtFirstName.PlaceholderText = "e.g. Juan";
-            txtFirstName.Size = new Size(170, 29);
+            txtFirstName.Size = new Size(137, 29);
             txtFirstName.TabIndex = 4;
             // 
             // txtMiddleName
             // 
             txtMiddleName.Dock = DockStyle.Fill;
             txtMiddleName.Font = new Font("Segoe UI", 9.5F);
-            txtMiddleName.Location = new Point(360, 24);
+            txtMiddleName.Location = new Point(294, 24);
             txtMiddleName.Margin = new Padding(4, 2, 0, 6);
+            txtMiddleName.MaxLength = 100;
             txtMiddleName.Name = "txtMiddleName";
             txtMiddleName.PlaceholderText = "e.g. Cruz";
-            txtMiddleName.Size = new Size(176, 29);
+            txtMiddleName.Size = new Size(142, 29);
             txtMiddleName.TabIndex = 5;
+            // 
+            // pnlFormActionsBar
+            // 
+            pnlFormActionsBar.Controls.Add(btnClear);
+            pnlFormActionsBar.Controls.Add(pnlUpdateSpacer);
+            pnlFormActionsBar.Controls.Add(tblUpdateDelete);
+            pnlFormActionsBar.Controls.Add(pnlSaveSpacer);
+            pnlFormActionsBar.Controls.Add(btnSave);
+            pnlFormActionsBar.Dock = DockStyle.Bottom;
+            pnlFormActionsBar.Location = new Point(0, 648);
+            pnlFormActionsBar.Name = "pnlFormActionsBar";
+            pnlFormActionsBar.Padding = new Padding(16, 4, 16, 8);
+            pnlFormActionsBar.Size = new Size(468, 140);
+            pnlFormActionsBar.TabIndex = 20;
+            // 
+            // btnClear
+            // 
+            btnClear.Cursor = Cursors.Hand;
+            btnClear.Dock = DockStyle.Top;
+            btnClear.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            btnClear.Location = new Point(16, 102);
+            btnClear.Margin = new Padding(0);
+            btnClear.Name = "btnClear";
+            btnClear.Size = new Size(436, 36);
+            btnClear.TabIndex = 16;
+            btnClear.Text = "\U0001f9f9 Clear Form";
+            btnClear.UseVisualStyleBackColor = true;
+            btnClear.Click += BtnClear_Click;
+            // 
+            // pnlUpdateSpacer
+            // 
+            pnlUpdateSpacer.Dock = DockStyle.Top;
+            pnlUpdateSpacer.Location = new Point(16, 94);
+            pnlUpdateSpacer.Name = "pnlUpdateSpacer";
+            pnlUpdateSpacer.Size = new Size(436, 8);
+            pnlUpdateSpacer.TabIndex = 15;
+            // 
+            // tblUpdateDelete
+            // 
+            tblUpdateDelete.ColumnCount = 2;
+            tblUpdateDelete.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblUpdateDelete.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblUpdateDelete.Controls.Add(btnUpdate, 0, 0);
+            tblUpdateDelete.Controls.Add(btnDelete, 1, 0);
+            tblUpdateDelete.Dock = DockStyle.Top;
+            tblUpdateDelete.Location = new Point(16, 54);
+            tblUpdateDelete.Margin = new Padding(0);
+            tblUpdateDelete.Name = "tblUpdateDelete";
+            tblUpdateDelete.RowCount = 1;
+            tblUpdateDelete.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tblUpdateDelete.Size = new Size(436, 40);
+            tblUpdateDelete.TabIndex = 14;
+            // 
+            // btnUpdate
+            // 
+            btnUpdate.Cursor = Cursors.Hand;
+            btnUpdate.Dock = DockStyle.Fill;
+            btnUpdate.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            btnUpdate.Location = new Point(0, 0);
+            btnUpdate.Margin = new Padding(0, 0, 4, 0);
+            btnUpdate.Name = "btnUpdate";
+            btnUpdate.Size = new Size(214, 40);
+            btnUpdate.TabIndex = 0;
+            btnUpdate.Text = "✏ Update";
+            btnUpdate.UseVisualStyleBackColor = true;
+            btnUpdate.Click += BtnUpdate_Click;
+            // 
+            // btnDelete
+            // 
+            btnDelete.Cursor = Cursors.Hand;
+            btnDelete.Dock = DockStyle.Fill;
+            btnDelete.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+            btnDelete.Location = new Point(222, 0);
+            btnDelete.Margin = new Padding(4, 0, 0, 0);
+            btnDelete.Name = "btnDelete";
+            btnDelete.Size = new Size(214, 40);
+            btnDelete.TabIndex = 1;
+            btnDelete.Text = "🗑 Delete";
+            btnDelete.UseVisualStyleBackColor = true;
+            btnDelete.Click += BtnDelete_Click;
+            // 
+            // pnlSaveSpacer
+            // 
+            pnlSaveSpacer.Dock = DockStyle.Top;
+            pnlSaveSpacer.Location = new Point(16, 46);
+            pnlSaveSpacer.Name = "pnlSaveSpacer";
+            pnlSaveSpacer.Size = new Size(436, 8);
+            pnlSaveSpacer.TabIndex = 13;
+            // 
+            // btnSave
+            // 
+            btnSave.BackColor = Color.FromArgb(185, 28, 28);
+            btnSave.Cursor = Cursors.Hand;
+            btnSave.Dock = DockStyle.Top;
+            btnSave.FlatAppearance.BorderSize = 0;
+            btnSave.FlatStyle = FlatStyle.Flat;
+            btnSave.Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold);
+            btnSave.ForeColor = Color.White;
+            btnSave.Location = new Point(16, 4);
+            btnSave.Margin = new Padding(0);
+            btnSave.Name = "btnSave";
+            btnSave.Size = new Size(436, 42);
+            btnSave.TabIndex = 12;
+            btnSave.Text = "Save Crew Member";
+            btnSave.UseVisualStyleBackColor = false;
+            btnSave.Click += BtnSave_Click;
+            // 
+            // pnlFormHeaderBar
+            // 
+            pnlFormHeaderBar.BackColor = Color.FromArgb(248, 250, 252);
+            pnlFormHeaderBar.Controls.Add(lblFormHeader);
+            pnlFormHeaderBar.Dock = DockStyle.Top;
+            pnlFormHeaderBar.Location = new Point(0, 0);
+            pnlFormHeaderBar.Margin = new Padding(0);
+            pnlFormHeaderBar.Name = "pnlFormHeaderBar";
+            pnlFormHeaderBar.Padding = new Padding(12, 6, 12, 6);
+            pnlFormHeaderBar.Size = new Size(468, 38);
+            pnlFormHeaderBar.TabIndex = 0;
             // 
             // lblFormHeader
             // 
             lblFormHeader.AutoSize = true;
-            lblFormHeader.Dock = DockStyle.Top;
-            lblFormHeader.Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold);
-            lblFormHeader.ForeColor = Color.FromArgb(30, 41, 59);
-            lblFormHeader.Location = new Point(16, 16);
+            lblFormHeader.Dock = DockStyle.Left;
+            lblFormHeader.Font = new Font("Segoe UI Semibold", 12F, FontStyle.Bold);
+            lblFormHeader.ForeColor = Color.FromArgb(15, 23, 42);
+            lblFormHeader.Location = new Point(12, 6);
             lblFormHeader.Name = "lblFormHeader";
-            lblFormHeader.Padding = new Padding(0, 0, 0, 8);
-            lblFormHeader.Size = new Size(193, 33);
+            lblFormHeader.Size = new Size(206, 28);
             lblFormHeader.TabIndex = 0;
             lblFormHeader.Text = "Crew Personnel Form";
             // 
@@ -528,12 +585,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridCard.Controls.Add(gridCrew);
             pnlGridCard.Controls.Add(pnlGridHeaderBar);
             pnlGridCard.Dock = DockStyle.Fill;
-            pnlGridCard.Location = new Point(580, 0);
+            pnlGridCard.Location = new Point(480, 0);
             pnlGridCard.Margin = new Padding(0);
             pnlGridCard.MinimumSize = new Size(480, 300);
             pnlGridCard.Name = "pnlGridCard";
             pnlGridCard.Padding = new Padding(16);
-            pnlGridCard.Size = new Size(808, 741);
+            pnlGridCard.Size = new Size(908, 788);
             pnlGridCard.TabIndex = 1;
             // 
             // gridCrew
@@ -552,9 +609,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridCrew.Name = "gridCrew";
             gridCrew.RowHeadersVisible = false;
             gridCrew.RowHeadersWidth = 51;
-            gridCrew.RowTemplate.Height = 34;
+            gridCrew.RowTemplate.Height = 32;
             gridCrew.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            gridCrew.Size = new Size(776, 635);
+            gridCrew.Size = new Size(876, 682);
             gridCrew.TabIndex = 1;
             gridCrew.SelectionChanged += GridCrew_SelectionChanged;
             // 
@@ -568,7 +625,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridHeaderBar.Location = new Point(16, 16);
             pnlGridHeaderBar.Name = "pnlGridHeaderBar";
             pnlGridHeaderBar.Padding = new Padding(0, 0, 0, 8);
-            pnlGridHeaderBar.Size = new Size(776, 74);
+            pnlGridHeaderBar.Size = new Size(876, 74);
             pnlGridHeaderBar.TabIndex = 0;
             // 
             // pnlGridActionsFlow
@@ -581,7 +638,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridActionsFlow.Dock = DockStyle.Top;
             pnlGridActionsFlow.Location = new Point(0, 33);
             pnlGridActionsFlow.Name = "pnlGridActionsFlow";
-            pnlGridActionsFlow.Size = new Size(776, 33);
+            pnlGridActionsFlow.Size = new Size(876, 33);
             pnlGridActionsFlow.TabIndex = 1;
             // 
             // txtGridSearch
@@ -589,6 +646,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtGridSearch.Font = new Font("Segoe UI", 9.5F);
             txtGridSearch.Location = new Point(0, 4);
             txtGridSearch.Margin = new Padding(0, 4, 4, 0);
+            txtGridSearch.MaxLength = 100;
             txtGridSearch.Name = "txtGridSearch";
             txtGridSearch.PlaceholderText = "🔍 Search crew, role, contact...";
             txtGridSearch.Size = new Size(220, 29);
@@ -644,19 +702,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // 
             // CrewManagementView
             // 
-            AutoScroll = true;
-            AutoScrollMinSize = new Size(1000, 620);
             BackColor = Color.FromArgb(241, 245, 249);
             Controls.Add(tblMasterContent);
-            Controls.Add(lblTitle);
             Font = new Font("Segoe UI", 10F);
             Name = "CrewManagementView";
             Padding = new Padding(16);
             Size = new Size(1420, 820);
             tblMasterContent.ResumeLayout(false);
             pnlForm.ResumeLayout(false);
-            pnlForm.PerformLayout();
-            tblUpdateDelete.ResumeLayout(false);
+            pnlFormBody.ResumeLayout(false);
+            pnlFormBody.PerformLayout();
             tblPhoto.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)picPhoto).EndInit();
             pnlPhotoButtons.ResumeLayout(false);
@@ -664,6 +719,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblCheckboxes.PerformLayout();
             tblNameFields.ResumeLayout(false);
             tblNameFields.PerformLayout();
+            pnlFormActionsBar.ResumeLayout(false);
+            tblUpdateDelete.ResumeLayout(false);
+            pnlFormHeaderBar.ResumeLayout(false);
+            pnlFormHeaderBar.PerformLayout();
             pnlGridCard.ResumeLayout(false);
             pnlGridCard.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)gridCrew).EndInit();
@@ -672,14 +731,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridActionsFlow.ResumeLayout(false);
             pnlGridActionsFlow.PerformLayout();
             ResumeLayout(false);
-            PerformLayout();
         }
 
         #endregion
 
-        private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.TableLayoutPanel tblMasterContent;
         private System.Windows.Forms.Panel pnlForm;
+        private System.Windows.Forms.Panel pnlFormHeaderBar;
+        private System.Windows.Forms.Panel pnlFormActionsBar;
+        private System.Windows.Forms.Panel pnlFormBody;
+        private System.Windows.Forms.Panel pnlPhotoSpacer;
+        private System.Windows.Forms.Panel pnlSaveSpacer;
+        private System.Windows.Forms.Panel pnlUpdateSpacer;
         private System.Windows.Forms.Label lblFormHeader;
         private System.Windows.Forms.TableLayoutPanel tblNameFields;
         private System.Windows.Forms.Label lblLastName;

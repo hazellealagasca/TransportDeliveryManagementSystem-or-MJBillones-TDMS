@@ -165,6 +165,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Location = new Point(20, 250),
                 Size = new Size(396, 26),
                 Font = new Font("Segoe UI", 9.5F),
+                MaxLength = 20,
                 Text = string.IsNullOrEmpty(schedule.DepartureTime) ? "08:00 AM" : schedule.DepartureTime
             };
 
@@ -234,7 +235,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Size = new Size(484, 80),
                 Multiline = true,
                 ScrollBars = ScrollBars.Vertical,
-                Font = new Font("Segoe UI", 9.5F)
+                Font = new Font("Segoe UI", 9.5F),
+                MaxLength = 500
             };
 
             pnlBody.Controls.AddRange(new Control[]
@@ -298,9 +300,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string selectedReason = cbReason.SelectedItem?.ToString() ?? "";
             string notes = txtNotes.Text.Trim();
 
-            if (string.IsNullOrWhiteSpace(newTime))
+            if (notes.Length > 500)
             {
-                MessageBox.Show("Please enter or select a valid departure time.", "Departure Time Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Remarks / operational notes cannot exceed 500 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtNotes.Focus();
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(newTime) || !System.Text.RegularExpressions.Regex.IsMatch(newTime, @"^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            {
+                MessageBox.Show("Please enter or select a valid departure time (e.g. 08:00 AM).", "Invalid Departure Time", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtNewTime.Focus();
                 return;
             }

@@ -48,23 +48,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
             };
-            gridSchedules.ColumnHeaderMouseClick += (s, e) =>
-            {
-                if (gridSchedules.DataSource is List<LoadingSchedule> list && list.Count > 0)
-                {
-                    string colName = gridSchedules.Columns[e.ColumnIndex].DataPropertyName;
-                    List<LoadingSchedule> sorted = colName switch
-                    {
-                        "ScheduleDate" => list.OrderBy(x => x.ScheduleDate).ToList(),
-                        "ClientName" => list.OrderBy(x => x.ClientName).ToList(),
-                        "Destination" => list.OrderBy(x => x.Destination).ToList(),
-                        "TotalCrates" => list.OrderBy(x => x.TotalCrates).ToList(),
-                        "Status" => list.OrderBy(x => x.Status).ToList(),
-                        _ => list.OrderBy(x => x.ScheduleNumber).ToList()
-                    };
-                    gridSchedules.DataSource = sorted;
-                }
-            };
             SetupEvents();
             LoadSchedules();
             Button btnExport = new Button
@@ -133,20 +116,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnCloseForm = new Button
             {
-                Text = "✖ Hide Form",
-                Dock = DockStyle.Top,
-                Height = 28,
+                Name = "btnCloseForm",
+                Text = "✕ Close",
+                Dock = DockStyle.Right,
+                Size = new Size(84, 28),
                 BackColor = Color.FromArgb(241, 245, 249),
                 ForeColor = Color.FromArgb(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 0, 8)
+                Margin = new Padding(0, 4, 0, 4)
             };
             btnCloseForm.FlatAppearance.BorderSize = 0;
             btnCloseForm.Click += (s, e) => SetFormVisibility(false);
-            pnlForm.Controls.Add(btnCloseForm);
-            pnlForm.Controls.SetChildIndex(btnCloseForm, 0);
+            pnlFormHeaderBar.Controls.Add(btnCloseForm);
 
             SetFormVisibility(false);
         }
@@ -262,14 +245,53 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridSchedules.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TotalCrates", HeaderText = "Total", FillWeight = 70, MinimumWidth = 75, ReadOnly = true });
             gridSchedules.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 80, MinimumWidth = 90, ReadOnly = true });
             gridSchedules.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "RescheduleCount", HeaderText = "Resched", FillWeight = 60, MinimumWidth = 65, ReadOnly = true });
+            gridSchedules.CellFormatting -= GridSchedules_CellFormatting;
+            gridSchedules.CellFormatting += GridSchedules_CellFormatting;
         }
 
-                private void GridSchedules_SelectionChanged(object? sender, EventArgs e)
+        private void GridSchedules_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (gridSchedules.Columns[e.ColumnIndex].DataPropertyName == "Status" && e.Value != null)
+            {
+                string status = e.Value.ToString() ?? "";
+                if (status.Equals("Dispatched", StringComparison.OrdinalIgnoreCase) || status.Equals("Completed", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.CellStyle.BackColor = Color.FromArgb(220, 252, 231);
+                    e.CellStyle.ForeColor = Color.FromArgb(22, 101, 52);
+                    e.CellStyle.Font = new Font(gridSchedules.Font, FontStyle.Bold);
+                }
+                else if (status.Equals("Past Due", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.CellStyle.BackColor = Color.FromArgb(254, 226, 226);
+                    e.CellStyle.ForeColor = Color.FromArgb(185, 28, 28);
+                    e.CellStyle.Font = new Font(gridSchedules.Font, FontStyle.Bold);
+                }
+                else if (status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.CellStyle.BackColor = Color.FromArgb(254, 243, 199);
+                    e.CellStyle.ForeColor = Color.FromArgb(180, 83, 9);
+                }
+                else if (status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.CellStyle.BackColor = Color.FromArgb(241, 245, 249);
+                    e.CellStyle.ForeColor = Color.FromArgb(100, 116, 139);
+                }
+                else if (status.Equals("Rescheduled", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.CellStyle.BackColor = Color.FromArgb(238, 242, 255);
+                    e.CellStyle.ForeColor = Color.FromArgb(67, 56, 202);
+                }
+            }
+        }
+
+        private void GridSchedules_SelectionChanged(object? sender, EventArgs e)
         {
             if (gridSchedules.SelectedRows.Count > 0 && gridSchedules.SelectedRows[0].DataBoundItem is LoadingSchedule ls)
             {
                 isBindingForm = true;
                 selectedSchedule = ls;
+                txtScheduleNumber.Text = selectedSchedule.ScheduleNumber ?? "";
                 cbClient.Text = selectedSchedule.ClientName;
                 cbDestination.Text = selectedSchedule.Destination;
                 if (selectedSchedule.ScheduleDate >= dtpScheduleDate.MinDate && selectedSchedule.ScheduleDate <= dtpScheduleDate.MaxDate)
@@ -305,6 +327,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 foreach (var d in allDestList) cbDestination.Items.Add(d);
 
                 allSchedules = await MJdatabase.GetLoadingSchedulesAsync();
+                if (this.IsDisposed || !this.IsHandleCreated) return;
                 foreach (var sch in allSchedules)
                 {
                     if (!string.IsNullOrWhiteSpace(sch.Destination) && !cbDestination.Items.Contains(sch.Destination))
@@ -317,11 +340,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 CalculateCratesAndRecommendation();
 
                 int pendingCount = schedules.Count(s => s.Status == "Pending");
+                int pastDueCount = schedules.Count(s => s.Status == "Past Due");
                 int transitCount = schedules.Count(s => s.Status == "In Transit");
                 int completedCount = schedules.Count(s => s.Status == "Completed");
                 int totalCratesSum = schedules.Sum(s => s.TotalCrates);
 
-                lblSummary.Text = $"📊 Total Schedules: {schedules.Count:N0}  |  ⏳ Pending: {pendingCount}  |  🚚 In Transit: {transitCount}  |  ✅ Completed: {completedCount}  |  📦 Total Volume: {totalCratesSum:N0} Crates";
+                lblSummary.Text = $"📊 Total Schedules: {schedules.Count:N0}  |  ⏳ Pending: {pendingCount}  |  🚨 Past Due: {pastDueCount}  |  🚚 In Transit: {transitCount}  |  ✅ Completed: {completedCount}  |  📦 Total Volume: {totalCratesSum:N0} Crates";
                 CheckAndPromptDraft();
             }
             catch (Exception ex)
@@ -330,10 +354,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
-                private void BtnSave_Click(object? sender, EventArgs e)
+        private void BtnSave_Click(object? sender, EventArgs e)
         {
             try
             {
+                string schedNum = txtScheduleNumber.Text.Trim();
+                if (string.IsNullOrWhiteSpace(schedNum))
+                {
+                    MessageBox.Show("Please enter a Loading Schedule Reference Number.", "Reference Number Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtScheduleNumber.Focus();
+                    return;
+                }
+
                 if (string.IsNullOrWhiteSpace(cbClient.Text) || string.IsNullOrWhiteSpace(cbDestination.Text))
                 {
                     MessageBox.Show("Please enter both Client Name and Destination Branch.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -360,6 +392,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string dest = cbDestination.Text.Trim();
                 string depTime = txtDepartureTime.Text.Trim();
 
+                if (string.IsNullOrWhiteSpace(depTime) || !System.Text.RegularExpressions.Regex.IsMatch(depTime, @"^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                {
+                    MessageBox.Show("Please select or enter a valid departure time (e.g. 08:00 AM).", "Invalid Departure Time", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
                 if (selectedSchedule != null)
                 {
                     var ask = MessageBox.Show($"You currently have schedule '{selectedSchedule.ScheduleNumber}' selected.\n\n• Click YES to UPDATE the selected schedule.\n• Click NO to create a NEW additional order.", "Save or Update?", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
@@ -383,6 +421,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 LoadingSchedule ls = new LoadingSchedule
                 {
+                    ScheduleNumber = schedNum,
                     CargoType = cbCargoType.SelectedItem?.ToString() ?? "Cold / Chilled",
                     ClientName = client,
                     Destination = dest,
@@ -419,9 +458,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                string schedNum = txtScheduleNumber.Text.Trim();
+                if (string.IsNullOrWhiteSpace(schedNum))
+                {
+                    MessageBox.Show("Please enter a Loading Schedule Reference Number.", "Reference Number Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtScheduleNumber.Focus();
+                    return;
+                }
+
                 string client = cbClient.Text.Trim();
                 string dest = cbDestination.Text.Trim();
                 string depTime = txtDepartureTime.Text.Trim();
+
+                if (string.IsNullOrWhiteSpace(depTime) || !System.Text.RegularExpressions.Regex.IsMatch(depTime, @"^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                {
+                    MessageBox.Show("Please select or enter a valid departure time (e.g. 08:00 AM).", "Invalid Departure Time", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
 
                 string? conflict = MJdatabase.ValidateLoadingScheduleConflict(selectedSchedule.Id, client, dest, dtpScheduleDate.Value, depTime);
                 if (!string.IsNullOrEmpty(conflict))
@@ -442,6 +495,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.SaveLookupItem("Client Company", client);
                 SaveNewDestinationIfNeeded(dest);
 
+                selectedSchedule.ScheduleNumber = schedNum;
                 selectedSchedule.ClientName = client;
                 selectedSchedule.Destination = dest;
                 selectedSchedule.ScheduleDate = dtpScheduleDate.Value;
@@ -543,7 +597,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ClearFields();
         }
 
-                        private void FilterGridData()
+        private void FilterGridData()
         {
             string q = txtGridSearch.Text.Trim().ToLowerInvariant();
             var filtered = string.IsNullOrEmpty(q)
@@ -571,6 +625,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 isBindingForm = true;
                 selectedSchedule = null;
+                txtScheduleNumber.Text = "";
                 cbClient.Text = "";
                 cbDestination.Text = "";
                 numGCrate.Value = 0;
@@ -601,6 +656,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void ClearFields()
         {
             selectedSchedule = null;
+            txtScheduleNumber.Text = "";
             cbClient.Text = "";
             cbCargoType.SelectedIndex = 0;
             cbDestination.Text = "";
@@ -665,10 +721,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             });
             var itemPrint = new ToolStripMenuItem("📄 Print Loading Slip / Report", null, BtnPrint_Click);
             var itemCancel = new ToolStripMenuItem("❌ Cancel Loading Schedule", null, (s, e) => {
-                if (selectedSchedule != null) {
-                    selectedSchedule.Status = "Cancelled";
-                    MJdatabase.SaveLoadingSchedule(selectedSchedule);
-                    LoadSchedules();
+                try
+                {
+                    if (selectedSchedule != null) {
+                        if (selectedSchedule.Status == "Cancelled")
+                        {
+                            MessageBox.Show("This loading schedule is already cancelled.", "Notice", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            return;
+                        }
+                        string? reason = CancellationReasonDialog.PromptCancellationReason(this.FindForm() ?? this.ParentForm!, "Loading Schedule", selectedSchedule.ScheduleNumber);
+                        if (string.IsNullOrEmpty(reason)) return;
+                        selectedSchedule.Status = "Cancelled";
+                        selectedSchedule.CancellationReason = reason;
+                        MJdatabase.SaveLoadingSchedule(selectedSchedule);
+                        LoadSchedules();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to cancel loading schedule: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             });
             var itemDelete = new ToolStripMenuItem("🗑️ Delete Schedule", null, BtnDelete_Click);
@@ -760,6 +831,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var map = DraftAutoSaveService.DeserializeDraft(draft.Value.Data);
                 isBindingForm = true;
 
+                if (map.TryGetValue("ScheduleNumber", out var sn) && !string.IsNullOrWhiteSpace(sn))
+                {
+                    txtScheduleNumber.Text = sn;
+                }
                 if (map.TryGetValue("Client", out var cl) && !string.IsNullOrWhiteSpace(cl))
                 {
                     cbClient.Text = cl;
@@ -797,7 +872,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 CalculateCratesAndRecommendation();
                 ToastHelper.ShowToast(this, "Loading Schedule draft restored ✓", ToastType.Success);
             }
-            catch { isBindingForm = false; }
+            catch (Exception ex)
+            {
+                isBindingForm = false;
+                System.Diagnostics.Debug.WriteLine($"[LoadingSchedule] RestoreDraft: {ex.Message}");
+                ToastHelper.ShowToast(this, "Could not restore draft.", ToastType.Warning);
+            }
         }
 
         private void DiscardDraft()
@@ -865,13 +945,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 pnlHeader.Controls.Add(lblPrompt);
 
                 var pnlContent = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 16, 20, 16) };
-                var txtInput = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 10F) };
+                var txtInput = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 10F), MaxLength = 200 };
                 var btnAdd = new Button { Text = "Add Stop to Route ➔", Dock = DockStyle.Bottom, Height = 36, BackColor = Color.FromArgb(22, 101, 52), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold), Cursor = Cursors.Hand };
                 btnAdd.FlatAppearance.BorderSize = 0;
                 btnAdd.Click += (bs, be) =>
                 {
                     string val = txtInput.Text.Trim();
-                    if (!string.IsNullOrWhiteSpace(val))
+                    if (!string.IsNullOrWhiteSpace(val) && val.Length <= 200)
                     {
                         AppendDestinationStop(val);
                         prompt.DialogResult = DialogResult.OK;
@@ -988,6 +1068,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 var map = new Dictionary<string, string>
                 {
+                    ["ScheduleNumber"] = txtScheduleNumber.Text.Trim(),
                     ["Client"] = cbClient.Text.Trim(),
                     ["Destination"] = cbDestination.Text.Trim(),
                     ["ScheduleDate"] = dtpScheduleDate.Value.ToString("yyyy-MM-dd"),
@@ -1000,7 +1081,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string json = DraftAutoSaveService.SerializeDraft(map);
                 MJdatabase.SaveFormDraft("LoadingSchedule", SessionContext.CurrentUsername, json);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LoadingSchedule] SaveDraft: {ex.Message}");
+            }
         }
     }
 }

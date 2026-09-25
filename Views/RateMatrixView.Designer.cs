@@ -17,9 +17,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void InitializeComponent()
         {
-            this.lblTitle = new System.Windows.Forms.Label();
             this.tblMasterContent = new System.Windows.Forms.TableLayoutPanel();
             this.pnlForm = new System.Windows.Forms.Panel();
+            this.pnlFormActionsBar = new System.Windows.Forms.Panel();
+            this.pnlSaveSpacer = new System.Windows.Forms.Panel();
+            this.tblUpdateDelete = new System.Windows.Forms.TableLayoutPanel();
+            this.pnlUpdateSpacer = new System.Windows.Forms.Panel();
+            this.pnlFormBody = new System.Windows.Forms.Panel();
+            this.pnlFormHeaderBar = new System.Windows.Forms.Panel();
             this.lblFormHeader = new System.Windows.Forms.Label();
             this.lblDest = new System.Windows.Forms.Label();
             this.cbDestination = new System.Windows.Forms.ComboBox();
@@ -55,6 +60,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblSummary = new System.Windows.Forms.Label();
             this.tblMasterContent.SuspendLayout();
             this.pnlForm.SuspendLayout();
+            this.pnlFormActionsBar.SuspendLayout();
+            this.tblUpdateDelete.SuspendLayout();
+            this.pnlFormBody.SuspendLayout();
+            this.pnlFormHeaderBar.SuspendLayout();
             this.pnlMultiDest.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numRate)).BeginInit();
             this.pnlGridCard.SuspendLayout();
@@ -64,70 +73,70 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlSummary.SuspendLayout();
             this.SuspendLayout();
 
-            this.AutoScroll = true;
-            this.AutoScrollMinSize = new System.Drawing.Size(1000, 620);
+            this.AutoScroll = false;
+            this.AutoScrollMinSize = System.Drawing.Size.Empty;
             this.BackColor = System.Drawing.Color.FromArgb(241, 245, 249);
             this.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.Padding = new System.Windows.Forms.Padding(16);
             this.Size = new System.Drawing.Size(1420, 820);
 
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
-            this.lblTitle.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            this.lblTitle.Location = new System.Drawing.Point(16, 16);
-            this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Padding = new System.Windows.Forms.Padding(0, 0, 0, 10);
-            this.lblTitle.Size = new System.Drawing.Size(425, 40);
-            this.lblTitle.TabIndex = 0;
-            this.lblTitle.Text = "Delivery Rate Matrix Configuration";
-
             this.tblMasterContent.ColumnCount = 2;
-            this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 580F));
+            this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 480F));
             this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tblMasterContent.Controls.Add(this.pnlForm, 0, 0);
             this.tblMasterContent.Controls.Add(this.pnlGridCard, 1, 0);
             this.tblMasterContent.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tblMasterContent.Location = new System.Drawing.Point(16, 56);
+            this.tblMasterContent.Location = new System.Drawing.Point(16, 16);
             this.tblMasterContent.Name = "tblMasterContent";
             this.tblMasterContent.RowCount = 1;
             this.tblMasterContent.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tblMasterContent.Size = new System.Drawing.Size(1388, 748);
             this.tblMasterContent.TabIndex = 1;
 
-            this.pnlForm.AutoScroll = true;
+            this.pnlForm.AutoScroll = false;
             this.pnlForm.BackColor = System.Drawing.Color.White;
             this.pnlForm.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlForm.Location = new System.Drawing.Point(0, 0);
             this.pnlForm.Margin = new System.Windows.Forms.Padding(0, 0, 16, 0);
             this.pnlForm.Name = "pnlForm";
-            this.pnlForm.Padding = new System.Windows.Forms.Padding(16);
+            this.pnlForm.Padding = new System.Windows.Forms.Padding(0);
             this.pnlForm.Size = new System.Drawing.Size(464, 748);
             this.pnlForm.TabIndex = 0;
 
+            this.pnlFormHeaderBar.BackColor = System.Drawing.Color.FromArgb(248, 250, 252);
+            this.pnlFormHeaderBar.Controls.Add(this.lblFormHeader);
+            this.pnlFormHeaderBar.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlFormHeaderBar.Location = new System.Drawing.Point(0, 0);
+            this.pnlFormHeaderBar.Margin = new System.Windows.Forms.Padding(0);
+            this.pnlFormHeaderBar.Name = "pnlFormHeaderBar";
+            this.pnlFormHeaderBar.Padding = new System.Windows.Forms.Padding(12, 6, 12, 6);
+            this.pnlFormHeaderBar.Size = new System.Drawing.Size(480, 38);
+            this.pnlFormHeaderBar.TabIndex = 0;
+
             this.lblFormHeader.AutoSize = true;
-            this.lblFormHeader.Font = new System.Drawing.Font("Segoe UI Semibold", 11F, System.Drawing.FontStyle.Bold);
-            this.lblFormHeader.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblFormHeader.Location = new System.Drawing.Point(16, 12);
+            this.lblFormHeader.Font = new System.Drawing.Font("Segoe UI Semibold", 12F, System.Drawing.FontStyle.Bold);
+            this.lblFormHeader.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            this.lblFormHeader.Location = new System.Drawing.Point(0, 6);
             this.lblFormHeader.Name = "lblFormHeader";
-            this.lblFormHeader.Size = new System.Drawing.Size(161, 20);
+            this.lblFormHeader.Size = new System.Drawing.Size(185, 21);
             this.lblFormHeader.TabIndex = 0;
             this.lblFormHeader.Text = "Standard Pricing Entry";
 
             this.lblDest.AutoSize = true;
             this.lblDest.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblDest.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblDest.Location = new System.Drawing.Point(16, 46);
+            this.lblDest.Location = new System.Drawing.Point(16, 60);
             this.lblDest.Name = "lblDest";
             this.lblDest.Size = new System.Drawing.Size(144, 17);
             this.lblDest.TabIndex = 1;
             this.lblDest.Text = "Destination Coverage:";
 
+            this.chkMultiDest.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.chkMultiDest.AutoSize = true;
             this.chkMultiDest.Cursor = System.Windows.Forms.Cursors.Hand;
             this.chkMultiDest.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold);
             this.chkMultiDest.ForeColor = System.Drawing.Color.FromArgb(37, 99, 235);
-            this.chkMultiDest.Location = new System.Drawing.Point(220, 45);
+            this.chkMultiDest.Location = new System.Drawing.Point(220, 59);
             this.chkMultiDest.Name = "chkMultiDest";
             this.chkMultiDest.Size = new System.Drawing.Size(225, 19);
             this.chkMultiDest.TabIndex = 2;
@@ -138,7 +147,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             | System.Windows.Forms.AnchorStyles.Right)));
             this.cbDestination.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.cbDestination.FormattingEnabled = true;
-            this.cbDestination.Location = new System.Drawing.Point(16, 68);
+            this.cbDestination.Location = new System.Drawing.Point(16, 82);
             this.cbDestination.Name = "cbDestination";
             this.cbDestination.Size = new System.Drawing.Size(432, 25);
             this.cbDestination.TabIndex = 3;
@@ -156,7 +165,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlMultiDest.Controls.Add(this.btnAddQuickDest);
             this.pnlMultiDest.Controls.Add(this.rbSeparateRates);
             this.pnlMultiDest.Controls.Add(this.rbCombinedRoute);
-            this.pnlMultiDest.Location = new System.Drawing.Point(16, 68);
+            this.pnlMultiDest.Location = new System.Drawing.Point(16, 82);
             this.pnlMultiDest.Name = "pnlMultiDest";
             this.pnlMultiDest.Size = new System.Drawing.Size(432, 256);
             this.pnlMultiDest.TabIndex = 4;
@@ -212,6 +221,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             | System.Windows.Forms.AnchorStyles.Right)));
             this.txtQuickAddDest.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.txtQuickAddDest.Location = new System.Drawing.Point(6, 158);
+            this.txtQuickAddDest.MaxLength = 200;
             this.txtQuickAddDest.Name = "txtQuickAddDest";
             this.txtQuickAddDest.PlaceholderText = "e.g. Quezon, Lucena, Rizal, Tarlac";
             this.txtQuickAddDest.Size = new System.Drawing.Size(333, 23);
@@ -256,7 +266,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblTt.AutoSize = true;
             this.lblTt.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblTt.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblTt.Location = new System.Drawing.Point(16, 108);
+            this.lblTt.Location = new System.Drawing.Point(16, 118);
             this.lblTt.Name = "lblTt";
             this.lblTt.Size = new System.Drawing.Size(141, 17);
             this.lblTt.TabIndex = 5;
@@ -267,7 +277,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.cbTruckType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cbTruckType.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.cbTruckType.FormattingEnabled = true;
-            this.cbTruckType.Location = new System.Drawing.Point(16, 130);
+            this.cbTruckType.Location = new System.Drawing.Point(16, 140);
             this.cbTruckType.Name = "cbTruckType";
             this.cbTruckType.Size = new System.Drawing.Size(432, 25);
             this.cbTruckType.TabIndex = 6;
@@ -275,7 +285,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.chkPeak.AutoSize = true;
             this.chkPeak.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.chkPeak.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.chkPeak.Location = new System.Drawing.Point(16, 172);
+            this.chkPeak.Location = new System.Drawing.Point(16, 180);
             this.chkPeak.Name = "chkPeak";
             this.chkPeak.Size = new System.Drawing.Size(193, 21);
             this.chkPeak.TabIndex = 7;
@@ -284,7 +294,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblRate.AutoSize = true;
             this.lblRate.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblRate.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblRate.Location = new System.Drawing.Point(16, 206);
+            this.lblRate.Location = new System.Drawing.Point(16, 212);
             this.lblRate.Name = "lblRate";
             this.lblRate.Size = new System.Drawing.Size(176, 17);
             this.lblRate.TabIndex = 8;
@@ -294,7 +304,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             | System.Windows.Forms.AnchorStyles.Right)));
             this.numRate.DecimalPlaces = 2;
             this.numRate.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.numRate.Location = new System.Drawing.Point(16, 228);
+            this.numRate.Location = new System.Drawing.Point(16, 234);
             this.numRate.Maximum = new decimal(new int[] { 100000000, 0, 0, 0 });
             this.numRate.Name = "numRate";
             this.numRate.Size = new System.Drawing.Size(432, 24);
@@ -302,17 +312,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.numRate.ThousandsSeparator = true;
             this.numRate.Value = new decimal(new int[] { 8500, 0, 0, 0 });
 
-            this.btnSave.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
             this.btnSave.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
             this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnSave.Dock = System.Windows.Forms.DockStyle.Top;
             this.btnSave.FlatAppearance.BorderSize = 0;
             this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnSave.Font = new System.Drawing.Font("Segoe UI Semibold", 10F, System.Drawing.FontStyle.Bold);
             this.btnSave.ForeColor = System.Drawing.Color.White;
-            this.btnSave.Location = new System.Drawing.Point(16, 276);
+            this.btnSave.Location = new System.Drawing.Point(16, 4);
             this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(432, 40);
+            this.btnSave.Size = new System.Drawing.Size(448, 42);
             this.btnSave.TabIndex = 10;
             this.btnSave.Text = "➕ ADD RATE";
             this.btnSave.UseVisualStyleBackColor = false;
@@ -320,13 +329,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             this.btnUpdate.BackColor = System.Drawing.Color.FromArgb(16, 185, 129);
             this.btnUpdate.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnUpdate.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnUpdate.FlatAppearance.BorderSize = 0;
             this.btnUpdate.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnUpdate.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.btnUpdate.ForeColor = System.Drawing.Color.White;
-            this.btnUpdate.Location = new System.Drawing.Point(16, 324);
+            this.btnUpdate.Location = new System.Drawing.Point(0, 0);
+            this.btnUpdate.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
             this.btnUpdate.Name = "btnUpdate";
-            this.btnUpdate.Size = new System.Drawing.Size(212, 38);
+            this.btnUpdate.Size = new System.Drawing.Size(220, 40);
             this.btnUpdate.TabIndex = 11;
             this.btnUpdate.Text = "✏️ UPDATE";
             this.btnUpdate.UseVisualStyleBackColor = false;
@@ -334,55 +345,81 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             this.btnDelete.BackColor = System.Drawing.Color.FromArgb(239, 68, 68);
             this.btnDelete.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnDelete.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnDelete.FlatAppearance.BorderSize = 0;
             this.btnDelete.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnDelete.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.btnDelete.ForeColor = System.Drawing.Color.White;
-            this.btnDelete.Location = new System.Drawing.Point(236, 324);
+            this.btnDelete.Location = new System.Drawing.Point(228, 0);
+            this.btnDelete.Margin = new System.Windows.Forms.Padding(4, 0, 0, 0);
             this.btnDelete.Name = "btnDelete";
-            this.btnDelete.Size = new System.Drawing.Size(212, 38);
+            this.btnDelete.Size = new System.Drawing.Size(220, 40);
             this.btnDelete.TabIndex = 12;
             this.btnDelete.Text = "🗑️ DELETE";
             this.btnDelete.UseVisualStyleBackColor = false;
             this.btnDelete.Click += new System.EventHandler(this.BtnDelete_Click);
 
-            this.btnClear.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
             this.btnClear.BackColor = System.Drawing.Color.FromArgb(148, 163, 184);
             this.btnClear.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnClear.Dock = System.Windows.Forms.DockStyle.Top;
             this.btnClear.FlatAppearance.BorderSize = 0;
             this.btnClear.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnClear.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.btnClear.ForeColor = System.Drawing.Color.White;
-            this.btnClear.Location = new System.Drawing.Point(16, 370);
+            this.btnClear.Location = new System.Drawing.Point(16, 94);
             this.btnClear.Name = "btnClear";
-            this.btnClear.Size = new System.Drawing.Size(432, 34);
+            this.btnClear.Size = new System.Drawing.Size(448, 36);
             this.btnClear.TabIndex = 13;
             this.btnClear.Text = "🧹 CLEAR";
             this.btnClear.UseVisualStyleBackColor = false;
             this.btnClear.Click += new System.EventHandler(this.BtnClear_Click);
 
-            this.pnlForm.Controls.Add(this.btnClear);
-            this.pnlForm.Controls.Add(this.btnDelete);
-            this.pnlForm.Controls.Add(this.btnUpdate);
-            this.pnlForm.Controls.Add(this.btnSave);
-            this.pnlForm.Controls.Add(this.numRate);
-            this.pnlForm.Controls.Add(this.lblRate);
-            this.pnlForm.Controls.Add(this.chkPeak);
-            this.pnlForm.Controls.Add(this.cbTruckType);
-            this.pnlForm.Controls.Add(this.lblTt);
-            this.pnlForm.Controls.Add(this.pnlMultiDest);
-            this.pnlForm.Controls.Add(this.cbDestination);
-            this.pnlForm.Controls.Add(this.chkMultiDest);
-            this.pnlForm.Controls.Add(this.lblDest);
-            this.pnlForm.Controls.Add(this.lblFormHeader);
+            this.pnlForm.Controls.Add(this.pnlFormBody);
+            this.pnlForm.Controls.Add(this.pnlFormActionsBar);
+            this.pnlForm.Controls.Add(this.pnlFormHeaderBar);
+            
+            this.pnlSaveSpacer.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlSaveSpacer.Size = new System.Drawing.Size(448, 8);
+            
+            this.tblUpdateDelete.ColumnCount = 2;
+            this.tblUpdateDelete.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tblUpdateDelete.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tblUpdateDelete.Controls.Add(this.btnUpdate, 0, 0);
+            this.tblUpdateDelete.Controls.Add(this.btnDelete, 1, 0);
+            this.tblUpdateDelete.Dock = System.Windows.Forms.DockStyle.Top;
+            this.tblUpdateDelete.Height = 40;
+            
+            this.pnlUpdateSpacer.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlUpdateSpacer.Size = new System.Drawing.Size(448, 8);
+            
+            this.pnlFormActionsBar.Controls.Add(this.btnClear);
+            this.pnlFormActionsBar.Controls.Add(this.pnlUpdateSpacer);
+            this.pnlFormActionsBar.Controls.Add(this.tblUpdateDelete);
+            this.pnlFormActionsBar.Controls.Add(this.pnlSaveSpacer);
+            this.pnlFormActionsBar.Controls.Add(this.btnSave);
+            this.pnlFormActionsBar.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.pnlFormActionsBar.Padding = new System.Windows.Forms.Padding(16, 4, 16, 8);
+            this.pnlFormActionsBar.Size = new System.Drawing.Size(480, 140);
+            
+            this.pnlFormBody.AutoScroll = true;
+            this.pnlFormBody.Controls.Add(this.numRate);
+            this.pnlFormBody.Controls.Add(this.lblRate);
+            this.pnlFormBody.Controls.Add(this.chkPeak);
+            this.pnlFormBody.Controls.Add(this.cbTruckType);
+            this.pnlFormBody.Controls.Add(this.lblTt);
+            this.pnlFormBody.Controls.Add(this.pnlMultiDest);
+            this.pnlFormBody.Controls.Add(this.cbDestination);
+            this.pnlFormBody.Controls.Add(this.chkMultiDest);
+            this.pnlFormBody.Controls.Add(this.lblDest);
+            this.pnlFormBody.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlFormBody.Padding = new System.Windows.Forms.Padding(16, 8, 16, 8);
 
             this.pnlGridCard.BackColor = System.Drawing.Color.White;
             this.pnlGridCard.Controls.Add(this.gridRates);
             this.pnlGridCard.Controls.Add(this.pnlSummary);
             this.pnlGridCard.Controls.Add(this.pnlGridHeaderBar);
             this.pnlGridCard.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pnlGridCard.Location = new System.Drawing.Point(580, 0);
+            this.pnlGridCard.Location = new System.Drawing.Point(480, 0);
             this.pnlGridCard.Margin = new System.Windows.Forms.Padding(0);
             this.pnlGridCard.MinimumSize = new System.Drawing.Size(480, 300);
             this.pnlGridCard.Name = "pnlGridCard";
@@ -426,6 +463,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtGridSearch.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.txtGridSearch.Location = new System.Drawing.Point(0, 4);
             this.txtGridSearch.Margin = new System.Windows.Forms.Padding(0, 4, 4, 0);
+            this.txtGridSearch.MaxLength = 100;
             this.txtGridSearch.Name = "txtGridSearch";
             this.txtGridSearch.PlaceholderText = "🔍 Search origin, destination, vehicle...";
             this.txtGridSearch.Size = new System.Drawing.Size(220, 24);
@@ -472,9 +510,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.gridRates.EnableHeadersVisualStyles = false;
             this.gridRates.Location = new System.Drawing.Point(16, 60);
             this.gridRates.Name = "gridRates";
-            this.gridRates.ReadOnly = true;
             this.gridRates.RowHeadersVisible = false;
-            this.gridRates.RowTemplate.Height = 34;
+            this.gridRates.RowTemplate.Height = 32;
             this.gridRates.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.gridRates.Size = new System.Drawing.Size(876, 634);
             this.gridRates.TabIndex = 1;
@@ -502,11 +539,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 19F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.tblMasterContent);
-            this.Controls.Add(this.lblTitle);
             this.Name = "RateMatrixView";
+            this.pnlFormActionsBar.ResumeLayout(false);
+            this.pnlFormBody.ResumeLayout(false);
+            this.pnlFormBody.PerformLayout();
             this.tblMasterContent.ResumeLayout(false);
             this.pnlForm.ResumeLayout(false);
             this.pnlForm.PerformLayout();
+            this.pnlFormHeaderBar.ResumeLayout(false);
+            this.pnlFormHeaderBar.PerformLayout();
             this.pnlMultiDest.ResumeLayout(false);
             this.pnlMultiDest.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numRate)).EndInit();
@@ -525,9 +566,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         #endregion
 
-        private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.TableLayoutPanel tblMasterContent;
         private System.Windows.Forms.Panel pnlForm;
+        private System.Windows.Forms.Panel pnlFormActionsBar;
+        private System.Windows.Forms.Panel pnlSaveSpacer;
+        private System.Windows.Forms.TableLayoutPanel tblUpdateDelete;
+        private System.Windows.Forms.Panel pnlUpdateSpacer;
+        private System.Windows.Forms.Panel pnlFormBody;
+        private System.Windows.Forms.Panel pnlFormHeaderBar;
         private System.Windows.Forms.Label lblFormHeader;
         private System.Windows.Forms.Label lblDest;
         private System.Windows.Forms.ComboBox cbDestination;

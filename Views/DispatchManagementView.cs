@@ -25,7 +25,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private System.Windows.Forms.Timer? tmrAutoSaveDraft;
         private Panel? pnlDraftBanner;
         private Button btnToggleForm = null!;
-        private Button btnCloseForm = null!;
         private CheckBox chkMultiDrop = null!;
         private Panel pnlMultiDropBuilder = null!;
         private ListBox lstStops = null!;
@@ -35,6 +34,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public DispatchManagementView()
         {
             InitializeComponent();
+            lblFormHeader.UseMnemonic = false;
+            lblGridHeader.UseMnemonic = false;
+            pnlForm.AutoScroll = false;
+            pnlFormHeaderBar.AutoScroll = false;
+            pnlFormActionsBar.AutoScroll = false;
             gridDispatch.BringToFront();
             SetupAideModuleEvents();
             InitializeMultiDropControls();
@@ -59,44 +63,42 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetupEvents();
             LoadDropdownsAndGrid();
 
-            Button btnScheduleFuture = new Button
-            {
-                Text = "📅 Schedule Future Trip",
-                Size = new Size(165, 30),
-                BackColor = Color.FromArgb(30, 41, 59),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            btnScheduleFuture.FlatAppearance.BorderSize = 0;
-            btnScheduleFuture.Click += (s, e) => PromptCloneFutureDispatch();
-            pnlGridActionsFlow.Controls.Add(btnScheduleFuture);
+            ContextMenuStrip menuActions = new ContextMenuStrip();
+            ToolStripMenuItem itemExport = new ToolStripMenuItem("📊 Export to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridDispatch, "Dispatch_Orders", "Active and Dispatched Trips"));
+            ToolStripMenuItem itemPrint = new ToolStripMenuItem("🖨️ Print Dispatch Summary", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
+            ToolStripMenuItem itemScheduleFuture = new ToolStripMenuItem("📅 Schedule Future Trip", null, (s, e) => PromptCloneFutureDispatch());
 
-            Button btnExport = new Button
-            {
-                Text = "📊 Export",
-                Size = new Size(88, 30),
-                BackColor = Color.FromArgb(15, 23, 42),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            btnExport.FlatAppearance.BorderSize = 0;
-            btnExport.Click += (s, e) => DataExportHelper.ExportToCsv(gridDispatch, "Dispatch_Orders", "Active and Dispatched Trips");
-            pnlGridActionsFlow.Controls.Add(btnExport);
+            menuActions.Items.Add(itemExport);
+            menuActions.Items.Add(itemPrint);
+            menuActions.Items.Add(new ToolStripSeparator());
+            menuActions.Items.Add(itemScheduleFuture);
+
+            Button btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
+            pnlGridActionsFlow.Controls.Add(btnActions);
+
+            btnPrint.Visible = false;
+            btnCloseForm.Click += (s, e) => SetFormVisibility(false);
 
             InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape && pnlForm.Visible)
+            {
+                SetFormVisibility(false);
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         private void InitializeFormToggle()
         {
             btnToggleForm = new Button
             {
-                Text = "📝 Input Form ▾",
-                Size = new Size(130, 30),
+                Text = "📝 + New Order / Form ▾",
+                Size = new Size(165, 30),
                 BackColor = Color.FromArgb(30, 41, 59),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -109,23 +111,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridActionsFlow.Controls.Add(btnToggleForm);
             pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
 
-            btnCloseForm = new Button
-            {
-                Text = "✖ Hide Form",
-                Dock = DockStyle.Top,
-                Height = 28,
-                BackColor = Color.FromArgb(241, 245, 249),
-                ForeColor = Color.FromArgb(71, 85, 105),
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 0, 8)
-            };
-            btnCloseForm.FlatAppearance.BorderSize = 0;
-            btnCloseForm.Click += (s, e) => SetFormVisibility(false);
-            pnlForm.Controls.Add(btnCloseForm);
-            pnlForm.Controls.SetChildIndex(btnCloseForm, 0);
-
             SetFormVisibility(false);
         }
 
@@ -134,7 +119,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Visible = visible;
             if (tblMasterContent.ColumnStyles.Count > 0)
             {
-                tblMasterContent.ColumnStyles[0].Width = visible ? 580F : 0F;
+                tblMasterContent.ColumnStyles[0].Width = visible ? 480F : 0F;
                 tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
             }
             if (tblMasterContent.ColumnStyles.Count > 1)
@@ -144,10 +129,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 Input Form ▾";
+                btnToggleForm.Text = visible ? "✕ Hide Form ▴" : "📝 + New Order / Form ▾";
                 btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
                 btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
             }
+            MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
         public void PreSelectTruck(int truckId)
@@ -165,7 +151,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     CalculateCratesAndRecommendation();
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Dispatch] PreSelectTruck: {ex.Message}");
+            }
         }
 
         public void InitiateDispatchForSchedule(LoadingSchedule schedule)
@@ -177,21 +166,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(true);
                 ClearFields();
 
-                if (loadingSchedules == null || loadingSchedules.Count == 0)
-                {
-                    loadingSchedules = MJdatabase.GetLoadingSchedules();
-                    cbLoadSchedule.Items.Clear();
-                    foreach (var ls in loadingSchedules)
-                    {
-                        cbLoadSchedule.Items.Add($"{ls.ScheduleNumber} - {ls.ClientName} ({ls.TotalCrates} Crates)");
-                    }
-                }
-
-                int schIdx = loadingSchedules.FindIndex(s => s.Id == schedule.Id);
-                if (schIdx >= 0 && schIdx < cbLoadSchedule.Items.Count)
-                {
-                    cbLoadSchedule.SelectedIndex = schIdx;
-                }
+                txtDispatchNumber.Text = !string.IsNullOrEmpty(schedule.ScheduleNumber) ? schedule.ScheduleNumber : GenerateNextDispatchNumber();
+                cbClient.Text = schedule.ClientName;
+                cbDestination.Text = schedule.Destination;
+                cbCargoType.Text = !string.IsNullOrEmpty(schedule.CargoType) ? schedule.CargoType : "Cold / Chilled";
+                chkIsPeak.Checked = schedule.IsPeak;
 
                 numGCrate.Value = Math.Max(0, schedule.GCrate);
                 numECrate.Value = Math.Max(0, schedule.ECrate);
@@ -224,11 +203,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 chkMultiDrop.Checked = false;
                 CalculateCratesAndRecommendation();
+                UpdateDestinationHint();
                 lblFormHeader.Text = $"Dispatch Order: {schedule.ScheduleNumber} ({schedule.ClientName})";
                 cbDriver.Focus();
                 ToastHelper.ShowToast(this, $"Loaded Order #{schedule.ScheduleNumber} for {schedule.ClientName} ({schedule.TotalCrates} Crates) ✓", ToastType.Info);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Dispatch] InitiateDispatchForSchedule: {ex.Message}");
+            }
         }
 
         public void RefreshData()
@@ -241,31 +224,41 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnPickAnalogTime.Click += (s, e) => OpenAnalogClockPicker();
             cbDepartureTime.Click += (s, e) => OpenAnalogClockPicker();
 
-            cbLoadSchedule.SelectedIndexChanged += (s, e) =>
-            {
-                if (isBindingForm) return;
-                if (cbLoadSchedule.SelectedIndex >= 0 && cbLoadSchedule.SelectedIndex < loadingSchedules.Count)
-                {
-                    var ls = loadingSchedules[cbLoadSchedule.SelectedIndex];
-                    numGCrate.Value = Math.Max(0, ls.GCrate);
-                    numECrate.Value = Math.Max(0, ls.ECrate);
-                    if (ls.ScheduleDate >= dtpDispatchDate.MinDate && ls.ScheduleDate <= dtpDispatchDate.MaxDate)
-                    {
-                        dtpDispatchDate.Value = ls.ScheduleDate;
-                    }
-                    if (!string.IsNullOrEmpty(ls.DepartureTime))
-                    {
-                        cbDepartureTime.Text = ls.DepartureTime;
-                    }
-                    CalculateCratesAndRecommendation();
-                }
-            };
+            cbDestination.SelectedIndexChanged += (s, e) => UpdateDestinationHint();
+            cbDestination.TextChanged += (s, e) => UpdateDestinationHint();
+            cbCargoType.SelectedIndexChanged += (s, e) => { if (!isBindingForm) CalculateCratesAndRecommendation(); };
 
             numGCrate.ValueChanged += (s, e) => { if (!isBindingForm) CalculateCratesAndRecommendation(); };
             numECrate.ValueChanged += (s, e) => { if (!isBindingForm) CalculateCratesAndRecommendation(); };
             dtpDispatchDate.ValueChanged += (s, e) => { if (!isBindingForm) { CalculateCratesAndRecommendation(); UpdateDateAvailabilityHint(); } };
             cbTruck.SelectedIndexChanged += (s, e) => { if (!isBindingForm) CalculateCratesAndRecommendation(); };
             SetupDraftAutoSave();
+        }
+
+        private string GenerateNextDispatchNumber()
+        {
+            string datePart = DateTime.Today.ToString("yyyyMMdd");
+            int countToday = (allDispatches?.Count(d => d.DispatchDate.Date == DateTime.Today) ?? 0) + 1;
+            return $"DSP-{datePart}-{countToday:D4}";
+        }
+
+        private void UpdateDestinationHint()
+        {
+            string dest = cbDestination.Text.Trim();
+            if (string.IsNullOrEmpty(dest))
+            {
+                lblDestHint.Text = "Standard rate and route will be determined from destination.";
+                return;
+            }
+            var rate = MJdatabase.GetRateMatrix().FirstOrDefault(r => r.Destination.Equals(dest, StringComparison.OrdinalIgnoreCase));
+            if (rate != null)
+            {
+                lblDestHint.Text = $"📍 Route: {rate.RouteName} ({rate.Destination}) | Standard Rate: ₱{rate.RateAmount:N2}";
+            }
+            else
+            {
+                lblDestHint.Text = $"📍 Destination: {dest} (Direct Delivery)";
+            }
         }
 
         private void OpenAnalogClockPicker()
@@ -305,13 +298,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ? trucks[cbTruck.SelectedIndex]
                 : null;
 
-            LoadingSchedule? selSchedule = (cbLoadSchedule.SelectedIndex >= 0 && cbLoadSchedule.SelectedIndex < loadingSchedules.Count)
-                ? loadingSchedules[cbLoadSchedule.SelectedIndex]
-                : null;
-
             if (selTruck != null)
             {
-                string reqTemp = selSchedule != null && !string.IsNullOrEmpty(selSchedule.CargoType) ? selSchedule.CargoType : "Cold / Chilled";
+                string reqTemp = !string.IsNullOrEmpty(cbCargoType.Text) ? cbCargoType.Text : "Cold / Chilled";
                 string truckTemp = !string.IsNullOrEmpty(selTruck.CargoType) ? selTruck.CargoType : "Cold / Chilled";
                 bool tempMismatch = (reqTemp.Contains("Cold", StringComparison.OrdinalIgnoreCase) || reqTemp.Contains("Mix", StringComparison.OrdinalIgnoreCase)) && truckTemp.Equals("Dry Goods", StringComparison.OrdinalIgnoreCase);
 
@@ -465,38 +454,39 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlMultiDropBuilder.Controls.Add(pnlStopButtons);
             pnlMultiDropBuilder.Controls.Add(lblMultiDropSummary);
 
-            pnlForm.Controls.Add(pnlMultiDropBuilder);
-            pnlForm.Controls.Add(chkMultiDrop);
+            pnlFormBody.Controls.Add(pnlMultiDropBuilder);
+            pnlFormBody.Controls.Add(chkMultiDrop);
 
-            int lsIdx = pnlForm.Controls.IndexOf(cbLoadSchedule);
-            if (lsIdx >= 0)
+            int cargoIdx = pnlFormBody.Controls.IndexOf(tblCargoPeak);
+            if (cargoIdx >= 0)
             {
-                pnlForm.Controls.SetChildIndex(chkMultiDrop, lsIdx);
-                pnlForm.Controls.SetChildIndex(pnlMultiDropBuilder, lsIdx + 2);
+                pnlFormBody.Controls.SetChildIndex(chkMultiDrop, cargoIdx);
+                pnlFormBody.Controls.SetChildIndex(pnlMultiDropBuilder, cargoIdx + 1);
             }
         }
 
         private void ToggleMultiDropMode(bool isMulti)
         {
             pnlMultiDropBuilder.Visible = isMulti;
-            cbLoadSchedule.Visible = !isMulti;
+            cbClient.Enabled = !isMulti;
+            cbDestination.Enabled = !isMulti;
+            lblDestHint.Visible = !isMulti;
+            lblClient.Text = isMulti ? "Primary Client (Multi-Drop):" : "Client / Company Name:";
+            lblDest.Text = isMulti ? "First Stop Destination:" : "Delivery Destination / Branch:";
             numGCrate.Enabled = !isMulti;
             numECrate.Enabled = !isMulti;
-            lblLs.Text = isMulti ? "Multi-Drop Route Consignments:" : "Select Loading Schedule:";
             if (isMulti)
             {
-                if (currentStops.Count == 0 && cbLoadSchedule.SelectedIndex >= 0 && cbLoadSchedule.SelectedIndex < loadingSchedules.Count)
+                if (currentStops.Count == 0 && !string.IsNullOrWhiteSpace(cbClient.Text))
                 {
-                    var initialSchedule = loadingSchedules[cbLoadSchedule.SelectedIndex];
                     currentStops.Add(new DispatchStop
                     {
                         StopSequence = 1,
-                        LoadingScheduleId = initialSchedule.Id,
-                        ClientName = initialSchedule.ClientName,
-                        Destination = initialSchedule.Destination,
-                        GCrate = Math.Max(0, initialSchedule.GCrate),
-                        ECrate = Math.Max(0, initialSchedule.ECrate),
-                        TotalCrates = initialSchedule.TotalCrates,
+                        ClientName = cbClient.Text.Trim(),
+                        Destination = cbDestination.Text.Trim(),
+                        GCrate = (int)numGCrate.Value,
+                        ECrate = (int)numECrate.Value,
+                        TotalCrates = (int)(numGCrate.Value + numECrate.Value),
                         Remarks = "Stop 1"
                     });
                 }
@@ -504,12 +494,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else
             {
-                if (cbLoadSchedule.SelectedIndex >= 0 && cbLoadSchedule.SelectedIndex < loadingSchedules.Count)
-                {
-                    var ls = loadingSchedules[cbLoadSchedule.SelectedIndex];
-                    numGCrate.Value = Math.Max(0, ls.GCrate);
-                    numECrate.Value = Math.Max(0, ls.ECrate);
-                }
                 CalculateCratesAndRecommendation();
             }
         }
@@ -539,9 +523,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void BtnAddStop_Click(object? sender, EventArgs e)
         {
-            var usedIds = currentStops.Where(s => s.LoadingScheduleId.HasValue).Select(s => s.LoadingScheduleId!.Value).ToHashSet();
-            var candidateSchedules = loadingSchedules.Where(ls => !usedIds.Contains(ls.Id)).ToList();
-            using var dlg = new AddStopDialog(candidateSchedules, currentStops.Count + 1);
+            using var dlg = new AddStopDialog(new List<LoadingSchedule>(), currentStops.Count + 1);
             if (dlg.ShowDialog(this.FindForm()) == DialogResult.OK && dlg.CreatedStop != null)
             {
                 currentStops.Add(dlg.CreatedStop);
@@ -642,21 +624,77 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DispatchDate", HeaderText = "Date", DefaultCellStyle = { Format = "MM/dd/yyyy" }, FillWeight = 80, MinimumWidth = 90, ReadOnly = true });
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DepartureTime", HeaderText = "Departure", FillWeight = 85, MinimumWidth = 95, ReadOnly = true });
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 80, MinimumWidth = 90, ReadOnly = true });
+            gridDispatch.CellFormatting -= GridDispatch_CellFormatting;
+            gridDispatch.CellFormatting += GridDispatch_CellFormatting;
+        }
+
+        private void GridDispatch_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (gridDispatch.Columns[e.ColumnIndex].DataPropertyName == "Status" && e.Value != null)
+            {
+                string status = e.Value.ToString() ?? "";
+                if (status.Equals("Completed", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.CellStyle.BackColor = Color.FromArgb(220, 252, 231);
+                    e.CellStyle.ForeColor = Color.FromArgb(22, 101, 52);
+                    e.CellStyle.Font = new Font(gridDispatch.Font, FontStyle.Bold);
+                }
+                else if (status.Equals("Delayed", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.CellStyle.BackColor = Color.FromArgb(254, 226, 226);
+                    e.CellStyle.ForeColor = Color.FromArgb(185, 28, 28);
+                    e.CellStyle.Font = new Font(gridDispatch.Font, FontStyle.Bold);
+                }
+                else if (status.Equals("In Transit", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.CellStyle.BackColor = Color.FromArgb(254, 243, 199);
+                    e.CellStyle.ForeColor = Color.FromArgb(180, 83, 9);
+                    e.CellStyle.Font = new Font(gridDispatch.Font, FontStyle.Bold);
+                }
+                else if (status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.CellStyle.BackColor = Color.FromArgb(241, 245, 249);
+                    e.CellStyle.ForeColor = Color.FromArgb(51, 65, 85);
+                }
+                else if (status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.CellStyle.BackColor = Color.FromArgb(241, 245, 249);
+                    e.CellStyle.ForeColor = Color.FromArgb(100, 116, 139);
+                }
+            }
         }
 
         private async void LoadDropdownsAndGrid()
         {
             try
             {
-                loadingSchedules = await MJdatabase.GetLoadingSchedulesAsync();
-                cbLoadSchedule.Items.Clear();
-                foreach (var ls in loadingSchedules)
+                cbClient.Items.Clear();
+                var clients = await Task.Run(() => MJdatabase.GetLookupItems("Client Company"));
+                if (clients.Count == 0)
                 {
-                    cbLoadSchedule.Items.Add($"{ls.ScheduleNumber} - {ls.ClientName} ({ls.TotalCrates} Crates)");
+                    var registered = await Task.Run(() => MJdatabase.GetClients().Select(c => c.CompanyName).Where(n => !string.IsNullOrWhiteSpace(n)));
+                    clients = registered.Concat(new[] { "Goldilocks Bakeshop Inc.", "Red Ribbon Bakeshop", "San Miguel Foods", "Universal Robina Corp.", "Monde Nissin", "Nestle Philippines" }).Distinct().ToList();
                 }
-                cbLoadSchedule.SelectedIndex = -1;
+                foreach (var c in clients) cbClient.Items.Add(c);
+                if (cbClient.Items.Count > 0 && cbClient.SelectedIndex < 0) cbClient.SelectedIndex = 0;
+
+                cbDestination.Items.Clear();
+                var destinations = await Task.Run(() => MJdatabase.GetLookupItems("Destination Route"));
+                var rateDestinations = await Task.Run(() => MJdatabase.GetRateMatrix().Select(r => r.Destination).Where(d => !string.IsNullOrWhiteSpace(d)));
+                var defaultHubs = new[] { "Batangas / Lipa", "Cavite / Dasmariñas", "Laguna / Calamba", "Pampanga / San Fernando", "Bulacan / Meycauayan", "Metro Manila / NCR", "Tarlac / Capas", "Pangasinan / Urdaneta", "Nueva Ecija / Cabanatuan", "Rizal / Antipolo", "Quezon / Lucena" };
+                var allDestList = destinations.Concat(rateDestinations).Concat(defaultHubs).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
+                foreach (var d in allDestList) cbDestination.Items.Add(d);
+                if (cbDestination.Items.Count > 0 && cbDestination.SelectedIndex < 0) cbDestination.SelectedIndex = 0;
+
+                if (cbCargoType.Items.Count == 0)
+                {
+                    cbCargoType.Items.AddRange(new object[] { "Cold / Chilled", "Dry Goods", "Mix Chilled & Ambient", "Fresh Bakery / Pastries" });
+                    cbCargoType.SelectedIndex = 0;
+                }
 
                 trucks = await MJdatabase.GetTrucksAsync();
+                if (this.IsDisposed || !this.IsHandleCreated) return;
                 cbTruck.Items.Clear();
                 foreach (var t in trucks)
                 {
@@ -666,6 +704,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbTruck.SelectedIndex = -1;
 
                 var crews = await MJdatabase.GetCrewsAsync();
+                if (this.IsDisposed || !this.IsHandleCreated) return;
                 drivers = crews.FindAll(c => c.Role.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0 && c.IsActive);
                 cbDriver.Items.Clear();
                 foreach (var d in drivers)
@@ -689,17 +728,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 RenderAidesModule();
 
                 allDispatches = await MJdatabase.GetDeliveriesAsync();
+                if (this.IsDisposed || !this.IsHandleCreated) return;
                 FilterGridData();
                 var deliveries = allDispatches;
 
                 int pendingCount = deliveries.Count(d => d.Status == "Pending");
                 int transitCount = deliveries.Count(d => d.Status == "In Transit");
+                int delayedCount = deliveries.Count(d => d.Status == "Delayed");
                 int completedCount = deliveries.Count(d => d.Status == "Completed");
                 int totalCrates = deliveries.Sum(d => d.TotalCrates);
 
-                lblSummary.Text = $"📊 Total Dispatches: {deliveries.Count:N0}  |  ⏳ Pending: {pendingCount}  |  🚚 In Transit: {transitCount}  |  ✅ Completed: {completedCount}  |  📦 Total Volume: {totalCrates:N0} Crates";
+                lblSummary.Text = $"📊 Total Orders: {deliveries.Count:N0}  |  ⏳ Pending: {pendingCount}  |  🚚 In Transit: {transitCount}  |  🚨 Delayed: {delayedCount}  |  ✅ Completed: {completedCount}  |  📦 Total Volume: {totalCrates:N0} Crates";
+
+                if (string.IsNullOrWhiteSpace(txtDispatchNumber.Text))
+                {
+                    txtDispatchNumber.Text = GenerateNextDispatchNumber();
+                }
 
                 CalculateCratesAndRecommendation();
+                UpdateDestinationHint();
                 CheckAndPromptDraft();
             }
             catch (Exception ex)
@@ -708,15 +755,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
-                        private void GridDispatch_SelectionChanged(object? sender, EventArgs e)
+        private void GridDispatch_SelectionChanged(object? sender, EventArgs e)
         {
             if (gridDispatch.SelectedRows.Count > 0 && gridDispatch.SelectedRows[0].DataBoundItem is Delivery d)
             {
                 isBindingForm = true;
                 selectedDelivery = d;
 
-                int schIdx = loadingSchedules.FindIndex(s => s.Id == selectedDelivery.LoadingScheduleId);
-                if (schIdx >= 0 && schIdx < cbLoadSchedule.Items.Count) cbLoadSchedule.SelectedIndex = schIdx;
+                txtDispatchNumber.Text = selectedDelivery.DispatchNumber;
+                cbClient.Text = selectedDelivery.ClientName;
+                cbDestination.Text = selectedDelivery.Destination;
+                cbCargoType.Text = string.IsNullOrEmpty(selectedDelivery.CargoType) ? "Cold / Chilled" : selectedDelivery.CargoType;
+                chkIsPeak.Checked = selectedDelivery.IsPeak;
 
                 int trkIdx = trucks.FindIndex(t => t.Id == selectedDelivery.TruckId);
                 if (trkIdx >= 0 && trkIdx < cbTruck.Items.Count) cbTruck.SelectedIndex = trkIdx;
@@ -758,7 +808,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     lblMultiDropSummary.Text = "0 stops configured.";
                 }
                 CalculateCratesAndRecommendation();
-                lblFormHeader.Text = "Delivery Dispatch Order Form";
+                UpdateDestinationHint();
+                lblFormHeader.Text = $"Dispatch Order: {selectedDelivery.DispatchNumber}";
                 isBindingForm = false;
             }
         }
@@ -775,17 +826,39 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
+                string dspNum = txtDispatchNumber.Text.Trim();
+                if (string.IsNullOrWhiteSpace(dspNum))
+                {
+                    dspNum = GenerateNextDispatchNumber();
+                    txtDispatchNumber.Text = dspNum;
+                }
+
+                var existingDeliveries = MJdatabase.GetDeliveries();
+                if (existingDeliveries.Any(d => d.DispatchNumber.Equals(dspNum, StringComparison.OrdinalIgnoreCase)))
+                {
+                    MessageBox.Show($"Order Reference / Dispatch Number '{dspNum}' is already in use. Please provide a unique reference number.", "Duplicate Reference Number", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtDispatchNumber.Focus();
+                    return;
+                }
+
                 bool isMulti = chkMultiDrop.Checked;
-                LoadingSchedule? selLs = null;
+                string clientName = cbClient.Text.Trim();
+                string destination = cbDestination.Text.Trim();
 
                 if (!isMulti)
                 {
-                    if (cbLoadSchedule.SelectedIndex < 0)
+                    if (string.IsNullOrWhiteSpace(clientName))
                     {
-                        MessageBox.Show("Please select a Loading Schedule, Truck Vehicle, and Driver.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show("Please select or enter a Client Company name.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        cbClient.Focus();
                         return;
                     }
-                    selLs = loadingSchedules[cbLoadSchedule.SelectedIndex];
+                    if (string.IsNullOrWhiteSpace(destination))
+                    {
+                        MessageBox.Show("Please select or enter a Delivery Destination.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        cbDestination.Focus();
+                        return;
+                    }
                 }
                 else
                 {
@@ -794,44 +867,37 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         MessageBox.Show("Please add at least 1 destination stop to configure the multi-drop route.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
-                    if (currentStops[0].LoadingScheduleId is int firstLsId)
-                    {
-                        selLs = loadingSchedules.FirstOrDefault(s => s.Id == firstLsId);
-                    }
+                    clientName = currentStops[0].ClientName;
+                    destination = currentStops[0].Destination;
+                }
+
+                if (clientName.Length > 150)
+                {
+                    MessageBox.Show("Client name cannot exceed 150 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    cbClient.Focus();
+                    return;
+                }
+                if (destination.Length > 200)
+                {
+                    MessageBox.Show("Destination cannot exceed 200 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    cbDestination.Focus();
+                    return;
                 }
 
                 if (cbTruck.SelectedIndex < 0 || cbDriver.SelectedIndex < 0)
                 {
-                    MessageBox.Show("Please select a Truck Vehicle and Driver.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("STRICT FLEET ASSIGNMENT REQUIRED:\nPlease select both an assigned Truck Vehicle and Driver before saving this dispatch order.", "Fleet Assignment Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    if (cbTruck.SelectedIndex < 0) cbTruck.Focus();
+                    else cbDriver.Focus();
                     return;
                 }
 
                 var selTr = trucks[cbTruck.SelectedIndex];
                 var selDr = drivers[cbDriver.SelectedIndex];
-                var (selectedAideIds, selectedAideNames) = GetSelectedAides();
+                var (aideIdsForSave, aideNamesForSave) = GetSelectedAides();
 
-                int primaryAideId = selectedAideIds.Count > 0 ? selectedAideIds[0] : 0;
-                string primaryAideName = selectedAideNames.Count > 0 ? selectedAideNames[0] : "None";
-
-                if (selLs != null && !isMulti)
-                {
-                    var existingDeliveries = MJdatabase.GetDeliveries();
-                    var duplicateDispatch = existingDeliveries.Find(d => (selectedDelivery == null || d.Id != selectedDelivery.Id) && d.LoadingScheduleId == selLs.Id && d.Status != "Cancelled");
-                    if (duplicateDispatch != null)
-                    {
-                        bool allowMultiDest = MJdatabase.GetSystemSetting("AllowMultiDestDispatch", "True").Equals("True", StringComparison.OrdinalIgnoreCase);
-                        if (!allowMultiDest)
-                        {
-                            MessageBox.Show($"DUPLICATE DISPATCH BLOCKED:\nLoading Schedule #{selLs.ScheduleNumber} is already assigned to active Dispatch #{duplicateDispatch.DispatchNumber} (Status: {duplicateDispatch.Status}). Re-dispatching an assigned schedule is strictly prohibited.", "Duplicate Dispatch Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
-                            return;
-                        }
-                        else
-                        {
-                            var confirmCombined = MessageBox.Show($"MULTI-DESTINATION TRIP COMBINATION:\nLoading Schedule #{selLs.ScheduleNumber} is already assigned to Dispatch #{duplicateDispatch.DispatchNumber}.\n\nDo you want to proceed with combining this destination order into this trip under Multi-Destination Dispatch routing?", "Combined Destination Trip", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                            if (confirmCombined != DialogResult.Yes) return;
-                        }
-                    }
-                }
+                int primaryAideId = aideIdsForSave.Count > 0 ? aideIdsForSave[0] : 0;
+                string primaryAideName = aideNamesForSave.Count > 0 ? aideNamesForSave[0] : "None";
 
                 bool isFutureDispatch = dtpDispatchDate.Value.Date > DateTime.Today;
 
@@ -849,7 +915,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         return;
                     }
 
-                    foreach (int aideId in selectedAideIds)
+                    foreach (int aideId in aideIdsForSave)
                     {
                         var aide = aides.Find(a => a.Id == aideId);
                         if (aide != null && !aide.IsAvailable)
@@ -868,7 +934,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
 
-                string? conflict = MJdatabase.ValidateDispatchConflict(0, selTr.Id, selDr.Id, selectedAideIds, dtpDispatchDate.Value);
+                string? conflict = MJdatabase.ValidateDispatchConflict(0, selTr.Id, selDr.Id, aideIdsForSave, dtpDispatchDate.Value);
                 if (!string.IsNullOrEmpty(conflict))
                 {
                     MessageBox.Show(conflict, "Scheduling & Delivery Conflict", MessageBoxButtons.OK, MessageBoxIcon.Stop);
@@ -896,15 +962,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 string lsInfo = isMulti
                     ? string.Join(" ➔ ", currentStops.Select(s => $"{s.ClientName} ({s.Destination})"))
-                    : (selLs != null ? $"{selLs.ClientName} ({selLs.Destination})" : "Consolidated Dispatch");
-
-                int lsId = isMulti
-                    ? (currentStops.FirstOrDefault(s => s.LoadingScheduleId.HasValue)?.LoadingScheduleId ?? 0)
-                    : (selLs != null ? selLs.Id : 0);
+                    : $"{clientName} ({destination})";
 
                 Delivery d = new Delivery
                 {
-                    LoadingScheduleId = lsId,
+                    DispatchNumber = dspNum,
+                    ClientName = clientName,
+                    Destination = destination,
+                    IsPeak = chkIsPeak.Checked,
+                    CargoType = !string.IsNullOrEmpty(cbCargoType.Text) ? cbCargoType.Text : selTr.CargoType,
+                    LoadingScheduleId = 0,
                     LoadingScheduleInfo = lsInfo,
                     TruckId = selTr.Id,
                     TruckInfo = $"{selTr.PlateNumber} ({selTr.TruckType})",
@@ -912,8 +979,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     DriverName = selDr.FullName,
                     AideId = primaryAideId,
                     AideName = primaryAideName,
-                    AideIds = string.Join(",", selectedAideIds),
-                    AideNames = selectedAideNames.Count > 0 ? string.Join(", ", selectedAideNames) : "None",
+                    AideIds = string.Join(",", aideIdsForSave),
+                    AideNames = aideNamesForSave.Count > 0 ? string.Join(", ", aideNamesForSave) : "None",
                     GCrate = g,
                     ECrate = ec,
                     TotalCrates = total,
@@ -922,18 +989,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     Status = status,
                     Remarks = isMulti ? $"Multi-Drop Route ({currentStops.Count} stops)" : "Dispatched Delivery Order",
                     CancellationReason = cancellationReason,
-                    CargoType = selTr.CargoType,
                     IsMultiDrop = isMulti,
                     TotalStopsCount = isMulti ? currentStops.Count : 1,
                     Stops = isMulti ? new List<DispatchStop>(currentStops) : new List<DispatchStop>()
                 };
 
+                MJdatabase.SaveLookupItem("Client Company", clientName);
+                SaveNewDestinationIfNeeded(destination);
+                if (isMulti && currentStops != null)
+                {
+                    foreach (var stop in currentStops)
+                    {
+                        if (!string.IsNullOrWhiteSpace(stop.ClientName)) MJdatabase.SaveLookupItem("Client Company", stop.ClientName);
+                        if (!string.IsNullOrWhiteSpace(stop.Destination)) SaveNewDestinationIfNeeded(stop.Destination);
+                    }
+                }
+
                 MJdatabase.SaveDelivery(d);
                 MJdatabase.ClearFormDraft("Dispatch", SessionContext.CurrentUsername);
                 if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
-                MessageBox.Show("Dispatch Order created and crew assigned successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Dispatch & Loading Order created and crew assigned successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadDropdownsAndGrid();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
@@ -951,11 +1029,68 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
-                var (selectedAideIds, selectedAideNames) = GetSelectedAides();
-                int primaryAideId = selectedAideIds.Count > 0 ? selectedAideIds[0] : 0;
-                string primaryAideName = selectedAideNames.Count > 0 ? selectedAideNames[0] : "None";
+                string dspNum = txtDispatchNumber.Text.Trim();
+                if (string.IsNullOrWhiteSpace(dspNum))
+                {
+                    dspNum = selectedDelivery.DispatchNumber;
+                }
 
-                string? conflict = MJdatabase.ValidateDispatchConflict(selectedDelivery.Id, selectedDelivery.TruckId, selectedDelivery.DriverId, selectedAideIds, dtpDispatchDate.Value);
+                bool isMulti = chkMultiDrop.Checked;
+                string clientName = cbClient.Text.Trim();
+                string destination = cbDestination.Text.Trim();
+
+                if (!isMulti)
+                {
+                    if (string.IsNullOrWhiteSpace(clientName))
+                    {
+                        MessageBox.Show("Please select or enter a Client Company name.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        cbClient.Focus();
+                        return;
+                    }
+                    if (string.IsNullOrWhiteSpace(destination))
+                    {
+                        MessageBox.Show("Please select or enter a Delivery Destination.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        cbDestination.Focus();
+                        return;
+                    }
+                }
+                else
+                {
+                    if (currentStops.Count == 0)
+                    {
+                        MessageBox.Show("Please add at least 1 destination stop to configure the multi-drop route.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    clientName = currentStops[0].ClientName;
+                    destination = currentStops[0].Destination;
+                }
+
+                if (clientName.Length > 150)
+                {
+                    MessageBox.Show("Client name cannot exceed 150 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    cbClient.Focus();
+                    return;
+                }
+                if (destination.Length > 200)
+                {
+                    MessageBox.Show("Destination cannot exceed 200 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    cbDestination.Focus();
+                    return;
+                }
+
+                if (cbTruck.SelectedIndex < 0 || cbDriver.SelectedIndex < 0)
+                {
+                    MessageBox.Show("STRICT FLEET ASSIGNMENT REQUIRED:\nPlease select both an assigned Truck Vehicle and Driver.", "Fleet Assignment Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var selTr = trucks[cbTruck.SelectedIndex];
+                var selDr = drivers[cbDriver.SelectedIndex];
+                var (aideIdsForUpdate, aideNamesForUpdate) = GetSelectedAides();
+                int primaryAideId = aideIdsForUpdate.Count > 0 ? aideIdsForUpdate[0] : 0;
+                string primaryAideName = aideNamesForUpdate.Count > 0 ? aideNamesForUpdate[0] : "None";
+
+                string? conflict = MJdatabase.ValidateDispatchConflict(selectedDelivery.Id, selTr.Id, selDr.Id, aideIdsForUpdate, dtpDispatchDate.Value);
                 if (!string.IsNullOrEmpty(conflict))
                 {
                     MessageBox.Show(conflict, "Scheduling & Delivery Conflict", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -976,22 +1111,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int ec = (int)numECrate.Value;
                 int total = g + ec;
 
-                bool isMulti = chkMultiDrop.Checked;
+                string lsInfo = isMulti
+                    ? string.Join(" ➔ ", currentStops.Select(s => $"{s.ClientName} ({s.Destination})"))
+                    : $"{clientName} ({destination})";
+
+                selectedDelivery.DispatchNumber = dspNum;
+                selectedDelivery.ClientName = clientName;
+                selectedDelivery.Destination = destination;
+                selectedDelivery.IsPeak = chkIsPeak.Checked;
+                selectedDelivery.CargoType = !string.IsNullOrEmpty(cbCargoType.Text) ? cbCargoType.Text : selTr.CargoType;
+                selectedDelivery.LoadingScheduleInfo = lsInfo;
+                selectedDelivery.TruckId = selTr.Id;
+                selectedDelivery.TruckInfo = $"{selTr.PlateNumber} ({selTr.TruckType})";
+                selectedDelivery.DriverId = selDr.Id;
+                selectedDelivery.DriverName = selDr.FullName;
+
                 if (isMulti && currentStops.Count > 0)
                 {
                     selectedDelivery.IsMultiDrop = true;
                     selectedDelivery.TotalStopsCount = currentStops.Count;
                     selectedDelivery.Stops = new List<DispatchStop>(currentStops);
-                    selectedDelivery.LoadingScheduleInfo = string.Join(" ➔ ", currentStops.Select(s => $"{s.ClientName} ({s.Destination})"));
-                    if (currentStops[0].LoadingScheduleId is int firstLsId)
-                    {
-                        selectedDelivery.LoadingScheduleId = firstLsId;
-                    }
                 }
                 else
                 {
                     selectedDelivery.IsMultiDrop = false;
                     selectedDelivery.TotalStopsCount = 1;
+                    selectedDelivery.Stops = new List<DispatchStop>();
                 }
 
                 selectedDelivery.DispatchDate = dtpDispatchDate.Value;
@@ -1002,14 +1147,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedDelivery.TotalCrates = total;
                 selectedDelivery.AideId = primaryAideId;
                 selectedDelivery.AideName = primaryAideName;
-                selectedDelivery.AideIds = string.Join(",", selectedAideIds);
-                selectedDelivery.AideNames = selectedAideNames.Count > 0 ? string.Join(", ", selectedAideNames) : "None";
+                selectedDelivery.AideIds = string.Join(",", aideIdsForUpdate);
+                selectedDelivery.AideNames = aideNamesForUpdate.Count > 0 ? string.Join(", ", aideNamesForUpdate) : "None";
                 selectedDelivery.CancellationReason = cancellationReason;
 
+                MJdatabase.SaveLookupItem("Client Company", clientName);
+                SaveNewDestinationIfNeeded(destination);
+                if (isMulti && currentStops != null)
+                {
+                    foreach (var stop in currentStops)
+                    {
+                        if (!string.IsNullOrWhiteSpace(stop.ClientName)) MJdatabase.SaveLookupItem("Client Company", stop.ClientName);
+                        if (!string.IsNullOrWhiteSpace(stop.Destination)) SaveNewDestinationIfNeeded(stop.Destination);
+                    }
+                }
+
                 MJdatabase.SaveDelivery(selectedDelivery);
-                MessageBox.Show("Dispatch Order updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Dispatch & Loading Order updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadDropdownsAndGrid();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
@@ -1061,13 +1218,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ClearFields();
         }
 
-                        private void FilterGridData()
+        private void FilterGridData()
         {
             string q = txtGridSearch.Text.Trim().ToLowerInvariant();
             var filtered = string.IsNullOrEmpty(q)
                 ? allDispatches
                 : allDispatches.Where(d =>
                     (!string.IsNullOrEmpty(d.DispatchNumber) && d.DispatchNumber.ToLower().Contains(q)) ||
+                    (!string.IsNullOrEmpty(d.ClientName) && d.ClientName.ToLower().Contains(q)) ||
+                    (!string.IsNullOrEmpty(d.Destination) && d.Destination.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(d.LoadingScheduleInfo) && d.LoadingScheduleInfo.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(d.TruckInfo) && d.TruckInfo.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(d.DriverName) && d.DriverName.ToLower().Contains(q)) ||
@@ -1079,8 +1238,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridDispatch.DataSource = null;
             gridDispatch.DataSource = filtered;
             lblGridHeader.Text = string.IsNullOrEmpty(q)
-                ? $"Delivery Dispatches & Trips ({allDispatches.Count})"
-                : $"Delivery Dispatches & Trips - Showing {filtered.Count} of {allDispatches.Count}";
+                ? $"Delivery & Dispatch Orders ({allDispatches.Count})"
+                : $"Delivery & Dispatch Orders - Showing {filtered.Count} of {allDispatches.Count}";
 
             if (filtered.Count > 0)
             {
@@ -1091,11 +1250,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 isBindingForm = true;
                 selectedDelivery = null;
+                txtDispatchNumber.Text = GenerateNextDispatchNumber();
                 numGCrate.Value = 0;
                 numECrate.Value = 0;
                 txtTotalCrates.Text = "";
                 lblRec.Text = "No matching dispatch orders found.";
-                lblFormHeader.Text = "Delivery Dispatch Order Form";
+                lblFormHeader.Text = "Delivery & Dispatch Order Form";
                 isBindingForm = false;
             }
         }
@@ -1127,7 +1287,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             selectedDelivery = null;
             gridDispatch.ClearSelection();
-            cbLoadSchedule.SelectedIndex = -1;
+            txtDispatchNumber.Text = GenerateNextDispatchNumber();
+            if (cbClient.Items.Count > 0) cbClient.SelectedIndex = 0; else cbClient.Text = "";
+            if (cbDestination.Items.Count > 0) cbDestination.SelectedIndex = 0; else cbDestination.Text = "";
+            if (cbCargoType.Items.Count > 0) cbCargoType.SelectedIndex = 0;
+            chkIsPeak.Checked = false;
             cbTruck.SelectedIndex = -1;
             cbDriver.SelectedIndex = -1;
             dtpDispatchDate.Value = DateTime.Now;
@@ -1145,7 +1309,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnSave.Enabled = true;
             btnUpdate.Enabled = true;
-            cbLoadSchedule.Enabled = true;
+            txtDispatchNumber.Enabled = true;
+            cbClient.Enabled = true;
+            cbDestination.Enabled = true;
+            cbCargoType.Enabled = true;
+            chkIsPeak.Enabled = true;
             cbTruck.Enabled = true;
             cbDriver.Enabled = true;
             flowAidesModule.Enabled = true;
@@ -1158,9 +1326,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbDepartureTime.Enabled = true;
             btnPickAnalogTime.Enabled = true;
 
-            lblRec.Text = "💡 Select a loading order, truck vehicle, and driver to view capacity match.";
+            lblFormHeader.Text = "Delivery & Dispatch Order Form";
+            lblRec.Text = "💡 Select truck vehicle and driver to verify capacity match.";
             pnlRec.BackColor = Color.FromArgb(248, 250, 252);
             lblRec.ForeColor = Color.FromArgb(71, 85, 105);
+            UpdateDestinationHint();
         }
 
         private HashSet<int> selectedAideIds = new HashSet<int>();
@@ -1324,14 +1494,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             });
             var itemEdit = new ToolStripMenuItem("✏️ Edit Dispatch Order", null, (s, e) => {
                 SetFormVisibility(true);
-                cbLoadSchedule.Focus();
+                cbClient.Focus();
             });
             var itemPrint = new ToolStripMenuItem("📄 Print Dispatch Manifest", null, BtnPrint_Click);
             var itemCancel = new ToolStripMenuItem("❌ Cancel Dispatch Order", null, (s, e) => {
                 try
                 {
                     if (selectedDelivery != null) {
+                        if (selectedDelivery.Status == "Cancelled")
+                        {
+                            MessageBox.Show("This dispatch order is already cancelled.", "Notice", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            return;
+                        }
+                        string? reason = CancellationReasonDialog.PromptCancellationReason(this.FindForm() ?? this.ParentForm!, "Dispatch Order", selectedDelivery.DispatchNumber);
+                        if (string.IsNullOrEmpty(reason)) return;
                         selectedDelivery.Status = "Cancelled";
+                        selectedDelivery.CancellationReason = reason;
                         MJdatabase.SaveDelivery(selectedDelivery);
                         LoadDropdownsAndGrid();
                     }
@@ -1368,9 +1546,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var draft = MJdatabase.GetFormDraft("Dispatch", SessionContext.CurrentUsername);
                 if (draft != null && !string.IsNullOrWhiteSpace(draft.Value.Data))
                 {
-                    if (pnlDraftBanner != null) pnlForm.Controls.Remove(pnlDraftBanner);
+                    if (pnlDraftBanner != null) pnlFormBody.Controls.Remove(pnlDraftBanner);
                     pnlDraftBanner = DraftAutoSaveService.CreateDraftBanner("Delivery Dispatch", draft.Value.LastSaved, RestoreDraft, DiscardDraft);
-                    pnlForm.Controls.Add(pnlDraftBanner);
+                    pnlFormBody.Controls.Add(pnlDraftBanner);
                     pnlDraftBanner.BringToFront();
                 }
             }
@@ -1386,9 +1564,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var map = DraftAutoSaveService.DeserializeDraft(draft.Value.Data);
                 isBindingForm = true;
 
-                if (map.TryGetValue("ScheduleIndex", out var sIdx) && int.TryParse(sIdx, out int idx) && idx >= 0 && idx < cbLoadSchedule.Items.Count)
+                if (map.TryGetValue("DispatchNumber", out var dnum) && !string.IsNullOrWhiteSpace(dnum))
                 {
-                    cbLoadSchedule.SelectedIndex = idx;
+                    txtDispatchNumber.Text = dnum;
+                }
+                if (map.TryGetValue("Client", out var cl) && !string.IsNullOrWhiteSpace(cl))
+                {
+                    cbClient.Text = cl;
+                }
+                if (map.TryGetValue("Destination", out var dst) && !string.IsNullOrWhiteSpace(dst))
+                {
+                    cbDestination.Text = dst;
+                }
+                if (map.TryGetValue("CargoType", out var ctype) && !string.IsNullOrWhiteSpace(ctype))
+                {
+                    cbCargoType.Text = ctype;
+                }
+                if (map.TryGetValue("IsPeak", out var isPeakStr) && bool.TryParse(isPeakStr, out bool isPeakVal))
+                {
+                    chkIsPeak.Checked = isPeakVal;
                 }
                 if (map.TryGetValue("TruckIndex", out var tIdx) && int.TryParse(tIdx, out int tidx) && tidx >= 0 && tidx < cbTruck.Items.Count)
                 {
@@ -1427,9 +1621,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 isBindingForm = false;
                 CalculateCratesAndRecommendation();
+                UpdateDestinationHint();
                 ToastHelper.ShowToast(this, "Dispatch draft restored ✓", ToastType.Success);
             }
-            catch { isBindingForm = false; }
+            catch (Exception ex)
+            {
+                isBindingForm = false;
+                System.Diagnostics.Debug.WriteLine($"[Dispatch] RestoreDraft: {ex.Message}");
+                ToastHelper.ShowToast(this, "Could not restore draft.", ToastType.Warning);
+            }
         }
 
         private void DiscardDraft()
@@ -1437,6 +1637,36 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             MJdatabase.ClearFormDraft("Dispatch", SessionContext.CurrentUsername);
             if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
             ToastHelper.ShowToast(this, "Dispatch draft discarded ✓", ToastType.Info);
+        }
+
+        private void SaveNewDestinationIfNeeded(string fullDest)
+        {
+            if (string.IsNullOrWhiteSpace(fullDest)) return;
+            var stops = fullDest.Split(new[] { "➔", "->", " / ", ", " }, StringSplitOptions.RemoveEmptyEntries)
+                                .Select(s => s.Trim())
+                                .Where(s => !string.IsNullOrWhiteSpace(s))
+                                .Distinct();
+
+            var existing = MJdatabase.GetLookupItems("Destination Route");
+            foreach (var stop in stops)
+            {
+                if (!existing.Any(e => e.Equals(stop, StringComparison.OrdinalIgnoreCase)))
+                {
+                    MJdatabase.SaveLookupItem("Destination Route", stop);
+                    if (!cbDestination.Items.Contains(stop))
+                    {
+                        cbDestination.Items.Add(stop);
+                    }
+                }
+            }
+            if (!fullDest.Contains("➔") && !fullDest.Contains("->") && !existing.Any(e => e.Equals(fullDest, StringComparison.OrdinalIgnoreCase)))
+            {
+                MJdatabase.SaveLookupItem("Destination Route", fullDest);
+                if (!cbDestination.Items.Contains(fullDest))
+                {
+                    cbDestination.Items.Add(fullDest);
+                }
+            }
         }
 
         private void SetupDraftAutoSave()
@@ -1449,13 +1679,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void SaveCurrentDraft()
         {
             if (isBindingForm || selectedDelivery != null) return;
-            if (cbLoadSchedule.SelectedIndex < 0 && cbTruck.SelectedIndex < 0 && cbDriver.SelectedIndex < 0 && numGCrate.Value == 0 && numECrate.Value == 0) return;
+            if (string.IsNullOrWhiteSpace(cbClient.Text) && cbTruck.SelectedIndex < 0 && cbDriver.SelectedIndex < 0 && numGCrate.Value == 0 && numECrate.Value == 0) return;
 
             try
             {
                 var map = new Dictionary<string, string>
                 {
-                    ["ScheduleIndex"] = cbLoadSchedule.SelectedIndex.ToString(),
+                    ["DispatchNumber"] = txtDispatchNumber.Text,
+                    ["Client"] = cbClient.Text,
+                    ["Destination"] = cbDestination.Text,
+                    ["CargoType"] = cbCargoType.Text,
+                    ["IsPeak"] = chkIsPeak.Checked.ToString(),
                     ["TruckIndex"] = cbTruck.SelectedIndex.ToString(),
                     ["DriverIndex"] = cbDriver.SelectedIndex.ToString(),
                     ["GCrate"] = numGCrate.Value.ToString(),
@@ -1467,7 +1701,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string json = DraftAutoSaveService.SerializeDraft(map);
                 MJdatabase.SaveFormDraft("Dispatch", SessionContext.CurrentUsername, json);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Dispatch] SaveDraft: {ex.Message}");
+            }
         }
     }
 }

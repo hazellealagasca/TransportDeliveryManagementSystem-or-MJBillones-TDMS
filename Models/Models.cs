@@ -139,6 +139,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string IpOrMachine { get; set; } = string.Empty;
     }
 
+    public class SystemActivityLogItem
+    {
+        public DateTime TimestampDt { get; set; } = DateTime.MinValue;
+        public string Timestamp { get; set; } = string.Empty;
+        public string Source { get; set; } = string.Empty;
+        public string User_Or_Sender { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+        public string Action { get; set; } = string.Empty;
+        public string Module { get; set; } = string.Empty;
+        public string Details { get; set; } = string.Empty;
+        public string Machine { get; set; } = string.Empty;
+    }
+
     public class Crew
     {
         public int Id { get; set; }
@@ -217,8 +230,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     {
         public int Id { get; set; }
         public string DispatchNumber { get; set; } = string.Empty;
-        public int LoadingScheduleId { get; set; }
+        public int LoadingScheduleId { get; set; } = 0;
         public string LoadingScheduleInfo { get; set; } = string.Empty;
+        public string ClientName { get; set; } = string.Empty;
+        public string Destination { get; set; } = string.Empty;
+        public bool IsPeak { get; set; } = false;
         public int TruckId { get; set; }
         public string TruckInfo { get; set; } = string.Empty;
         public int DriverId { get; set; }
@@ -347,7 +363,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string Notes { get; set; } = string.Empty;
     }
 
-    public class FleetRecommendation
+    public class TruckRecommendation
     {
         public int TotalCrates { get; set; }
         public Truck? RecommendedTruck { get; set; }
@@ -355,9 +371,5 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string RecommendationMessage { get; set; } = string.Empty;
         public double CapacityUtilization { get; set; }
         public bool IsMultiTruckNeeded { get; set; }
-    }
-
-    public class TruckRecommendation : FleetRecommendation
-    {
     }
 }

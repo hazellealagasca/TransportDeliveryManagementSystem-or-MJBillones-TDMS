@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
@@ -100,7 +101,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Font = new Font("Segoe UI", 9.5F),
                 PlaceholderText = "Enter your custom security question here...",
                 Visible = false,
-                Margin = new Padding(0, 6, 0, 8)
+                Margin = new Padding(0, 6, 0, 8),
+                MaxLength = 200
             };
 
             cbQuestion.SelectedIndexChanged += (s, e) =>
@@ -123,7 +125,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Top,
                 Font = new Font("Segoe UI", 9.5F),
                 PlaceholderText = "Enter secret answer used for account recovery...",
-                Margin = new Padding(0, 0, 0, 12)
+                Margin = new Padding(0, 0, 0, 12),
+                MaxLength = 200
             };
 
             Label lblPassHeading = new Label
@@ -142,7 +145,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Font = new Font("Segoe UI", 9.5F),
                 PlaceholderText = "New Password (optional)",
                 PasswordChar = '●',
-                Margin = new Padding(0, 0, 0, 6)
+                Margin = new Padding(0, 0, 0, 6),
+                MaxLength = 128
             };
 
             txtConfirmPassword = new TextBox
@@ -151,7 +155,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Font = new Font("Segoe UI", 9.5F),
                 PlaceholderText = "Confirm New Password",
                 PasswordChar = '●',
-                Margin = new Padding(0, 6, 0, 8)
+                Margin = new Padding(0, 6, 0, 8),
+                MaxLength = 128
             };
 
             lblStatus = new Label
@@ -252,6 +257,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     lblStatus.Text = "Please enter your custom security question.";
                     return;
                 }
+                if (selectedQ.Length > 200)
+                {
+                    lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
+                    lblStatus.Text = "Custom security question cannot exceed 200 characters.";
+                    return;
+                }
             }
 
             string answer = txtAnswer.Text.Trim();
@@ -261,16 +272,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblStatus.Text = "Please provide an answer to your security question.";
                 return;
             }
+            if (answer.Length > 200)
+            {
+                lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
+                lblStatus.Text = "Security answer cannot exceed 200 characters.";
+                return;
+            }
 
             string newPass = txtNewPassword.Text.Trim();
             string confirmPass = txtConfirmPassword.Text.Trim();
 
             if (!string.IsNullOrEmpty(newPass))
             {
-                if (newPass.Length < 4)
+                if (newPass.Length < 6 || !newPass.Any(char.IsLetter) || !newPass.Any(char.IsDigit))
                 {
                     lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
-                    lblStatus.Text = "New password must be at least 4 characters long.";
+                    lblStatus.Text = "New password must be at least 6 characters and contain letters and numbers.";
                     return;
                 }
                 if (newPass != confirmPass)

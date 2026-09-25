@@ -45,11 +45,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Tag = key,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowOnly,
-                MinimumSize = new Size(180, 36),
+                MinimumSize = new Size(160, 32),
                 Padding = new Padding(12, 0, 12, 0),
                 Margin = new Padding(0, 0, 8, 0),
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 BackColor = Color.White,
                 ForeColor = Color.FromArgb(71, 85, 105),
                 Cursor = Cursors.Hand
@@ -90,9 +90,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             activeTabBtn = btn;
-            activeTabBtn.BackColor = Color.FromArgb(190, 18, 60);
+            activeTabBtn.BackColor = Color.FromArgb(15, 23, 42);
             activeTabBtn.ForeColor = Color.White;
-            activeTabBtn.FlatAppearance.BorderColor = Color.FromArgb(159, 18, 57);
+            activeTabBtn.FlatAppearance.BorderColor = Color.FromArgb(15, 23, 42);
 
             pnlContentHost.SuspendLayout();
             pnlContentHost.Controls.Clear();

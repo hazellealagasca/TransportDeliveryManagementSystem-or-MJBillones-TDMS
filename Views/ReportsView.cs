@@ -14,15 +14,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 {
     public partial class ReportsView : UserControl, IRefreshable
     {
+        private int loadOperationId = 0;
+
         public ReportsView()
         {
             InitializeComponent();
             gridReport.BringToFront();
             SetupGridColumns();
+            if (!SessionContext.IsAdmin && cbReportType.Items.Contains("System Activity & Audit Trail (Admin)"))
+            {
+                cbReportType.Items.Remove("System Activity & Audit Trail (Admin)");
+            }
             cbReportType.SelectedIndex = 0;
             cbStatusFilter.SelectedIndex = 0;
+            cbReportType.SelectedIndexChanged += CbReportType_SelectedIndexChanged;
             LoadReportData();
             UIThemeHelper.ApplyTheme(this);
+
+            btnPrint.Visible = false;
+            btnExport.Visible = false;
+            btnPrintPaySlip.Visible = false;
+            var menuActions = new ContextMenuStrip();
+            menuActions.Items.Add("📊 Export Report to CSV...", null, BtnExport_Click);
+            menuActions.Items.Add("🖨️ Print Report", null, BtnPrint_Click);
+            menuActions.Items.Add("📄 Print Pay Slip", null, BtnPrintPaySlip_Click);
+            var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
+            flowActions.Controls.Add(btnActions);
         }
 
         public void RefreshData()
@@ -41,6 +58,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void CbReportType_SelectedIndexChanged(object? sender, EventArgs e)
         {
+            if (cbStatusFilter.SelectedIndex != 0)
+            {
+                cbStatusFilter.SelectedIndex = 0;
+                return;
+            }
             LoadReportData();
         }
 
@@ -56,18 +78,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private async void LoadReportData()
         {
+            int myLoadId = ++loadOperationId;
             try
             {
                 string search = txtSearch.Text.Trim().ToLowerInvariant();
-            string statusFilter = cbStatusFilter.SelectedItem?.ToString() ?? "All Statuses";
+                string statusFilter = cbStatusFilter.SelectedItem?.ToString() ?? "All Statuses";
 
-            switch (cbReportType.SelectedIndex)
+                switch (cbReportType.SelectedIndex)
             {
                 case 0:
                     var deliveries = await MJdatabase.GetDeliveriesAsync();
+                    if (myLoadId != loadOperationId || this.IsDisposed || !this.IsHandleCreated) return;
+                    DateTime today = DateTime.Today;
                     if (statusFilter == "Completed Only") deliveries = deliveries.Where(d => d.Status == "Completed").ToList();
                     else if (statusFilter == "Cancelled Only") deliveries = deliveries.Where(d => d.Status == "Cancelled").ToList();
                     else if (statusFilter == "Pending / In Transit") deliveries = deliveries.Where(d => d.Status == "Pending" || d.Status == "In Transit").ToList();
+                    else if (statusFilter == "Past Dispatches Only") deliveries = deliveries.Where(d => d.DispatchDate.Date < today || d.Status == "Completed" || d.Status == "Delivered").ToList();
+                    else if (statusFilter == "Present / Active Today") deliveries = deliveries.Where(d => d.DispatchDate.Date == today || d.Status == "In Transit").ToList();
+                    else if (statusFilter == "Future Scheduled Dispatches") deliveries = deliveries.Where(d => d.DispatchDate.Date > today).ToList();
 
                     if (!string.IsNullOrEmpty(search))
                     {
@@ -101,9 +129,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 case 1:
                     var schedules = await MJdatabase.GetLoadingSchedulesAsync();
+                    if (myLoadId != loadOperationId || this.IsDisposed || !this.IsHandleCreated) return;
+                    DateTime todaySched = DateTime.Today;
                     if (statusFilter == "Completed Only") schedules = schedules.Where(s => s.Status == "Completed").ToList();
                     else if (statusFilter == "Cancelled Only") schedules = schedules.Where(s => s.Status == "Cancelled").ToList();
                     else if (statusFilter == "Pending / In Transit") schedules = schedules.Where(s => s.Status == "Pending" || s.Status == "Assigned").ToList();
+                    else if (statusFilter == "Past Dispatches Only") schedules = schedules.Where(s => s.ScheduleDate.Date < todaySched || s.Status == "Completed").ToList();
+                    else if (statusFilter == "Present / Active Today") schedules = schedules.Where(s => s.ScheduleDate.Date == todaySched || s.Status == "Assigned" || s.Status == "Pending").ToList();
+                    else if (statusFilter == "Future Scheduled Dispatches") schedules = schedules.Where(s => s.ScheduleDate.Date > todaySched).ToList();
 
                     if (!string.IsNullOrEmpty(search))
                     {
@@ -135,6 +168,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 case 2:
                     var tripReports = await MJdatabase.GetTripReportsAsync();
+                    if (myLoadId != loadOperationId || this.IsDisposed || !this.IsHandleCreated) return;
                     if (!string.IsNullOrEmpty(search))
                     {
                         tripReports = tripReports.Where(t => t.TripReportNumber.ToLower().Contains(search) ||
@@ -168,6 +202,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 case 3:
                     var trucks = await MJdatabase.GetTrucksAsync();
+                    if (myLoadId != loadOperationId || this.IsDisposed || !this.IsHandleCreated) return;
                     if (!string.IsNullOrEmpty(search))
                     {
                         trucks = trucks.Where(t => t.PlateNumber.ToLower().Contains(search) ||
@@ -192,6 +227,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 case 4:
                     var crews = await MJdatabase.GetCrewsAsync();
+                    if (myLoadId != loadOperationId || this.IsDisposed || !this.IsHandleCreated) return;
                     if (!string.IsNullOrEmpty(search))
                     {
                         crews = crews.Where(c => c.FullName.ToLower().Contains(search) ||
@@ -217,6 +253,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 case 5:
                     var invoices = await MJdatabase.GetInvoicesAsync();
+                    if (myLoadId != loadOperationId || this.IsDisposed || !this.IsHandleCreated) return;
                     if (!string.IsNullOrEmpty(search))
                     {
                         invoices = invoices.Where(i => i.InvoiceNumber.ToLower().Contains(search) ||
@@ -244,6 +281,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 case 6:
                     var receipts = await MJdatabase.GetCollectionReceiptsAsync();
+                    if (myLoadId != loadOperationId || this.IsDisposed || !this.IsHandleCreated) return;
                     if (!string.IsNullOrEmpty(search))
                     {
                         receipts = receipts.Where(r => r.ReceiptNumber.ToLower().Contains(search) ||
@@ -270,6 +308,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 case 7:
                     var incidents = await MJdatabase.GetIncidentReportsAsync();
+                    if (myLoadId != loadOperationId || this.IsDisposed || !this.IsHandleCreated) return;
                     if (!string.IsNullOrEmpty(search))
                     {
                         incidents = incidents.Where(i => i.DispatchNumber.ToLower().Contains(search) ||
@@ -299,6 +338,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 case 8:
                     var allCrews = await MJdatabase.GetCrewsAsync();
                     var allDels = await MJdatabase.GetDeliveriesAsync();
+                    if (myLoadId != loadOperationId || this.IsDisposed || !this.IsHandleCreated) return;
                     var completedDels = allDels.Where(d => d.Status == "Completed").ToList();
 
                     if (!string.IsNullOrEmpty(search))
@@ -344,6 +384,76 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     gridReport.DataSource = crewPayList;
                     lblSummary.Text = $"👥 Crew Personnel: {allCrews.Count:N0}  |  🚚 Total Hauling Trips: {totalTripsSum:N0}  |  💵 Total Net Compensation Payable: PHP {totalPayoutSum:N2}";
                     break;
+
+                case 9:
+                    if (!SessionContext.IsAdmin)
+                    {
+                        gridReport.DataSource = null;
+                        lblSummary.Text = "🔒 Access Denied: System Activity & Audit Trail is restricted to Administrators.";
+                        break;
+                    }
+                    var auditLogs = await MJdatabase.GetAuditTrailAsync(500);
+                    if (myLoadId != loadOperationId || this.IsDisposed || !this.IsHandleCreated) return;
+                    var sysNotifs = MJdatabase.GetSystemNotifications(150, isAdmin: true);
+
+                    var combinedList = new List<SystemActivityLogItem>();
+
+                    foreach (var a in auditLogs)
+                    {
+                        combinedList.Add(new SystemActivityLogItem
+                        {
+                            TimestampDt = a.Timestamp,
+                            Timestamp = a.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                            Source = "Audit Trail",
+                            User_Or_Sender = a.Username,
+                            Role = a.UserRole,
+                            Action = a.ActionType,
+                            Module = a.TableName,
+                            Details = string.IsNullOrEmpty(a.ReasonOrNotes) ? $"{a.ActionType} on {a.TableName} #{a.RecordId}" : a.ReasonOrNotes,
+                            Machine = a.IpOrMachine
+                        });
+                    }
+
+                    foreach (var sn in sysNotifs)
+                    {
+                        combinedList.Add(new SystemActivityLogItem
+                        {
+                            TimestampDt = sn.Timestamp,
+                            Timestamp = sn.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                            Source = "System Log",
+                            User_Or_Sender = "SYSTEM",
+                            Role = "Engine",
+                            Action = sn.Category,
+                            Module = sn.TargetModule ?? "System",
+                            Details = $"{sn.Title}: {sn.Message}",
+                            Machine = Environment.MachineName
+                        });
+                    }
+
+                    var orderedList = combinedList.OrderByDescending(x => x.TimestampDt).ToList();
+
+                    if (!string.IsNullOrEmpty(search))
+                    {
+                        orderedList = orderedList.Where(x =>
+                            x.User_Or_Sender.ToLower().Contains(search) ||
+                            x.Action.ToLower().Contains(search) ||
+                            x.Module.ToLower().Contains(search) ||
+                            x.Details.ToLower().Contains(search)
+                        ).ToList();
+                    }
+
+                    if (statusFilter == "Completed Only" || statusFilter == "Audit Trail Only")
+                    {
+                        orderedList = orderedList.Where(x => x.Source == "Audit Trail").ToList();
+                    }
+                    else if (statusFilter == "Cancelled Only" || statusFilter == "System Logs Only")
+                    {
+                        orderedList = orderedList.Where(x => x.Source == "System Log").ToList();
+                    }
+
+                    gridReport.DataSource = orderedList;
+                    lblSummary.Text = $"🛡️ Total System & Audit Records: {orderedList.Count:N0}  |  👥 User Actions: {auditLogs.Count:N0}  |  ⚙️ System Events: {sysNotifs.Count:N0}";
+                    break;
             }
 
                 foreach (DataGridViewColumn col in gridReport.Columns)
@@ -381,7 +491,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (selectedCrew == null)
                 {
-                    selectedCrew = crews[0];
+                    MessageBox.Show("Please select a crew member row in the 'Crew Trip Compensation & Pay Slips' report first.", "Select Crew Member", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
                 }
 
                 var allDels = await MJdatabase.GetDeliveriesAsync();
@@ -438,7 +549,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     StringBuilder sb = new StringBuilder();
                     for (int i = 0; i < gridReport.Columns.Count; i++)
                     {
-                        sb.Append(gridReport.Columns[i].HeaderText);
+                        string header = gridReport.Columns[i].HeaderText ?? "";
+                        sb.Append("\"" + header.Replace("\"", "\"\"") + "\"");
                         if (i < gridReport.Columns.Count - 1) sb.Append(",");
                     }
                     sb.AppendLine();
@@ -447,7 +559,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         for (int i = 0; i < gridReport.Columns.Count; i++)
                         {
-                            string val = row.Cells[i].Value?.ToString()?.Replace(",", " ") ?? "";
+                            string raw = row.Cells[i].Value?.ToString() ?? "";
+                            string val = "\"" + raw.Replace("\"", "\"\"") + "\"";
                             sb.Append(val);
                             if (i < gridReport.Columns.Count - 1) sb.Append(",");
                         }

@@ -16,7 +16,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public Action<int, string, int, DateTime>? OnLogIncidentForward;
         public Action<Models.Delivery>? OnCreateInvoiceForward;
 
-        public OperationsHubView(string defaultTab = "Loading")
+        public OperationsHubView(string defaultTab = "Dispatch")
         {
             InitializeComponent();
             SetupTabs();
@@ -26,17 +26,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void SetupTabs()
         {
-            AddTab("Loading", "📋  Loading Schedules", () =>
-            {
-                var lv = new LoadingManagementView();
-                lv.OnDispatchScheduleRequested = (sch) =>
-                {
-                    DispatchLoadingSchedule(sch);
-                };
-                return lv;
-            });
-
-            AddTab("Dispatch", "🚚  Delivery Dispatch", () =>
+            AddTab("Dispatch", "🚚  Delivery & Dispatch", () =>
             {
                 var dv = new DispatchManagementView();
                 dv.OnRecordTripRequested = (del) =>
@@ -63,7 +53,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return tv;
             });
 
-            AddTab("History", "📜  Loading History", () => new ModuleHistoryView("Loading & Dispatch History", new[] { "LoadingSchedules", "Deliveries" }, isAdminOnly: false));
+            AddTab("History", "📜  Loading & Dispatch History", () => new ModuleHistoryView("Loading & Dispatch History", new[] { "LoadingSchedules", "Deliveries" }, isAdminOnly: false));
         }
 
         private void AddTab(string key, string title, Func<UserControl> viewFactory)
@@ -72,13 +62,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = title,
                 Tag = key,
+                UseMnemonic = false,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowOnly,
-                MinimumSize = new Size(180, 36),
+                MinimumSize = new Size(160, 32),
                 Padding = new Padding(12, 0, 12, 0),
                 Margin = new Padding(0, 0, 8, 0),
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 BackColor = Color.White,
                 ForeColor = Color.FromArgb(71, 85, 105),
                 Cursor = Cursors.Hand
@@ -103,6 +94,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public void SelectTab(string key)
         {
+            if (key == "Loading") key = "Dispatch";
             if (tabButtons.TryGetValue(key, out var btn))
             {
                 btn.PerformClick();
@@ -119,9 +111,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             activeTabBtn = btn;
-            activeTabBtn.BackColor = Color.FromArgb(190, 18, 60);
+            activeTabBtn.BackColor = Color.FromArgb(15, 23, 42);
             activeTabBtn.ForeColor = Color.White;
-            activeTabBtn.FlatAppearance.BorderColor = Color.FromArgb(159, 18, 57);
+            activeTabBtn.FlatAppearance.BorderColor = Color.FromArgb(15, 23, 42);
 
             pnlContentHost.SuspendLayout();
             pnlContentHost.Controls.Clear();

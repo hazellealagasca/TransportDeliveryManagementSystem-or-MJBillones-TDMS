@@ -9,6 +9,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 {
     public partial class LoginForm : Form
     {
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        private static extern bool DestroyIcon(IntPtr handle);
+
         private int failedAttempts = 0;
         private int lockoutSecondsRemaining = 0;
         private System.Windows.Forms.Timer? lockoutTimer;
@@ -25,66 +28,95 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (System.IO.File.Exists(logoPath))
                 {
                     picLogo.ImageLocation = logoPath;
+                    picLogo.Visible = true;
+                    lblTitle.Visible = false;
                     using (Bitmap bmp = new Bitmap(logoPath))
                     {
                         IntPtr hIcon = bmp.GetHicon();
-                        this.Icon = Icon.FromHandle(hIcon);
+                        this.Icon = (Icon)Icon.FromHandle(hIcon).Clone();
+                        DestroyIcon(hIcon);
                     }
                 }
+                else if (picLogo.Image != null)
+                {
+                    picLogo.Visible = true;
+                    lblTitle.Visible = false;
+                }
+                else
+                {
+                    picLogo.Visible = false;
+                    lblTitle.Visible = true;
+                }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Login] Logo init: {ex.Message}");
+                if (picLogo.Image == null)
+                {
+                    picLogo.Visible = false;
+                    lblTitle.Visible = true;
+                }
+            }
 
             this.AcceptButton = btnLogin;
         }
 
         private void btnLogin_Click(object sender, EventArgs e)
         {
-            if (lockoutSecondsRemaining > 0)
-                return;
-
-            string username = txtUsername.Text.Trim();
-            string password = txtPassword.Text.Trim();
-
-            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            try
             {
-                lblError.Text = "Please enter both Username and Password.";
-                lblError.Visible = true;
-                return;
-            }
+                if (lockoutSecondsRemaining > 0)
+                    return;
 
-            var auth = MJdatabase.AuthenticateUserDetailed(username, password);
+                string username = txtUsername.Text.Trim();
+                string password = txtPassword.Text.Trim();
 
-            if (auth.Result == AuthResult.Success && auth.User != null)
-            {
-                failedAttempts = 0;
-                MJdatabase.LogSecurityEvent(username, "LOGIN_SUCCESS", $"User successfully authenticated ({auth.User.Role})");
-
-                lblError.Visible = false;
-                this.Hide();
-                MainForm mainForm = new MainForm(auth.User);
-                mainForm.FormClosed += (s, args) => this.Close();
-                mainForm.Show();
-            }
-            else if (auth.Result == AuthResult.PendingApproval)
-            {
-                MJdatabase.LogSecurityEvent(username, "LOGIN_BLOCKED_PENDING", "Pending staff user attempted to login");
-                lblError.Text = "Account pending approval by Business Owner (Marie Ann J. Billones).";
-                lblError.Visible = true;
-            }
-            else
-            {
-                failedAttempts++;
-                MJdatabase.LogSecurityEvent(username, "LOGIN_FAILED", $"Invalid login attempt {failedAttempts} of 5");
-
-                if (failedAttempts >= 5)
+                if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
                 {
-                    StartLockout(60, username);
+                    lblError.Text = "Please enter both Username and Password.";
+                    lblError.Visible = true;
+                    return;
+                }
+
+                var auth = MJdatabase.AuthenticateUserDetailed(username, password);
+
+                if (auth.Result == AuthResult.Success && auth.User != null)
+                {
+                    failedAttempts = 0;
+                    MJdatabase.LogSecurityEvent(username, "LOGIN_SUCCESS", $"User successfully authenticated ({auth.User.Role})");
+
+                    lblError.Visible = false;
+                    this.Hide();
+                    MainForm mainForm = new MainForm(auth.User);
+                    mainForm.FormClosed += (s, args) => this.Close();
+                    mainForm.Show();
+                }
+                else if (auth.Result == AuthResult.PendingApproval)
+                {
+                    MJdatabase.LogSecurityEvent(username, "LOGIN_BLOCKED_PENDING", "Pending staff user attempted to login");
+                    lblError.Text = "Account pending approval by Business Owner (Marie Ann J. Billones).";
+                    lblError.Visible = true;
                 }
                 else
                 {
-                    lblError.Text = $"Invalid Username or Password. (Attempt {failedAttempts} of 5 before lockout)";
-                    lblError.Visible = true;
+                    failedAttempts++;
+                    MJdatabase.LogSecurityEvent(username, "LOGIN_FAILED", $"Invalid login attempt {failedAttempts} of 5");
+
+                    if (failedAttempts >= 5)
+                    {
+                        StartLockout(60, username);
+                    }
+                    else
+                    {
+                        lblError.Text = $"Invalid Username or Password. (Attempt {failedAttempts} of 5 before lockout)";
+                        lblError.Visible = true;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                lblError.Text = $"System/Database Error: {ex.Message}";
+                lblError.Visible = true;
             }
         }
 

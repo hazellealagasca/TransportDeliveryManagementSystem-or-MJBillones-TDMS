@@ -104,6 +104,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtUsername.Font = new Font("Segoe UI", 11F);
             txtUsername.ForeColor = Color.FromArgb(15, 23, 42);
             txtUsername.Location = new Point(36, 40);
+            txtUsername.MaxLength = 50;
             txtUsername.Name = "txtUsername";
             txtUsername.Size = new Size(408, 27);
             txtUsername.TabIndex = 2;
@@ -120,6 +121,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtPassword.Font = new Font("Segoe UI", 11F);
             txtPassword.ForeColor = Color.FromArgb(15, 23, 42);
             txtPassword.Location = new Point(36, 99);
+            txtPassword.MaxLength = 128;
             txtPassword.Name = "txtPassword";
             txtPassword.PasswordChar = '●';
             txtPassword.Size = new Size(408, 27);

@@ -6,15 +6,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 {
     public static class UITheme
     {
-        public static readonly Font TitleFont          = new Font("Segoe UI", 18F, FontStyle.Bold);
-        public static readonly Font CardHeaderFont     = new Font("Segoe UI Semibold", 14F, FontStyle.Bold);
-        public static readonly Font FieldLabelFont     = new Font("Segoe UI Semibold", 10.5F, FontStyle.Bold);
-        public static readonly Font InputFont          = new Font("Segoe UI", 11F, FontStyle.Regular);
-        public static readonly Font ButtonPrimaryFont   = new Font("Segoe UI Semibold", 11F, FontStyle.Bold);
-        public static readonly Font ButtonSecondaryFont = new Font("Segoe UI Semibold", 10F, FontStyle.Bold);
-        public static readonly Font GridCellFont       = new Font("Segoe UI", 10.5F, FontStyle.Regular);
-        public static readonly Font GridHeaderFont     = new Font("Segoe UI Semibold", 11F, FontStyle.Bold);
-        public static readonly Font HelperSubtextFont  = new Font("Segoe UI", 9.5F, FontStyle.Regular);
+        public static readonly Font TitleFont          = new Font("Segoe UI", 16F, FontStyle.Bold);
+        public static readonly Font CardHeaderFont     = new Font("Segoe UI Semibold", 12F, FontStyle.Bold);
+        public static readonly Font FieldLabelFont     = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
+        public static readonly Font InputFont          = new Font("Segoe UI", 9.5F, FontStyle.Regular);
+        public static readonly Font ButtonPrimaryFont   = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+        public static readonly Font ButtonSecondaryFont = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
+        public static readonly Font GridCellFont       = new Font("Segoe UI", 9F, FontStyle.Regular);
+        public static readonly Font GridHeaderFont     = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
+        public static readonly Font HelperSubtextFont  = new Font("Segoe UI", 8.5F, FontStyle.Regular);
+
+        public const int CompactRowHeight = 32;
+        public const int CompactHeaderHeight = 32;
+        public const int DrawerWidth = 480;
 
         public static readonly Color CanvasBackground   = Color.FromArgb(248, 250, 252);
         public static readonly Color SurfaceBackground  = Color.FromArgb(255, 255, 255);
@@ -25,7 +29,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static readonly Color PrimaryAccent      = Color.FromArgb(37, 99, 235);
         public static readonly Color PrimaryHover       = Color.FromArgb(29, 78, 216);
         public static readonly Color PrimaryActive      = Color.FromArgb(30, 64, 175);
-        public static readonly Color BrandDark          = Color.FromArgb(30, 41, 59);
+        public static readonly Color BrandDark          = Color.FromArgb(15, 23, 42);
 
         public static readonly Color SecondarySurface   = Color.FromArgb(241, 245, 249);
         public static readonly Color BorderDefault      = Color.FromArgb(203, 213, 225);
@@ -155,11 +159,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (parent is UserControl uc)
             {
-                uc.AutoScroll = true;
-                if (uc.AutoScrollMinSize.Width < 1000 || uc.AutoScrollMinSize.Height < 620)
-                {
-                    uc.AutoScrollMinSize = new Size(1000, 620);
-                }
+                uc.AutoScroll = false;
+                uc.AutoScrollMinSize = Size.Empty;
             }
 
             foreach (Control ctrl in parent.Controls)
@@ -189,7 +190,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cb.Font = UITheme.InputFont;
                 cb.ForeColor = UITheme.TextPrimary;
                 cb.BackColor = Color.White;
-                cb.FlatStyle = FlatStyle.Flat;
+                cb.FlatStyle = FlatStyle.Standard;
 
                 if (cb.Name.Contains("Time", StringComparison.OrdinalIgnoreCase) && (cb.Items.Count == 0 || cb.Items.Count <= 7))
                 {
@@ -261,8 +262,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (ctrl is Panel pnl)
             {
-                if (pnl.Name.StartsWith("pnlForm", StringComparison.OrdinalIgnoreCase) ||
-                    pnl.Name.StartsWith("pnlGridCard", StringComparison.OrdinalIgnoreCase) ||
+                if (pnl.Name.Equals("pnlFormBody", StringComparison.OrdinalIgnoreCase))
+                {
+                    pnl.BackColor = UITheme.SurfaceBackground;
+                    pnl.AutoScroll = true;
+                    pnl.AutoScrollMargin = new Size(0, 24);
+                }
+                else if (pnl.Name.Equals("pnlForm", StringComparison.OrdinalIgnoreCase) ||
+                         pnl.Name.Equals("pnlFormHeaderBar", StringComparison.OrdinalIgnoreCase) ||
+                         pnl.Name.Equals("pnlFormActionsBar", StringComparison.OrdinalIgnoreCase))
+                {
+                    pnl.BackColor = UITheme.SurfaceBackground;
+                    pnl.AutoScroll = false;
+                }
+                else if (pnl.Name.StartsWith("pnlGridCard", StringComparison.OrdinalIgnoreCase) ||
                     pnl.Name.StartsWith("pnlCard", StringComparison.OrdinalIgnoreCase) ||
                     pnl.Name.StartsWith("pnlDispatchCard", StringComparison.OrdinalIgnoreCase) ||
                     pnl.Name.StartsWith("pnlLoadingCard", StringComparison.OrdinalIgnoreCase) ||
@@ -283,6 +296,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             string name = lbl.Name;
             lbl.AutoSize = true;
+            lbl.UseMnemonic = false;
 
             if (name.StartsWith("lblTitle", StringComparison.OrdinalIgnoreCase) ||
                 (lbl.Font.Size >= 15 && name.Contains("Title", StringComparison.OrdinalIgnoreCase)))
@@ -290,18 +304,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lbl.Font = UITheme.TitleFont;
                 lbl.ForeColor = UITheme.TextPrimary;
             }
-            else if (name.StartsWith("lblHeader", StringComparison.OrdinalIgnoreCase) ||
-                     name.EndsWith("Header", StringComparison.OrdinalIgnoreCase) ||
-                     name.StartsWith("lblFormHeader", StringComparison.OrdinalIgnoreCase) ||
-                     name.StartsWith("lblGridHeader", StringComparison.OrdinalIgnoreCase) ||
-                     name.Contains("Title", StringComparison.OrdinalIgnoreCase))
+            else if (name.Equals("lblFormHeader", StringComparison.OrdinalIgnoreCase) ||
+                     name.Equals("lblGridHeader", StringComparison.OrdinalIgnoreCase) ||
+                     name.Equals("lblCardHeader", StringComparison.OrdinalIgnoreCase) ||
+                     name.Equals("lblHeader", StringComparison.OrdinalIgnoreCase) ||
+                     name.StartsWith("lblFormTitle", StringComparison.OrdinalIgnoreCase))
             {
                 lbl.Font = UITheme.CardHeaderFont;
                 lbl.ForeColor = UITheme.TextPrimary;
             }
             else if (name.StartsWith("lblSub", StringComparison.OrdinalIgnoreCase) ||
                      name.Contains("Desc", StringComparison.OrdinalIgnoreCase) ||
-                     name.Contains("Note", StringComparison.OrdinalIgnoreCase))
+                     name.Contains("Note", StringComparison.OrdinalIgnoreCase) ||
+                     name.Contains("Hint", StringComparison.OrdinalIgnoreCase))
             {
                 lbl.Font = UITheme.HelperSubtextFont;
                 lbl.ForeColor = UITheme.TextMuted;
@@ -320,14 +335,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private static void ApplyButtonStyle(Button btn)
         {
+            btn.UseMnemonic = false;
             btn.FlatStyle = FlatStyle.Flat;
             btn.FlatAppearance.BorderSize = 0;
             btn.Cursor = Cursors.Hand;
 
-            if (btn.Name.Contains("Photo", StringComparison.OrdinalIgnoreCase) || btn.Name.Contains("TimePicker", StringComparison.OrdinalIgnoreCase))
+            if (btn.Name.Contains("Photo", StringComparison.OrdinalIgnoreCase) || btn.Name.Contains("TimePicker", StringComparison.OrdinalIgnoreCase) || btn.Name.Contains("Close", StringComparison.OrdinalIgnoreCase))
             {
                 btn.Font = UITheme.ButtonSecondaryFont;
-                if (btn.Height < 32) btn.Height = 34;
+                if (btn.Height < 28) btn.Height = 28;
                 return;
             }
 
@@ -430,28 +446,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
-            grid.ColumnHeadersHeight = 44;
-            grid.RowTemplate.Height = 38;
+            grid.ColumnHeadersHeight = UITheme.CompactHeaderHeight;
+            grid.RowTemplate.Height = UITheme.CompactRowHeight;
 
-            grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold);
+            grid.ColumnHeadersDefaultCellStyle.Font = UITheme.GridHeaderFont;
             grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(15, 23, 42);
             grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
             grid.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
             grid.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
-            grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(10, 0, 10, 0);
+            grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(8, 0, 8, 0);
 
-            grid.DefaultCellStyle.Font = new Font("Segoe UI", 10F);
+            grid.DefaultCellStyle.Font = UITheme.GridCellFont;
             grid.DefaultCellStyle.ForeColor = UITheme.TextPrimary;
             grid.DefaultCellStyle.BackColor = UITheme.SurfaceBackground;
             grid.DefaultCellStyle.SelectionBackColor = UITheme.SelectionHighlight;
             grid.DefaultCellStyle.SelectionForeColor = UITheme.SelectionText;
-            grid.DefaultCellStyle.Padding = new Padding(10, 4, 10, 4);
+            grid.DefaultCellStyle.Padding = new Padding(8, 0, 8, 0);
 
             grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(248, 250, 252);
             grid.AlternatingRowsDefaultCellStyle.ForeColor = UITheme.TextPrimary;
             grid.AlternatingRowsDefaultCellStyle.SelectionBackColor = UITheme.SelectionHighlight;
             grid.AlternatingRowsDefaultCellStyle.SelectionForeColor = UITheme.SelectionText;
-            grid.AlternatingRowsDefaultCellStyle.Padding = new Padding(10, 4, 10, 4);
+            grid.AlternatingRowsDefaultCellStyle.Padding = new Padding(8, 0, 8, 0);
 
             grid.SortCompare += (s, e) =>
             {
@@ -480,21 +496,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     using (var borderPen = new Pen(Color.FromArgb(51, 65, 85), 1f))
                     {
                         e.Graphics.DrawLine(borderPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
-                        e.Graphics.DrawLine(borderPen, e.CellBounds.Right - 1, e.CellBounds.Top + 6, e.CellBounds.Right - 1, e.CellBounds.Bottom - 6);
+                        e.Graphics.DrawLine(borderPen, e.CellBounds.Right - 1, e.CellBounds.Top + 4, e.CellBounds.Right - 1, e.CellBounds.Bottom - 4);
                     }
                     string headerText = grid.Columns[e.ColumnIndex].HeaderText;
-                    using (var headerFont = new Font("Segoe UI Semibold", 10F, FontStyle.Bold))
+                    using (var headerFont = new Font("Segoe UI Semibold", 9F, FontStyle.Bold))
                     using (var textBrush = new SolidBrush(Color.White))
                     using (var sf = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap })
                     {
-                        var textRect = new Rectangle(e.CellBounds.X + 10, e.CellBounds.Y, e.CellBounds.Width - 16, e.CellBounds.Height);
+                        var textRect = new Rectangle(e.CellBounds.X + 8, e.CellBounds.Y, e.CellBounds.Width - 12, e.CellBounds.Height);
                         e.Graphics.DrawString(headerText, headerFont, textBrush, textRect, sf);
                     }
                     e.Handled = true;
                     return;
                 }
 
-                                if (e.RowIndex >= 0 && e.ColumnIndex >= 0 && e.Value != null && e.Graphics != null)
+                if (e.RowIndex >= 0 && e.ColumnIndex >= 0 && e.Value != null && e.Graphics != null)
                 {
                     string colHeader = grid.Columns[e.ColumnIndex]?.HeaderText ?? "";
                     string colProp = grid.Columns[e.ColumnIndex]?.DataPropertyName ?? "";
@@ -554,16 +570,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         e.PaintBackground(e.ClipBounds, (e.State & DataGridViewElementStates.Selected) != 0);
 
-                        int pillHeight = 26;
-                        int pillWidth = Math.Min(e.CellBounds.Width - 12, Math.Max(80, (int)e.Graphics.MeasureString(val, UITheme.GridCellFont).Width + 24));
+                        int pillHeight = 22;
+                        int pillWidth = Math.Min(e.CellBounds.Width - 8, Math.Max(64, (int)e.Graphics.MeasureString(val, UITheme.GridCellFont).Width + 18));
                         int pillX = e.CellBounds.X + (e.CellBounds.Width - pillWidth) / 2;
                         int pillY = e.CellBounds.Y + (e.CellBounds.Height - pillHeight) / 2;
 
                         var rect = new Rectangle(pillX, pillY, pillWidth, pillHeight);
                         using (var brush = new SolidBrush(bg))
-                        using (var pen = new Pen(border, 1.2f))
+                        using (var pen = new Pen(border, 1.0f))
                         using (var textBrush = new SolidBrush(fg))
-                        using (var pillFont = new Font("Segoe UI Semibold", 9F, FontStyle.Bold))
+                        using (var pillFont = new Font("Segoe UI Semibold", 8F, FontStyle.Bold))
                         using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                         {
                             e.Graphics.FillRectangle(brush, rect);
@@ -668,6 +684,45 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 loginBtn.ForeColor = Color.White;
                 loginBtn.FlatAppearance.BorderSize = 0;
                 loginBtn.FlatStyle = FlatStyle.Flat;
+            }
+        }
+
+        public static Button CreateActionsDropdown(ContextMenuStrip menu, string text = "⋮ Actions ▾")
+        {
+            ApplyContextMenuTheme(menu);
+            var btn = new Button
+            {
+                Text = text,
+                Size = new Size(102, 30),
+                BackColor = Color.FromArgb(15, 23, 42),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 4, 4, 4)
+            };
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Click += (s, e) =>
+            {
+                int x = Math.Min(0, btn.Width - menu.PreferredSize.Width);
+                menu.Show(btn, new Point(x, btn.Height + 2));
+            };
+            return btn;
+        }
+
+        public static void ApplyContextMenuTheme(ContextMenuStrip menu)
+        {
+            if (menu == null) return;
+            menu.Font = new Font("Segoe UI", 9.5F);
+            menu.BackColor = Color.White;
+            menu.ForeColor = Color.FromArgb(15, 23, 42);
+            menu.ShowImageMargin = false;
+            menu.DropShadowEnabled = true;
+            foreach (ToolStripItem item in menu.Items)
+            {
+                item.Font = new Font("Segoe UI", 9.5F);
+                item.ForeColor = Color.FromArgb(15, 23, 42);
+                item.Padding = new Padding(12, 6, 12, 6);
             }
         }
     }

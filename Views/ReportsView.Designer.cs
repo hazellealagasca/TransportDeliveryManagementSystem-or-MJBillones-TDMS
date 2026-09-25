@@ -17,7 +17,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void InitializeComponent()
         {
-            this.lblTitle = new System.Windows.Forms.Label();
             this.pnlHeader = new System.Windows.Forms.Panel();
             this.pnlFilter = new System.Windows.Forms.Panel();
             this.tblFilterLayout = new System.Windows.Forms.TableLayoutPanel();
@@ -49,18 +48,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlHeader.AutoSize = true;
             this.pnlHeader.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.pnlHeader.Padding = new System.Windows.Forms.Padding(0, 0, 0, 12);
-            this.pnlHeader.Controls.Add(this.lblTitle);
             this.pnlHeader.Name = "pnlHeader";
-
-            this.lblTitle.AutoSize = true;
-            this.lblTitle.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
-            this.lblTitle.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Size = new System.Drawing.Size(320, 30);
-            this.lblTitle.TabIndex = 0;
-            this.lblTitle.Text = "Reports & Analytics Center";
 
             this.pnlFilter.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlFilter.AutoSize = true;
@@ -119,12 +107,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             "Billing & Invoices Log",
             "Collection Receipts Summary",
             "Incident & Damage Reports",
-            "Crew Trip Compensation & Pay Slips"});
+            "Crew Trip Compensation & Pay Slips",
+            "System Activity & Audit Trail (Admin)"});
             this.cbReportType.Margin = new System.Windows.Forms.Padding(0, 0, 16, 6);
             this.cbReportType.Name = "cbReportType";
             this.cbReportType.Size = new System.Drawing.Size(300, 23);
             this.cbReportType.TabIndex = 1;
-            this.cbReportType.SelectedIndexChanged += new System.EventHandler(this.CbReportType_SelectedIndexChanged);
 
             this.lblStatus.AutoSize = true;
             this.lblStatus.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
@@ -142,7 +130,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             "All Statuses",
             "Completed Only",
             "Cancelled Only",
-            "Pending / In Transit"});
+            "Pending / In Transit",
+            "Past Dispatches Only",
+            "Present / Active Today",
+            "Future Scheduled Dispatches"});
             this.cbStatusFilter.Margin = new System.Windows.Forms.Padding(0, 0, 16, 6);
             this.cbStatusFilter.Name = "cbStatusFilter";
             this.cbStatusFilter.Size = new System.Drawing.Size(160, 23);
@@ -160,13 +151,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             this.txtSearch.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.txtSearch.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
+            this.txtSearch.MaxLength = 150;
             this.txtSearch.Name = "txtSearch";
             this.txtSearch.PlaceholderText = "Type keywords...";
             this.txtSearch.Size = new System.Drawing.Size(160, 23);
             this.txtSearch.TabIndex = 5;
             this.txtSearch.TextChanged += new System.EventHandler(this.TxtSearch_TextChanged);
 
-            this.flowActions.Dock = System.Windows.Forms.DockStyle.Right;
+            this.flowActions.Anchor = System.Windows.Forms.AnchorStyles.Right;
             this.flowActions.AutoSize = true;
             this.flowActions.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
             this.flowActions.WrapContents = true;
@@ -224,8 +216,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlGridCard.MinimumSize = new System.Drawing.Size(500, 260);
             this.pnlGridCard.Padding = new System.Windows.Forms.Padding(12);
             this.pnlGridCard.Margin = new System.Windows.Forms.Padding(0, 14, 0, 0);
-            this.pnlGridCard.Controls.Add(this.gridReport);
             this.pnlGridCard.Controls.Add(this.pnlSummary);
+            this.pnlGridCard.Controls.Add(this.gridReport);
             this.pnlGridCard.Name = "pnlGridCard";
             this.pnlGridCard.TabIndex = 2;
 
@@ -246,7 +238,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             this.pnlSummary.BackColor = System.Drawing.Color.FromArgb(248, 250, 252);
             this.pnlSummary.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.pnlSummary.Height = 40;
+            this.pnlSummary.AutoSize = true;
+            this.pnlSummary.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.pnlSummary.MinimumSize = new System.Drawing.Size(0, 36);
             this.pnlSummary.Padding = new System.Windows.Forms.Padding(12, 8, 12, 8);
             this.pnlSummary.Controls.Add(this.lblSummary);
             this.pnlSummary.Name = "pnlSummary";
@@ -292,7 +286,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         #endregion
 
-        private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Panel pnlHeader;
         private System.Windows.Forms.Panel pnlFilter;
         private System.Windows.Forms.TableLayoutPanel tblFilterLayout;

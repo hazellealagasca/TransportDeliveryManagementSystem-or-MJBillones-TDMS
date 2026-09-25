@@ -89,6 +89,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtSearch.Size = new Size(180, 26);
             txtSearch.Margin = new Padding(0, 4, 16, 0);
             txtSearch.PlaceholderText = "Search username, ID...";
+            txtSearch.MaxLength = 100;
             txtSearch.TextChanged += (s, e) => ApplyFilter();
 
             Label lblFilter = new Label

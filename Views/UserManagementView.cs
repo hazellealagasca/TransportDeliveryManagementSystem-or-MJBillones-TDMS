@@ -22,11 +22,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             InitializeComponent();
             gridUsers.BringToFront();
             SetupGridColumns();
-            gridUsers.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0) SetFormVisibility(true); };
+            gridUsers.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && gridUsers.Rows[e.RowIndex].DataBoundItem is User item) RecordDetailsDialog.ShowDetails(this, item); };
             gridUsers.CurrentCellDirtyStateChanged += (s, e) => { if (gridUsers.IsCurrentCellDirty && gridUsers.CurrentCell is DataGridViewCheckBoxCell) gridUsers.CommitEdit(DataGridViewDataErrorContexts.Commit); };
             gridUsers.CellValueChanged += (s, e) => {
                 if (isBindingForm) return;
-                if (e.RowIndex >= 0 && e.ColumnIndex == 0 && gridUsers.Rows[e.RowIndex].DataBoundItem is User u) {
+                if (e.RowIndex >= 0 && gridUsers.Columns[e.ColumnIndex].DataPropertyName == "IsActive" && gridUsers.Rows[e.RowIndex].DataBoundItem is User u) {
                     MJdatabase.ToggleUserActive(u.Id, u.IsActive);
                     if (selectedUser != null && selectedUser.Id == u.Id) {
                         chkActive.Checked = u.IsActive;
@@ -35,22 +35,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             SetupEvents();
             LoadUsers();
-            Button btnExport = new Button
-            {
-                Text = "📊 Export",
-                Size = new Size(88, 30),
-                BackColor = Color.FromArgb(15, 23, 42),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            btnExport.FlatAppearance.BorderSize = 0;
-            btnExport.Click += (s, e) => DataExportHelper.ExportToCsv(gridUsers, "User_Accounts", "System User Accounts");
-            pnlGridActionsFlow.Controls.Add(btnExport);
-
             InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
+
+            btnPrint.Visible = false;
+            var menuActions = new ContextMenuStrip();
+            menuActions.Items.Add("📊 Export Table to CSV...", null, (s, e) => DataExportHelper.ExportToCsv(gridUsers, "User_Accounts", "User Accounts"));
+            menuActions.Items.Add("🖨 Print User Directory", null, BtnPrint_Click);
+            var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
+            pnlGridActionsFlow.Controls.Add(btnActions);
         }
 
         private void InitializeFormToggle()
@@ -73,20 +66,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnCloseForm = new Button
             {
-                Text = "✖ Hide Form",
-                Dock = DockStyle.Top,
-                Height = 28,
+                Name = "btnCloseForm",
+                Text = "✕ Close",
+                Size = new Size(80, 28),
+                Dock = DockStyle.Right,
                 BackColor = Color.FromArgb(241, 245, 249),
                 ForeColor = Color.FromArgb(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 0, 8)
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
             };
             btnCloseForm.FlatAppearance.BorderSize = 0;
             btnCloseForm.Click += (s, e) => SetFormVisibility(false);
-            pnlForm.Controls.Add(btnCloseForm);
-            pnlForm.Controls.SetChildIndex(btnCloseForm, 0);
+            pnlFormHeaderBar.Controls.Add(btnCloseForm);
 
             SetFormVisibility(false);
         }
@@ -96,7 +88,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Visible = visible;
             if (tblMasterContent.ColumnStyles.Count > 0)
             {
-                tblMasterContent.ColumnStyles[0].Width = visible ? 580F : 0F;
+                tblMasterContent.ColumnStyles[0].Width = visible ? 480F : 0F;
                 tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
             }
             if (tblMasterContent.ColumnStyles.Count > 1)
@@ -110,6 +102,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
                 btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
             }
+            MainForm.Instance?.NotifyDrawerToggled(visible);
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape && pnlForm.Visible)
+            {
+                SetFormVisibility(false);
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         public void RefreshData()
@@ -119,6 +122,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void SetupEvents()
         {
+            txtContact.KeyPress += (s, e) => {
+                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) && e.KeyChar != '+' && e.KeyChar != '-')
+                {
+                    e.Handled = true;
+                }
+            };
             chkShowPassword.CheckedChanged += (s, e) =>
             {
                 txtPassword.PasswordChar = chkShowPassword.Checked ? '\0' : '●';
@@ -134,7 +143,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
         }
 
-                        private void SetupGridColumns()
+        private void SetupGridColumns()
         {
             gridUsers.ReadOnly = false;
             gridUsers.EditMode = DataGridViewEditMode.EditOnEnter;
@@ -165,7 +174,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridUsers.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "CreatedAt", HeaderText = "Created", DefaultCellStyle = { Format = "MM/dd/yyyy" }, FillWeight = 15, MinimumWidth = 85, ReadOnly = true });
         }
 
-                private void GridUsers_SelectionChanged(object? sender, EventArgs e)
+        private void GridUsers_SelectionChanged(object? sender, EventArgs e)
         {
             if (gridUsers.SelectedRows.Count > 0 && gridUsers.SelectedRows[0].DataBoundItem is User u)
             {
@@ -184,19 +193,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     lblFormHeader.Text = "⚠️ Pending Staff Account (Awaiting Owner Approval)";
                     lblFormHeader.ForeColor = Color.FromArgb(180, 83, 9);
-                    btnSave.Location = new Point(20, 460);
-                    btnUpdate.Location = new Point(20, 505);
-                    btnDelete.Location = new Point(245, 505);
-                    btnClear.Location = new Point(20, 548);
+                    btnApprove.Location = new Point(16, 404);
+                    btnSave.Location = new Point(16, 452);
+                    tblUpdateDelete.Location = new Point(16, 502);
+                    btnClear.Location = new Point(16, 550);
                 }
                 else
                 {
                     lblFormHeader.Text = "User Credentials Form";
                     lblFormHeader.ForeColor = Color.FromArgb(15, 23, 42);
-                    btnSave.Location = new Point(20, 415);
-                    btnUpdate.Location = new Point(20, 465);
-                    btnDelete.Location = new Point(245, 465);
-                    btnClear.Location = new Point(20, 512);
+                    btnSave.Location = new Point(16, 404);
+                    tblUpdateDelete.Location = new Point(16, 454);
+                    btnClear.Location = new Point(16, 502);
                 }
                 isBindingForm = false;
             }
@@ -292,6 +300,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 string fullName = NameHelper.FormatFullName(lastName, firstName, middleName);
 
+                string contact = txtContact.Text.Trim();
+                if (!string.IsNullOrEmpty(contact) && !SecurityHelper.IsValidPhone(contact))
+                {
+                    MessageBox.Show("Please enter a valid Philippine contact number (e.g. 09123456789 or +639123456789).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtContact.Focus();
+                    return;
+                }
+
                 User u = new User
                 {
                     Username = username,
@@ -301,7 +317,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     FirstName = firstName,
                     MiddleName = middleName,
                     FullName = fullName,
-                    ContactNumber = txtContact.Text.Trim(),
+                    ContactNumber = contact,
                     IsActive = chkActive.Checked
                 };
 
@@ -309,6 +325,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show("User account created successfully (password securely hashed with SHA-256)!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadUsers();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
@@ -395,19 +412,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 string fullName = NameHelper.FormatFullName(lastName, firstName, middleName);
 
+                string contact = txtContact.Text.Trim();
+                if (!string.IsNullOrEmpty(contact) && !SecurityHelper.IsValidPhone(contact))
+                {
+                    MessageBox.Show("Please enter a valid Philippine contact number (e.g. 09123456789 or +639123456789).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtContact.Focus();
+                    return;
+                }
+
                 selectedUser.Username = username;
                 selectedUser.Role = string.IsNullOrWhiteSpace(cbRole.Text) ? "Office Staff" : cbRole.Text.Trim();
                 selectedUser.LastName = lastName;
                 selectedUser.FirstName = firstName;
                 selectedUser.MiddleName = middleName;
                 selectedUser.FullName = fullName;
-                selectedUser.ContactNumber = txtContact.Text.Trim();
+                selectedUser.ContactNumber = contact;
                 selectedUser.IsActive = chkActive.Checked;
 
                 MJdatabase.SaveUser(selectedUser);
                 MessageBox.Show("User account updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadUsers();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
@@ -624,10 +650,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnApprove.Visible = false;
             lblFormHeader.Text = "User Credentials Form";
             lblFormHeader.ForeColor = Color.FromArgb(15, 23, 42);
-            btnSave.Location = new Point(20, 415);
-            btnUpdate.Location = new Point(20, 465);
-            btnDelete.Location = new Point(245, 465);
-            btnClear.Location = new Point(20, 512);
+            btnSave.Location = new Point(16, 404);
+            tblUpdateDelete.Location = new Point(16, 454);
+            btnClear.Location = new Point(16, 502);
             if (gridUsers.SelectedRows.Count > 0) gridUsers.ClearSelection();
         }
 
@@ -645,7 +670,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
-                        private void FilterGridData()
+        private void FilterGridData()
         {
             string q = txtGridSearch.Text.Trim().ToLowerInvariant();
             var filtered = string.IsNullOrEmpty(q)
@@ -683,10 +708,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 btnApprove.Visible = false;
                 lblFormHeader.Text = "User Credentials Form";
                 lblFormHeader.ForeColor = Color.FromArgb(15, 23, 42);
-                btnSave.Location = new Point(20, 415);
-                btnUpdate.Location = new Point(20, 465);
-                btnDelete.Location = new Point(245, 465);
-                btnClear.Location = new Point(20, 512);
+                btnSave.Location = new Point(16, 404);
+                tblUpdateDelete.Location = new Point(16, 454);
+                btnClear.Location = new Point(16, 502);
                 isBindingForm = false;
             }
         }

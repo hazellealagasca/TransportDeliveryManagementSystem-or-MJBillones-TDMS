@@ -68,16 +68,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetupDraftAutoSave();
             LoadData();
 
+            btnPrint.Visible = false;
+
+            var menuActions = new ContextMenuStrip();
+            menuActions.Items.Add("📊 Export Incident Logs to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridIncidents, "Incident_Reports", "Goods Damage and Incident Reports"));
+            menuActions.Items.Add("🖨️ Print Incident Investigation Report", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
+            var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
+            pnlGridActionsFlow.Controls.Add(btnActions);
+
             InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape && pnlForm.Visible)
+            {
+                SetFormVisibility(false);
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         private void InitializeFormToggle()
         {
             btnToggleForm = new Button
             {
-                Text = "📝 Input Form ▾",
-                Size = new Size(130, 30),
+                Text = "📝 + New / Form ▾",
+                Size = new Size(150, 30),
                 BackColor = Color.FromArgb(30, 41, 59),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -92,20 +110,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnCloseForm = new Button
             {
-                Text = "✖ Hide Form",
-                Dock = DockStyle.Top,
-                Height = 28,
+                Name = "btnCloseForm",
+                Text = "✕ Close",
+                Size = new Size(80, 28),
+                Dock = DockStyle.Right,
                 BackColor = Color.FromArgb(241, 245, 249),
                 ForeColor = Color.FromArgb(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 0, 8)
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
             };
             btnCloseForm.FlatAppearance.BorderSize = 0;
             btnCloseForm.Click += (s, e) => SetFormVisibility(false);
-            pnlForm.Controls.Add(btnCloseForm);
-            pnlForm.Controls.SetChildIndex(btnCloseForm, 0);
+            pnlFormHeaderBar.Controls.Add(btnCloseForm);
 
             SetFormVisibility(false);
         }
@@ -115,7 +132,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Visible = visible;
             if (tblMasterContent.ColumnStyles.Count > 0)
             {
-                tblMasterContent.ColumnStyles[0].Width = visible ? 580F : 0F;
+                tblMasterContent.ColumnStyles[0].Width = visible ? 480F : 0F;
                 tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
             }
             if (tblMasterContent.ColumnStyles.Count > 1)
@@ -125,10 +142,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 Input Form ▾";
+                btnToggleForm.Text = visible ? "✕ Hide Form ▴" : "📝 + New / Form ▾";
                 btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
                 btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
             }
+            MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
         public void RefreshData()
@@ -153,7 +171,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtDescription.Text = $"Automated variance log: {missingCrates} crate(s) discrepancy noted on delivery {dispatchNumber} on {tripDate:MM/dd/yyyy}.";
         }
 
-                        private void SetupGridColumns()
+        private void SetupGridColumns()
         {
             gridIncidents.ReadOnly = false;
             gridIncidents.EditMode = DataGridViewEditMode.EditOnEnter;
@@ -174,7 +192,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridIncidents.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 8, MinimumWidth = 75, ReadOnly = true });
         }
 
-                        private void GridIncidents_SelectionChanged(object? sender, EventArgs e)
+        private void GridIncidents_SelectionChanged(object? sender, EventArgs e)
         {
             if (gridIncidents.SelectedRows.Count > 0 && gridIncidents.SelectedRows[0].DataBoundItem is IncidentReport inc)
             {
@@ -223,7 +241,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
-                private void LoadData()
+        private void LoadData()
         {
             try
             {
@@ -338,6 +356,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
                 MessageBox.Show("Incident & cargo damage log saved successfully!", "Log Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadData();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
@@ -372,6 +391,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.SaveIncidentReport(selectedIncident);
                 MessageBox.Show("Incident record updated successfully!", "Update Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadData();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
@@ -428,7 +448,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             DisplayPhotoPreview(currentPhotoPath);
         }
 
-                                private void FilterGridData()
+        private void FilterGridData()
         {
             string q = txtGridSearch.Text.Trim().ToLowerInvariant();
             var filtered = string.IsNullOrEmpty(q)
@@ -576,13 +596,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var draft = MJdatabase.GetFormDraft("IncidentReport", SessionContext.CurrentUsername);
                 if (draft != null && !string.IsNullOrWhiteSpace(draft.Value.Data))
                 {
-                    if (pnlDraftBanner != null) pnlForm.Controls.Remove(pnlDraftBanner);
+                    if (pnlDraftBanner != null) pnlFormBody.Controls.Remove(pnlDraftBanner);
                     pnlDraftBanner = DraftAutoSaveService.CreateDraftBanner("Incident Report", draft.Value.LastSaved, RestoreDraft, DiscardDraft);
-                    pnlForm.Controls.Add(pnlDraftBanner);
+                    pnlFormBody.Controls.Add(pnlDraftBanner);
                     pnlDraftBanner.BringToFront();
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[IncidentReport] CheckAndPromptDraft: {ex.Message}");
+            }
         }
 
         private void RestoreDraft()
@@ -627,7 +650,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 isBindingForm = false;
                 ToastHelper.ShowToast(this, "Incident Report draft restored ✓", ToastType.Success);
             }
-            catch { isBindingForm = false; }
+            catch (Exception ex)
+            {
+                isBindingForm = false;
+                System.Diagnostics.Debug.WriteLine($"[IncidentReport] RestoreDraft: {ex.Message}");
+            }
         }
 
         private void DiscardDraft()
@@ -657,7 +684,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string json = DraftAutoSaveService.SerializeDraft(map);
                 MJdatabase.SaveFormDraft("IncidentReport", SessionContext.CurrentUsername, json);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[IncidentReport] SaveCurrentDraft: {ex.Message}");
+            }
         }
     }
 }

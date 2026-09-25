@@ -188,6 +188,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtSearch.Size = new Size(200, 26);
             txtSearch.Margin = new Padding(0, 4, 16, 0);
             txtSearch.PlaceholderText = "Search user, ref #, field...";
+            txtSearch.MaxLength = 100;
             txtSearch.TextChanged += (s, e) => ApplyFilter();
 
             Label lblAction = new Label
@@ -387,6 +388,35 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             });
 
             gridHistory.CellFormatting += GridHistory_CellFormatting;
+            gridHistory.CellDoubleClick += (s, e) =>
+            {
+                if (e.RowIndex >= 0 && gridHistory.Rows[e.RowIndex].DataBoundItem is AuditTrailEntry log)
+                {
+                    object? targetEntity = null;
+                    try
+                    {
+                        if (log.TableName.Equals("LoadingSchedules", StringComparison.OrdinalIgnoreCase))
+                        {
+                            targetEntity = MJdatabase.GetLoadingSchedules().FirstOrDefault(x => x.Id == log.RecordId || (!string.IsNullOrEmpty(x.ScheduleNumber) && x.ScheduleNumber == log.RecordIdentifier));
+                        }
+                        else if (log.TableName.Equals("Deliveries", StringComparison.OrdinalIgnoreCase))
+                        {
+                            targetEntity = MJdatabase.GetDeliveries().FirstOrDefault(x => x.Id == log.RecordId || (!string.IsNullOrEmpty(x.DispatchNumber) && x.DispatchNumber == log.RecordIdentifier));
+                        }
+                        else if (log.TableName.Equals("IncidentReports", StringComparison.OrdinalIgnoreCase))
+                        {
+                            targetEntity = MJdatabase.GetIncidentReports().FirstOrDefault(x => x.Id == log.RecordId || (!string.IsNullOrEmpty(x.DispatchNumber) && x.DispatchNumber == log.RecordIdentifier));
+                        }
+                        else if (log.TableName.Equals("TripReports", StringComparison.OrdinalIgnoreCase))
+                        {
+                            targetEntity = MJdatabase.GetTripReports().FirstOrDefault(x => x.Id == log.RecordId || (!string.IsNullOrEmpty(x.TripReportNumber) && x.TripReportNumber == log.RecordIdentifier) || (!string.IsNullOrEmpty(x.DispatchNumber) && x.DispatchNumber == log.RecordIdentifier));
+                        }
+                    }
+                    catch { }
+
+                    RecordDetailsDialog.ShowDetails(this, targetEntity ?? log);
+                }
+            };
         }
 
         private void GridHistory_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)

@@ -92,7 +92,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 10F),
-                Text = initialUsername
+                Text = initialUsername,
+                MaxLength = 50
             };
 
             btnFindUser = new Button
@@ -157,7 +158,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Top,
                 Font = new Font("Segoe UI", 9.5F),
                 PlaceholderText = "Enter answer to your security question...",
-                Margin = new Padding(0, 0, 0, 8)
+                Margin = new Padding(0, 0, 0, 8),
+                MaxLength = 200
             };
 
             Label lblNewPassPrompt = new Label
@@ -175,8 +177,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Top,
                 Font = new Font("Segoe UI", 9.5F),
                 PasswordChar = '●',
-                PlaceholderText = "Minimum 4 characters",
-                Margin = new Padding(0, 0, 0, 6)
+                PlaceholderText = "Minimum 6 characters, alphanumeric",
+                Margin = new Padding(0, 0, 0, 6),
+                MaxLength = 128
             };
 
             Label lblConfirmPassPrompt = new Label
@@ -195,7 +198,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Font = new Font("Segoe UI", 9.5F),
                 PasswordChar = '●',
                 PlaceholderText = "Re-type new password",
-                Margin = new Padding(0, 0, 0, 10)
+                Margin = new Padding(0, 0, 0, 10),
+                MaxLength = 128
             };
 
             btnResetPassword = new Button
@@ -323,10 +327,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(newPass) || newPass.Length < 4)
+            if (string.IsNullOrWhiteSpace(newPass) || newPass.Length < 6 || !newPass.Any(char.IsLetter) || !newPass.Any(char.IsDigit))
             {
                 lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
-                lblStatus.Text = "New password must be at least 4 characters long.";
+                lblStatus.Text = "New password must be at least 6 characters and contain letters and numbers.";
                 return;
             }
 

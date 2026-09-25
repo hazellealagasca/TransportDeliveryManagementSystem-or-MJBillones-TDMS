@@ -20,6 +20,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblTitle = new System.Windows.Forms.Label();
             this.tblMasterContent = new System.Windows.Forms.TableLayoutPanel();
             this.pnlForm = new System.Windows.Forms.Panel();
+            this.pnlFormActionsBar = new System.Windows.Forms.Panel();
+            this.pnlFormBody = new System.Windows.Forms.Panel();
+            this.pnlFormHeaderBar = new System.Windows.Forms.Panel();
             this.lblFormHeader = new System.Windows.Forms.Label();
             this.lblU = new System.Windows.Forms.Label();
             this.txtUsername = new System.Windows.Forms.TextBox();
@@ -59,6 +62,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.gridUsers = new System.Windows.Forms.DataGridView();
             this.tblMasterContent.SuspendLayout();
             this.pnlForm.SuspendLayout();
+            this.pnlFormActionsBar.SuspendLayout();
+            this.pnlFormBody.SuspendLayout();
+            this.pnlFormHeaderBar.SuspendLayout();
             this.tblPasswordRow.SuspendLayout();
             this.tblNameRow.SuspendLayout();
             this.pnlLastName.SuspendLayout();
@@ -71,60 +77,71 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ((System.ComponentModel.ISupportInitialize)(this.gridUsers)).BeginInit();
             this.SuspendLayout();
 
-            this.AutoScroll = true;
-            this.AutoScrollMinSize = new System.Drawing.Size(1000, 620);
+            this.AutoScroll = false;
+            this.AutoScrollMinSize = System.Drawing.Size.Empty;
             this.BackColor = System.Drawing.Color.FromArgb(241, 245, 249);
             this.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.Padding = new System.Windows.Forms.Padding(16);
             this.Size = new System.Drawing.Size(1420, 820);
 
-            this.lblTitle.AutoSize = true;
+            this.lblTitle.AutoSize = false;
             this.lblTitle.Dock = System.Windows.Forms.DockStyle.Top;
             this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
             this.lblTitle.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
             this.lblTitle.Location = new System.Drawing.Point(16, 16);
             this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Padding = new System.Windows.Forms.Padding(0, 0, 0, 10);
-            this.lblTitle.Size = new System.Drawing.Size(340, 40);
+            this.lblTitle.Padding = new System.Windows.Forms.Padding(0, 0, 0, 0);
+            this.lblTitle.Size = System.Drawing.Size.Empty;
             this.lblTitle.TabIndex = 0;
             this.lblTitle.Text = "User Accounts & Security";
+            this.lblTitle.Visible = false;
 
             this.tblMasterContent.ColumnCount = 2;
-            this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 580F));
+            this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 480F));
             this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tblMasterContent.Controls.Add(this.pnlForm, 0, 0);
             this.tblMasterContent.Controls.Add(this.pnlGridCard, 1, 0);
             this.tblMasterContent.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tblMasterContent.Location = new System.Drawing.Point(16, 56);
+            this.tblMasterContent.Location = new System.Drawing.Point(16, 16);
             this.tblMasterContent.Name = "tblMasterContent";
             this.tblMasterContent.RowCount = 1;
             this.tblMasterContent.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tblMasterContent.Size = new System.Drawing.Size(1388, 748);
             this.tblMasterContent.TabIndex = 1;
 
-            this.pnlForm.AutoScroll = true;
+            this.pnlForm.AutoScroll = false;
             this.pnlForm.BackColor = System.Drawing.Color.White;
             this.pnlForm.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlForm.Location = new System.Drawing.Point(0, 0);
             this.pnlForm.Margin = new System.Windows.Forms.Padding(0, 0, 16, 0);
             this.pnlForm.Name = "pnlForm";
-            this.pnlForm.Padding = new System.Windows.Forms.Padding(16);
-            this.pnlForm.Size = new System.Drawing.Size(564, 748);
+            this.pnlForm.Padding = new System.Windows.Forms.Padding(0);
+            this.pnlForm.Size = new System.Drawing.Size(464, 748);
             this.pnlForm.TabIndex = 0;
 
+            this.pnlFormHeaderBar.BackColor = System.Drawing.Color.FromArgb(248, 250, 252);
+            this.pnlFormHeaderBar.Controls.Add(this.lblFormHeader);
+            this.pnlFormHeaderBar.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlFormHeaderBar.Location = new System.Drawing.Point(0, 0);
+            this.pnlFormHeaderBar.Margin = new System.Windows.Forms.Padding(0);
+            this.pnlFormHeaderBar.Name = "pnlFormHeaderBar";
+            this.pnlFormHeaderBar.Padding = new System.Windows.Forms.Padding(12, 6, 12, 6);
+            this.pnlFormHeaderBar.Size = new System.Drawing.Size(480, 38);
+            this.pnlFormHeaderBar.TabIndex = 0;
+
             this.lblFormHeader.AutoSize = true;
-            this.lblFormHeader.Font = new System.Drawing.Font("Segoe UI Semibold", 11F, System.Drawing.FontStyle.Bold);
-            this.lblFormHeader.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblFormHeader.Location = new System.Drawing.Point(16, 12);
+            this.lblFormHeader.Font = new System.Drawing.Font("Segoe UI Semibold", 12F, System.Drawing.FontStyle.Bold);
+            this.lblFormHeader.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            this.lblFormHeader.Location = new System.Drawing.Point(0, 6);
             this.lblFormHeader.Name = "lblFormHeader";
-            this.lblFormHeader.Size = new System.Drawing.Size(161, 20);
+            this.lblFormHeader.Size = new System.Drawing.Size(185, 21);
             this.lblFormHeader.TabIndex = 0;
             this.lblFormHeader.Text = "User Credentials Form";
 
             this.lblU.AutoSize = true;
             this.lblU.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblU.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblU.Location = new System.Drawing.Point(16, 42);
+            this.lblU.Location = new System.Drawing.Point(16, 60);
             this.lblU.Name = "lblU";
             this.lblU.Size = new System.Drawing.Size(72, 17);
             this.lblU.TabIndex = 1;
@@ -133,7 +150,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtUsername.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.txtUsername.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.txtUsername.Location = new System.Drawing.Point(16, 64);
+            this.txtUsername.Location = new System.Drawing.Point(16, 82);
+            this.txtUsername.MaxLength = 50;
             this.txtUsername.Name = "txtUsername";
             this.txtUsername.Size = new System.Drawing.Size(432, 24);
             this.txtUsername.TabIndex = 2;
@@ -141,7 +159,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblP.AutoSize = true;
             this.lblP.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblP.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblP.Location = new System.Drawing.Point(16, 96);
+            this.lblP.Location = new System.Drawing.Point(16, 116);
             this.lblP.Name = "lblP";
             this.lblP.Size = new System.Drawing.Size(69, 17);
             this.lblP.TabIndex = 3;
@@ -154,7 +172,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.tblPasswordRow.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 35F));
             this.tblPasswordRow.Controls.Add(this.txtPassword, 0, 0);
             this.tblPasswordRow.Controls.Add(this.chkShowPassword, 1, 0);
-            this.tblPasswordRow.Location = new System.Drawing.Point(16, 118);
+            this.tblPasswordRow.Location = new System.Drawing.Point(16, 138);
             this.tblPasswordRow.Margin = new System.Windows.Forms.Padding(0);
             this.tblPasswordRow.Name = "tblPasswordRow";
             this.tblPasswordRow.RowCount = 1;
@@ -166,6 +184,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtPassword.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.txtPassword.Location = new System.Drawing.Point(0, 0);
             this.txtPassword.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
+            this.txtPassword.MaxLength = 128;
             this.txtPassword.Name = "txtPassword";
             this.txtPassword.PasswordChar = '●';
             this.txtPassword.Size = new System.Drawing.Size(272, 24);
@@ -186,7 +205,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblPassHint.AutoSize = true;
             this.lblPassHint.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this.lblPassHint.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-            this.lblPassHint.Location = new System.Drawing.Point(16, 150);
+            this.lblPassHint.Location = new System.Drawing.Point(16, 170);
             this.lblPassHint.Name = "lblPassHint";
             this.lblPassHint.Size = new System.Drawing.Size(340, 15);
             this.lblPassHint.TabIndex = 5;
@@ -195,7 +214,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblR.AutoSize = true;
             this.lblR.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblR.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblR.Location = new System.Drawing.Point(16, 174);
+            this.lblR.Location = new System.Drawing.Point(16, 194);
             this.lblR.Name = "lblR";
             this.lblR.Size = new System.Drawing.Size(68, 17);
             this.lblR.TabIndex = 6;
@@ -209,7 +228,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.cbRole.Items.AddRange(new object[] {
             "Admin",
             "Office Staff"});
-            this.cbRole.Location = new System.Drawing.Point(16, 196);
+            this.cbRole.Location = new System.Drawing.Point(16, 216);
             this.cbRole.Name = "cbRole";
             this.cbRole.Size = new System.Drawing.Size(432, 25);
             this.cbRole.TabIndex = 7;
@@ -223,7 +242,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.tblNameRow.Controls.Add(this.pnlLastName, 0, 0);
             this.tblNameRow.Controls.Add(this.pnlFirstName, 1, 0);
             this.tblNameRow.Controls.Add(this.pnlMiddleName, 2, 0);
-            this.tblNameRow.Location = new System.Drawing.Point(16, 230);
+            this.tblNameRow.Location = new System.Drawing.Point(16, 252);
             this.tblNameRow.Margin = new System.Windows.Forms.Padding(0);
             this.tblNameRow.Name = "tblNameRow";
             this.tblNameRow.RowCount = 1;
@@ -254,6 +273,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtLastName.Dock = System.Windows.Forms.DockStyle.Top;
             this.txtLastName.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.txtLastName.Location = new System.Drawing.Point(0, 18);
+            this.txtLastName.MaxLength = 100;
             this.txtLastName.Name = "txtLastName";
             this.txtLastName.Size = new System.Drawing.Size(139, 24);
             this.txtLastName.TabIndex = 1;
@@ -281,6 +301,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtFirstName.Dock = System.Windows.Forms.DockStyle.Top;
             this.txtFirstName.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.txtFirstName.Location = new System.Drawing.Point(0, 18);
+            this.txtFirstName.MaxLength = 100;
             this.txtFirstName.Name = "txtFirstName";
             this.txtFirstName.Size = new System.Drawing.Size(145, 24);
             this.txtFirstName.TabIndex = 1;
@@ -308,6 +329,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtMiddleName.Dock = System.Windows.Forms.DockStyle.Top;
             this.txtMiddleName.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.txtMiddleName.Location = new System.Drawing.Point(0, 18);
+            this.txtMiddleName.MaxLength = 100;
             this.txtMiddleName.Name = "txtMiddleName";
             this.txtMiddleName.Size = new System.Drawing.Size(140, 24);
             this.txtMiddleName.TabIndex = 1;
@@ -315,7 +337,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblC.AutoSize = true;
             this.lblC.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblC.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.lblC.Location = new System.Drawing.Point(16, 292);
+            this.lblC.Location = new System.Drawing.Point(16, 314);
             this.lblC.Name = "lblC";
             this.lblC.Size = new System.Drawing.Size(111, 17);
             this.lblC.TabIndex = 9;
@@ -324,7 +346,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtContact.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.txtContact.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.txtContact.Location = new System.Drawing.Point(16, 314);
+            this.txtContact.Location = new System.Drawing.Point(16, 336);
+            this.txtContact.MaxLength = 20;
             this.txtContact.Name = "txtContact";
             this.txtContact.Size = new System.Drawing.Size(432, 24);
             this.txtContact.TabIndex = 10;
@@ -334,7 +357,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.chkActive.CheckState = System.Windows.Forms.CheckState.Checked;
             this.chkActive.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.chkActive.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
-            this.chkActive.Location = new System.Drawing.Point(16, 348);
+            this.chkActive.Location = new System.Drawing.Point(16, 370);
             this.chkActive.Name = "chkActive";
             this.chkActive.Size = new System.Drawing.Size(154, 21);
             this.chkActive.TabIndex = 11;
@@ -349,7 +372,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnApprove.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnApprove.Font = new System.Drawing.Font("Segoe UI Semibold", 10F, System.Drawing.FontStyle.Bold);
             this.btnApprove.ForeColor = System.Drawing.Color.White;
-            this.btnApprove.Location = new System.Drawing.Point(16, 380);
+            this.btnApprove.Location = new System.Drawing.Point(16, 404);
             this.btnApprove.Name = "btnApprove";
             this.btnApprove.Size = new System.Drawing.Size(432, 40);
             this.btnApprove.TabIndex = 12;
@@ -366,9 +389,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnSave.Font = new System.Drawing.Font("Segoe UI Semibold", 10F, System.Drawing.FontStyle.Bold);
             this.btnSave.ForeColor = System.Drawing.Color.White;
-            this.btnSave.Location = new System.Drawing.Point(16, 380);
+            this.btnSave.Location = new System.Drawing.Point(16, 404);
             this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(432, 40);
+            this.btnSave.Size = new System.Drawing.Size(432, 42);
             this.btnSave.TabIndex = 13;
             this.btnSave.Text = "Save User Account";
             this.btnSave.UseVisualStyleBackColor = false;
@@ -381,7 +404,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.tblUpdateDelete.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.tblUpdateDelete.Controls.Add(this.btnUpdate, 0, 0);
             this.tblUpdateDelete.Controls.Add(this.btnDelete, 1, 0);
-            this.tblUpdateDelete.Location = new System.Drawing.Point(16, 428);
+            this.tblUpdateDelete.Location = new System.Drawing.Point(16, 454);
             this.tblUpdateDelete.Margin = new System.Windows.Forms.Padding(0);
             this.tblUpdateDelete.Name = "tblUpdateDelete";
             this.tblUpdateDelete.RowCount = 1;
@@ -429,36 +452,71 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnClear.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnClear.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
             this.btnClear.ForeColor = System.Drawing.Color.FromArgb(51, 65, 85);
-            this.btnClear.Location = new System.Drawing.Point(16, 476);
+            this.btnClear.Location = new System.Drawing.Point(16, 502);
             this.btnClear.Name = "btnClear";
-            this.btnClear.Size = new System.Drawing.Size(432, 34);
+            this.btnClear.Size = new System.Drawing.Size(432, 36);
             this.btnClear.TabIndex = 15;
             this.btnClear.Text = "Clear Form";
             this.btnClear.UseVisualStyleBackColor = false;
             this.btnClear.Click += new System.EventHandler(this.BtnClear_Click);
 
-            this.pnlForm.Controls.Add(this.btnClear);
-            this.pnlForm.Controls.Add(this.tblUpdateDelete);
-            this.pnlForm.Controls.Add(this.btnSave);
-            this.pnlForm.Controls.Add(this.btnApprove);
-            this.pnlForm.Controls.Add(this.chkActive);
-            this.pnlForm.Controls.Add(this.txtContact);
-            this.pnlForm.Controls.Add(this.lblC);
-            this.pnlForm.Controls.Add(this.tblNameRow);
-            this.pnlForm.Controls.Add(this.cbRole);
-            this.pnlForm.Controls.Add(this.lblR);
-            this.pnlForm.Controls.Add(this.lblPassHint);
-            this.pnlForm.Controls.Add(this.tblPasswordRow);
-            this.pnlForm.Controls.Add(this.lblP);
-            this.pnlForm.Controls.Add(this.txtUsername);
-            this.pnlForm.Controls.Add(this.lblU);
-            this.pnlForm.Controls.Add(this.lblFormHeader);
+            this.btnApprove.Dock = System.Windows.Forms.DockStyle.Top;
+            this.btnSave.Dock = System.Windows.Forms.DockStyle.Top;
+            this.tblUpdateDelete.Dock = System.Windows.Forms.DockStyle.Top;
+            this.btnClear.Dock = System.Windows.Forms.DockStyle.Top;
+            
+            System.Windows.Forms.Panel pnlApproveSpacer = new System.Windows.Forms.Panel();
+            pnlApproveSpacer.Height = 8;
+            pnlApproveSpacer.Dock = System.Windows.Forms.DockStyle.Top;
+            System.Windows.Forms.Panel pnlSaveSpacer = new System.Windows.Forms.Panel();
+            pnlSaveSpacer.Height = 8;
+            pnlSaveSpacer.Dock = System.Windows.Forms.DockStyle.Top;
+            System.Windows.Forms.Panel pnlUpdateSpacer = new System.Windows.Forms.Panel();
+            pnlUpdateSpacer.Height = 8;
+            pnlUpdateSpacer.Dock = System.Windows.Forms.DockStyle.Top;
+
+            this.pnlFormActionsBar.Controls.Add(this.btnClear);
+            this.pnlFormActionsBar.Controls.Add(pnlUpdateSpacer);
+            this.pnlFormActionsBar.Controls.Add(this.tblUpdateDelete);
+            this.pnlFormActionsBar.Controls.Add(pnlSaveSpacer);
+            this.pnlFormActionsBar.Controls.Add(this.btnSave);
+            this.pnlFormActionsBar.Controls.Add(pnlApproveSpacer);
+            this.pnlFormActionsBar.Controls.Add(this.btnApprove);
+            this.pnlFormActionsBar.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.pnlFormActionsBar.Location = new System.Drawing.Point(0, 560);
+            this.pnlFormActionsBar.Name = "pnlFormActionsBar";
+            this.pnlFormActionsBar.Padding = new System.Windows.Forms.Padding(16, 4, 16, 8);
+            this.pnlFormActionsBar.Size = new System.Drawing.Size(480, 188);
+            this.pnlFormActionsBar.TabIndex = 2;
+
+            this.pnlFormBody.AutoScroll = true;
+            this.pnlFormBody.Controls.Add(this.chkActive);
+            this.pnlFormBody.Controls.Add(this.txtContact);
+            this.pnlFormBody.Controls.Add(this.lblC);
+            this.pnlFormBody.Controls.Add(this.tblNameRow);
+            this.pnlFormBody.Controls.Add(this.cbRole);
+            this.pnlFormBody.Controls.Add(this.lblR);
+            this.pnlFormBody.Controls.Add(this.lblPassHint);
+            this.pnlFormBody.Controls.Add(this.tblPasswordRow);
+            this.pnlFormBody.Controls.Add(this.lblP);
+            this.pnlFormBody.Controls.Add(this.txtUsername);
+            this.pnlFormBody.Controls.Add(this.lblU);
+            this.pnlFormBody.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlFormBody.Location = new System.Drawing.Point(0, 38);
+            this.pnlFormBody.Name = "pnlFormBody";
+            this.pnlFormBody.Padding = new System.Windows.Forms.Padding(16, 8, 16, 8);
+            this.pnlFormBody.Size = new System.Drawing.Size(480, 522);
+            this.pnlFormBody.TabIndex = 1;
+
+            this.pnlForm.Controls.Add(this.pnlFormBody);
+            this.pnlForm.Controls.Add(this.pnlFormActionsBar);
+            this.pnlForm.Controls.Add(this.pnlFormHeaderBar);
 
             this.pnlGridCard.BackColor = System.Drawing.Color.White;
             this.pnlGridCard.Controls.Add(this.gridUsers);
             this.pnlGridCard.Controls.Add(this.pnlGridHeaderBar);
             this.pnlGridCard.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pnlGridCard.Location = new System.Drawing.Point(580, 0);
+            this.pnlGridCard.Location = new System.Drawing.Point(480, 0);
             this.pnlGridCard.Margin = new System.Windows.Forms.Padding(0);
             this.pnlGridCard.MinimumSize = new System.Drawing.Size(480, 300);
             this.pnlGridCard.Name = "pnlGridCard";
@@ -502,6 +560,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtGridSearch.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.txtGridSearch.Location = new System.Drawing.Point(0, 4);
             this.txtGridSearch.Margin = new System.Windows.Forms.Padding(0, 4, 4, 0);
+            this.txtGridSearch.MaxLength = 100;
             this.txtGridSearch.Name = "txtGridSearch";
             this.txtGridSearch.PlaceholderText = "🔍 Search username, role...";
             this.txtGridSearch.Size = new System.Drawing.Size(220, 24);
@@ -543,7 +602,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.gridUsers.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             this.gridUsers.BackgroundColor = System.Drawing.Color.White;
             this.gridUsers.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.gridUsers.ColumnHeadersHeight = 36;
+            this.gridUsers.ColumnHeadersHeight = 32;
             this.gridUsers.Dock = System.Windows.Forms.DockStyle.Fill;
             this.gridUsers.EnableHeadersVisualStyles = false;
             this.gridUsers.Location = new System.Drawing.Point(16, 60);
@@ -551,7 +610,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.gridUsers.Name = "gridUsers";
             this.gridUsers.ReadOnly = true;
             this.gridUsers.RowHeadersVisible = false;
-            this.gridUsers.RowTemplate.Height = 34;
+            this.gridUsers.RowTemplate.Height = 32;
             this.gridUsers.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.gridUsers.Size = new System.Drawing.Size(876, 672);
             this.gridUsers.TabIndex = 1;
@@ -562,9 +621,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.Controls.Add(this.tblMasterContent);
             this.Controls.Add(this.lblTitle);
             this.Name = "UserManagementView";
+            this.pnlFormActionsBar.ResumeLayout(false);
+            this.pnlFormBody.ResumeLayout(false);
+            this.pnlFormBody.PerformLayout();
             this.tblMasterContent.ResumeLayout(false);
             this.pnlForm.ResumeLayout(false);
             this.pnlForm.PerformLayout();
+            this.pnlFormHeaderBar.ResumeLayout(false);
+            this.pnlFormHeaderBar.PerformLayout();
             this.tblPasswordRow.ResumeLayout(false);
             this.tblPasswordRow.PerformLayout();
             this.tblNameRow.ResumeLayout(false);
@@ -591,6 +655,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.TableLayoutPanel tblMasterContent;
         private System.Windows.Forms.Panel pnlForm;
+        private System.Windows.Forms.Panel pnlFormActionsBar;
+        private System.Windows.Forms.Panel pnlFormBody;
+        private System.Windows.Forms.Panel pnlFormHeaderBar;
         private System.Windows.Forms.Label lblFormHeader;
         private System.Windows.Forms.Label lblU;
         private System.Windows.Forms.TextBox txtUsername;

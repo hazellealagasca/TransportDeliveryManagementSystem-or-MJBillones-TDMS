@@ -26,13 +26,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Label lblDeliveriesSub = null!;
         private Label lblCrewVal = null!;
         private Label lblCrewSub = null!;
-        private Label lblFleetVal = null!;
-        private Label lblFleetSub = null!;
-        private Label lblFinanceVal = null!;
-        private Label lblFinanceSub = null!;
+        private Label lblTruckVal = null!;
+        private Label lblTruckSub = null!;
+        private Panel cardDeliveries = null!;
+        private Panel cardCrew = null!;
+        private Panel cardTrucks = null!;
         private string activeTimeframe = "Today";
+        private string activeTiming = "All";
         private string activeTab = "Dispatches";
-        private List<Button> filterButtons = new List<Button>();
+        private ComboBox cmbTimeframe = null!;
+        private DateTimePicker dtpSpecificDate = null!;
+        private ComboBox cmbTiming = null!;
+        private bool isUpdatingFilterInternally = false;
         private List<Delivery> currentDispatches = new List<Delivery>();
         private List<LoadingSchedule> currentSchedules = new List<LoadingSchedule>();
 
@@ -46,59 +51,105 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetupTabSwitching();
             SetupContextMenu();
             LoadDashboardData();
+            this.Resize += DashboardView_Resize;
         }
 
         private void SetupDateFilterStrip()
         {
-            string[] timeframes = { "All-Time", "Today", "This Week", "This Month" };
-            filterButtons.Clear();
             flowFilterControls.Controls.Clear();
 
-            for (int i = 0; i < timeframes.Length; i++)
+            Label lblDate = new Label
             {
-                string tf = timeframes[i];
-                Button btn = new Button
-                {
-                    Text = tf,
-                    Size = new Size(100, 32),
-                    Margin = new Padding(0, 0, 8, 0),
-                    FlatStyle = FlatStyle.Flat,
-                    Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                    Cursor = Cursors.Hand
-                };
+                Text = "Date:",
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(100, 116, 139),
+                AutoSize = true,
+                Padding = new Padding(0, 5, 4, 0),
+                Margin = new Padding(0, 0, 4, 4)
+            };
 
-                btn.Click += (s, e) =>
-                {
-                    activeTimeframe = tf;
-                    UpdateFilterButtonStyles();
-                    LoadDashboardData();
-                };
-
-                filterButtons.Add(btn);
-                flowFilterControls.Controls.Add(btn);
-            }
-
-            flowFilterControls.Controls.Add(lblSystemBadge);
-            UpdateFilterButtonStyles();
-        }
-
-        private void UpdateFilterButtonStyles()
-        {
-            foreach (var btn in filterButtons)
+            cmbTimeframe = new ComboBox
             {
-                if (btn.Text == activeTimeframe)
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 8.5F),
+                ForeColor = Color.FromArgb(15, 23, 42),
+                BackColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Width = 120,
+                Margin = new Padding(0, 1, 8, 4),
+                Cursor = Cursors.Hand
+            };
+            cmbTimeframe.Items.AddRange(new object[] { "Today", "Specific Date", "This Week", "This Month", "All-Time" });
+            cmbTimeframe.SelectedItem = activeTimeframe;
+
+            dtpSpecificDate = new DateTimePicker
+            {
+                Format = DateTimePickerFormat.Short,
+                Font = new Font("Segoe UI", 8.5F),
+                Width = 110,
+                Margin = new Padding(0, 1, 12, 4),
+                Value = DateTime.Today,
+                Cursor = Cursors.Hand
+            };
+
+            Label lblTiming = new Label
+            {
+                Text = "Dispatches:",
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(100, 116, 139),
+                AutoSize = true,
+                Padding = new Padding(0, 5, 4, 0),
+                Margin = new Padding(0, 0, 4, 4)
+            };
+
+            cmbTiming = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 8.5F),
+                ForeColor = Color.FromArgb(15, 23, 42),
+                BackColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Width = 90,
+                Margin = new Padding(0, 1, 0, 4),
+                Cursor = Cursors.Hand
+            };
+            cmbTiming.Items.AddRange(new object[] { "All", "Past", "Present", "Future" });
+            cmbTiming.SelectedItem = activeTiming;
+
+            cmbTimeframe.SelectedIndexChanged += (s, e) =>
+            {
+                if (isUpdatingFilterInternally) return;
+                activeTimeframe = cmbTimeframe.SelectedItem?.ToString() ?? "Today";
+                if (activeTimeframe == "Today")
                 {
-                    btn.BackColor = Color.FromArgb(15, 23, 42);
-                    btn.ForeColor = Color.White;
-                    btn.FlatAppearance.BorderSize = 0;
+                    isUpdatingFilterInternally = true;
+                    dtpSpecificDate.Value = DateTime.Today;
+                    isUpdatingFilterInternally = false;
                 }
-                else
-                {
-                    btn.BackColor = Color.FromArgb(241, 245, 249);
-                    btn.ForeColor = Color.FromArgb(71, 85, 105);
-                    btn.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
-                }
-            }
+                LoadDashboardData();
+            };
+
+            dtpSpecificDate.ValueChanged += (s, e) =>
+            {
+                if (isUpdatingFilterInternally) return;
+                isUpdatingFilterInternally = true;
+                activeTimeframe = "Specific Date";
+                cmbTimeframe.SelectedItem = "Specific Date";
+                isUpdatingFilterInternally = false;
+                LoadDashboardData();
+            };
+
+            cmbTiming.SelectedIndexChanged += (s, e) =>
+            {
+                activeTiming = cmbTiming.SelectedItem?.ToString() ?? "All";
+                LoadDashboardData();
+            };
+
+            flowFilterControls.Controls.Add(lblDate);
+            flowFilterControls.Controls.Add(cmbTimeframe);
+            flowFilterControls.Controls.Add(dtpSpecificDate);
+            flowFilterControls.Controls.Add(lblTiming);
+            flowFilterControls.Controls.Add(cmbTiming);
         }
 
         private void SetupTabSwitching()
@@ -118,13 +169,37 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
 
             txtQuickSearch.TextChanged += (s, e) => RenderGridData();
-            btnPrintTable.Click += (s, e) =>
+
+            var menuActions = new ContextMenuStrip();
+            menuActions.Items.Add("📊 Export Table to CSV...", null, (s, e) =>
             {
-                if (activeTab == "Dispatches")
-                    PrintHelper.PrintGridReport("Active Dispatch Operations Summary", gridOperations, "Real-time delivery dispatches and truck status summary.");
-                else
-                    PrintHelper.PrintGridReport("Daily Loading Manifest Summary", gridOperations, "Daily loading schedule and crate manifest summary.");
-            };
+                try
+                {
+                    string reportName = activeTab == "Dispatches" ? "Active_Dispatches" : "Loading_Manifest";
+                    string title = activeTab == "Dispatches" ? "Active Dispatch Operations" : "Daily Loading Manifest";
+                    DataExportHelper.ExportToCsv(gridOperations, reportName, title);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Export error: {ex.Message}", "Export Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            });
+            menuActions.Items.Add("🖨️ Print Report", null, (s, e) =>
+            {
+                try
+                {
+                    if (activeTab == "Dispatches")
+                        PrintHelper.PrintGridReport("Active Dispatch Operations Summary", gridOperations, "Real-time delivery dispatches and truck status summary.");
+                    else
+                        PrintHelper.PrintGridReport("Daily Loading Manifest Summary", gridOperations, "Daily loading schedule and crate manifest summary.");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Print error: {ex.Message}", "Print Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            });
+            var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
+            flowSearchPrint.Controls.Add(btnActions);
 
             gridOperations.CellPainting += (s, e) =>
             {
@@ -193,10 +268,101 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void SetupKpiCards()
         {
             pnlKpis.Controls.Clear();
-            pnlKpis.Controls.Add(CreateExecutiveKpiCard("Today's Deliveries", "0 Planned", "0 In Transit", Color.FromArgb(37, 99, 235), "Dispatch", out lblDeliveriesTitle, out lblDeliveriesVal, out lblDeliveriesSub), 0, 0);
-            pnlKpis.Controls.Add(CreateExecutiveKpiCard("Crew Available", "0 Ready", "0 Active Drivers", Color.FromArgb(5, 150, 105), "Crew", out _, out lblCrewVal, out lblCrewSub), 1, 0);
-            pnlKpis.Controls.Add(CreateExecutiveKpiCard("Truck Utilization", "0%", "0 / 0 Trucks Ready", Color.FromArgb(217, 119, 6), "Trucks", out _, out lblFleetVal, out lblFleetSub), 2, 0);
-            pnlKpis.Controls.Add(CreateExecutiveKpiCard("Receivables to Collect", "₱0.00", "Outstanding Balance", Color.FromArgb(220, 38, 38), "Billing", out _, out lblFinanceVal, out lblFinanceSub), 3, 0);
+            cardDeliveries = CreateExecutiveKpiCard("Today's Deliveries", "0 Planned", "0 In Transit", Color.FromArgb(37, 99, 235), "Dispatch", out lblDeliveriesTitle, out lblDeliveriesVal, out lblDeliveriesSub);
+            cardCrew = CreateExecutiveKpiCard("Crew Available", "0 Ready", "0 Active Drivers", Color.FromArgb(5, 150, 105), "Crew", out _, out lblCrewVal, out lblCrewSub);
+            cardTrucks = CreateExecutiveKpiCard("Truck Status", "0 Ready", "0 In Transit • 0 Total Trucks", Color.FromArgb(217, 119, 6), "Trucks", out _, out lblTruckVal, out lblTruckSub);
+
+            pnlKpis.Controls.Add(cardDeliveries, 0, 0);
+            pnlKpis.Controls.Add(cardCrew, 1, 0);
+            pnlKpis.Controls.Add(cardTrucks, 2, 0);
+        }
+
+        private void DashboardView_Resize(object? sender, EventArgs e)
+        {
+            if (cardDeliveries == null || cardCrew == null || cardTrucks == null) return;
+            int currentWidth = this.Width;
+
+            if (currentWidth < 1050)
+            {
+                if (pnlKpis.ColumnCount != 2)
+                {
+                    pnlKpiContainer.Height = 190;
+                    pnlKpis.SuspendLayout();
+                    pnlKpis.ColumnCount = 2;
+                    pnlKpis.RowCount = 2;
+                    pnlKpis.ColumnStyles.Clear();
+                    pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+                    pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+                    pnlKpis.RowStyles.Clear();
+                    pnlKpis.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+                    pnlKpis.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+
+                    pnlKpis.SetCellPosition(cardDeliveries, new TableLayoutPanelCellPosition(0, 0));
+                    pnlKpis.SetCellPosition(cardCrew, new TableLayoutPanelCellPosition(1, 0));
+                    pnlKpis.SetCellPosition(cardTrucks, new TableLayoutPanelCellPosition(0, 1));
+                    pnlKpis.SetColumnSpan(cardTrucks, 2);
+                    pnlKpis.ResumeLayout(true);
+                }
+            }
+            else
+            {
+                if (pnlKpis.ColumnCount != 3)
+                {
+                    pnlKpiContainer.Height = 118;
+                    pnlKpis.SuspendLayout();
+                    pnlKpis.ColumnCount = 3;
+                    pnlKpis.RowCount = 1;
+                    pnlKpis.ColumnStyles.Clear();
+                    pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+                    pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+                    pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+                    pnlKpis.RowStyles.Clear();
+                    pnlKpis.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+                    pnlKpis.SetColumnSpan(cardTrucks, 1);
+                    pnlKpis.SetCellPosition(cardDeliveries, new TableLayoutPanelCellPosition(0, 0));
+                    pnlKpis.SetCellPosition(cardCrew, new TableLayoutPanelCellPosition(1, 0));
+                    pnlKpis.SetCellPosition(cardTrucks, new TableLayoutPanelCellPosition(2, 0));
+                    pnlKpis.ResumeLayout(true);
+                }
+            }
+
+            if (currentWidth < 950)
+            {
+                if (tblTableToolbar.ColumnCount != 1)
+                {
+                    tblTableToolbar.SuspendLayout();
+                    tblTableToolbar.ColumnCount = 1;
+                    tblTableToolbar.RowCount = 2;
+                    tblTableToolbar.ColumnStyles.Clear();
+                    tblTableToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+                    tblTableToolbar.RowStyles.Clear();
+                    tblTableToolbar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                    tblTableToolbar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                    tblTableToolbar.SetCellPosition(flowTabs, new TableLayoutPanelCellPosition(0, 0));
+                    tblTableToolbar.SetCellPosition(flowSearchPrint, new TableLayoutPanelCellPosition(0, 1));
+                    flowSearchPrint.Dock = DockStyle.Left;
+                    tblTableToolbar.ResumeLayout(true);
+                }
+            }
+            else
+            {
+                if (tblTableToolbar.ColumnCount != 2)
+                {
+                    tblTableToolbar.SuspendLayout();
+                    tblTableToolbar.ColumnCount = 2;
+                    tblTableToolbar.RowCount = 1;
+                    tblTableToolbar.ColumnStyles.Clear();
+                    tblTableToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+                    tblTableToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+                    tblTableToolbar.RowStyles.Clear();
+                    tblTableToolbar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                    tblTableToolbar.SetCellPosition(flowTabs, new TableLayoutPanelCellPosition(0, 0));
+                    tblTableToolbar.SetCellPosition(flowSearchPrint, new TableLayoutPanelCellPosition(1, 0));
+                    flowSearchPrint.Dock = DockStyle.Right;
+                    tblTableToolbar.ResumeLayout(true);
+                }
+            }
         }
 
         private Panel CreateExecutiveKpiCard(string title, string defaultVal, string defaultSub, Color accentColor, string targetModule, out Label titleLabel, out Label valLabel, out Label subLabel)
@@ -207,13 +373,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 BackColor = Color.White,
                 Margin = new Padding(6),
                 Cursor = Cursors.Hand,
-                Padding = new Padding(16, 10, 16, 10)
+                Padding = new Padding(14, 6, 14, 6),
+                MinimumSize = new Size(180, 84)
             };
 
             Panel accentBar = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 4,
+                Height = 3,
                 BackColor = accentColor,
                 Cursor = Cursors.Hand
             };
@@ -234,35 +401,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             titleLabel = new Label
             {
                 Text = title,
-                Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold),
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(100, 116, 139),
-                Dock = DockStyle.Top,
                 AutoSize = true,
                 Cursor = Cursors.Hand,
-                Margin = new Padding(0, 4, 0, 2)
+                Margin = new Padding(0, 2, 0, 1)
             };
 
             valLabel = new Label
             {
                 Text = defaultVal,
-                Font = new Font("Segoe UI", 19F, FontStyle.Bold),
+                Font = new Font("Segoe UI", 16F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(15, 23, 42),
-                Dock = DockStyle.Fill,
                 AutoSize = true,
                 Cursor = Cursors.Hand,
-                Margin = new Padding(0, 2, 0, 2),
+                Margin = new Padding(0, 1, 0, 1),
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
             subLabel = new Label
             {
                 Text = defaultSub,
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                Font = new Font("Segoe UI", 8F, FontStyle.Regular),
                 ForeColor = Color.FromArgb(71, 85, 105),
-                Dock = DockStyle.Bottom,
                 AutoSize = true,
                 Cursor = Cursors.Hand,
-                Margin = new Padding(0, 2, 0, 0)
+                Margin = new Padding(0, 1, 0, 0)
             };
 
             tblCardText.Controls.Add(titleLabel, 0, 0);
@@ -308,6 +472,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var crews = await MJdatabase.GetCrewsAsync();
                 var invoices = await MJdatabase.GetInvoicesAsync();
                 var loadingSchedules = await MJdatabase.GetLoadingSchedulesAsync();
+                if (this.IsDisposed || !this.IsHandleCreated) return;
 
                 DateTime now = DateTime.Now;
                 IEnumerable<Delivery> filteredDeliveries = deliveries;
@@ -319,6 +484,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     filteredDeliveries = deliveries.Where(d => d.DispatchDate.Date == now.Date);
                     filteredInvoices = invoices.Where(i => i.IssueDate.Date == now.Date);
                     filteredSchedules = loadingSchedules.Where(s => s.ScheduleDate.Date == now.Date);
+                }
+                else if (activeTimeframe == "Specific Date")
+                {
+                    DateTime selectedDate = dtpSpecificDate != null ? dtpSpecificDate.Value.Date : now.Date;
+                    filteredDeliveries = deliveries.Where(d => d.DispatchDate.Date == selectedDate);
+                    filteredInvoices = invoices.Where(i => i.IssueDate.Date == selectedDate);
+                    filteredSchedules = loadingSchedules.Where(s => s.ScheduleDate.Date == selectedDate);
                 }
                 else if (activeTimeframe == "This Week")
                 {
@@ -334,6 +506,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     filteredSchedules = loadingSchedules.Where(s => s.ScheduleDate.Month == now.Month && s.ScheduleDate.Year == now.Year);
                 }
 
+                if (activeTiming == "Past")
+                {
+                    filteredDeliveries = filteredDeliveries.Where(d => d.DispatchDate.Date < now.Date);
+                    filteredSchedules = filteredSchedules.Where(s => s.ScheduleDate.Date < now.Date);
+                }
+                else if (activeTiming == "Present")
+                {
+                    filteredDeliveries = filteredDeliveries.Where(d => d.DispatchDate.Date == now.Date);
+                    filteredSchedules = filteredSchedules.Where(s => s.ScheduleDate.Date == now.Date);
+                }
+                else if (activeTiming == "Future")
+                {
+                    filteredDeliveries = filteredDeliveries.Where(d => d.DispatchDate.Date > now.Date);
+                    filteredSchedules = filteredSchedules.Where(s => s.ScheduleDate.Date > now.Date);
+                }
+
                 currentDispatches = filteredDeliveries.OrderByDescending(d => d.DispatchDate).ToList();
                 currentSchedules = filteredSchedules.OrderByDescending(s => s.ScheduleDate).ToList();
 
@@ -341,21 +529,30 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (lblDeliveriesTitle != null)
                 {
-                    lblDeliveriesTitle.Text = activeTimeframe switch
+                    string tfLabel = activeTimeframe switch
                     {
                         "Today" => "Today's Deliveries",
+                        "Specific Date" => dtpSpecificDate != null ? $"Deliveries ({dtpSpecificDate.Value:MMM dd, yyyy})" : "Deliveries (Specific Date)",
                         "This Week" => "This Week's Deliveries",
                         "This Month" => "This Month's Deliveries",
                         _ => "Total Deliveries (All-Time)"
                     };
+                    if (activeTiming != "All")
+                    {
+                        tfLabel += $" [{activeTiming}]";
+                    }
+                    lblDeliveriesTitle.Text = tfLabel;
                 }
 
                 int todayPlanned = filteredDeliveries.Count(d => d.Status != "Cancelled");
-                int inTransit = filteredDeliveries.Count(d => d.Status == "In Transit");
+                int inTransit = filteredDeliveries.Count(d => d.Status == "In Transit" || d.Status == "Delayed");
+                int delayedDeliveries = filteredDeliveries.Count(d => d.Status == "Delayed");
                 int deliveredCount = filteredDeliveries.Count(d => d.Status == "Completed" || d.Status == "Delivered");
 
                 lblDeliveriesVal.Text = $"{todayPlanned}";
-                lblDeliveriesSub.Text = $"{inTransit} In Transit • {deliveredCount} Delivered";
+                lblDeliveriesSub.Text = delayedDeliveries > 0
+                    ? $"{inTransit} In Transit ({delayedDeliveries} Delayed) • {deliveredCount} Delivered"
+                    : $"{inTransit} In Transit • {deliveredCount} Delivered";
 
                 int activeDrivers = crews.Count(c => c.Role.Equals("Driver", StringComparison.OrdinalIgnoreCase) && c.IsActive && c.IsAvailable);
                 int totalAvailableCrew = crews.Count(c => c.IsActive && c.IsAvailable);
@@ -367,16 +564,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int totalTrucks = trucks.Count;
                 int availableTrucks = trucks.Count(t => t.Status.Equals("Active", StringComparison.OrdinalIgnoreCase) || t.Status.Equals("Available", StringComparison.OrdinalIgnoreCase));
                 int inUseTrucks = trucks.Count(t => t.Status.Equals("In Use", StringComparison.OrdinalIgnoreCase) || t.Status.Equals("On Trip", StringComparison.OrdinalIgnoreCase));
-                double utilRate = totalTrucks > 0 ? (double)inUseTrucks / totalTrucks * 100 : 0;
 
-                lblFleetVal.Text = $"{utilRate:F0}%";
-                lblFleetSub.Text = $"{availableTrucks} / {totalTrucks} Trucks Ready";
-
-                decimal outstandingBal = filteredInvoices.Where(i => i.Status != "Paid").Sum(i => i.NetAmount);
-                lblFinanceVal.Text = $"₱{outstandingBal:N2}";
-                lblFinanceSub.Text = "Outstanding Receivables";
+                lblTruckVal.Text = $"{availableTrucks} Ready";
+                lblTruckSub.Text = $"{inUseTrucks} In Transit • {totalTrucks} Total Trucks";
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Dashboard] LoadDashboardData: {ex.Message}");
+            }
         }
 
         private void RenderGridData()
@@ -385,13 +580,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             gridOperations.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(15, 23, 42);
             gridOperations.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
-            gridOperations.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold);
-            gridOperations.ColumnHeadersHeight = 44;
+            gridOperations.ColumnHeadersDefaultCellStyle.Font = UITheme.GridHeaderFont;
+            gridOperations.ColumnHeadersHeight = UITheme.CompactHeaderHeight;
             gridOperations.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(248, 250, 252);
-            gridOperations.DefaultCellStyle.Font = new Font("Segoe UI", 9.5F);
-            gridOperations.DefaultCellStyle.SelectionBackColor = Color.FromArgb(238, 242, 255);
-            gridOperations.DefaultCellStyle.SelectionForeColor = Color.FromArgb(30, 27, 75);
-            gridOperations.RowTemplate.Height = 42;
+            gridOperations.DefaultCellStyle.Font = UITheme.GridCellFont;
+            gridOperations.DefaultCellStyle.SelectionBackColor = UITheme.SelectionHighlight;
+            gridOperations.DefaultCellStyle.SelectionForeColor = UITheme.SelectionText;
+            gridOperations.RowTemplate.Height = UITheme.CompactRowHeight;
             gridOperations.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
             gridOperations.GridColor = Color.FromArgb(241, 245, 249);
             gridOperations.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;

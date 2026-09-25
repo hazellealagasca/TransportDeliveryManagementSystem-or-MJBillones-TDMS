@@ -23,7 +23,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblSubtitle = new Label();
             lblTitle = new Label();
             flowFilterControls = new FlowLayoutPanel();
-            lblSystemBadge = new Label();
             pnlKpiContainer = new Panel();
             pnlKpis = new TableLayoutPanel();
             pnlMainTableCard = new Panel();
@@ -35,7 +34,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnTabLoading = new Button();
             flowSearchPrint = new FlowLayoutPanel();
             txtQuickSearch = new TextBox();
-            btnPrintTable = new Button();
             pnlTopHeader.SuspendLayout();
             tblTopHeader.SuspendLayout();
             pnlTitleBlock.SuspendLayout();
@@ -61,8 +59,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblTopHeader.AutoSize = true;
             tblTopHeader.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             tblTopHeader.ColumnCount = 2;
-            tblTopHeader.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
-            tblTopHeader.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55F));
+            tblTopHeader.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            tblTopHeader.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tblTopHeader.Controls.Add(pnlTitleBlock, 0, 0);
             tblTopHeader.Controls.Add(flowFilterControls, 1, 0);
             tblTopHeader.Dock = DockStyle.Top;
@@ -105,57 +103,42 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblTitle.Text = "Dashboard";
 
             flowFilterControls.AutoSize = true;
+            flowFilterControls.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             flowFilterControls.WrapContents = true;
             flowFilterControls.Dock = DockStyle.Right;
             flowFilterControls.Location = new Point(1372, 0);
             flowFilterControls.Margin = new Padding(0);
             flowFilterControls.Name = "flowFilterControls";
-            flowFilterControls.Size = new Size(0, 64);
             flowFilterControls.TabIndex = 2;
-
-            lblSystemBadge.BackColor = Color.FromArgb(240, 253, 244);
-            lblSystemBadge.BorderStyle = BorderStyle.FixedSingle;
-            lblSystemBadge.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
-            lblSystemBadge.ForeColor = Color.FromArgb(22, 101, 52);
-            lblSystemBadge.Location = new Point(0, 0);
-            lblSystemBadge.Margin = new Padding(8, 2, 0, 2);
-            lblSystemBadge.Name = "lblSystemBadge";
-            lblSystemBadge.Padding = new Padding(8, 4, 8, 4);
-            lblSystemBadge.Size = new Size(200, 32);
-            lblSystemBadge.TabIndex = 3;
-            lblSystemBadge.Text = "● Database: Online (SQLite)";
-            lblSystemBadge.TextAlign = ContentAlignment.MiddleCenter;
-            lblSystemBadge.Visible = false;
 
             pnlKpiContainer.Controls.Add(pnlKpis);
             pnlKpiContainer.Dock = DockStyle.Top;
             pnlKpiContainer.Location = new Point(0, 86);
             pnlKpiContainer.Name = "pnlKpiContainer";
-            pnlKpiContainer.Padding = new Padding(24, 6, 24, 12);
-            pnlKpiContainer.Size = new Size(1420, 145);
+            pnlKpiContainer.Padding = new Padding(24, 4, 24, 8);
+            pnlKpiContainer.Size = new Size(1420, 118);
             pnlKpiContainer.TabIndex = 1;
 
-            pnlKpis.ColumnCount = 4;
-            pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            pnlKpis.ColumnCount = 3;
+            pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33333F));
+            pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33333F));
+            pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33333F));
             pnlKpis.Dock = DockStyle.Fill;
-            pnlKpis.Location = new Point(24, 6);
+            pnlKpis.Location = new Point(24, 4);
             pnlKpis.Name = "pnlKpis";
             pnlKpis.RowCount = 1;
             pnlKpis.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            pnlKpis.Size = new Size(1372, 127);
+            pnlKpis.Size = new Size(1372, 106);
             pnlKpis.TabIndex = 0;
 
             pnlMainTableCard.BackColor = Color.White;
             pnlMainTableCard.Controls.Add(gridOperations);
             pnlMainTableCard.Controls.Add(pnlTableHeader);
             pnlMainTableCard.Dock = DockStyle.Fill;
-            pnlMainTableCard.Location = new Point(0, 231);
+            pnlMainTableCard.Location = new Point(0, 204);
             pnlMainTableCard.Name = "pnlMainTableCard";
-            pnlMainTableCard.Padding = new Padding(24, 16, 24, 20);
-            pnlMainTableCard.Size = new Size(1420, 589);
+            pnlMainTableCard.Padding = new Padding(24, 12, 24, 16);
+            pnlMainTableCard.Size = new Size(1420, 616);
             pnlMainTableCard.TabIndex = 2;
 
             gridOperations.AllowUserToAddRows = false;
@@ -163,7 +146,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridOperations.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             gridOperations.BackgroundColor = Color.White;
             gridOperations.BorderStyle = BorderStyle.None;
-            gridOperations.ColumnHeadersHeight = 44;
+            gridOperations.ColumnHeadersHeight = 32;
             gridOperations.Dock = DockStyle.Fill;
             gridOperations.EnableHeadersVisualStyles = false;
             gridOperations.Location = new Point(24, 106);
@@ -171,7 +154,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridOperations.ReadOnly = true;
             gridOperations.RowHeadersVisible = false;
             gridOperations.RowHeadersWidth = 51;
-            gridOperations.RowTemplate.Height = 42;
+            gridOperations.RowTemplate.Height = 32;
             gridOperations.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             gridOperations.Size = new Size(1372, 463);
             gridOperations.TabIndex = 4;
@@ -243,35 +226,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             flowSearchPrint.AutoSize = true;
             flowSearchPrint.WrapContents = true;
             flowSearchPrint.Controls.Add(txtQuickSearch);
-            flowSearchPrint.Controls.Add(btnPrintTable);
             flowSearchPrint.Dock = DockStyle.Right;
             flowSearchPrint.Location = new Point(964, 0);
             flowSearchPrint.Margin = new Padding(0);
             flowSearchPrint.Name = "flowSearchPrint";
-            flowSearchPrint.Size = new Size(408, 40);
+            flowSearchPrint.Size = new Size(268, 40);
             flowSearchPrint.TabIndex = 1;
 
             txtQuickSearch.Font = new Font("Segoe UI", 9.5F);
             txtQuickSearch.Location = new Point(0, 3);
             txtQuickSearch.Margin = new Padding(0, 3, 8, 4);
+            txtQuickSearch.MaxLength = 100;
             txtQuickSearch.Name = "txtQuickSearch";
             txtQuickSearch.PlaceholderText = "🔍 Quick filter live operations...";
             txtQuickSearch.Size = new Size(260, 29);
             txtQuickSearch.TabIndex = 2;
-
-            btnPrintTable.BackColor = Color.FromArgb(248, 250, 252);
-            btnPrintTable.Cursor = Cursors.Hand;
-            btnPrintTable.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
-            btnPrintTable.FlatStyle = FlatStyle.Flat;
-            btnPrintTable.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
-            btnPrintTable.ForeColor = Color.FromArgb(71, 85, 105);
-            btnPrintTable.Location = new Point(268, 0);
-            btnPrintTable.Margin = new Padding(0, 0, 0, 4);
-            btnPrintTable.Name = "btnPrintTable";
-            btnPrintTable.Size = new Size(140, 32);
-            btnPrintTable.TabIndex = 3;
-            btnPrintTable.Text = "🖨️ Print Report";
-            btnPrintTable.UseVisualStyleBackColor = false;
 
             AutoScaleDimensions = new SizeF(9F, 23F);
             AutoScaleMode = AutoScaleMode.Font;
@@ -312,7 +281,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Label lblSubtitle;
         private System.Windows.Forms.FlowLayoutPanel flowFilterControls;
-        private System.Windows.Forms.Label lblSystemBadge;
         private System.Windows.Forms.Panel pnlKpiContainer;
         private System.Windows.Forms.TableLayoutPanel pnlKpis;
         private System.Windows.Forms.Panel pnlMainTableCard;
@@ -323,7 +291,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private System.Windows.Forms.Button btnTabLoading;
         private System.Windows.Forms.FlowLayoutPanel flowSearchPrint;
         private System.Windows.Forms.TextBox txtQuickSearch;
-        private System.Windows.Forms.Button btnPrintTable;
         private System.Windows.Forms.DataGridView gridOperations;
     }
 }

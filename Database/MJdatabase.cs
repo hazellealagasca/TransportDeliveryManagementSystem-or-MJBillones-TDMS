@@ -483,8 +483,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     CREATE TABLE IF NOT EXISTS Deliveries (
                         Id INTEGER PRIMARY KEY AUTOINCREMENT,
                         DispatchNumber TEXT UNIQUE NOT NULL,
-                        LoadingScheduleId INTEGER NOT NULL,
+                        LoadingScheduleId INTEGER DEFAULT 0,
                         LoadingScheduleInfo TEXT,
+                        ClientName TEXT DEFAULT '',
+                        Destination TEXT DEFAULT '',
+                        IsPeak INTEGER DEFAULT 0,
                         TruckId INTEGER NOT NULL,
                         TruckInfo TEXT,
                         DriverId INTEGER NOT NULL,
@@ -501,7 +504,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         Status TEXT DEFAULT 'Pending',
                         Remarks TEXT,
                         CancellationReason TEXT DEFAULT '',
-                        FOREIGN KEY (LoadingScheduleId) REFERENCES LoadingSchedules(Id),
+                        CargoType TEXT DEFAULT 'Cold / Chilled',
+                        IsMultiDrop INTEGER DEFAULT 0,
+                        TotalStopsCount INTEGER DEFAULT 1,
                         FOREIGN KEY (TruckId) REFERENCES Trucks(Id),
                         FOREIGN KEY (DriverId) REFERENCES Crews(Id)
                     );
@@ -713,7 +718,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     "ALTER TABLE TripReports ADD COLUMN StoreManagerMiddleName TEXT DEFAULT '';",
                     "ALTER TABLE LoadingSchedules ADD COLUMN RescheduleCount INTEGER DEFAULT 0;",
                     "ALTER TABLE LoadingSchedules ADD COLUMN OriginalScheduleDate TEXT;",
-                    "ALTER TABLE LoadingSchedules ADD COLUMN RescheduleReason TEXT DEFAULT '';"
+                    "ALTER TABLE LoadingSchedules ADD COLUMN RescheduleReason TEXT DEFAULT '';",
+                    "ALTER TABLE Deliveries ADD COLUMN ClientName TEXT DEFAULT '';",
+                    "ALTER TABLE Deliveries ADD COLUMN Destination TEXT DEFAULT '';",
+                    "ALTER TABLE Deliveries ADD COLUMN IsPeak INTEGER DEFAULT 0;"
                 };
 
                 foreach (var mig in migrations)
@@ -736,6 +744,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         UPDATE Deliveries SET TotalCrates = GCrate + ECrate WHERE TotalCrates = 0;
                         UPDATE Deliveries SET AideIds = CAST(AideId AS TEXT) WHERE (AideIds IS NULL OR AideIds = '') AND AideId > 0;
                         UPDATE Deliveries SET AideNames = AideName WHERE (AideNames IS NULL OR AideNames = '') AND AideName IS NOT NULL AND AideName <> '';
+                        UPDATE Deliveries SET 
+                            ClientName = (SELECT ClientName FROM LoadingSchedules WHERE LoadingSchedules.Id = Deliveries.LoadingScheduleId),
+                            Destination = (SELECT Destination FROM LoadingSchedules WHERE LoadingSchedules.Id = Deliveries.LoadingScheduleId),
+                            CargoType = COALESCE((SELECT CargoType FROM LoadingSchedules WHERE LoadingSchedules.Id = Deliveries.LoadingScheduleId), 'Cold / Chilled'),
+                            IsPeak = COALESCE((SELECT IsPeak FROM LoadingSchedules WHERE LoadingSchedules.Id = Deliveries.LoadingScheduleId), 0)
+                        WHERE (ClientName IS NULL OR ClientName = '') AND LoadingScheduleId > 0;
                         UPDATE TripReports SET DeliveredGCrates = DeliveredCrates WHERE (DeliveredGCrates = 0 AND DeliveredECrates = 0 AND DeliveredCrates > 0);
                         UPDATE TripReports SET ReturnedGCrates = ReturnedCrates WHERE (ReturnedGCrates = 0 AND ReturnedECrates = 0 AND ReturnedCrates > 0);
                     ";
@@ -1987,6 +2001,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public static List<Crew> GetCrews()
         {
+            UpdatePendingDeliveriesToTransit();
             var list = new List<Crew>();
             using (var conn = new SqliteConnection(connectionString))
             {
@@ -2229,6 +2244,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public static List<Truck> GetTrucks()
         {
+            UpdatePendingDeliveriesToTransit();
             var list = new List<Truck>();
             using (var conn = new SqliteConnection(connectionString))
             {
@@ -2317,9 +2333,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             catch { }
         }
 
-        public static FleetRecommendation GetFleetRecommendation(int totalCrates, DateTime dispatchDate)
+        public static TruckRecommendation GetTruckRecommendation(int totalCrates, DateTime dispatchDate)
         {
-            var rec = new FleetRecommendation { TotalCrates = totalCrates };
+            var rec = new TruckRecommendation { TotalCrates = totalCrates };
             if (totalCrates <= 0)
             {
                 rec.RecommendationMessage = "Enter crate quantity to calculate vehicle recommendation.";
@@ -2381,20 +2397,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             return rec;
-        }
-
-        public static TruckRecommendation GetTruckRecommendation(int totalCrates, DateTime dispatchDate)
-        {
-            var r = GetFleetRecommendation(totalCrates, dispatchDate);
-            return new TruckRecommendation
-            {
-                TotalCrates = r.TotalCrates,
-                RecommendedTruck = r.RecommendedTruck,
-                RequiredTruckCount = r.RequiredTruckCount,
-                RecommendationMessage = r.RecommendationMessage,
-                CapacityUtilization = r.CapacityUtilization,
-                IsMultiTruckNeeded = r.IsMultiTruckNeeded
-            };
         }
 
         public static List<RateMatrix> GetRateMatrix()
@@ -2685,6 +2687,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public static List<LoadingSchedule> GetLoadingSchedules()
         {
+            UpdatePendingDeliveriesToTransit();
+            UpdatePastDueLoadingSchedules();
             var list = new List<LoadingSchedule>();
             using (var conn = new SqliteConnection(connectionString))
             {
@@ -2752,13 +2756,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (ls.Id == 0)
                 {
-                    ls.ScheduleNumber = $"LS-{DateTime.Now:yyyyMMdd-HHmmss}-{DateTime.Now.Millisecond:D3}{Random.Shared.Next(10, 99)}";
+                    if (string.IsNullOrWhiteSpace(ls.ScheduleNumber))
+                    {
+                        ls.ScheduleNumber = $"LS-{DateTime.Now:yyyyMMdd-HHmmss}-{DateTime.Now.Millisecond:D3}{Random.Shared.Next(10, 99)}";
+                    }
                     cmd.CommandText = @"INSERT INTO LoadingSchedules (ScheduleNumber, ClientName, Destination, ScheduleDate, DepartureTime, GCrate, ECrate, TotalCrates, IsPeak, Status, Remarks, CancellationReason, RescheduleCount, OriginalScheduleDate, RescheduleReason, CargoType)
                                         VALUES (@sn, @c, @d, @sd, @dt, @gc, @ec, @tc, @ip, @s, @r, @cr, @rc, @osd, @rr, @cargo)";
                 }
                 else
                 {
-                    cmd.CommandText = @"UPDATE LoadingSchedules SET ClientName=@c, Destination=@d, ScheduleDate=@sd, DepartureTime=@dt, GCrate=@gc, ECrate=@ec, TotalCrates=@tc, IsPeak=@ip, Status=@s, Remarks=@r, CancellationReason=@cr, RescheduleCount=@rc, OriginalScheduleDate=@osd, RescheduleReason=@rr, CargoType=@cargo WHERE Id=@id";
+                    cmd.CommandText = @"UPDATE LoadingSchedules SET ScheduleNumber=@sn, ClientName=@c, Destination=@d, ScheduleDate=@sd, DepartureTime=@dt, GCrate=@gc, ECrate=@ec, TotalCrates=@tc, IsPeak=@ip, Status=@s, Remarks=@r, CancellationReason=@cr, RescheduleCount=@rc, OriginalScheduleDate=@osd, RescheduleReason=@rr, CargoType=@cargo WHERE Id=@id";
                     cmd.Parameters.AddWithValue("@id", ls.Id);
                 }
                 cmd.Parameters.AddWithValue("@sn", ls.ScheduleNumber);
@@ -2909,14 +2916,338 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+        public static DateTime CombineDateAndTime(DateTime date, string? timeStr)
+        {
+            if (string.IsNullOrWhiteSpace(timeStr))
+            {
+                return date.Date;
+            }
+            if (DateTime.TryParse(timeStr.Trim(), out var parsedTime))
+            {
+                return date.Date.Add(parsedTime.TimeOfDay);
+            }
+            if (DateTime.TryParseExact(timeStr.Trim(), new[] { "h:mm tt", "hh:mm tt", "H:mm", "HH:mm", "h:mmtt", "hh:mmtt", "h:mm:ss tt" },
+                System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var exactTime))
+            {
+                return date.Date.Add(exactTime.TimeOfDay);
+            }
+            return date.Date;
+        }
+
+        public static int UpdatePendingDeliveriesToTransit()
+        {
+            int updatedCount = 0;
+            try
+            {
+                using (var conn = new SqliteConnection(connectionString))
+                {
+                    conn.Open();
+                    var cmd = conn.CreateCommand();
+                    cmd.CommandText = "SELECT Id, DispatchNumber, DispatchDate, DepartureTime, TruckId, DriverId, AideId, AideIds, LoadingScheduleId FROM Deliveries WHERE Status = 'Pending'";
+                    var toUpdate = new List<(int Id, string DispatchNumber, int TruckId, int DriverId, string AideIds, int LoadingScheduleId)>();
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        DateTime now = DateTime.Now;
+                        while (reader.Read())
+                        {
+                            int id = reader.GetInt32(0);
+                            string dispNum = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                            DateTime dDate = DateTime.TryParse(reader.GetString(2), out var dt) ? dt : DateTime.Today;
+                            string depTime = reader.IsDBNull(3) ? "" : reader.GetString(3);
+                            int truckId = reader.IsDBNull(4) ? 0 : reader.GetInt32(4);
+                            int driverId = reader.IsDBNull(5) ? 0 : reader.GetInt32(5);
+                            int aideId = reader.IsDBNull(6) ? 0 : reader.GetInt32(6);
+                            string aideIds = reader.IsDBNull(7) ? "" : reader.GetString(7);
+                            int lsid = reader.IsDBNull(8) ? 0 : reader.GetInt32(8);
+
+                            if (string.IsNullOrEmpty(aideIds) && aideId > 0) aideIds = aideId.ToString();
+
+                            DateTime scheduledDeparture = CombineDateAndTime(dDate, depTime);
+                            if (now >= scheduledDeparture)
+                            {
+                                toUpdate.Add((id, dispNum, truckId, driverId, aideIds, lsid));
+                            }
+                        }
+                    }
+
+                    if (toUpdate.Count > 0)
+                    {
+                        using (var tx = conn.BeginTransaction())
+                        {
+                            foreach (var item in toUpdate)
+                            {
+                                var uCmd = conn.CreateCommand();
+                                uCmd.Transaction = tx;
+                                uCmd.CommandText = "UPDATE Deliveries SET Status = 'In Transit' WHERE Id = @id AND Status = 'Pending'";
+                                uCmd.Parameters.AddWithValue("@id", item.Id);
+                                int rows = uCmd.ExecuteNonQuery();
+
+                                if (rows > 0)
+                                {
+                                    updatedCount++;
+
+                                    if (item.TruckId > 0)
+                                    {
+                                        var trkCmd = conn.CreateCommand();
+                                        trkCmd.Transaction = tx;
+                                        trkCmd.CommandText = "UPDATE Trucks SET Status = 'In Use' WHERE Id = @tid AND Status IN ('Active', 'Available')";
+                                        trkCmd.Parameters.AddWithValue("@tid", item.TruckId);
+                                        trkCmd.ExecuteNonQuery();
+                                    }
+
+                                    if (item.DriverId > 0)
+                                    {
+                                        var drvCmd = conn.CreateCommand();
+                                        drvCmd.Transaction = tx;
+                                        drvCmd.CommandText = "UPDATE Crews SET IsAvailable = 0 WHERE Id = @did";
+                                        drvCmd.Parameters.AddWithValue("@did", item.DriverId);
+                                        drvCmd.ExecuteNonQuery();
+                                    }
+
+                                    if (!string.IsNullOrEmpty(item.AideIds))
+                                    {
+                                        var ids = item.AideIds.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                                        foreach (var idStr in ids)
+                                        {
+                                            if (int.TryParse(idStr.Trim(), out int aid) && aid > 0)
+                                            {
+                                                var aCmd = conn.CreateCommand();
+                                                aCmd.Transaction = tx;
+                                                aCmd.CommandText = "UPDATE Crews SET IsAvailable = 0 WHERE Id = @aid";
+                                                aCmd.Parameters.AddWithValue("@aid", aid);
+                                                aCmd.ExecuteNonQuery();
+                                            }
+                                        }
+                                    }
+
+                                    if (item.LoadingScheduleId > 0)
+                                    {
+                                        var lsCmd = conn.CreateCommand();
+                                        lsCmd.Transaction = tx;
+                                        lsCmd.CommandText = "UPDATE LoadingSchedules SET Status = 'Dispatched' WHERE Id = @lsid AND Status IN ('Pending', 'Assigned')";
+                                        lsCmd.Parameters.AddWithValue("@lsid", item.LoadingScheduleId);
+                                        lsCmd.ExecuteNonQuery();
+                                    }
+                                }
+                            }
+                            tx.Commit();
+                        }
+
+                        foreach (var item in toUpdate)
+                        {
+                            LogAuditTrail("AUTO_TRANSIT", "Deliveries", item.Id, item.DispatchNumber, "Status", "Pending", "In Transit", "Departure schedule met: Automatic transition to In Transit");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DB] UpdatePendingDeliveriesToTransit: {ex.Message}");
+            }
+            return updatedCount;
+        }
+
+        public static int UpdateOverdueInvoices()
+        {
+            int updatedCount = 0;
+            try
+            {
+                using (var conn = new SqliteConnection(connectionString))
+                {
+                    conn.Open();
+                    var cmd = conn.CreateCommand();
+                    cmd.CommandText = "SELECT Id, InvoiceNumber, DueDate, Status FROM Invoices WHERE Status IN ('Unpaid', 'Partial')";
+                    var toUpdate = new List<(int Id, string InvNum, string PrevStatus, DateTime DueDate)>();
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        DateTime today = DateTime.Today;
+                        while (reader.Read())
+                        {
+                            int id = reader.GetInt32(0);
+                            string invNum = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                            DateTime dueDate = DateTime.TryParse(reader.GetString(2), out var dt) ? dt : today;
+                            string prevStatus = reader.IsDBNull(3) ? "Unpaid" : reader.GetString(3);
+
+                            if (dueDate.Date < today)
+                            {
+                                toUpdate.Add((id, invNum, prevStatus, dueDate));
+                            }
+                        }
+                    }
+
+                    if (toUpdate.Count > 0)
+                    {
+                        using (var tx = conn.BeginTransaction())
+                        {
+                            foreach (var item in toUpdate)
+                            {
+                                var uCmd = conn.CreateCommand();
+                                uCmd.Transaction = tx;
+                                uCmd.CommandText = "UPDATE Invoices SET Status = 'Overdue' WHERE Id = @id AND Status IN ('Unpaid', 'Partial')";
+                                uCmd.Parameters.AddWithValue("@id", item.Id);
+                                int rows = uCmd.ExecuteNonQuery();
+                                if (rows > 0) updatedCount++;
+                            }
+                            tx.Commit();
+                        }
+
+                        foreach (var item in toUpdate)
+                        {
+                            LogAuditTrail("AUTO_OVERDUE", "Invoices", item.Id, item.InvNum, "Status", item.PrevStatus, "Overdue", $"Invoice credit term expired on {item.DueDate:yyyy-MM-dd}: Automatic transition to Overdue");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DB] UpdateOverdueInvoices: {ex.Message}");
+            }
+            return updatedCount;
+        }
+
+        public static int UpdatePastDueLoadingSchedules()
+        {
+            int updatedCount = 0;
+            try
+            {
+                using (var conn = new SqliteConnection(connectionString))
+                {
+                    conn.Open();
+                    var cmd = conn.CreateCommand();
+                    cmd.CommandText = "SELECT Id, ScheduleNumber, ClientName, Destination, ScheduleDate FROM LoadingSchedules WHERE Status = 'Pending'";
+                    var toUpdate = new List<(int Id, string SchedNum, string ClientName, string Dest, DateTime SchedDate)>();
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        DateTime today = DateTime.Today;
+                        while (reader.Read())
+                        {
+                            int id = reader.GetInt32(0);
+                            string schedNum = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                            string clientName = reader.IsDBNull(2) ? "" : reader.GetString(2);
+                            string dest = reader.IsDBNull(3) ? "" : reader.GetString(3);
+                            DateTime schedDate = DateTime.TryParse(reader.GetString(4), out var dt) ? dt : today;
+
+                            if (schedDate.Date < today)
+                            {
+                                toUpdate.Add((id, schedNum, clientName, dest, schedDate));
+                            }
+                        }
+                    }
+
+                    if (toUpdate.Count > 0)
+                    {
+                        using (var tx = conn.BeginTransaction())
+                        {
+                            foreach (var item in toUpdate)
+                            {
+                                var uCmd = conn.CreateCommand();
+                                uCmd.Transaction = tx;
+                                uCmd.CommandText = "UPDATE LoadingSchedules SET Status = 'Past Due' WHERE Id = @id AND Status = 'Pending'";
+                                uCmd.Parameters.AddWithValue("@id", item.Id);
+                                int rows = uCmd.ExecuteNonQuery();
+                                if (rows > 0) updatedCount++;
+                            }
+                            tx.Commit();
+                        }
+
+                        foreach (var item in toUpdate)
+                        {
+                            LogAuditTrail("AUTO_PAST_DUE", "LoadingSchedules", item.Id, item.SchedNum, "Status", "Pending", "Past Due", $"Scheduled date ({item.SchedDate:yyyy-MM-dd}) passed without dispatch assignment: Flagged as Past Due");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DB] UpdatePastDueLoadingSchedules: {ex.Message}");
+            }
+            return updatedCount;
+        }
+
+        public static int UpdateDelayedDeliveries()
+        {
+            int updatedCount = 0;
+            try
+            {
+                using (var conn = new SqliteConnection(connectionString))
+                {
+                    conn.Open();
+                    var cmd = conn.CreateCommand();
+                    cmd.CommandText = "SELECT Id, DispatchNumber, DispatchDate, DepartureTime, TruckInfo, DriverName FROM Deliveries WHERE Status = 'In Transit'";
+                    var toUpdate = new List<(int Id, string DispNum, string TruckInfo, string DriverName, DateTime DepartureDt)>();
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        DateTime now = DateTime.Now;
+                        while (reader.Read())
+                        {
+                            int id = reader.GetInt32(0);
+                            string dispNum = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                            DateTime dDate = DateTime.TryParse(reader.GetString(2), out var dt) ? dt : DateTime.Today;
+                            string depTime = reader.IsDBNull(3) ? "" : reader.GetString(3);
+                            string trk = reader.IsDBNull(4) ? "" : reader.GetString(4);
+                            string drv = reader.IsDBNull(5) ? "" : reader.GetString(5);
+
+                            DateTime departureDt = CombineDateAndTime(dDate, depTime);
+                            if (now >= departureDt.AddHours(24))
+                            {
+                                toUpdate.Add((id, dispNum, trk, drv, departureDt));
+                            }
+                        }
+                    }
+
+                    if (toUpdate.Count > 0)
+                    {
+                        using (var tx = conn.BeginTransaction())
+                        {
+                            foreach (var item in toUpdate)
+                            {
+                                var uCmd = conn.CreateCommand();
+                                uCmd.Transaction = tx;
+                                uCmd.CommandText = "UPDATE Deliveries SET Status = 'Delayed' WHERE Id = @id AND Status = 'In Transit'";
+                                uCmd.Parameters.AddWithValue("@id", item.Id);
+                                int rows = uCmd.ExecuteNonQuery();
+                                if (rows > 0) updatedCount++;
+                            }
+                            tx.Commit();
+                        }
+
+                        foreach (var item in toUpdate)
+                        {
+                            LogAuditTrail("AUTO_DELAYED", "Deliveries", item.Id, item.DispNum, "Status", "In Transit", "Delayed", $"Transit duration exceeded 24 hours since scheduled departure ({item.DepartureDt:yyyy-MM-dd hh:mm tt}): Automatically flagged as Delayed");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DB] UpdateDelayedDeliveries: {ex.Message}");
+            }
+            return updatedCount;
+        }
+
+        public static (int transitStarted, int invoicesOverdue, int schedulesPastDue, int deliveriesDelayed) RunOperationalLifecycleAutomation()
+        {
+            int transit = UpdatePendingDeliveriesToTransit();
+            int overdue = UpdateOverdueInvoices();
+            int pastDue = UpdatePastDueLoadingSchedules();
+            int delayed = UpdateDelayedDeliveries();
+            return (transit, overdue, pastDue, delayed);
+        }
+
         public static List<Delivery> GetDeliveries()
         {
+            UpdatePendingDeliveriesToTransit();
+            UpdateDelayedDeliveries();
             var list = new List<Delivery>();
             using (var conn = new SqliteConnection(connectionString))
             {
                 conn.Open();
                 var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT Id, DispatchNumber, LoadingScheduleId, LoadingScheduleInfo, TruckId, TruckInfo, DriverId, DriverName, AideId, AideName, DispatchDate, DepartureTime, Status, Remarks, GCrate, ECrate, TotalCrates, AideIds, AideNames, CancellationReason, COALESCE(CargoType, 'Cold / Chilled'), COALESCE(IsMultiDrop, 0), COALESCE(TotalStopsCount, 1) FROM Deliveries ORDER BY Id DESC";
+                cmd.CommandText = "SELECT Id, DispatchNumber, LoadingScheduleId, LoadingScheduleInfo, TruckId, TruckInfo, DriverId, DriverName, AideId, AideName, DispatchDate, DepartureTime, Status, Remarks, GCrate, ECrate, TotalCrates, AideIds, AideNames, CancellationReason, COALESCE(CargoType, 'Cold / Chilled'), COALESCE(IsMultiDrop, 0), COALESCE(TotalStopsCount, 1), COALESCE(ClientName, ''), COALESCE(Destination, ''), COALESCE(IsPeak, 0) FROM Deliveries ORDER BY Id DESC";
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
@@ -2935,12 +3266,39 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         if (totalCrates == 0 && (gCrate > 0 || eCrate > 0)) totalCrates = gCrate + eCrate;
                         if (gCrate == 0 && eCrate == 0 && totalCrates > 0) gCrate = totalCrates;
 
+                        string loadingSchedInfo = reader.IsDBNull(3) ? "" : reader.GetString(3);
+                        string clientName = reader.IsDBNull(23) ? "" : reader.GetString(23);
+                        string dest = reader.IsDBNull(24) ? "" : reader.GetString(24);
+                        bool isPeak = !reader.IsDBNull(25) && reader.GetInt32(25) == 1;
+
+                        if (string.IsNullOrEmpty(clientName) && !string.IsNullOrEmpty(loadingSchedInfo))
+                        {
+                            int dashIdx = loadingSchedInfo.IndexOf('-');
+                            int openParen = loadingSchedInfo.LastIndexOf('(');
+                            int closeParen = loadingSchedInfo.LastIndexOf(')');
+                            if (dashIdx >= 0 && openParen > dashIdx)
+                            {
+                                clientName = loadingSchedInfo.Substring(dashIdx + 1, openParen - dashIdx - 1).Trim();
+                                if (closeParen > openParen && string.IsNullOrEmpty(dest))
+                                {
+                                    dest = loadingSchedInfo.Substring(openParen + 1, closeParen - openParen - 1).Trim();
+                                }
+                            }
+                            else if (dashIdx >= 0)
+                            {
+                                clientName = loadingSchedInfo.Substring(dashIdx + 1).Trim();
+                            }
+                        }
+
                         list.Add(new Delivery
                         {
                             Id = reader.GetInt32(0),
                             DispatchNumber = reader.GetString(1),
                             LoadingScheduleId = reader.GetInt32(2),
-                            LoadingScheduleInfo = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                            LoadingScheduleInfo = loadingSchedInfo,
+                            ClientName = clientName,
+                            Destination = dest,
+                            IsPeak = isPeak,
                             TruckId = reader.GetInt32(4),
                             TruckInfo = reader.IsDBNull(5) ? "" : reader.GetString(5),
                             DriverId = reader.GetInt32(6),
@@ -3003,9 +3361,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         if (d.Id == 0)
                         {
-                            d.DispatchNumber = $"DSP-{DateTime.Now:yyyyMMdd-HHmmss}-{DateTime.Now.Millisecond:D3}{Random.Shared.Next(10, 99)}";
-                            cmd.CommandText = @"INSERT INTO Deliveries (DispatchNumber, LoadingScheduleId, LoadingScheduleInfo, TruckId, TruckInfo, DriverId, DriverName, AideId, AideName, AideIds, AideNames, GCrate, ECrate, TotalCrates, DispatchDate, DepartureTime, Status, Remarks, CancellationReason, CargoType, IsMultiDrop, TotalStopsCount)
-                                                VALUES (@dn, @lsid, @lsi, @tid, @ti, @drid, @drn, @aid, @ain, @aids, @ains, @gc, @ec, @tc, @dd, @dt, @s, @r, @cr, @ct, @md, @tsc);
+                            if (string.IsNullOrWhiteSpace(d.DispatchNumber))
+                            {
+                                d.DispatchNumber = $"DSP-{DateTime.Now:yyyyMMdd-HHmmss}-{DateTime.Now.Millisecond:D3}{Random.Shared.Next(10, 99)}";
+                            }
+                            if (string.IsNullOrEmpty(d.LoadingScheduleInfo) && !string.IsNullOrEmpty(d.ClientName))
+                            {
+                                d.LoadingScheduleInfo = $"{d.DispatchNumber} - {d.ClientName} ({d.Destination})";
+                            }
+                            cmd.CommandText = @"INSERT INTO Deliveries (DispatchNumber, LoadingScheduleId, LoadingScheduleInfo, TruckId, TruckInfo, DriverId, DriverName, AideId, AideName, AideIds, AideNames, GCrate, ECrate, TotalCrates, DispatchDate, DepartureTime, Status, Remarks, CancellationReason, CargoType, IsMultiDrop, TotalStopsCount, ClientName, Destination, IsPeak)
+                                                VALUES (@dn, @lsid, @lsi, @tid, @ti, @drid, @drn, @aid, @ain, @aids, @ains, @gc, @ec, @tc, @dd, @dt, @s, @r, @cr, @ct, @md, @tsc, @cn, @dest, @pk);
                                                 SELECT last_insert_rowid();";
 
                             if (d.LoadingScheduleId > 0)
@@ -3097,7 +3462,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                 }
                             }
 
-                            cmd.CommandText = @"UPDATE Deliveries SET LoadingScheduleId=@lsid, LoadingScheduleInfo=@lsi, TruckId=@tid, TruckInfo=@ti, DriverId=@drid, DriverName=@drn, AideId=@aid, AideName=@ain, AideIds=@aids, AideNames=@ains, GCrate=@gc, ECrate=@ec, TotalCrates=@tc, DispatchDate=@dd, DepartureTime=@dt, Status=@s, Remarks=@r, CancellationReason=@cr, CargoType=@ct, IsMultiDrop=@md, TotalStopsCount=@tsc WHERE Id=@id";
+                            cmd.CommandText = @"UPDATE Deliveries SET LoadingScheduleId=@lsid, LoadingScheduleInfo=@lsi, TruckId=@tid, TruckInfo=@ti, DriverId=@drid, DriverName=@drn, AideId=@aid, AideName=@ain, AideIds=@aids, AideNames=@ains, GCrate=@gc, ECrate=@ec, TotalCrates=@tc, DispatchDate=@dd, DepartureTime=@dt, Status=@s, Remarks=@r, CancellationReason=@cr, CargoType=@ct, IsMultiDrop=@md, TotalStopsCount=@tsc, ClientName=@cn, Destination=@dest, IsPeak=@pk WHERE Id=@id";
                             cmd.Parameters.AddWithValue("@id", d.Id);
 
                             if (d.Status == "Completed" || d.Status == "Cancelled")
@@ -3202,6 +3567,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         cmd.Parameters.AddWithValue("@ct", string.IsNullOrEmpty(d.CargoType) ? "Cold / Chilled" : d.CargoType);
                         cmd.Parameters.AddWithValue("@md", d.IsMultiDrop ? 1 : 0);
                         cmd.Parameters.AddWithValue("@tsc", d.TotalStopsCount > 0 ? d.TotalStopsCount : 1);
+                        cmd.Parameters.AddWithValue("@cn", d.ClientName ?? "");
+                        cmd.Parameters.AddWithValue("@dest", d.Destination ?? "");
+                        cmd.Parameters.AddWithValue("@pk", d.IsPeak ? 1 : 0);
 
                         if (d.Id == 0)
                         {
@@ -3406,7 +3774,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     });
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DB] GetTripReports: {ex.Message}");
+            }
             return list;
         }
 
@@ -3421,7 +3792,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SaveDispatchStopsInternal(conn, tx, deliveryId, stops);
                 tx.Commit();
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DB] SaveDispatchStops: {ex.Message}");
+                throw;
+            }
         }
 
         private static void SaveDispatchStopsInternal(SqliteConnection conn, SqliteTransaction tx, int deliveryId, List<DispatchStop> stops)
@@ -3914,6 +4289,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public static List<Invoice> GetInvoices()
         {
+            UpdateOverdueInvoices();
             var list = new List<Invoice>();
             using (var conn = new SqliteConnection(connectionString))
             {
@@ -4265,16 +4641,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     decimal totalCollected = Convert.ToDecimal(sumCmd.ExecuteScalar() ?? 0);
 
                     var invCmd = conn.CreateCommand();
-                    invCmd.CommandText = "SELECT NetAmount FROM Invoices WHERE Id = @invId";
+                    invCmd.CommandText = "SELECT NetAmount, DueDate FROM Invoices WHERE Id = @invId";
                     invCmd.Parameters.AddWithValue("@invId", invoiceId);
-                    var netRes = invCmd.ExecuteScalar();
-                    if (netRes != null && netRes != DBNull.Value)
+                    decimal netAmount = 0;
+                    DateTime dueDate = DateTime.Today;
+                    bool hasInv = false;
+                    using (var r = invCmd.ExecuteReader())
                     {
-                        decimal netAmount = Convert.ToDecimal(netRes);
+                        if (r.Read())
+                        {
+                            hasInv = true;
+                            netAmount = Convert.ToDecimal(r.GetDouble(0));
+                            if (DateTime.TryParse(r.GetString(1), out var dd)) dueDate = dd;
+                        }
+                    }
+
+                    if (hasInv)
+                    {
                         string newStatus = "Unpaid";
                         if (totalCollected >= netAmount && netAmount > 0)
                         {
                             newStatus = "Paid";
+                        }
+                        else if (dueDate.Date < DateTime.Today)
+                        {
+                            newStatus = "Overdue";
                         }
                         else if (totalCollected > 0)
                         {
@@ -4334,15 +4725,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         var checkInv = conn.CreateCommand();
                         checkInv.Transaction = tx;
-                        checkInv.CommandText = "SELECT NetAmount FROM Invoices WHERE Id=@iid";
+                        checkInv.CommandText = "SELECT NetAmount, DueDate FROM Invoices WHERE Id=@iid";
                         checkInv.Parameters.AddWithValue("@iid", cr.InvoiceId);
-                        decimal netAmount = Convert.ToDecimal(checkInv.ExecuteScalar() ?? 0);
+                        decimal netAmount = 0;
+                        DateTime dueDate = DateTime.Today;
+                        using (var r = checkInv.ExecuteReader())
+                        {
+                            if (r.Read())
+                            {
+                                netAmount = Convert.ToDecimal(r.GetDouble(0));
+                                if (DateTime.TryParse(r.GetString(1), out var dd)) dueDate = dd;
+                            }
+                        }
 
                         var updateInv = conn.CreateCommand();
                         updateInv.Transaction = tx;
                         if (totalPaid >= netAmount && netAmount > 0)
                         {
                             updateInv.CommandText = "UPDATE Invoices SET Status='Paid' WHERE Id=@iid";
+                        }
+                        else if (dueDate.Date < DateTime.Today)
+                        {
+                            updateInv.CommandText = "UPDATE Invoices SET Status='Overdue' WHERE Id=@iid";
                         }
                         else if (totalPaid > 0)
                         {
@@ -4400,7 +4804,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                           AND Id NOT IN (
                               SELECT DISTINCT TruckId
                               FROM Deliveries
-                              WHERE Status IN ('Pending', 'In Transit')
+                              WHERE Status IN ('Pending', 'In Transit', 'Delayed')
                           );
                     ";
                     fixTrucksCmd.ExecuteNonQuery();
@@ -4408,7 +4812,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     var activeCrewIds = new HashSet<int>();
                     using (var actCmd = conn.CreateCommand())
                     {
-                        actCmd.CommandText = "SELECT DriverId, AideId, AideIds FROM Deliveries WHERE Status IN ('Pending', 'In Transit')";
+                        actCmd.CommandText = "SELECT DriverId, AideId, AideIds FROM Deliveries WHERE Status IN ('Pending', 'In Transit', 'Delayed')";
                         using var rAct = actCmd.ExecuteReader();
                         while (rAct.Read())
                         {
@@ -4453,6 +4857,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     ";
                     fixSchedulesCmd.ExecuteNonQuery();
                 }
+
+                RunOperationalLifecycleAutomation();
             }
             catch { }
         }
@@ -4588,11 +4994,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (list.Count == 0)
             {
                 var lookupClients = GetLookupItems("Client Company");
-                foreach (var c in lookupClients)
+                if (lookupClients.Count > 0)
                 {
-                    SaveClient(new ClientCompany { CompanyName = c });
+                    foreach (var c in lookupClients)
+                    {
+                        SaveClient(new ClientCompany { CompanyName = c });
+                    }
+                    return GetClients();
                 }
-                return GetClients();
             }
 
             return list;

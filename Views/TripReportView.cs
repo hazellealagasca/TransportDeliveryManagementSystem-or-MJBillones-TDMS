@@ -43,30 +43,35 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             SetupEvents();
             LoadData();
-            Button btnExport = new Button
-            {
-                Text = "📊 Export",
-                Size = new Size(88, 30),
-                BackColor = Color.FromArgb(15, 23, 42),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            btnExport.FlatAppearance.BorderSize = 0;
-            btnExport.Click += (s, e) => DataExportHelper.ExportToCsv(gridTripReports, "Trip_Reports", "Completed Trip Reports");
-            pnlGridActionsFlow.Controls.Add(btnExport);
+
+            btnPrint.Visible = false;
+
+            var menuActions = new ContextMenuStrip();
+            menuActions.Items.Add("📊 Export Trip Documentation to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridTripReports, "Trip_Reports", "Completed Trip Reports"));
+            menuActions.Items.Add("🖨️ Print Trip Reports Register", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
+            var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
+            pnlGridActionsFlow.Controls.Add(btnActions);
 
             InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape && pnlForm.Visible)
+            {
+                SetFormVisibility(false);
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         private void InitializeFormToggle()
         {
             btnToggleForm = new Button
             {
-                Text = "📝 Input Form ▾",
-                Size = new Size(130, 30),
+                Text = "📝 + New / Form ▾",
+                Size = new Size(150, 30),
                 BackColor = Color.FromArgb(30, 41, 59),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -81,20 +86,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnCloseForm = new Button
             {
-                Text = "✖ Hide Form",
-                Dock = DockStyle.Top,
-                Height = 28,
+                Text = "✕ Close",
+                Dock = DockStyle.Right,
+                Width = 72,
+                Height = 30,
                 BackColor = Color.FromArgb(241, 245, 249),
                 ForeColor = Color.FromArgb(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 0, 8)
+                Cursor = Cursors.Hand
             };
             btnCloseForm.FlatAppearance.BorderSize = 0;
             btnCloseForm.Click += (s, e) => SetFormVisibility(false);
-            pnlForm.Controls.Add(btnCloseForm);
-            pnlForm.Controls.SetChildIndex(btnCloseForm, 0);
+            pnlFormHeaderBar.Controls.Add(btnCloseForm);
 
             SetFormVisibility(false);
         }
@@ -104,7 +108,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Visible = visible;
             if (tblMasterContent.ColumnStyles.Count > 0)
             {
-                tblMasterContent.ColumnStyles[0].Width = visible ? 580F : 0F;
+                tblMasterContent.ColumnStyles[0].Width = visible ? 480F : 0F;
                 tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
             }
             if (tblMasterContent.ColumnStyles.Count > 1)
@@ -114,10 +118,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 Input Form ▾";
+                btnToggleForm.Text = visible ? "✕ Hide Form ▴" : "📝 + New / Form ▾";
                 btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
                 btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
             }
+            MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
         public void RefreshData()
@@ -144,11 +149,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = ""
             };
             pnlMultiDropInfo.Controls.Add(lblMultiDropDetails);
-            pnlForm.Controls.Add(pnlMultiDropInfo);
-            int dIdx = pnlForm.Controls.IndexOf(cbDelivery);
+            pnlFormBody.Controls.Add(pnlMultiDropInfo);
+            int dIdx = pnlFormBody.Controls.IndexOf(cbDelivery);
             if (dIdx >= 0)
             {
-                pnlForm.Controls.SetChildIndex(pnlMultiDropInfo, dIdx + 1);
+                pnlFormBody.Controls.SetChildIndex(pnlMultiDropInfo, dIdx + 1);
             }
         }
 
@@ -264,7 +269,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridTripReports.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Remarks", HeaderText = "Remarks", FillWeight = 130, MinimumWidth = 130, ReadOnly = true });
         }
 
-                        private void GridTripReports_SelectionChanged(object? sender, EventArgs e)
+        private void GridTripReports_SelectionChanged(object? sender, EventArgs e)
         {
             if (gridTripReports.SelectedRows.Count > 0 && gridTripReports.SelectedRows[0].DataBoundItem is TripReport tr)
             {
@@ -296,7 +301,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 allDeliveries = await MJdatabase.GetDeliveriesAsync();
-                var pendingOrTransit = allDeliveries.FindAll(d => d.Status == "Pending" || d.Status == "In Transit");
+                var pendingOrTransit = allDeliveries.FindAll(d => d.Status == "Pending" || d.Status == "In Transit" || d.Status == "Delayed");
 
                 cbDelivery.Items.Clear();
                 if (allDeliveries.Count == 0)
@@ -317,7 +322,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo} [{d.Status}] ({d.DriverName})");
                     }
-                    foreach (var d in allDeliveries.Where(d => d.Status != "Pending" && d.Status != "In Transit"))
+                    foreach (var d in allDeliveries.Where(d => d.Status != "Pending" && d.Status != "In Transit" && d.Status != "Delayed"))
                     {
                         cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo} [{d.Status}] ({d.DriverName})");
                     }
@@ -453,6 +458,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 ClearFields();
                 LoadData();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
@@ -533,6 +539,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show("Trip Report updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadData();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
@@ -577,7 +584,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ClearFields();
         }
 
-                        private void FilterGridData()
+        private void FilterGridData()
         {
             string q = txtGridSearch.Text.Trim().ToLowerInvariant();
             var filtered = string.IsNullOrEmpty(q)
@@ -629,10 +636,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void BtnPrint_Click(object? sender, EventArgs e)
         {
-            PrintHelper.PrintGridReport("Plant & Store Trip Documentation Report", gridTripReports, "Official trip delivery completion register with G/E crate receipts and store signees.");
+            try
+            {
+                PrintHelper.PrintGridReport("Plant & Store Trip Documentation Report", gridTripReports, "Official trip delivery completion register with G/E crate receipts and store signees.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Print error: {ex.Message}", "Print Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
-                private void BtnPickArrival_Click(object? sender, EventArgs e)
+        private void BtnPickArrival_Click(object? sender, EventArgs e)
         {
             string? picked = AnalogClockTimePickerDialog.ShowTimePicker(this.FindForm() ?? this.ParentForm!, txtArrivalTime.Text);
             if (!string.IsNullOrEmpty(picked))
@@ -723,9 +737,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var draft = MJdatabase.GetFormDraft("TripReport", SessionContext.CurrentUsername);
                 if (draft != null && !string.IsNullOrWhiteSpace(draft.Value.Data))
                 {
-                    if (pnlDraftBanner != null) pnlForm.Controls.Remove(pnlDraftBanner);
+                    if (pnlDraftBanner != null) pnlFormBody.Controls.Remove(pnlDraftBanner);
                     pnlDraftBanner = DraftAutoSaveService.CreateDraftBanner("Trip Report", draft.Value.LastSaved, RestoreDraft, DiscardDraft);
-                    pnlForm.Controls.Add(pnlDraftBanner);
+                    pnlFormBody.Controls.Add(pnlDraftBanner);
                     pnlDraftBanner.BringToFront();
                 }
             }

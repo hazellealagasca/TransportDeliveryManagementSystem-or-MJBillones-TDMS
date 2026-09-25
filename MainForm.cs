@@ -13,9 +13,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 {
     public partial class MainForm : Form
     {
+        public static MainForm? Instance { get; private set; }
+
         private const int SidebarExpandedWidth = 220;
         private const int SidebarCollapsedWidth = 55;
         private bool isSidebarCollapsed = false;
+        private bool autoCollapsedForDrawer = false;
+
+        private int lastInTransitCount = 0;
+        private int lastPendingCount = 0;
+        private int lastUnpaidCount = 0;
 
         private User currentUser;
         private Button? activeButton;
@@ -29,29 +36,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private Panel? pnlNotificationMenu;
         private Panel? pnlNotificationList;
-        private FlowLayoutPanel? pnlNotificationFilters;
+        private ComboBox? cmbNotificationFilter;
         private string activeNotificationFilter = "All";
         private System.Windows.Forms.Timer? tmrRollingSnapshot;
         private System.Windows.Forms.Timer? tmrOperationalAlerts;
+        private System.Windows.Forms.Timer? tmrAutoTransitCheck;
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern bool DestroyIcon(IntPtr handle);
 
         public MainForm(User user)
         {
+            Instance = this;
             InitializeComponent();
             UIThemeHelper.EnableDoubleBuffering(this);
             currentUser = user;
             SessionContext.ActiveUser = user;
+            this.Resize += (s, e) => ApplyAdaptiveHeader();
 
             string cleanName = (currentUser.FullName ?? "").Replace(" (Owner)", "").Replace(" (Admin)", "").Trim();
             lblUserInfo.Text = $"👤 {cleanName} • {currentUser.Role}";
             lblUserInfo.Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold);
-            lblUserInfo.ForeColor = Color.FromArgb(71, 85, 105);
+            lblUserInfo.ForeColor = Color.FromArgb(148, 163, 184);
             lblUserInfo.AutoSize = true;
             lblUserInfo.Cursor = Cursors.Hand;
-            lblUserInfo.MouseEnter += (s, e) => { lblUserInfo.ForeColor = Color.FromArgb(30, 58, 138); };
-            lblUserInfo.MouseLeave += (s, e) => { lblUserInfo.ForeColor = Color.FromArgb(71, 85, 105); };
+            lblUserInfo.MouseEnter += (s, e) => { lblUserInfo.ForeColor = Color.White; };
+            lblUserInfo.MouseLeave += (s, e) => { lblUserInfo.ForeColor = Color.FromArgb(148, 163, 184); };
             lblUserInfo.Click += (s, e) => ShowUserProfileDialog();
 
             pnlSearchCenter.Visible = false;
@@ -101,20 +111,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainForm] LoadLogo: {ex.Message}");
+            }
 
             MJdatabase.PerformStartupSanityCheck();
             MJdatabase.OnCategoriesChanged += () => { RefreshCurrentActiveView(); };
-            this.FormClosing += (s, e) => { MJdatabase.PerformAutoBackup(); tmrRollingSnapshot?.Stop(); tmrOperationalAlerts?.Stop(); };
+            this.FormClosing += (s, e) => { MJdatabase.PerformAutoBackup(); tmrRollingSnapshot?.Stop(); tmrOperationalAlerts?.Stop(); tmrAutoTransitCheck?.Stop(); };
             this.FormClosed += (s, e) => { Application.Exit(); };
             SetupRollingSnapshotTimer();
             SetupOperationalAlertsTimer();
+            SetupAutoTransitCheckTimer();
 
             SetupAccessibilityAndKpis();
             SetupSidebarHover();
             SetupCollapsibleSidebar();
             SetupNotifications();
-            panelMainContent.MouseDown += (s, e) => { if (pnlNotificationMenu != null) pnlNotificationMenu.Visible = false; };
+            panelMainContent.MouseDown += (s, e) => { if (pnlNotificationMenu != null) pnlNotificationMenu.Visible = false; if (lstSearchDropdown != null) lstSearchDropdown.Visible = false; };
             OpenDashboard();
             EventNotificationService.Publish("Session Active", $"Authenticated as @{currentUser.Username} ({currentUser.Role})", ToastType.Info, this);
             this.Shown += (s, e) =>
@@ -184,6 +198,30 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             isSidebarCollapsed = !isSidebarCollapsed;
             tmrSidebarAnimation.Start();
+        }
+
+        public void SetSidebarCollapsed(bool collapsed)
+        {
+            if (isSidebarCollapsed == collapsed) return;
+            isSidebarCollapsed = collapsed;
+            tmrSidebarAnimation.Start();
+        }
+
+        public void NotifyDrawerToggled(bool isDrawerOpen)
+        {
+            if (this.ClientSize.Width <= 1366)
+            {
+                if (isDrawerOpen && !isSidebarCollapsed)
+                {
+                    autoCollapsedForDrawer = true;
+                    SetSidebarCollapsed(true);
+                }
+                else if (!isDrawerOpen && autoCollapsedForDrawer)
+                {
+                    autoCollapsedForDrawer = false;
+                    SetSidebarCollapsed(false);
+                }
+            }
         }
 
         private void TmrSidebarAnimation_Tick(object? sender, EventArgs e)
@@ -260,6 +298,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     lblLogoTitle.Visible = true;
                     lblLogoSubtitle.Visible = true;
                 }
+                else
+                {
+                    lblLogoTitle.Visible = false;
+                    lblLogoSubtitle.Visible = false;
+                }
 
                 ttSidebar.RemoveAll();
             }
@@ -310,32 +353,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 WrapContents = false,
                 AutoSize = true,
                 Dock = DockStyle.Right,
-                Padding = new Padding(0, 14, 15, 0),
+                Padding = new Padding(0, 9, 12, 0),
                 BackColor = Color.Transparent
             };
 
             btnKpiTransit = CreateKpiBadge("🚚 0 In Transit", Color.FromArgb(254, 243, 199), Color.FromArgb(180, 83, 9), (s, e) => btnNavDispatch_Click(this, EventArgs.Empty));
-            btnKpiPending = CreateKpiBadge("⏳ 0 Pending", Color.FromArgb(241, 245, 249), Color.FromArgb(51, 65, 85), (s, e) => btnNavLoading_Click(this, EventArgs.Empty));
+            btnKpiPending = CreateKpiBadge("⏳ 0 Pending", Color.FromArgb(241, 245, 249), Color.FromArgb(51, 65, 85), (s, e) => btnNavDispatch_Click(this, EventArgs.Empty));
             btnKpiUnpaid = CreateKpiBadge("💰 0 Unpaid", Color.FromArgb(254, 226, 226), Color.FromArgb(185, 28, 28), (s, e) => btnNavBilling_Click(this, EventArgs.Empty));
             btnKpiShortcuts = CreateKpiBadge("⌨️ ShortKeys", Color.FromArgb(238, 242, 255), Color.FromArgb(67, 56, 202), (s, e) => ShowShortcutsHelpDialog());
 
             btnNotificationBell.Text = "🔔 Alerts";
             btnNotificationBell.AutoSize = true;
-            btnNotificationBell.Height = 28;
+            btnNotificationBell.Height = 26;
             btnNotificationBell.Margin = new Padding(0, 0, 6, 0);
-            btnNotificationBell.BackColor = Color.FromArgb(241, 245, 249);
-            btnNotificationBell.ForeColor = Color.FromArgb(30, 58, 138);
+            btnNotificationBell.BackColor = Color.FromArgb(30, 41, 59);
+            btnNotificationBell.ForeColor = Color.FromArgb(226, 232, 240);
             btnNotificationBell.FlatStyle = FlatStyle.Flat;
             btnNotificationBell.Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold);
             btnNotificationBell.Cursor = Cursors.Hand;
             btnNotificationBell.FlatAppearance.BorderSize = 0;
             btnNotificationBell.Click += (s, e) => ToggleNotificationMenu();
 
-            btnHeaderSettings.Size = new Size(105, 28);
+            btnHeaderSettings.Size = new Size(100, 26);
             btnHeaderSettings.Margin = new Padding(4, 0, 6, 0);
             btnHeaderSettings.Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold);
 
-            btnLogout.Size = new Size(80, 28);
+            btnLogout.Size = new Size(72, 26);
             btnLogout.Margin = new Padding(0, 0, 0, 0);
             btnLogout.Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold);
 
@@ -434,14 +477,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlHeader.Controls.Add(pnlHeaderActions);
             pnlHeader.Controls.Add(lblTitle);
 
-            pnlNotificationFilters = new FlowLayoutPanel
+            Panel pnlFilterRow = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 36,
+                Height = 38,
                 BackColor = Color.FromArgb(241, 245, 249),
-                Padding = new Padding(6, 4, 6, 4),
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false
+                Padding = new Padding(10, 5, 10, 5)
+            };
+
+            Label lblFilterLabel = new Label
+            {
+                Text = "Filter:",
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(71, 85, 105),
+                AutoSize = true,
+                Location = new Point(10, 10)
             };
 
             List<string> filterList = new List<string> { "All", "Unread", "Alerts", "Operations", "Payments", "Trucks" };
@@ -449,37 +499,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 filterList.Add("Security");
             }
-            string[] filterNames = filterList.ToArray();
-            foreach (var filter in filterNames)
-            {
-                Button btnFilter = new Button
-                {
-                    Text = filter,
-                    AutoSize = true,
-                    Height = 26,
-                    Margin = new Padding(2, 0, 2, 0),
-                    FlatStyle = FlatStyle.Flat,
-                    Font = new Font("Segoe UI", 8F, FontStyle.Bold),
-                    Cursor = Cursors.Hand,
-                    Tag = filter
-                };
-                btnFilter.FlatAppearance.BorderSize = 0;
-                UpdateFilterButtonAppearance(btnFilter, filter == activeNotificationFilter);
 
-                btnFilter.Click += (s, e) =>
-                {
-                    activeNotificationFilter = (string)((Control)s!).Tag!;
-                    foreach (Control c in pnlNotificationFilters.Controls)
-                    {
-                        if (c is Button b && b.Tag is string t)
-                        {
-                            UpdateFilterButtonAppearance(b, t == activeNotificationFilter);
-                        }
-                    }
-                    RenderNotificationList();
-                };
-                pnlNotificationFilters.Controls.Add(btnFilter);
-            }
+            cmbNotificationFilter = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 8.5F),
+                ForeColor = Color.FromArgb(15, 23, 42),
+                BackColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Location = new Point(54, 7),
+                Width = 340,
+                Height = 26,
+                Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top
+            };
+            cmbNotificationFilter.Items.AddRange(filterList.ToArray<object>());
+            cmbNotificationFilter.SelectedIndex = 0;
+            cmbNotificationFilter.SelectedIndexChanged += (s, e) =>
+            {
+                activeNotificationFilter = cmbNotificationFilter.SelectedItem?.ToString() ?? "All";
+                RenderNotificationList();
+            };
+
+            pnlFilterRow.Controls.Add(cmbNotificationFilter);
+            pnlFilterRow.Controls.Add(lblFilterLabel);
 
             pnlNotificationList = new Panel
             {
@@ -490,7 +532,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
 
             pnlNotificationMenu.Controls.Add(pnlNotificationList);
-            pnlNotificationMenu.Controls.Add(pnlNotificationFilters);
+            pnlNotificationMenu.Controls.Add(pnlFilterRow);
             pnlNotificationMenu.Controls.Add(pnlHeader);
 
             this.Controls.Add(pnlNotificationMenu);
@@ -507,19 +549,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UpdateNotificationUI();
         }
 
-        private void UpdateFilterButtonAppearance(Button btn, bool isActive)
-        {
-            if (isActive)
-            {
-                btn.BackColor = Color.FromArgb(15, 23, 42);
-                btn.ForeColor = Color.White;
-            }
-            else
-            {
-                btn.BackColor = Color.FromArgb(226, 232, 240);
-                btn.ForeColor = Color.FromArgb(71, 85, 105);
-            }
-        }
 
         private void SetupRollingSnapshotTimer()
         {
@@ -534,7 +563,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         EventNotificationService.Publish("Database Snapshot", "Automatic background database backup snapshot created.", ToastType.Info, this);
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Snapshot] {ex.Message}");
+                }
             };
             tmrRollingSnapshot.Start();
         }
@@ -549,6 +581,42 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tmrOperationalAlerts.Start();
         }
 
+        private void SetupAutoTransitCheckTimer()
+        {
+            tmrAutoTransitCheck = new System.Windows.Forms.Timer { Interval = 30000 };
+            tmrAutoTransitCheck.Tick += (s, e) =>
+            {
+                try
+                {
+                    var result = MJdatabase.RunOperationalLifecycleAutomation();
+                    bool anyChanged = result.transitStarted > 0 || result.invoicesOverdue > 0 || result.schedulesPastDue > 0 || result.deliveriesDelayed > 0;
+                    if (anyChanged)
+                    {
+                        UpdateHeaderKpiBadges();
+                        RefreshCurrentActiveView();
+                    }
+
+                    if (result.invoicesOverdue > 0)
+                    {
+                        EventNotificationService.Publish("Overdue Invoices Alert", $"{result.invoicesOverdue} invoice(s) have lapsed past their payment due date.", ToastType.Warning, this, "Finance", "Invoices");
+                    }
+                    if (result.schedulesPastDue > 0)
+                    {
+                        EventNotificationService.Publish("Past Due Schedules", $"{result.schedulesPastDue} pending loading order(s) passed scheduled dates without dispatch.", ToastType.Warning, this, "Operations", "LoadingManagement");
+                    }
+                    if (result.deliveriesDelayed > 0)
+                    {
+                        EventNotificationService.Publish("Delayed Deliveries Alert", $"{result.deliveriesDelayed} active delivery(ies) exceeded transit thresholds without completion.", ToastType.Warning, this, "Operations", "DispatchManagement");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[MainForm] tmrAutoTransitCheck: {ex.Message}");
+                }
+            };
+            tmrAutoTransitCheck.Start();
+        }
+
         private void ToggleNotificationMenu()
         {
             if (pnlNotificationMenu == null) return;
@@ -559,9 +627,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
 
+            if (lstSearchDropdown != null) lstSearchDropdown.Visible = false;
+
             RenderNotificationList();
             Point pt = btnNotificationBell.PointToScreen(new Point(btnNotificationBell.Width - 420, btnNotificationBell.Height + 6));
             Point clientPt = this.PointToClient(pt);
+            clientPt.X = Math.Max(4, clientPt.X);
             pnlNotificationMenu.Location = clientPt;
             pnlNotificationMenu.BringToFront();
             pnlNotificationMenu.Visible = true;
@@ -569,10 +640,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void UpdateNotificationUI()
         {
-            int unread = EventNotificationService.UnreadCount;
+            int unread = EventNotificationService.GetBusinessProcessUnreadCount();
             btnNotificationBell.Text = unread > 0 ? $"🔔 {unread} New" : "🔔 Alerts";
-            btnNotificationBell.BackColor = unread > 0 ? Color.FromArgb(254, 243, 199) : Color.FromArgb(241, 245, 249);
-            btnNotificationBell.ForeColor = unread > 0 ? Color.FromArgb(180, 83, 9) : Color.FromArgb(51, 65, 85);
+            btnNotificationBell.BackColor = unread > 0 ? Color.FromArgb(254, 243, 199) : Color.FromArgb(30, 41, 59);
+            btnNotificationBell.ForeColor = unread > 0 ? Color.FromArgb(180, 83, 9) : Color.FromArgb(226, 232, 240);
 
             if (pnlNotificationMenu != null && pnlNotificationMenu.Visible)
             {
@@ -591,6 +662,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string? catFilter = unreadOnly ? null : activeNotificationFilter;
 
             var notifs = EventNotificationService.GetRecentNotifications(60, catFilter, unreadOnly, SessionContext.IsAdmin);
+            if (!activeNotificationFilter.Equals("Security", StringComparison.OrdinalIgnoreCase))
+            {
+                notifs = notifs.Where(n => n.IsBusinessProcess).ToList();
+            }
             if (notifs.Count == 0)
             {
                 Label lblEmpty = new Label
@@ -800,7 +875,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = text,
                 AutoSize = true,
-                Height = 28,
+                Height = 26,
                 Margin = new Padding(0, 0, 6, 0),
                 BackColor = bg,
                 ForeColor = fg,
@@ -818,17 +893,72 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 var deliveries = MJdatabase.GetDeliveries();
-                int inTransit = deliveries.Count(d => d.Status == "In Transit");
-                int pending = deliveries.Count(d => d.Status == "Pending");
+                lastInTransitCount = deliveries.Count(d => d.Status == "In Transit");
+                lastPendingCount = deliveries.Count(d => d.Status == "Pending");
 
                 var invoices = MJdatabase.GetInvoices();
-                int unpaid = invoices.Count(i => i.Status == "Unpaid" || i.Status == "Partial");
+                lastUnpaidCount = invoices.Count(i => i.Status == "Unpaid" || i.Status == "Partial");
 
-                if (btnKpiTransit != null) btnKpiTransit.Text = $"🚚 {inTransit} Transit";
-                if (btnKpiPending != null) btnKpiPending.Text = $"⏳ {pending} Pending";
-                if (btnKpiUnpaid != null) btnKpiUnpaid.Text = $"💰 {unpaid} Unpaid";
+                ApplyAdaptiveHeader();
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainForm] UpdateHeaderKpiBadges: {ex.Message}");
+            }
+        }
+
+        public void ApplyAdaptiveHeader()
+        {
+            try
+            {
+                bool isCompact = this.ClientSize.Width <= 1300;
+
+                if (lblHeaderTitle != null)
+                {
+                    lblHeaderTitle.Text = isCompact ? "M.J. Billones TDMS" : "M.J. Billones Transport Delivery System";
+                }
+
+                if (btnKpiTransit != null)
+                {
+                    btnKpiTransit.Text = isCompact ? $"🚚 {lastInTransitCount}" : $"🚚 {lastInTransitCount} Transit";
+                    ttSidebar.SetToolTip(btnKpiTransit, $"Active In Transit Deliveries: {lastInTransitCount}");
+                }
+
+                if (btnKpiPending != null)
+                {
+                    btnKpiPending.Text = isCompact ? $"⏳ {lastPendingCount}" : $"⏳ {lastPendingCount} Pending";
+                    ttSidebar.SetToolTip(btnKpiPending, $"Pending Dispatch Orders: {lastPendingCount}");
+                }
+
+                if (btnKpiUnpaid != null)
+                {
+                    btnKpiUnpaid.Text = isCompact ? $"💰 {lastUnpaidCount}" : $"💰 {lastUnpaidCount} Unpaid";
+                    ttSidebar.SetToolTip(btnKpiUnpaid, $"Unpaid Customer Invoices: {lastUnpaidCount}");
+                }
+
+                if (btnKpiShortcuts != null)
+                {
+                    btnKpiShortcuts.Visible = !isCompact;
+                }
+
+                if (btnHeaderSettings != null)
+                {
+                    btnHeaderSettings.Text = isCompact ? "⚙️" : "⚙️ SETTINGS";
+                    btnHeaderSettings.Size = isCompact ? new Size(34, 26) : new Size(100, 26);
+                    ttSidebar.SetToolTip(btnHeaderSettings, "System Administration & Settings");
+                }
+
+                if (btnLogout != null)
+                {
+                    btnLogout.Text = isCompact ? "🚪" : "LOGOUT";
+                    btnLogout.Size = isCompact ? new Size(34, 26) : new Size(72, 26);
+                    ttSidebar.SetToolTip(btnLogout, "Sign Out / Lock Session");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainForm] ApplyAdaptiveHeader: {ex.Message}");
+            }
         }
 
         private void MainForm_KeyDown(object? sender, KeyEventArgs e)
@@ -841,12 +971,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (e.KeyCode == Keys.F2)
             {
-                btnNavLoading_Click(this, EventArgs.Empty);
+                btnNavDispatch_Click(this, EventArgs.Empty);
                 e.Handled = true;
             }
             else if (e.KeyCode == Keys.F3)
             {
-                btnNavDispatch_Click(this, EventArgs.Empty);
+                btnNavIncidents_Click(this, EventArgs.Empty);
                 e.Handled = true;
             }
             else if (e.KeyCode == Keys.F4)
@@ -873,7 +1003,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (e.KeyCode == Keys.F8)
             {
-                btnNavSettings_Click(this, EventArgs.Empty);
+                if (SessionContext.IsAdmin)
+                {
+                    btnNavSettings_Click(this, EventArgs.Empty);
+                }
                 e.Handled = true;
             }
             else if (e.KeyCode == Keys.Escape)
@@ -908,8 +1041,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string helpText =
                 "⚡ Operational Quick Navigation Keys:\n" +
                 "   • F1  → Focus Global Search Bar\n" +
-                "   • F2  → Jump to Loading Schedules\n" +
-                "   • F3  → Jump to Delivery & Dispatch\n" +
+                "   • F2  → Jump to Delivery & Dispatch\n" +
+                "   • F3  → Jump to Incident & Damage Logs\n" +
                 "   • F4  → Jump to Trip Reports & Variance\n" +
                 "   • F5  → Instant Refresh Active Data & KPI Badges\n" +
                 "   • F6  → Jump to Billing & Invoices\n" +
@@ -988,6 +1121,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void NavigateToView<T>(string cacheKey, Button btn, Func<T> factory) where T : UserControl, IRefreshable
         {
             if (pnlNotificationMenu != null) pnlNotificationMenu.Visible = false;
+            if (lstSearchDropdown != null) lstSearchDropdown.Visible = false;
 
             if (!viewCache.TryGetValue(cacheKey, out UserControl? view))
             {
@@ -1027,6 +1161,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void LoadView(UserControl viewControl, Button btn)
         {
             if (pnlNotificationMenu != null) pnlNotificationMenu.Visible = false;
+            if (lstSearchDropdown != null) lstSearchDropdown.Visible = false;
 
             panelMainContent.SuspendLayout();
             panelMainContent.Controls.Clear();
@@ -1099,16 +1234,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void btnNavSettings_Click(object? sender, EventArgs e)
         {
+            if (!SessionContext.IsAdmin) return;
             NavigateToView("SettingsView", btnNavSettings, () => new SettingsView(currentUser, "DispatchRules"));
         }
 
         private void btnNavLoading_Click(object sender, EventArgs e)
         {
-            btnNavOperations_Click(this, EventArgs.Empty);
-            if (viewCache.TryGetValue("OperationsHubView", out var ov) && ov is OperationsHubView ohv)
-            {
-                ohv.SelectTab("Loading");
-            }
+            btnNavDispatch_Click(this, EventArgs.Empty);
         }
 
         private void btnNavTrucks_Click(object sender, EventArgs e)
@@ -1361,11 +1493,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 Point screenPt = txtGlobalSearch.PointToScreen(new Point(0, txtGlobalSearch.Height + 2));
                 lstSearchDropdown.Location = this.PointToClient(screenPt);
-                lstSearchDropdown.Width = txtGlobalSearch.Width;
+                lstSearchDropdown.Width = btnGlobalSearch.Visible ? (txtGlobalSearch.Width + 6 + btnGlobalSearch.Width) : txtGlobalSearch.Width;
                 if (!this.Controls.Contains(lstSearchDropdown))
                 {
                     this.Controls.Add(lstSearchDropdown);
                 }
+                if (pnlNotificationMenu != null) pnlNotificationMenu.Visible = false;
                 lstSearchDropdown.BringToFront();
                 lstSearchDropdown.Visible = true;
             }

@@ -17,6 +17,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private bool isSortAscending = true;
         private Button btnToggleForm = null!;
         private Button btnCloseForm = null!;
+        private Action? _categoriesHandler;
         [System.ComponentModel.Browsable(false)]
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
         public Action<Truck>? OnDispatchTruckRequested { get; set; }
@@ -53,19 +54,56 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridTrucks.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && gridTrucks.Rows[e.RowIndex].DataBoundItem is Truck item) RecordDetailsDialog.ShowDetails(this, item); };
             SetupEvents();
             LoadTrucks();
-            MJdatabase.OnCategoriesChanged += () => { if (!this.IsDisposed && this.IsHandleCreated) this.Invoke(new Action(LoadTrucks)); };
+            _categoriesHandler = () => { if (!this.IsDisposed && this.IsHandleCreated) this.Invoke(new Action(LoadTrucks)); };
+            MJdatabase.OnCategoriesChanged += _categoriesHandler;
 
-            InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
+            InitializeFormToggle();
             txtPlate.Leave += (s, e) => txtPlate.Text = txtPlate.Text.Trim().ToUpper();
+
+            if (!SessionContext.IsAdmin)
+            {
+                btnDelete.Visible = false;
+                tblUpdateDelete.ColumnStyles[0].Width = 100F;
+                tblUpdateDelete.ColumnStyles[1].Width = 0F;
+            }
+
+            btnPrint.Visible = false;
+            var menuActions = new ContextMenuStrip();
+            menuActions.Items.Add("📊 Export Table to CSV...", null, (s, e) => {
+                try { DataExportHelper.ExportToCsv(gridTrucks, "Truck_Vehicles", "Registered Trucks"); }
+                catch (Exception ex) { MessageBox.Show($"Export error: {ex.Message}", "Export Failed", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            });
+            menuActions.Items.Add("🖨 Print Truck Report", null, BtnPrint_Click);
+            var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
+            pnlGridActionsFlow.Controls.Add(btnActions);
+        }
+
+        protected override void OnHandleDestroyed(EventArgs e)
+        {
+            if (_categoriesHandler != null)
+            {
+                MJdatabase.OnCategoriesChanged -= _categoriesHandler;
+            }
+            base.OnHandleDestroyed(e);
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape && pnlForm.Visible)
+            {
+                SetFormVisibility(false);
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         private void InitializeFormToggle()
         {
             btnToggleForm = new Button
             {
-                Text = "📝 Input Form ▾",
-                Size = new Size(130, 30),
+                Text = "📝 + New / Form ▾",
+                Size = new Size(150, 30),
                 BackColor = Color.FromArgb(30, 41, 59),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -80,20 +118,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnCloseForm = new Button
             {
-                Text = "✖ Hide Form",
-                Dock = DockStyle.Top,
-                Height = 28,
+                Text = "✕ Close",
+                Dock = DockStyle.Right,
+                Width = 72,
+                Height = 30,
                 BackColor = Color.FromArgb(241, 245, 249),
                 ForeColor = Color.FromArgb(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 0, 8)
+                Cursor = Cursors.Hand
             };
             btnCloseForm.FlatAppearance.BorderSize = 0;
             btnCloseForm.Click += (s, e) => SetFormVisibility(false);
-            pnlForm.Controls.Add(btnCloseForm);
-            pnlForm.Controls.SetChildIndex(btnCloseForm, 0);
+            pnlFormHeaderBar.Controls.Add(btnCloseForm);
 
             SetFormVisibility(false);
         }
@@ -103,7 +140,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Visible = visible;
             if (tblMasterContent.ColumnStyles.Count > 0)
             {
-                tblMasterContent.ColumnStyles[0].Width = visible ? 580F : 0F;
+                tblMasterContent.ColumnStyles[0].Width = visible ? 480F : 0F;
                 tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
             }
             if (tblMasterContent.ColumnStyles.Count > 1)
@@ -113,10 +150,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 Input Form ▾";
+                btnToggleForm.Text = visible ? "✕ Hide Form ▴" : "📝 + New / Form ▾";
                 btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
                 btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
             }
+            MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
         public void RefreshData()
@@ -140,7 +178,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Remarks", HeaderText = "Condition Remarks", FillWeight = 28F, MinimumWidth = 135, ReadOnly = true });
         }
 
-                private void GridTrucks_SelectionChanged(object? sender, EventArgs e)
+        private void GridTrucks_SelectionChanged(object? sender, EventArgs e)
         {
             if (gridTrucks.SelectedRows.Count > 0 && gridTrucks.SelectedRows[0].DataBoundItem is Truck t)
             {
@@ -159,10 +197,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
-                private void BtnSave_Click(object? sender, EventArgs e)
+        private void BtnSave_Click(object? sender, EventArgs e)
         {
             try
             {
+                if (!SessionContext.IsAdmin)
+                {
+                    MessageBox.Show("Administrator privileges are required to add new vehicles.", "Access Denied", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
                 string plateNumber = txtPlate.Text.Trim();
                 if (string.IsNullOrWhiteSpace(plateNumber))
                 {
@@ -216,6 +260,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show($"Truck '{plateNumber}' ({truckType} - {capacity} crates) added successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadTrucks();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
@@ -223,10 +268,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
-                private void BtnUpdate_Click(object? sender, EventArgs e)
+        private void BtnUpdate_Click(object? sender, EventArgs e)
         {
             try
             {
+                if (!SessionContext.IsAdmin)
+                {
+                    MessageBox.Show("Administrator privileges are required to update vehicle records.", "Access Denied", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
                 if (selectedTruck == null)
                 {
                     MessageBox.Show("Please select a truck from the list on the right before clicking Update.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -283,6 +334,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show($"Truck '{plateNumber}' updated successfully! New capacity: {capacity} crates.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadTrucks();
+                SetFormVisibility(false);
             }
             catch (Exception ex)
             {
@@ -294,6 +346,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
+                if (!SessionContext.IsAdmin)
+                {
+                    MessageBox.Show("Administrator privileges are required to delete vehicle records.", "Access Denied", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
                 if (selectedTruck == null)
                 {
                     MessageBox.Show("Please select a truck to delete.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -334,7 +392,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ClearFields();
         }
 
-                        private void FilterGridData()
+        private void FilterGridData()
         {
             string q = txtGridSearch.Text.Trim().ToLowerInvariant();
             var filtered = string.IsNullOrEmpty(q)
@@ -386,25 +444,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 gridTrucks.ClearSelection();
                 gridTrucks.Rows[0].Selected = true;
-                isBindingForm = true;
-                selectedTruck = filtered[0];
-                txtPlate.Text = selectedTruck.PlateNumber;
-                cbType.SelectedItem = selectedTruck.TruckType;
-                cbCargoType.SelectedItem = string.IsNullOrEmpty(selectedTruck.CargoType) ? "Cold / Chilled" : selectedTruck.CargoType;
-                numCapacity.Value = selectedTruck.CapacityCrates;
-                cbStatus.SelectedItem = selectedTruck.Status;
-                txtRemarks.Text = selectedTruck.Remarks;
-                lblFormHeader.Text = "Truck Vehicle Details";
-                isBindingForm = false;
+                if (!pnlForm.Visible || selectedTruck == null)
+                {
+                    isBindingForm = true;
+                    selectedTruck = filtered[0];
+                    txtPlate.Text = selectedTruck.PlateNumber;
+                    cbType.SelectedItem = selectedTruck.TruckType;
+                    cbCargoType.SelectedItem = string.IsNullOrEmpty(selectedTruck.CargoType) ? "Cold / Chilled" : selectedTruck.CargoType;
+                    numCapacity.Value = selectedTruck.CapacityCrates;
+                    cbStatus.SelectedItem = selectedTruck.Status;
+                    txtRemarks.Text = selectedTruck.Remarks;
+                    lblFormHeader.Text = "Truck Vehicle Details";
+                    isBindingForm = false;
+                }
             }
             else
             {
-                isBindingForm = true;
-                selectedTruck = null;
-                txtPlate.Text = "";
-                txtRemarks.Text = "";
-                lblFormHeader.Text = "Truck Vehicle Details";
-                isBindingForm = false;
+                if (!pnlForm.Visible || selectedTruck == null)
+                {
+                    isBindingForm = true;
+                    selectedTruck = null;
+                    txtPlate.Text = "";
+                    txtRemarks.Text = "";
+                    lblFormHeader.Text = "Truck Vehicle Details";
+                    isBindingForm = false;
+                }
             }
             gridTrucks.SelectionChanged += GridTrucks_SelectionChanged;
         }
@@ -436,6 +500,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             selectedTruck = null;
             txtPlate.Text = "";
+            cbType.SelectedIndex = -1;
             cbType.Text = "";
             numCapacity.Value = 300;
             cbStatus.SelectedIndex = 0;
@@ -443,7 +508,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtRemarks.Text = "";
         }
 
-        private void LoadTrucks()
+        private async void LoadTrucks()
         {
             try
             {
@@ -471,12 +536,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 if (cbStatus.SelectedIndex < 0) cbStatus.SelectedIndex = 0;
 
-                allTrucks = MJdatabase.GetTrucks();
-                FilterGridData();
+                allTrucks = await MJdatabase.GetTrucksAsync();
+                if (!this.IsDisposed)
+                {
+                    FilterGridData();
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to load truck data: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (!this.IsDisposed)
+                {
+                    MessageBox.Show($"Failed to load truck data: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
         }
 
@@ -485,6 +556,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (selectedTruck == null)
             {
                 MessageBox.Show("Please select a vehicle from the trucks table first.", "Select Vehicle", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (selectedTruck.Status.Equals("Under Maintenance", StringComparison.OrdinalIgnoreCase) ||
+                selectedTruck.Status.Equals("Inactive", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show($"Cannot dispatch vehicle '{selectedTruck.PlateNumber}' because its current status is '{selectedTruck.Status}'.", "Vehicle Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -503,7 +581,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (selectedTruck != null) { Clipboard.SetText(selectedTruck.PlateNumber); ToastHelper.ShowToast(this, "Plate number copied ✓"); }
             });
             var itemDispatch = new ToolStripMenuItem("🚚 Dispatch This Vehicle", null, (s, e) => {
-                if (selectedTruck != null) OnDispatchTruckRequested?.Invoke(selectedTruck);
+                if (selectedTruck != null)
+                {
+                    if (selectedTruck.Status.Equals("Under Maintenance", StringComparison.OrdinalIgnoreCase) ||
+                        selectedTruck.Status.Equals("Inactive", StringComparison.OrdinalIgnoreCase))
+                    {
+                        MessageBox.Show($"Cannot dispatch vehicle '{selectedTruck.PlateNumber}' because its current status is '{selectedTruck.Status}'.", "Vehicle Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    OnDispatchTruckRequested?.Invoke(selectedTruck);
+                }
             });
             var itemEdit = new ToolStripMenuItem("✏️ Edit Vehicle Details", null, (s, e) => {
                 SetFormVisibility(true);
@@ -551,12 +638,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     MessageBox.Show($"Failed to update truck status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             });
-            var itemDelete = new ToolStripMenuItem("🗑️ Delete Vehicle Record", null, BtnDelete_Click);
+            var itemDelete = new ToolStripMenuItem("🗑️ Delete Vehicle Record", null, BtnDelete_Click)
+            {
+                Visible = SessionContext.IsAdmin
+            };
             var itemExportCsv = new ToolStripMenuItem("📊 Export Table to CSV...", null, (s, e) => {
-                DataExportHelper.ExportToCsv(gridTrucks, "Truck_Vehicles", "Registered Trucks");
+                try { DataExportHelper.ExportToCsv(gridTrucks, "Truck_Vehicles", "Registered Trucks"); }
+                catch (Exception ex) { MessageBox.Show($"Export error: {ex.Message}", "Export Failed", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             });
             var itemExportExcel = new ToolStripMenuItem("📑 Export Table to Excel (.xml)...", null, (s, e) => {
-                DataExportHelper.ExportToExcelXml(gridTrucks, "Truck_Vehicles", "Registered Trucks");
+                try { DataExportHelper.ExportToExcelXml(gridTrucks, "Truck_Vehicles", "Registered Trucks"); }
+                catch (Exception ex) { MessageBox.Show($"Export error: {ex.Message}", "Export Failed", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             });
 
             menu.Items.AddRange(new ToolStripItem[] { itemDetails, itemCopyPlate, new ToolStripSeparator(), itemDispatch, new ToolStripSeparator(), itemEdit, itemAvail, itemInactive, itemMaint, new ToolStripSeparator(), itemExportCsv, itemExportExcel, new ToolStripSeparator(), itemDelete });

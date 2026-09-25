@@ -44,7 +44,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             InitializeComponent();
             SetupGridColumns();
             LoadCategoryData();
-            gridItems.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0) SetFormVisibility(true); };
+            gridItems.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && gridItems.Rows[e.RowIndex].DataBoundItem is object item) RecordDetailsDialog.ShowDetails(this, item); };
             SetFormVisibility(false);
             UIThemeHelper.ApplyTheme(this);
         }
@@ -58,6 +58,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
                 btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
             }
+            MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
         public void RefreshData()
@@ -68,7 +69,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void InitializeComponent()
         {
             this.SuspendLayout();
-            this.AutoScroll = true;
+            this.AutoScroll = false;
             this.BackColor = Color.FromArgb(248, 250, 252);
             this.Dock = DockStyle.Fill;
             this.Font = new Font("Segoe UI", 9F);
@@ -174,7 +175,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Panel pnlVal = new Panel { Dock = DockStyle.Fill, AutoSize = true, Margin = new Padding(8, 0, 0, 0) };
             lblVal = new Label { Text = "Client Company Name:", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 8.5F) };
-            txtItemValue = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 9F) };
+            txtItemValue = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 9F), MaxLength = 150 };
             pnlVal.Controls.Add(txtItemValue);
             pnlVal.Controls.Add(lblVal);
 
@@ -194,13 +195,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Panel pnlCP = new Panel { Dock = DockStyle.Fill, AutoSize = true, Margin = new Padding(0, 0, 6, 0) };
             lblContactPerson = new Label { Text = "Contact Person Name:", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 8.5F) };
-            txtContactPerson = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 9F) };
+            txtContactPerson = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 9F), MaxLength = 100 };
             pnlCP.Controls.Add(txtContactPerson);
             pnlCP.Controls.Add(lblContactPerson);
 
             Panel pnlCN = new Panel { Dock = DockStyle.Fill, AutoSize = true, Margin = new Padding(6, 0, 6, 0) };
             lblContactNumber = new Label { Text = "Contact Phone / Mobile #:", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 8.5F) };
-            txtContactNumber = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 9F) };
+            txtContactNumber = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 9F), MaxLength = 20 };
+            txtContactNumber.KeyPress += (s, e) => {
+                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) && e.KeyChar != '+' && e.KeyChar != '-')
+                {
+                    e.Handled = true;
+                }
+            };
             pnlCN.Controls.Add(txtContactNumber);
             pnlCN.Controls.Add(lblContactNumber);
 
@@ -224,7 +231,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Panel pnlAddr = new Panel { Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 0, 0, 10) };
             lblAddress = new Label { Text = "Address / Branch Location:", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 8.5F) };
-            txtAddress = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 9F) };
+            txtAddress = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 9F), MaxLength = 250 };
             pnlAddr.Controls.Add(txtAddress);
             pnlAddr.Controls.Add(lblAddress);
 
@@ -371,6 +378,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtGridSearch = new TextBox
             {
                 Width = 220,
+                MaxLength = 100,
                 PlaceholderText = "Search name, contact, address...",
                 Margin = new Padding(0, 1, 4, 0)
             };
@@ -634,11 +642,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (isClient)
                 {
+                    string contactNumber = txtContactNumber.Text.Trim();
+                    if (!string.IsNullOrEmpty(contactNumber) && !SecurityHelper.IsValidPhone(contactNumber))
+                    {
+                        MessageBox.Show("Please enter a valid Philippine contact number (e.g. 09123456789 or +639123456789).", "Invalid Contact Number", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtContactNumber.Focus();
+                        return;
+                    }
                     ClientCompany client = new ClientCompany
                     {
                         CompanyName = val,
                         ContactPerson = txtContactPerson.Text.Trim(),
-                        ContactNumber = txtContactNumber.Text.Trim(),
+                        ContactNumber = contactNumber,
                         Address = txtAddress.Text.Trim()
                     };
                     MJdatabase.SaveClient(client);
@@ -680,11 +695,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 bool isClient = selectedCategory.Equals("Client Company", StringComparison.OrdinalIgnoreCase);
                 if (isClient)
                 {
+                    string contactNumber = txtContactNumber.Text.Trim();
+                    if (!string.IsNullOrEmpty(contactNumber) && !SecurityHelper.IsValidPhone(contactNumber))
+                    {
+                        MessageBox.Show("Please enter a valid Philippine contact number (e.g. 09123456789 or +639123456789).", "Invalid Contact Number", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtContactNumber.Focus();
+                        return;
+                    }
                     ClientCompany client = new ClientCompany
                     {
                         CompanyName = val,
                         ContactPerson = txtContactPerson.Text.Trim(),
-                        ContactNumber = txtContactNumber.Text.Trim(),
+                        ContactNumber = contactNumber,
                         Address = txtAddress.Text.Trim()
                     };
                     MJdatabase.SaveClient(client);

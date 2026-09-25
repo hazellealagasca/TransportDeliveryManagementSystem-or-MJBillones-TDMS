@@ -96,14 +96,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             txtLastName.Dock = DockStyle.Fill;
             txtLastName.Font = new Font("Segoe UI", 10F);
+            txtLastName.MaxLength = 100;
             txtLastName.Margin = new Padding(0, 0, 4, 8);
 
             txtFirstName.Dock = DockStyle.Fill;
             txtFirstName.Font = new Font("Segoe UI", 10F);
+            txtFirstName.MaxLength = 100;
             txtFirstName.Margin = new Padding(4, 0, 4, 8);
 
             txtMiddleName.Dock = DockStyle.Fill;
             txtMiddleName.Font = new Font("Segoe UI", 10F);
+            txtMiddleName.MaxLength = 100;
             txtMiddleName.Margin = new Padding(4, 0, 0, 8);
 
             tblNames.Controls.Add(lblLastName, 0, 0);
@@ -117,11 +120,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtContact.Dock = DockStyle.Top;
             txtContact.Font = new Font("Segoe UI", 10F);
             txtContact.PlaceholderText = "e.g. 09171234567";
+            txtContact.MaxLength = 20;
             txtContact.Margin = new Padding(0, 0, 0, 10);
 
             Label lblUsername = new Label { Text = "Desired Username *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
             txtUsername.Dock = DockStyle.Top;
             txtUsername.Font = new Font("Segoe UI", 10F);
+            txtUsername.MaxLength = 50;
             txtUsername.Margin = new Padding(0, 0, 0, 10);
 
             Label lblPassword = new Label { Text = "Password * (Minimum 6 characters, alphanumeric)", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
@@ -140,6 +145,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtPassword.Dock = DockStyle.Fill;
             txtPassword.Font = new Font("Segoe UI", 10F);
             txtPassword.PasswordChar = '●';
+            txtPassword.MaxLength = 128;
             txtPassword.Margin = new Padding(0, 0, 4, 0);
 
             btnShowPassword.Text = "👁️";
@@ -161,6 +167,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtConfirmPassword.Dock = DockStyle.Top;
             txtConfirmPassword.Font = new Font("Segoe UI", 10F);
             txtConfirmPassword.PasswordChar = '●';
+            txtConfirmPassword.MaxLength = 128;
             txtConfirmPassword.Margin = new Padding(0, 0, 0, 10);
 
             Label lblQuestion = new Label { Text = "Security Question (for offline account recovery) *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
@@ -182,6 +189,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtCustomQuestion.Dock = DockStyle.Top;
             txtCustomQuestion.Font = new Font("Segoe UI", 10F);
             txtCustomQuestion.PlaceholderText = "Type your custom security question here...";
+            txtCustomQuestion.MaxLength = 200;
             txtCustomQuestion.Visible = false;
             txtCustomQuestion.Margin = new Padding(0, 0, 0, 8);
 
@@ -193,6 +201,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Label lblAnswer = new Label { Text = "Security Answer *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
             txtSecurityAnswer.Dock = DockStyle.Top;
             txtSecurityAnswer.Font = new Font("Segoe UI", 10F);
+            txtSecurityAnswer.MaxLength = 200;
             txtSecurityAnswer.Margin = new Padding(0, 0, 0, 8);
 
             lblError.Dock = DockStyle.Top;
@@ -303,6 +312,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 ShowError("Please enter a valid Middle Name, or leave it blank.");
                 txtMiddleName.Focus();
+                return;
+            }
+
+            if (!SecurityHelper.IsValidPhone(contact))
+            {
+                ShowError("Please enter a valid Philippine mobile number (e.g. 09171234567 or +639171234567).");
+                txtContact.Focus();
                 return;
             }
 

@@ -125,7 +125,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Fill,
                 Multiline = true,
                 ScrollBars = ScrollBars.Vertical,
-                Font = UITheme.InputFont
+                Font = UITheme.InputFont,
+                MaxLength = 500
             };
 
             pnlContent.Controls.Add(txtReason);
@@ -183,9 +184,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void BtnConfirm_Click(object? sender, EventArgs e)
         {
             string reason = txtReason.Text.Trim();
-            if (string.IsNullOrWhiteSpace(reason))
+            if (string.IsNullOrWhiteSpace(reason) || reason.Length < 5)
             {
-                MessageBox.Show("A valid cancellation reason is required before proceeding.", "Reason Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("A valid cancellation reason (minimum 5 characters) is required before proceeding.", "Reason Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtReason.Focus();
                 this.DialogResult = DialogResult.None;
                 return;
