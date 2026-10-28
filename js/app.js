@@ -3,7 +3,7 @@
  * 100% Pixel-Accurate Replica of Screenshots 01 through 24 & WinForms Desktop Logic
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+function startMJBillonesApp() {
   const store = window.appStore;
   const auth = window.auth;
   const toast = window.toast;
@@ -3167,4 +3167,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   init();
   initHeaderEvents();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startMJBillonesApp);
+} else {
+  startMJBillonesApp();
+}
