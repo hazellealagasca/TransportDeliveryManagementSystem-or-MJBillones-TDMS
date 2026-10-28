@@ -1,6 +1,6 @@
 /**
- * Interactive Analog Clock Time Picker Component
- * Matches the WinForms AnalogClockTimePickerDialog functionality
+ * Exact Analog Clock Departure Time Picker
+ * Replicates 05 - Departure Time Picker.png
  */
 
 class AnalogClockPicker {
@@ -11,60 +11,53 @@ class AnalogClockPicker {
     this.minute = 0;
     this.period = 'AM';
     this.mode = 'hour'; // 'hour' or 'minute'
+    this.onSelectedCallback = null;
     this.init();
   }
 
   init() {
-    // Create modal DOM structure
     const modalHtml = `
-      <div id="analog-clock-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-overlay hidden">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all border border-slate-200">
-          <!-- Header -->
-          <div class="bg-[#B4182C] px-6 py-4 text-white flex items-center justify-between">
-            <div class="flex items-center space-x-2">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              <h3 class="font-bold text-lg">Select Time (Analog Clock)</h3>
-            </div>
-            <button id="clock-close-btn" class="text-white hover:bg-[#8B1323] p-1.5 rounded-lg transition-colors">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
+      <div id="analog-clock-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 hidden select-none">
+        <div class="bg-white rounded-md shadow-2xl w-full max-w-[280px] overflow-hidden border border-slate-300">
+          <!-- Window Header -->
+          <div class="bg-white px-3 py-1.5 flex items-center justify-between border-b border-slate-200">
+            <span class="text-xs text-slate-600 font-medium">Select Departure Time</span>
+            <button id="clock-close-x" class="text-slate-400 hover:text-slate-700 text-sm leading-none">✕</button>
           </div>
 
-          <!-- Time Display & Mode Switches -->
-          <div class="p-6">
-            <div class="flex items-center justify-center space-x-3 mb-6 bg-slate-50 p-3 rounded-xl border border-slate-200">
-              <div class="flex items-center text-4xl font-extrabold text-slate-800 tracking-tight">
-                <button id="clock-btn-hour" class="px-2 py-1 rounded-lg text-[#B4182C] bg-red-50 hover:bg-red-100 transition">08</button>
-                <span class="text-slate-400 mx-1">:</span>
-                <button id="clock-btn-minute" class="px-2 py-1 rounded-lg text-slate-600 hover:bg-slate-200 transition">00</button>
+          <!-- Crimson Header Display -->
+          <div class="bg-[#B4182C] px-5 py-3 text-white flex items-center justify-between">
+            <div class="flex items-center text-4xl font-bold tracking-tight">
+              <span id="clock-disp-hour" class="cursor-pointer hover:opacity-90">08</span>
+              <span class="opacity-70 mx-1">:</span>
+              <span id="clock-disp-minute" class="cursor-pointer opacity-70 hover:opacity-100">00</span>
+            </div>
+            <div class="flex flex-col text-xs font-bold rounded overflow-hidden border border-white/30">
+              <button id="clock-set-am" class="px-2 py-0.5 bg-white text-[#B4182C]">AM</button>
+              <button id="clock-set-pm" class="px-2 py-0.5 bg-[#8B1323] text-white">PM</button>
+            </div>
+          </div>
+
+          <!-- Dial Body -->
+          <div class="p-3 bg-white">
+            <div id="clock-dial-face" class="w-[200px] h-[200px] rounded-full bg-slate-50 border border-slate-200 relative mx-auto cursor-pointer">
+              <div class="w-2.5 h-2.5 bg-[#B4182C] rounded-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none"></div>
+              <div id="clock-pointer-line" class="absolute top-1/2 left-1/2 w-0.5 bg-[#B4182C] origin-top pointer-events-none z-10" style="height: 70px; transform: rotate(240deg);">
+                <div id="clock-hand-dot" class="w-6 h-6 rounded-full bg-[#B4182C] text-white text-[11px] font-bold flex items-center justify-center absolute -bottom-3 left-1/2 -translate-x-1/2">
+                  8
+                </div>
               </div>
-              <div class="flex flex-col space-y-1">
-                <button id="clock-period-am" class="px-2.5 py-1 text-xs font-bold rounded-md bg-[#B4182C] text-white">AM</button>
-                <button id="clock-period-pm" class="px-2.5 py-1 text-xs font-bold rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300">PM</button>
-              </div>
+              <div id="clock-dial-hours" class="w-full h-full relative"></div>
             </div>
 
-            <!-- Clock Face -->
-            <div id="clock-interactive-face" class="clock-face relative mb-6">
-              <div class="clock-center-dot"></div>
-              <div id="clock-hand-hour" class="clock-hand hour"></div>
-              <div id="clock-hand-minute" class="clock-hand minute"></div>
-              <!-- Number markers rendered dynamically -->
-              <div id="clock-dial-numbers" class="w-full h-full relative"></div>
-            </div>
-
-            <!-- Quick Presets -->
-            <div class="grid grid-cols-4 gap-2 mb-6 text-xs">
-              <button class="clock-quick-btn py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium" data-time="01:00 AM">01:00 AM</button>
-              <button class="clock-quick-btn py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium" data-time="08:00 AM">08:00 AM</button>
-              <button class="clock-quick-btn py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium" data-time="01:00 PM">01:00 PM</button>
-              <button class="clock-quick-btn py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium" data-time="08:00 PM">08:00 PM</button>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="flex items-center space-x-3">
-              <button id="clock-cancel-btn" class="w-1/2 py-2.5 px-4 rounded-xl font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">Cancel</button>
-              <button id="clock-confirm-btn" class="w-1/2 py-2.5 px-4 rounded-xl font-semibold text-white bg-[#B4182C] hover:bg-[#981323] transition shadow-md shadow-red-200">Confirm Time</button>
+            <!-- Footer Buttons -->
+            <div class="flex items-center justify-end space-x-2 mt-4 pt-2 border-t border-slate-100">
+              <button id="clock-btn-cancel" class="px-4 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 rounded">
+                CANCEL
+              </button>
+              <button id="clock-btn-set" class="px-4 py-1.5 text-xs font-bold text-white bg-[#B4182C] hover:bg-[#981323] rounded">
+                SET TIME
+              </button>
             </div>
           </div>
         </div>
@@ -73,137 +66,96 @@ class AnalogClockPicker {
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     this.modal = document.getElementById('analog-clock-modal');
-    this.renderDialNumbers();
+    this.renderHours();
     this.bindEvents();
   }
 
-  renderDialNumbers() {
-    const dial = document.getElementById('clock-dial-numbers');
-    dial.innerHTML = '';
-    const radius = 88; // radius in px from center (110, 110)
-    const centerX = 110;
-    const centerY = 110;
+  renderHours() {
+    const container = document.getElementById('clock-dial-hours');
+    container.innerHTML = '';
+    const radius = 72;
+    const center = 100;
 
     for (let i = 1; i <= 12; i++) {
       const angle = (i * 30 - 90) * (Math.PI / 180);
-      const x = centerX + radius * Math.cos(angle);
-      const y = centerY + radius * Math.sin(angle);
+      const x = center + radius * Math.cos(angle);
+      const y = center + radius * Math.sin(angle);
 
-      const numEl = document.createElement('div');
-      numEl.className = 'clock-number cursor-pointer hover:text-[#B4182C]';
-      numEl.innerText = i;
-      numEl.style.left = `${x}px`;
-      numEl.style.top = `${y}px`;
-      numEl.addEventListener('click', (e) => {
+      const num = document.createElement('div');
+      num.className = 'clock-num text-xs font-semibold text-slate-700 hover:text-[#B4182C]';
+      num.innerText = i;
+      num.style.left = `${x}px`;
+      num.style.top = `${y}px`;
+      num.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (this.mode === 'hour') {
-          this.hour = i;
-          this.mode = 'minute';
-        } else {
-          this.minute = (i === 12 ? 0 : i * 5);
-        }
-        this.updateClockUI();
+        this.hour = i;
+        this.updateUI();
       });
-      dial.appendChild(numEl);
+      container.appendChild(num);
     }
   }
 
   bindEvents() {
-    const closeBtn = document.getElementById('clock-close-btn');
-    const cancelBtn = document.getElementById('clock-cancel-btn');
-    const confirmBtn = document.getElementById('clock-confirm-btn');
-    const btnHour = document.getElementById('clock-btn-hour');
-    const btnMinute = document.getElementById('clock-btn-minute');
-    const btnAm = document.getElementById('clock-period-am');
-    const btnPm = document.getElementById('clock-period-pm');
-    const clockFace = document.getElementById('clock-interactive-face');
+    document.getElementById('clock-close-x').addEventListener('click', () => this.close());
+    document.getElementById('clock-btn-cancel').addEventListener('click', () => this.close());
 
-    closeBtn.addEventListener('click', () => this.close());
-    cancelBtn.addEventListener('click', () => this.close());
-
-    confirmBtn.addEventListener('click', () => {
+    document.getElementById('clock-btn-set').addEventListener('click', () => {
+      const timeStr = this.getFormattedTime();
       if (this.targetInput) {
-        this.targetInput.value = this.getFormattedTime();
+        this.targetInput.value = timeStr;
         this.targetInput.dispatchEvent(new Event('change'));
+      }
+      if (this.onSelectedCallback) {
+        this.onSelectedCallback(timeStr);
       }
       this.close();
     });
 
-    btnHour.addEventListener('click', () => {
-      this.mode = 'hour';
-      this.updateClockUI();
-    });
-
-    btnMinute.addEventListener('click', () => {
-      this.mode = 'minute';
-      this.updateClockUI();
-    });
-
-    btnAm.addEventListener('click', () => {
+    document.getElementById('clock-set-am').addEventListener('click', () => {
       this.period = 'AM';
-      this.updateClockUI();
+      this.updateUI();
     });
 
-    btnPm.addEventListener('click', () => {
+    document.getElementById('clock-set-pm').addEventListener('click', () => {
       this.period = 'PM';
-      this.updateClockUI();
+      this.updateUI();
     });
 
-    // Handle clicking anywhere on clock face to rotate hand
-    clockFace.addEventListener('click', (e) => {
-      const rect = clockFace.getBoundingClientRect();
-      const clickX = e.clientX - rect.left - 110;
-      const clickY = e.clientY - rect.top - 110;
-
-      let angle = Math.atan2(clickY, clickX) * (180 / Math.PI) + 90;
+    // Clicking anywhere on dial face
+    const dial = document.getElementById('clock-dial-face');
+    dial.addEventListener('click', (e) => {
+      const rect = dial.getBoundingClientRect();
+      const x = e.clientX - rect.left - 100;
+      const y = e.clientY - rect.top - 100;
+      let angle = Math.atan2(y, x) * (180 / Math.PI) + 90;
       if (angle < 0) angle += 360;
 
-      if (this.mode === 'hour') {
-        let h = Math.round(angle / 30);
-        if (h === 0) h = 12;
-        this.hour = h;
-        this.mode = 'minute';
-      } else {
-        let m = Math.round(angle / 6);
-        if (m === 60) m = 0;
-        this.minute = m;
-      }
-      this.updateClockUI();
-    });
-
-    // Preset buttons
-    document.querySelectorAll('.clock-quick-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const timeStr = btn.getAttribute('data-time');
-        this.parseTime(timeStr);
-        this.updateClockUI();
-      });
+      let h = Math.round(angle / 30);
+      if (h === 0) h = 12;
+      this.hour = h;
+      this.updateUI();
     });
   }
 
-  open(inputElement) {
+  open(inputElement, callback = null) {
     this.targetInput = inputElement;
+    this.onSelectedCallback = callback;
     if (inputElement && inputElement.value) {
       this.parseTime(inputElement.value);
-    } else {
-      this.parseTime('08:00 AM');
     }
-    this.mode = 'hour';
-    this.updateClockUI();
+    this.updateUI();
     this.modal.classList.remove('hidden');
   }
 
   close() {
     this.modal.classList.add('hidden');
-    this.targetInput = null;
   }
 
   parseTime(str) {
-    if (!str) return;
     const match = str.trim().match(/(\d+):(\d+)\s*(AM|PM)?/i);
     if (match) {
-      this.hour = parseInt(match[1], 10);
-      this.minute = parseInt(match[2], 10);
+      this.hour = parseInt(match[1], 10) || 8;
+      this.minute = parseInt(match[2], 10) || 0;
       this.period = match[3] ? match[3].toUpperCase() : 'AM';
     }
   }
@@ -214,39 +166,25 @@ class AnalogClockPicker {
     return `${h}:${m} ${this.period}`;
   }
 
-  updateClockUI() {
-    const btnHour = document.getElementById('clock-btn-hour');
-    const btnMinute = document.getElementById('clock-btn-minute');
-    const btnAm = document.getElementById('clock-period-am');
-    const btnPm = document.getElementById('clock-period-pm');
-    const handHour = document.getElementById('clock-hand-hour');
-    const handMinute = document.getElementById('clock-hand-minute');
+  updateUI() {
+    document.getElementById('clock-disp-hour').innerText = String(this.hour).padStart(2, '0');
+    document.getElementById('clock-disp-minute').innerText = String(this.minute).padStart(2, '0');
 
-    btnHour.innerText = String(this.hour).padStart(2, '0');
-    btnMinute.innerText = String(this.minute).padStart(2, '0');
-
-    if (this.mode === 'hour') {
-      btnHour.className = 'px-2 py-1 rounded-lg text-[#B4182C] bg-red-50 ring-2 ring-[#B4182C] font-bold';
-      btnMinute.className = 'px-2 py-1 rounded-lg text-slate-600 hover:bg-slate-200 transition';
-    } else {
-      btnMinute.className = 'px-2 py-1 rounded-lg text-[#B4182C] bg-red-50 ring-2 ring-[#B4182C] font-bold';
-      btnHour.className = 'px-2 py-1 rounded-lg text-slate-600 hover:bg-slate-200 transition';
-    }
+    const btnAm = document.getElementById('clock-set-am');
+    const btnPm = document.getElementById('clock-set-pm');
 
     if (this.period === 'AM') {
-      btnAm.className = 'px-2.5 py-1 text-xs font-bold rounded-md bg-[#B4182C] text-white';
-      btnPm.className = 'px-2.5 py-1 text-xs font-bold rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300';
+      btnAm.className = 'px-2 py-0.5 bg-white text-[#B4182C] font-bold';
+      btnPm.className = 'px-2 py-0.5 bg-[#8B1323] text-white font-medium hover:bg-[#720E1C]';
     } else {
-      btnPm.className = 'px-2.5 py-1 text-xs font-bold rounded-md bg-[#B4182C] text-white';
-      btnAm.className = 'px-2.5 py-1 text-xs font-bold rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300';
+      btnPm.className = 'px-2 py-0.5 bg-white text-[#B4182C] font-bold';
+      btnAm.className = 'px-2 py-0.5 bg-[#8B1323] text-white font-medium hover:bg-[#720E1C]';
     }
 
-    // Calculate rotation angles
-    const hourAngle = (this.hour % 12) * 30 + (this.minute / 60) * 30;
-    const minAngle = this.minute * 6;
-
-    handHour.style.transform = `rotate(${hourAngle}deg)`;
-    handMinute.style.transform = `rotate(${minAngle}deg)`;
+    const angle = (this.hour % 12) * 30 + 180;
+    const line = document.getElementById('clock-pointer-line');
+    line.style.transform = `rotate(${angle}deg)`;
+    document.getElementById('clock-hand-dot').innerText = this.hour;
   }
 }
 

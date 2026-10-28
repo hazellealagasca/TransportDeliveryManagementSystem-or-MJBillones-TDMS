@@ -3,243 +3,260 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>M.J. Billones Transport Service - Web Logistics Management</title>
+  <title>M.J. Billones Transport Service - Delivery Management System</title>
   <link rel="icon" type="image/x-icon" href="assets/app.ico">
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Custom Styles -->
+  <!-- Custom Exact Replica Stylesheet -->
   <link rel="stylesheet" href="css/app.css">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              crimson: '#B4182C',
-              burgundy: '#6B0F1B',
-              dark: '#181E25',
-              charcoal: '#242D38'
-            }
-          }
-        }
-      }
-    }
-  </script>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+<body class="bg-[#F4F6F9] text-slate-800 antialiased min-h-screen flex flex-col select-none">
 
-  <!-- ================= AUTH CONTAINER (LOGIN VIEW) ================= -->
-  <div id="auth-container" class="relative min-h-screen flex items-center justify-center p-4 bg-slate-900 overflow-hidden">
-    <!-- Blurred Background Image -->
-    <div class="absolute inset-0 bg-cover bg-center opacity-40 scale-105 filter blur-sm" style="background-image: url('assets/login_bg.jpg');"></div>
-    <div class="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent"></div>
+  <!-- ================= AUTH CONTAINER (EXACT DESKTOP LOGIN REPLICA) ================= -->
+  <div id="auth-container" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0F172A] overflow-hidden select-none">
+    
+    <!-- Top-Right Window Controls -->
+    <div class="absolute top-3 right-4 flex items-center space-x-2 text-slate-400 text-xs z-20">
+      <span class="hover:text-white cursor-pointer px-2 py-1 font-bold">─</span>
+      <span class="hover:text-white cursor-pointer px-2 py-1">□</span>
+      <span class="hover:text-red-500 cursor-pointer px-2 py-1 font-bold">✕</span>
+    </div>
 
-    <!-- Login Box -->
-    <div class="relative z-10 w-full max-w-md bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-white/20">
-      <div class="text-center mb-6">
-        <img src="assets/logo_clean.png" onerror="this.onerror=null; this.src='assets/logo.png';" alt="M.J. Billones Logo" class="h-20 mx-auto object-contain drop-shadow mb-3">
-        <h2 class="text-2xl font-black text-[#6B0F1B] tracking-tight">M.J. BILLONES</h2>
-        <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5">Transport & Delivery Management</p>
+    <!-- Background Image with Ambient Glow and Dark Blue Overlay -->
+    <div class="absolute inset-0 bg-cover bg-center opacity-30 filter blur-[2px] scale-105" style="background-image: url('assets/login_bg.jpg');"></div>
+    <div class="absolute inset-0 bg-gradient-to-t from-[#0A0F1D] via-[#0F172A]/85 to-transparent"></div>
+
+    <!-- Frosted Glass Card with Crimson Neon Glow -->
+    <div class="relative z-10 w-full max-w-[500px] bg-[#0D1526]/90 backdrop-blur-md rounded-3xl p-8 border-2 border-[#E11D48] shadow-[0_0_40px_rgba(239,68,68,0.4),0_25px_50px_-12px_rgba(0,0,0,0.8)] text-center">
+      
+      <!-- Top Frosted White Badge with Eagle Logo -->
+      <div class="w-full max-w-[340px] h-[115px] mx-auto mb-5 bg-white/95 rounded-2xl p-3 shadow-md flex items-center justify-center border border-white/40">
+        <img src="assets/logo_clean.png" onerror="this.onerror=null; this.src='assets/logo.png';" alt="M.J. Billones Logo" class="max-h-full max-w-full object-contain">
       </div>
 
-      <!-- Error Banner -->
-      <div id="login-error" class="hidden mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl flex items-center"></div>
+      <!-- Title & Subtitle -->
+      <h1 class="text-2xl font-bold text-white tracking-tight mb-1">Login</h1>
+      <p class="text-xs text-[#C3D0E1] mb-5">Welcome back! Please login to your account</p>
+
+      <!-- Alert Box -->
+      <div id="login-error" class="hidden mb-4 p-2.5 bg-red-950/80 border border-red-500 text-red-200 text-xs font-semibold rounded-lg text-center"></div>
 
       <!-- Login Form -->
-      <form id="login-form" class="space-y-4">
+      <form id="login-form" class="space-y-4 text-left">
         <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Username</label>
-          <input type="text" id="login-username" value="admin" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#B4182C] text-sm font-semibold transition bg-slate-50/50" placeholder="Enter username">
-        </div>
-
-        <div>
-          <div class="flex justify-between items-center mb-1">
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
-            <button type="button" id="forgot-password-link" class="text-xs font-semibold text-[#B4182C] hover:underline">Forgot password?</button>
+          <label class="block text-xs font-semibold text-[#D7E1EE] mb-1.5 ml-1">Username</label>
+          <div class="relative flex items-center">
+            <span class="absolute left-3.5 text-slate-400 text-sm">👤</span>
+            <input type="text" id="login-username" value="admin" required class="w-full pl-10 pr-4 py-2.5 rounded-full bg-[#161F30] border border-slate-700 focus:border-red-500 focus:outline-none text-white text-sm transition placeholder-slate-500" placeholder="Enter your username">
           </div>
-          <input type="password" id="login-password" value="admin123" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#B4182C] text-sm font-semibold transition bg-slate-50/50" placeholder="Enter password">
         </div>
 
-        <button type="submit" class="w-full py-3.5 px-4 rounded-xl font-black text-sm text-white bg-gradient-to-r from-[#8B1323] to-[#B4182C] hover:from-[#6B0F1B] hover:to-[#981323] transition-all shadow-lg shadow-red-900/30 active:scale-[0.98]">
-          Log In to System
+        <div>
+          <label class="block text-xs font-semibold text-[#D7E1EE] mb-1.5 ml-1">Password</label>
+          <div class="relative flex items-center">
+            <span class="absolute left-3.5 text-slate-400 text-sm">🔒</span>
+            <input type="password" id="login-password" value="admin123" required class="w-full pl-10 pr-10 py-2.5 rounded-full bg-[#161F30] border border-slate-700 focus:border-red-500 focus:outline-none text-white text-sm transition placeholder-slate-500" placeholder="Enter password">
+            <button type="button" id="btn-toggle-login-pass" class="absolute right-3.5 text-slate-400 hover:text-white text-sm focus:outline-none">👁</button>
+          </div>
+        </div>
+
+        <!-- Remember Me & Forgot Password -->
+        <div class="flex items-center justify-between text-xs px-1 pt-1">
+          <label class="flex items-center text-[#D7E1EE] cursor-pointer space-x-2">
+            <input type="checkbox" id="remember-me" checked class="w-4 h-4 rounded text-red-600 focus:ring-0 bg-[#161F30] border-slate-600 cursor-pointer">
+            <span>Remember Me</span>
+          </label>
+          <button type="button" id="forgot-password-link" class="text-[#FA7878] hover:text-white hover:underline font-medium">Forgot Password?</button>
+        </div>
+
+        <!-- Gradient Crimson Login Button -->
+        <button type="submit" class="w-full py-3 px-4 rounded-xl font-bold text-sm text-white tracking-wider bg-gradient-to-b from-[#D72222] to-[#991B1B] hover:brightness-110 active:brightness-95 transition shadow-[0_4px_14px_rgba(185,28,28,0.4)] border border-white/20 mt-2">
+          LOGIN
         </button>
       </form>
 
-      <!-- Quick Demo Access Buttons -->
-      <div class="mt-6 pt-5 border-t border-slate-100">
-        <p class="text-[11px] font-bold text-slate-400 text-center uppercase tracking-wider mb-3">Quick Demo Access (One-Click)</p>
+      <!-- Demo Quick Sign-in Section -->
+      <div class="mt-4 pt-3 border-t border-slate-800">
+        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Demo Quick Sign-In</p>
         <div class="grid grid-cols-2 gap-2">
-          <button id="demo-login-admin" class="py-2 px-3 text-xs font-bold rounded-xl border border-red-200 bg-red-50 text-[#B4182C] hover:bg-red-100 transition flex items-center justify-center space-x-1">
-            <span>👑 Owner / Admin</span>
+          <button id="demo-login-admin" class="py-1 px-2 text-xs font-semibold rounded-lg border border-red-900 bg-red-950/60 text-red-300 hover:bg-red-900/60 transition">
+            👑 Admin / Owner
           </button>
-          <button id="demo-login-staff" class="py-2 px-3 text-xs font-bold rounded-xl border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 transition flex items-center justify-center space-x-1">
-            <span>📋 Office Staff</span>
+          <button id="demo-login-staff" class="py-1 px-2 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700 transition">
+            📋 Staff / Dispatcher
           </button>
         </div>
       </div>
+
+      <!-- Lock Notice -->
+      <div class="mt-4 flex items-center justify-center space-x-1.5 text-xs text-[#AFBED2]">
+        <span>🔒</span>
+        <span>Authorized Personnel Only</span>
+      </div>
+
+      <!-- Copyright -->
+      <p class="text-[10px] text-slate-500 mt-2">© 2026 M.J. Billones Transport Service. All rights reserved.</p>
     </div>
   </div>
 
-  <!-- Forgot Password Modal -->
-  <div id="forgot-password-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-overlay hidden">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-200">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold text-lg text-slate-800">Account Recovery</h3>
-        <button id="forgot-modal-close" class="text-slate-400 hover:text-slate-700 text-lg">✕</button>
+  <!-- ================= DESKTOP APPLICATION SHELL ================= -->
+  <div id="app-container" class="hidden flex-1 flex flex-col min-h-screen">
+    
+    <!-- 1. Exact Windows-Style Titlebar -->
+    <div class="window-titlebar flex-shrink-0 select-none">
+      <div class="flex items-center space-x-2">
+        <img src="assets/logo_clean.png" onerror="this.onerror=null; this.src='assets/logo.png';" alt="Eagle Icon" class="w-4 h-4 object-contain">
+        <span class="text-slate-700 dark:text-slate-200 font-medium text-xs">M.J. Billones Transport Service - Delivery Management System</span>
       </div>
-      <form id="forgot-password-form" class="space-y-4">
-        <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Username</label>
-          <input type="text" id="forgot-username" value="admin" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Security Question Answer</label>
-          <p class="text-xs text-slate-400 mb-1">Default question: Mother's maiden name (Hint: teresa)</p>
-          <input type="text" id="forgot-answer" placeholder="Enter answer" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">New Password</label>
-          <input type="password" id="forgot-newpass" placeholder="Enter new password" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm">
-        </div>
-        <button type="submit" class="w-full py-2.5 bg-[#B4182C] hover:bg-[#981323] text-white font-bold rounded-xl text-sm transition">
-          Reset Password
+      <div class="flex items-center space-x-3 text-slate-400 text-xs">
+        <span class="hover:text-slate-700 dark:hover:text-white cursor-pointer px-1">─</span>
+        <span class="hover:text-slate-700 dark:hover:text-white cursor-pointer px-1">□</span>
+        <span class="hover:text-red-600 cursor-pointer px-1 font-bold">✕</span>
+      </div>
+    </div>
+
+    <!-- 2. Dark Navy App Header (Matching MainForm.Header.cs) -->
+    <header class="h-[52px] bg-[#0F172A] border-b border-[#1E293B] px-4 flex items-center justify-between flex-shrink-0 z-30 select-none">
+      
+      <!-- Left: Menu Toggle + Title + User Badge -->
+      <div class="flex items-center space-x-3">
+        <button id="btn-toggle-pin" class="w-8 h-8 rounded bg-[#1E293B] hover:bg-[#334155] text-white flex items-center justify-center font-bold text-base transition" title="Toggle Sidebar Pin">
+          ≡
         </button>
-      </form>
-    </div>
-  </div>
 
-  <!-- ================= APP CONTAINER (AUTHENTICATED) ================= -->
-  <div id="app-container" class="hidden flex-1 flex flex-col lg:flex-row min-h-screen">
-
-    <!-- SIDEBAR -->
-    <aside id="app-sidebar" class="w-full lg:w-64 bg-[#181E25] text-slate-300 flex-shrink-0 flex flex-col justify-between border-r border-[#242D38]">
-      <div>
-        <!-- Brand Header -->
-        <div class="p-5 border-b border-[#242D38] flex items-center space-x-3">
-          <img src="assets/logo_clean.png" onerror="this.onerror=null; this.src='assets/logo.png';" alt="Logo" class="w-10 h-10 object-contain drop-shadow">
-          <div>
-            <h2 class="text-white font-black text-sm tracking-wide leading-tight">M.J. BILLONES</h2>
-            <p class="text-[10px] text-red-400 font-bold uppercase tracking-wider">Transport Service</p>
+        <div class="flex flex-col">
+          <div class="text-white text-xs font-bold leading-tight flex items-center space-x-2">
+            <span>M.J. Billones Transport Delivery System</span>
+          </div>
+          <!-- User Profile Badge (Clickable) -->
+          <div id="header-user-badge" class="flex items-center space-x-1.5 cursor-pointer text-[#94A3B8] hover:text-white transition mt-0.5" title="View Profile & Credentials">
+            <span class="w-4 h-4 rounded-full bg-[#B4182C] text-white text-[9px] font-bold flex items-center justify-center">HL</span>
+            <span id="header-user-info" class="text-[11px] font-medium">Hazel Lagasca</span>
+            <span class="text-[10px] bg-slate-800 text-red-300 px-1 rounded border border-red-900/60 font-semibold">Admin</span>
           </div>
         </div>
-
-        <!-- Navigation Links -->
-        <nav class="p-4 space-y-1 text-sm font-medium">
-          <a href="#" class="nav-link flex items-center px-4 py-3 rounded-xl" data-view="dashboard">
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-            <span>Dashboard</span>
-          </a>
-
-          <div class="pt-2 pb-1 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Operations Hub</div>
-          <a href="#" class="nav-link flex items-center px-4 py-3 rounded-xl" data-view="loading">
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-            <span>Loading Orders</span>
-          </a>
-          <a href="#" class="nav-link flex items-center px-4 py-3 rounded-xl" data-view="dispatch">
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            <span>Dispatch Trips</span>
-          </a>
-          <a href="#" class="nav-link flex items-center px-4 py-3 rounded-xl" data-view="trip-reports">
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <span>Trip Reports</span>
-          </a>
-          <a href="#" class="nav-link flex items-center px-4 py-3 rounded-xl" data-view="incidents">
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-            <span>Incident Reports</span>
-          </a>
-
-          <div class="pt-2 pb-1 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fleet & Resources</div>
-          <a href="#" class="nav-link flex items-center px-4 py-3 rounded-xl" data-view="trucks">
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"></path></svg>
-            <span>Truck Vehicles</span>
-          </a>
-          <a href="#" class="nav-link flex items-center px-4 py-3 rounded-xl" data-view="crew">
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-            <span>Crew Directory</span>
-          </a>
-
-          <div class="pt-2 pb-1 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Financials & Rates</div>
-          <a href="#" class="nav-link flex items-center px-4 py-3 rounded-xl" data-view="billing">
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path></svg>
-            <span>Billing & Invoices</span>
-          </a>
-          <a href="#" class="nav-link flex items-center px-4 py-3 rounded-xl" data-view="collections">
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-            <span>Receipts & Collections</span>
-          </a>
-          <a href="#" class="nav-link flex items-center px-4 py-3 rounded-xl" data-view="rate-matrix">
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-            <span>Rate Matrix</span>
-          </a>
-
-          <div class="pt-2 pb-1 px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">System & Auditing</div>
-          <a href="#" class="nav-link flex items-center px-4 py-3 rounded-xl" data-view="reports">
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-            <span>Audit Reports</span>
-          </a>
-          <a href="#" class="nav-link admin-only flex items-center px-4 py-3 rounded-xl" data-view="users">
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-            <span>User Accounts</span>
-          </a>
-          <a href="#" class="nav-link flex items-center px-4 py-3 rounded-xl" data-view="settings">
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-            <span>Settings & Backup</span>
-          </a>
-        </nav>
       </div>
 
-      <!-- Bottom User Profile Pill -->
-      <div class="p-4 border-t border-[#242D38]">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-3">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#6B0F1B] to-[#B4182C] text-white flex items-center justify-center font-black text-sm">
-              MJ
-            </div>
-            <div>
-              <div id="header-user-fullname" class="text-xs font-bold text-white truncate max-w-[110px]">User</div>
-              <div id="header-user-role" class="text-[10px] text-red-400 font-semibold truncate max-w-[110px]">Role</div>
-            </div>
-          </div>
-          <button id="btn-logout" class="p-2 text-slate-400 hover:text-white hover:bg-[#242D38] rounded-lg transition" title="Log Out">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+      <!-- Center: Global Search Box -->
+      <div class="hidden md:flex items-center flex-1 max-w-md mx-6 relative">
+        <div class="w-full flex items-center bg-white rounded overflow-hidden shadow-sm border border-slate-300">
+          <input type="text" id="global-search-input" placeholder="🔍 Search order #, employee, truck... (Press Enter)" class="w-full px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none">
+          <button id="btn-global-search" class="bg-[#B4182C] hover:bg-[#981323] text-white px-3 py-1.5 text-xs font-bold transition flex items-center justify-center">
+            SEARCH
           </button>
         </div>
       </div>
-    </aside>
 
-    <!-- MAIN APP AREA -->
-    <div class="flex-1 flex flex-col min-w-0 bg-[#F4F6F9]">
-      <!-- TOP BAR -->
-      <header class="bg-white border-b border-slate-200/80 px-6 py-3.5 flex items-center justify-between shadow-xs sticky top-0 z-30">
-        <div class="flex items-center space-x-4 flex-1 max-w-md">
-          <div class="relative w-full">
-            <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            <input type="text" id="global-search-input" placeholder="Search dispatches, trucks, crew, invoices..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#B4182C] focus:bg-white transition">
-          </div>
+      <!-- Right: KPI Status Badges & Action Buttons -->
+      <div class="flex items-center space-x-2">
+        <div class="hidden lg:flex items-center space-x-1.5 mr-2">
+          <button class="kpi-pill kpi-pill-scheduled" id="kpi-pill-scheduled" title="View Scheduled Orders">
+            <span>⏳</span> <span id="kpi-scheduled-text">2 scheduled</span>
+          </button>
+          <button class="kpi-pill kpi-pill-transit" id="kpi-pill-transit" title="View Active In-Transit Orders">
+            <span>🚚</span> <span id="kpi-transit-text">2 in transit</span>
+          </button>
+          <button class="kpi-pill kpi-pill-unpaid" id="kpi-pill-unpaid" title="View Pending Unpaid Invoices">
+            <span>📄</span> <span id="kpi-unpaid-text">1 unpaid</span>
+          </button>
+          <button class="kpi-pill kpi-pill-alert" id="kpi-pill-alert" title="System Alerts & Notifications">
+            <span>🔔</span> <span id="kpi-alerts-text">19 new</span>
+          </button>
         </div>
 
-        <div class="flex items-center space-x-4">
-          <!-- Digital Clock Widget -->
-          <div class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 font-mono text-xs font-bold border border-slate-200">
-            <svg class="w-4 h-4 text-[#B4182C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <span id="topbar-live-clock">12:00:00 PM</span>
+        <button id="btn-header-settings" class="bg-[#1E293B] hover:bg-[#334155] text-white px-2.5 py-1 rounded text-xs font-semibold flex items-center space-x-1 transition">
+          <span>⚙️</span> <span>SETTINGS</span>
+        </button>
+
+        <button id="btn-header-logout" class="bg-[#DC2626] hover:bg-[#B91C1C] text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-sm">
+          LOGOUT
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace Container: Rail Sidebar + Stage Content -->
+    <div class="flex-1 flex overflow-hidden">
+      
+      <!-- 3. Left Rail Sidebar (Navy Charcoal) -->
+      <aside id="panel-sidebar" class="w-14 hover:w-56 transition-all duration-200 bg-[#0F172A] text-slate-300 flex-shrink-0 flex flex-col justify-between border-r border-[#1E293B] z-40 group select-none">
+        <div>
+          <!-- Eagle Logo Badge Header -->
+          <div class="h-14 flex items-center px-3.5 border-b border-[#1E293B] overflow-hidden bg-white/5">
+            <div class="w-7 h-7 rounded bg-[#B4182C] flex items-center justify-center flex-shrink-0 shadow">
+              <img src="assets/logo_clean.png" onerror="this.onerror=null; this.src='assets/logo.png';" class="w-5 h-5 object-contain" alt="Eagle">
+            </div>
+            <div class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap overflow-hidden">
+              <span class="text-white font-black text-xs tracking-wider">M.J. BILLONES</span>
+            </div>
           </div>
 
-          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-50 text-[#B4182C] border border-red-200">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
-            Online
-          </span>
-        </div>
-      </header>
+          <!-- Main Hub Navigation Buttons -->
+          <nav class="py-2 space-y-1">
+            <button class="nav-hub-btn w-full flex items-center px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1E293B] transition relative" data-hub="dashboard" title="Dashboard">
+              <span class="text-base flex-shrink-0">📊</span>
+              <span class="ml-3.5 text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Dashboard</span>
+            </button>
 
-      <!-- DYNAMIC CONTENT VIEW -->
-      <main id="main-content" class="flex-1 p-6 lg:p-8 max-w-7xl w-full mx-auto">
-        <!-- Injected via app.js -->
-      </main>
+            <button class="nav-hub-btn active w-full flex items-center px-4 py-3 text-white bg-[#B4182C] transition relative" data-hub="operations" title="Operations">
+              <div class="absolute left-0 top-0 bottom-0 w-1 bg-white"></div>
+              <span class="text-base flex-shrink-0">🚚</span>
+              <span class="ml-3.5 text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Operations</span>
+            </button>
+
+            <button class="nav-hub-btn w-full flex items-center px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1E293B] transition relative" data-hub="resources" title="Resources">
+              <span class="text-base flex-shrink-0">👥</span>
+              <span class="ml-3.5 text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Resources</span>
+            </button>
+
+            <button class="nav-hub-btn w-full flex items-center px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1E293B] transition relative" data-hub="finance" title="Payments / Finance">
+              <span class="text-base flex-shrink-0">💰</span>
+              <span class="ml-3.5 text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Payments</span>
+            </button>
+
+            <button class="nav-hub-btn w-full flex items-center px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1E293B] transition relative" data-hub="masterdata" title="Master Data">
+              <span class="text-base flex-shrink-0">🏷️</span>
+              <span class="ml-3.5 text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Master Data</span>
+            </button>
+
+            <button class="nav-hub-btn w-full flex items-center px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1E293B] transition relative" data-hub="settings" title="Settings & Preferences">
+              <span class="text-base flex-shrink-0">⚙️</span>
+              <span class="ml-3.5 text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Settings</span>
+            </button>
+          </nav>
+        </div>
+
+        <!-- Bottom Dark Mode Toggle -->
+        <div class="p-3 border-t border-[#1E293B]">
+          <button id="btn-toggle-darkmode" class="w-full flex items-center px-2 py-2 text-slate-400 hover:text-white hover:bg-[#1E293B] rounded transition" title="Toggle Dark Mode">
+            <span class="text-base flex-shrink-0">🌙</span>
+            <span class="ml-3 text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Dark Mode</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- 4. Stage Content Area -->
+      <div class="flex-1 flex flex-col min-w-0 bg-[#F4F6F9] overflow-hidden">
+        
+        <!-- Sub-Nav Tabs Strip (Under Header - matching WinForms FlowNavTabs) -->
+        <div id="hub-subtabs-bar" class="px-6 py-2 flex items-center space-x-2 border-b border-[#E2E8F0] bg-white overflow-x-auto flex-shrink-0">
+          <!-- Injected dynamically per Hub -->
+        </div>
+
+        <!-- Dynamic Main Workspace View -->
+        <main id="main-content-view" class="flex-1 p-5 overflow-y-auto">
+          <!-- Active Screen View Injected Here -->
+        </main>
+      </div>
     </div>
   </div>
 
-  <!-- Core Scripts in Dependency Order -->
+  <!-- Print Container -->
+  <div id="print-area"></div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- Core Scripts in Exact Order -->
   <script src="js/seedData.js"></script>
   <script src="js/store.js"></script>
   <script src="js/auth.js"></script>

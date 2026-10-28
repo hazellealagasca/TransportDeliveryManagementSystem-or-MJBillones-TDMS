@@ -967,7 +967,46 @@ window.INITIAL_SEED_DATA = {
       "PhotoPath": ""
     }
   ],
-  "StatementsOfAccount": [],
+  "StatementsOfAccount": [
+    {
+      "Id": 1,
+      "SoaNumber": "SOA-2026-0001",
+      "ClientName": "RED RIBBON BAKESHOP INC.",
+      "IssueDate": "2026-09-30",
+      "PeriodFrom": "2026-09-01",
+      "PeriodTo": "2026-09-30",
+      "DeliveryType": "Regular Dispatches",
+      "TotalSales": 18500.0,
+      "VatAmount": 2220.0,
+      "NetOfVat": 16280.0,
+      "FuelSurcharge": 1500.0,
+      "WithholdingTax": 370.0,
+      "TotalAmountDue": 21850.0,
+      "Status": "Issued",
+      "PreparedBy": "Marie Ann J. Billones",
+      "ReceivedBy": "Accounting - North Luzon Dept.",
+      "SalesInvoiceNo": "INV-20260923-161652-85947"
+    },
+    {
+      "Id": 2,
+      "SoaNumber": "SOA-2026-0002",
+      "ClientName": "MILLENIUM FOOD BITES CORPORATION",
+      "IssueDate": "2026-10-15",
+      "PeriodFrom": "2026-10-01",
+      "PeriodTo": "2026-10-15",
+      "DeliveryType": "Regular Dispatches",
+      "TotalSales": 12800.0,
+      "VatAmount": 1536.0,
+      "NetOfVat": 11264.0,
+      "FuelSurcharge": 800.0,
+      "WithholdingTax": 256.0,
+      "TotalAmountDue": 14880.0,
+      "Status": "Issued",
+      "PreparedBy": "Hazel Lagasca",
+      "ReceivedBy": "Branch Manager - Pangasinan",
+      "SalesInvoiceNo": "INV-20261015-091244-11822"
+    }
+  ],
   "Invoices": [
     {
       "Id": 1,
