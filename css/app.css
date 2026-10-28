@@ -1,0 +1,179 @@
+/* M.J. Billones Transport Service - Core Web App Stylesheet */
+:root {
+  --mj-primary: #B4182C;
+  --mj-primary-hover: #981323;
+  --mj-primary-dark: #6B0F1B;
+  --mj-primary-light: #FDF2F4;
+  --mj-primary-border: #F6CCD1;
+  --mj-charcoal: #181E25;
+  --mj-charcoal-light: #242D38;
+  --mj-charcoal-border: #333E4D;
+  --mj-surface: #FFFFFF;
+  --mj-bg: #F4F6F9;
+  --mj-text: #1E293B;
+  --mj-text-muted: #64748B;
+  --mj-border: #E2E8F0;
+  --mj-success: #059669;
+  --mj-warning: #D97706;
+  --mj-danger: #DC2626;
+  --mj-info: #0284C7;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--mj-bg);
+  color: var(--mj-text);
+  overflow-x: hidden;
+}
+
+/* Status Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.badge-pending { background-color: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
+.badge-dispatched, .badge-in-transit, .badge-in-use { background-color: #DBEAFE; color: #1E40AF; border: 1px solid #93C5FD; }
+.badge-completed, .badge-available, .badge-paid { background-color: #D1FAE5; color: #065F46; border: 1px solid #6EE7B7; }
+.badge-cancelled, .badge-inactive, .badge-unpaid { background-color: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+.badge-maintenance { background-color: #FFEDD5; color: #9A3412; border: 1px solid #FDBA74; }
+.badge-cold { background-color: #E0F2FE; color: #0369A1; border: 1px solid #BAE6FD; }
+.badge-dry { background-color: #FEF9C3; color: #854D0E; border: 1px solid #FEF08A; }
+
+/* Table Styling */
+.mj-table th {
+  background-color: #F8FAFC;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid #E2E8F0;
+  white-space: nowrap;
+}
+
+.mj-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #F1F5F9;
+  font-size: 0.875rem;
+  vertical-align: middle;
+}
+
+.mj-table tr:hover td {
+  background-color: #F8FAFC;
+}
+
+/* Analog Clock Picker */
+.clock-face {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 4px solid var(--mj-primary);
+  position: relative;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.1), 0 4px 12px rgba(180, 24, 44, 0.15);
+  margin: 0 auto;
+  user-select: none;
+  cursor: pointer;
+}
+
+.clock-center-dot {
+  width: 12px;
+  height: 12px;
+  background: var(--mj-primary);
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
+.clock-hand {
+  position: absolute;
+  bottom: 50%;
+  left: 50%;
+  transform-origin: bottom center;
+  border-radius: 4px;
+  transition: transform 0.05s ease-out;
+}
+
+.clock-hand.hour {
+  width: 5px;
+  height: 60px;
+  background: #1E293B;
+  margin-left: -2.5px;
+  z-index: 5;
+}
+
+.clock-hand.minute {
+  width: 3px;
+  height: 85px;
+  background: var(--mj-primary);
+  margin-left: -1.5px;
+  z-index: 6;
+}
+
+.clock-number {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  text-align: center;
+  line-height: 24px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+  margin-left: -12px;
+  margin-top: -12px;
+}
+
+/* Modals */
+.modal-overlay {
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(2px);
+}
+
+/* Print Stylesheet */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-area, #print-area * {
+    visibility: visible;
+  }
+  #print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    background: white;
+    color: black;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
