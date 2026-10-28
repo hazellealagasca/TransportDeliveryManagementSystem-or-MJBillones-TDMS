@@ -41,14 +41,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function checkSession() {
     const user = auth.getCurrentUser();
     if (user) {
-      authContainer.classList.add('hidden');
-      appContainer.classList.remove('hidden');
-      headerUserInfo.innerText = `${user.FullName || user.Username} · ${user.Role || 'Staff'}`;
+      if (authContainer) authContainer.classList.add('hidden');
+      if (appContainer) appContainer.classList.remove('hidden');
+      if (headerUserInfo) headerUserInfo.innerText = `${user.FullName || user.Username} · ${user.Role || 'Staff'}`;
       updateKpiHeader();
       switchHub(currentHub, currentTab);
     } else {
-      authContainer.classList.remove('hidden');
-      appContainer.classList.add('hidden');
+      if (authContainer) authContainer.classList.remove('hidden');
+      if (appContainer) appContainer.classList.add('hidden');
     }
   }
 
@@ -61,50 +61,63 @@ document.addEventListener('DOMContentLoaded', () => {
     const scheduled = schedules.filter(s => s.Status === 'Pending').length;
     const inTransit = deliveries.filter(d => d.Status === 'In Transit' || d.Status === 'Dispatched').length;
     const unpaid = invoices.filter(i => i.Status !== 'Paid').length;
-    const alerts = notifs.filter(n => !n.IsRead).length || 19;
+    const alerts = notifs.filter(n => !n.IsRead).length || 5;
 
-    kpiScheduledText.innerText = `${scheduled} scheduled`;
-    kpiTransitText.innerText = `${inTransit} in transit`;
-    kpiUnpaidText.innerText = `${unpaid} unpaid`;
-    kpiAlertsText.innerText = `${alerts} new`;
+    if (kpiScheduledText) kpiScheduledText.innerText = `${scheduled} scheduled`;
+    if (kpiTransitText) kpiTransitText.innerText = `${inTransit} in transit`;
+    if (kpiUnpaidText) kpiUnpaidText.innerText = `${unpaid} unpaid`;
+    if (kpiAlertsText) kpiAlertsText.innerText = `${alerts} new`;
   }
 
   function bindAuth() {
     const loginForm = document.getElementById('login-form');
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const u = document.getElementById('login-username').value;
-      const p = document.getElementById('login-password').value;
-      const err = document.getElementById('login-error');
-      try {
-        err.classList.add('hidden');
-        await auth.login(u, p);
-        toast.show('Logged in successfully', 'success');
-        checkSession();
-      } catch (ex) {
-        err.innerText = ex.message || 'Login failed';
-        err.classList.remove('hidden');
-      }
-    });
+    if (loginForm) {
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const u = document.getElementById('login-username').value;
+        const p = document.getElementById('login-password').value;
+        const err = document.getElementById('login-error');
+        try {
+          if (err) err.classList.add('hidden');
+          await auth.login(u, p);
+          toast.show('Logged in successfully ✓', 'success');
+          checkSession();
+        } catch (ex) {
+          if (err) {
+            err.innerText = ex.message || 'Login failed';
+            err.classList.remove('hidden');
+          }
+        }
+      });
+    }
 
-    document.getElementById('demo-login-admin').addEventListener('click', () => {
-      document.getElementById('login-username').value = 'admin';
-      document.getElementById('login-password').value = 'admin123';
-      loginForm.dispatchEvent(new Event('submit'));
-    });
+    const demoAdmin = document.getElementById('demo-login-admin');
+    if (demoAdmin && loginForm) {
+      demoAdmin.addEventListener('click', () => {
+        document.getElementById('login-username').value = 'admin';
+        document.getElementById('login-password').value = 'admin123';
+        loginForm.dispatchEvent(new Event('submit'));
+      });
+    }
 
-    document.getElementById('demo-login-staff').addEventListener('click', () => {
-      document.getElementById('login-username').value = 'staff';
-      document.getElementById('login-password').value = 'staff123';
-      loginForm.dispatchEvent(new Event('submit'));
-    });
+    const demoStaff = document.getElementById('demo-login-staff');
+    if (demoStaff && loginForm) {
+      demoStaff.addEventListener('click', () => {
+        document.getElementById('login-username').value = 'staff';
+        document.getElementById('login-password').value = 'staff123';
+        loginForm.dispatchEvent(new Event('submit'));
+      });
+    }
 
-    document.getElementById('btn-header-logout').addEventListener('click', () => {
-      if (confirm('Are you sure you want to log out of M.J. Billones Delivery Management System?')) {
-        auth.logout();
-        checkSession();
-      }
-    });
+    const logoutBtn = document.getElementById('btn-header-logout');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to log out of M.J. Billones Delivery Management System?')) {
+          auth.logout();
+          checkSession();
+        }
+      });
+    }
   }
 
   function bindShellEvents() {
@@ -117,19 +130,41 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
+    // Sidebar Toggle Pin Button
+    const pinBtn = document.getElementById('btn-toggle-pin');
+    const sidebar = document.getElementById('panel-sidebar');
+    if (pinBtn && sidebar) {
+      pinBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('w-14');
+        sidebar.classList.toggle('w-56');
+      });
+    }
+
     // Dark Mode Toggle
-    document.getElementById('btn-toggle-darkmode').addEventListener('click', () => {
-      document.body.classList.toggle('dark-mode');
-      const isDark = document.body.classList.contains('dark-mode');
-      toast.show(isDark ? 'Dark mode enabled' : 'Light mode enabled', 'info');
-    });
+    const darkBtn = document.getElementById('btn-toggle-darkmode');
+    if (darkBtn) {
+      darkBtn.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        toast.show(isDark ? 'Dark mode enabled' : 'Light mode enabled', 'info');
+      });
+    }
 
     // KPI Pills Click Navigation
-    document.getElementById('kpi-pill-scheduled').addEventListener('click', () => switchHub('operations', 'dispatch'));
-    document.getElementById('kpi-pill-transit').addEventListener('click', () => switchHub('operations', 'dispatch'));
-    document.getElementById('kpi-pill-unpaid').addEventListener('click', () => switchHub('finance', 'billing'));
-    document.getElementById('kpi-pill-alert').addEventListener('click', () => switchHub('settings', 'security'));
-    document.getElementById('btn-header-settings').addEventListener('click', () => switchHub('settings', 'system_backup'));
+    const pillSched = document.getElementById('kpi-pill-scheduled');
+    if (pillSched) pillSched.addEventListener('click', () => switchHub('operations', 'dispatch'));
+
+    const pillTransit = document.getElementById('kpi-pill-transit');
+    if (pillTransit) pillTransit.addEventListener('click', () => switchHub('operations', 'dispatch'));
+
+    const pillUnpaid = document.getElementById('kpi-pill-unpaid');
+    if (pillUnpaid) pillUnpaid.addEventListener('click', () => switchHub('finance', 'billing'));
+
+    const pillAlert = document.getElementById('kpi-pill-alert');
+    if (pillAlert) pillAlert.addEventListener('click', () => switchHub('settings', 'security'));
+
+    const setBtn = document.getElementById('btn-header-settings');
+    if (setBtn) setBtn.addEventListener('click', () => switchHub('settings', 'users'));
   }
 
   function switchHub(hubKey, defaultTabKey = null) {
@@ -154,7 +189,9 @@ document.addEventListener('DOMContentLoaded', () => {
       masterdata: 'Master Data',
       settings: 'Settings'
     };
-    pageHubTitle.innerText = hubTitles[hubKey] || 'Operations';
+    if (pageHubTitle) {
+      pageHubTitle.innerText = hubTitles[hubKey] || 'Operations';
+    }
 
     renderSubTabs(hubKey, defaultTabKey);
   }
