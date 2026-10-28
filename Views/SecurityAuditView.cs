@@ -26,7 +26,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             InitializeComponent();
             SetupGridColumns();
-            DataExportHelper.AttachExportContextMenu(gridAudit, "Audit_Logs", "Security and Business Audit Trail");
+            RowMenu.AttachBasic(gridAudit, "Audit_Logs", "Security and Business Audit Trail");
             LoadAuditLogs();
             UIThemeHelper.ApplyTheme(this);
         }
@@ -39,7 +39,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void InitializeComponent()
         {
             this.Dock = DockStyle.Fill;
-            this.BackColor = Color.FromArgb(248, 250, 252);
+            this.BackColor = Pal.C(248, 250, 252);
             this.Font = new Font("Segoe UI", 9.5F);
 
             FlowLayoutPanel pnlTop = new FlowLayoutPanel
@@ -49,7 +49,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
                 Padding = new Padding(16, 12, 16, 12),
-                BackColor = Color.White
+                BackColor = Pal.White
             };
 
             Label lblCat = new Label
@@ -58,7 +58,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AutoSize = true,
                 Margin = new Padding(0, 7, 4, 0),
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(51, 65, 85)
+                ForeColor = Pal.C(51, 65, 85)
             };
 
             cbAuditCategory.Size = new Size(240, 26);
@@ -83,7 +83,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AutoSize = true,
                 Margin = new Padding(0, 7, 4, 0),
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(51, 65, 85)
+                ForeColor = Pal.C(51, 65, 85)
             };
 
             txtSearch.Size = new Size(180, 26);
@@ -98,7 +98,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AutoSize = true,
                 Margin = new Padding(0, 7, 4, 0),
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(51, 65, 85)
+                ForeColor = Pal.C(51, 65, 85)
             };
 
             cbFilterEvent.Size = new Size(160, 26);
@@ -110,8 +110,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnRefresh.Text = "🔄 Refresh";
             btnRefresh.Size = new Size(95, 28);
             btnRefresh.Margin = new Padding(0, 3, 8, 0);
-            btnRefresh.BackColor = Color.FromArgb(241, 245, 249);
-            btnRefresh.ForeColor = Color.FromArgb(51, 65, 85);
+            btnRefresh.BackColor = Pal.C(241, 245, 249);
+            btnRefresh.ForeColor = Pal.C(51, 65, 85);
             btnRefresh.FlatStyle = FlatStyle.Flat;
             btnRefresh.FlatAppearance.BorderSize = 0;
             btnRefresh.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
@@ -121,8 +121,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnExport.Text = "📊 Export";
             btnExport.Size = new Size(95, 28);
             btnExport.Margin = new Padding(0, 3, 16, 0);
-            btnExport.BackColor = Color.FromArgb(15, 23, 42);
-            btnExport.ForeColor = Color.White;
+            btnExport.BackColor = Pal.C(15, 23, 42);
+            btnExport.ForeColor = Pal.White;
             btnExport.FlatStyle = FlatStyle.Flat;
             btnExport.FlatAppearance.BorderSize = 0;
             btnExport.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
@@ -136,7 +136,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblCount.AutoSize = true;
             lblCount.Margin = new Padding(0, 7, 0, 0);
             lblCount.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
-            lblCount.ForeColor = Color.FromArgb(71, 85, 105);
+            lblCount.ForeColor = Pal.C(71, 85, 105);
             lblCount.Text = "Logs: 0";
 
             pnlTop.Controls.AddRange(new Control[] { lblCat, cbAuditCategory, lblSearch, txtSearch, lblFilter, cbFilterEvent, btnRefresh, btnExport, lblCount });
@@ -202,7 +202,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridAudit.AllowUserToDeleteRows = false;
             gridAudit.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             gridAudit.MultiSelect = false;
-            gridAudit.BackgroundColor = Color.White;
+            gridAudit.BackgroundColor = Pal.White;
             gridAudit.BorderStyle = BorderStyle.None;
             gridAudit.RowHeadersVisible = false;
             gridAudit.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;

@@ -26,6 +26,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblFormHeader = new System.Windows.Forms.Label();
             this.lblInv = new System.Windows.Forms.Label();
             this.cbInvoice = new System.Windows.Forms.ComboBox();
+            this.pnlLinkedInvoice = new System.Windows.Forms.Panel();
+            this.lblLinkedInvoiceInfo = new System.Windows.Forms.Label();
             this.tblPaymentRow = new System.Windows.Forms.TableLayoutPanel();
             this.pnlAmtCol = new System.Windows.Forms.Panel();
             this.lblAmt = new System.Windows.Forms.Label();
@@ -84,7 +86,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblTitle.Visible = false;
 
             this.tblMasterContent.ColumnCount = 2;
-            this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 480F));
+            this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 600F));
             this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tblMasterContent.Controls.Add(this.pnlForm, 0, 0);
             this.tblMasterContent.Controls.Add(this.pnlGridCard, 1, 0);
@@ -106,7 +108,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlForm.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
             this.pnlForm.Name = "pnlForm";
             this.pnlForm.Padding = new System.Windows.Forms.Padding(0);
-            this.pnlForm.Size = new System.Drawing.Size(480, 788);
+            this.pnlForm.Size = new System.Drawing.Size(600, 788);
             this.pnlForm.TabIndex = 0;
 
             this.pnlFormHeaderBar.BackColor = System.Drawing.Color.FromArgb(248, 250, 252);
@@ -115,7 +117,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlFormHeaderBar.Location = new System.Drawing.Point(0, 0);
             this.pnlFormHeaderBar.Name = "pnlFormHeaderBar";
             this.pnlFormHeaderBar.Padding = new System.Windows.Forms.Padding(12, 6, 12, 6);
-            this.pnlFormHeaderBar.Size = new System.Drawing.Size(480, 38);
+            this.pnlFormHeaderBar.Size = new System.Drawing.Size(600, 38);
             this.pnlFormHeaderBar.TabIndex = 0;
 
             this.lblFormHeader.AutoSize = true;
@@ -134,11 +136,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblInv.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
             this.lblInv.Location = new System.Drawing.Point(16, 16);
             this.lblInv.Name = "lblInv";
-            this.lblInv.Padding = new System.Windows.Forms.Padding(0, 4, 0, 2);
+            this.lblInv.Padding = new System.Windows.Forms.Padding(0, 4, 0, 4);
             this.lblInv.Size = new System.Drawing.Size(185, 23);
             this.lblInv.TabIndex = 0;
-            this.lblInv.Text = "Select Unpaid Service Invoice:";
-
+            this.lblInv.Text = "Select Invoice with Outstanding Balance:";
             this.cbInvoice.Dock = System.Windows.Forms.DockStyle.Top;
             this.cbInvoice.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cbInvoice.Font = new System.Drawing.Font("Segoe UI", 9.5F);
@@ -149,6 +150,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.cbInvoice.Size = new System.Drawing.Size(448, 25);
             this.cbInvoice.TabIndex = 1;
             this.cbInvoice.SelectedIndexChanged += new System.EventHandler(this.CbInvoice_SelectedIndexChanged);
+
+            this.pnlLinkedInvoice.BackColor = System.Drawing.Color.FromArgb(240, 249, 255);
+            this.pnlLinkedInvoice.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.pnlLinkedInvoice.Controls.Add(this.lblLinkedInvoiceInfo);
+            this.pnlLinkedInvoice.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlLinkedInvoice.Location = new System.Drawing.Point(16, 68);
+            this.pnlLinkedInvoice.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
+            this.pnlLinkedInvoice.Name = "pnlLinkedInvoice";
+            this.pnlLinkedInvoice.Padding = new System.Windows.Forms.Padding(8, 6, 8, 6);
+            this.pnlLinkedInvoice.Size = new System.Drawing.Size(448, 34);
+            this.pnlLinkedInvoice.TabIndex = 2;
+
+            this.lblLinkedInvoiceInfo.AutoEllipsis = true;
+            this.lblLinkedInvoiceInfo.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lblLinkedInvoiceInfo.Font = new System.Drawing.Font("Segoe UI Semibold", 8.25F, System.Drawing.FontStyle.Bold);
+            this.lblLinkedInvoiceInfo.ForeColor = System.Drawing.Color.FromArgb(3, 105, 161);
+            this.lblLinkedInvoiceInfo.Location = new System.Drawing.Point(6, 4);
+            this.lblLinkedInvoiceInfo.Name = "lblLinkedInvoiceInfo";
+            this.lblLinkedInvoiceInfo.Size = new System.Drawing.Size(434, 18);
+            this.lblLinkedInvoiceInfo.TabIndex = 0;
+            this.lblLinkedInvoiceInfo.Text = "📄 Linked Invoice: (None Selected)";
+            this.lblLinkedInvoiceInfo.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 
             this.tblPaymentRow.ColumnCount = 2;
             this.tblPaymentRow.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
@@ -161,7 +184,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.tblPaymentRow.Name = "tblPaymentRow";
             this.tblPaymentRow.RowCount = 1;
             this.tblPaymentRow.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblPaymentRow.Size = new System.Drawing.Size(448, 54);
+            this.tblPaymentRow.Size = new System.Drawing.Size(448, 68);
             this.tblPaymentRow.TabIndex = 2;
 
             this.pnlAmtCol.Controls.Add(this.numAmountPaid);
@@ -170,7 +193,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlAmtCol.Location = new System.Drawing.Point(0, 0);
             this.pnlAmtCol.Margin = new System.Windows.Forms.Padding(0, 0, 6, 0);
             this.pnlAmtCol.Name = "pnlAmtCol";
-            this.pnlAmtCol.Size = new System.Drawing.Size(218, 54);
+            this.pnlAmtCol.Size = new System.Drawing.Size(218, 68);
             this.pnlAmtCol.TabIndex = 0;
 
             this.lblAmt.AutoSize = true;
@@ -179,7 +202,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblAmt.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
             this.lblAmt.Location = new System.Drawing.Point(0, 0);
             this.lblAmt.Name = "lblAmt";
-            this.lblAmt.Padding = new System.Windows.Forms.Padding(0, 0, 0, 3);
+            this.lblAmt.Padding = new System.Windows.Forms.Padding(0, 0, 0, 5);
             this.lblAmt.Size = new System.Drawing.Size(167, 18);
             this.lblAmt.TabIndex = 0;
             this.lblAmt.Text = "Payment Amount (PHP):";
@@ -200,7 +223,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlMethodCol.Location = new System.Drawing.Point(224, 0);
             this.pnlMethodCol.Margin = new System.Windows.Forms.Padding(6, 0, 0, 0);
             this.pnlMethodCol.Name = "pnlMethodCol";
-            this.pnlMethodCol.Size = new System.Drawing.Size(224, 54);
+            this.pnlMethodCol.Size = new System.Drawing.Size(224, 68);
             this.pnlMethodCol.TabIndex = 1;
 
             this.lblMethod.AutoSize = true;
@@ -209,7 +232,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblMethod.ForeColor = System.Drawing.Color.FromArgb(30, 41, 59);
             this.lblMethod.Location = new System.Drawing.Point(0, 0);
             this.lblMethod.Name = "lblMethod";
-            this.lblMethod.Padding = new System.Windows.Forms.Padding(0, 0, 0, 3);
+            this.lblMethod.Padding = new System.Windows.Forms.Padding(0, 0, 0, 5);
             this.lblMethod.Size = new System.Drawing.Size(103, 18);
             this.lblMethod.TabIndex = 0;
             this.lblMethod.Text = "Payment Method:";
@@ -237,14 +260,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblRef.Padding = new System.Windows.Forms.Padding(0, 8, 0, 2);
             this.lblRef.Size = new System.Drawing.Size(175, 27);
             this.lblRef.TabIndex = 3;
-            this.lblRef.Text = "Check / Reference Number:";
+            this.lblRef.Text = "Payment / Transaction Reference # *:";
 
             this.txtRefNo.Dock = System.Windows.Forms.DockStyle.Top;
             this.txtRefNo.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.txtRefNo.Location = new System.Drawing.Point(16, 145);
             this.txtRefNo.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
             this.txtRefNo.Name = "txtRefNo";
-            this.txtRefNo.PlaceholderText = "e.g. CHK-990214 or BDO-TXN-55410";
+            this.txtRefNo.PlaceholderText = "e.g. CHK-990214, BDO-TXN-55410, or REF-001";
             this.txtRefNo.Size = new System.Drawing.Size(448, 24);
             this.txtRefNo.TabIndex = 4;
 
@@ -268,66 +291,57 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtNotes.Size = new System.Drawing.Size(448, 64);
             this.txtNotes.TabIndex = 6;
 
-            this.btnSave.BackColor = System.Drawing.Color.FromArgb(16, 185, 129);
+            this.btnSave.BackColor = System.Drawing.Color.FromArgb(13, 110, 253);
             this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnSave.Dock = System.Windows.Forms.DockStyle.Top;
+            this.btnSave.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnSave.FlatAppearance.BorderSize = 0;
             this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnSave.Font = new System.Drawing.Font("Segoe UI Semibold", 10F, System.Drawing.FontStyle.Bold);
+            this.btnSave.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold);
             this.btnSave.ForeColor = System.Drawing.Color.White;
-            this.btnSave.Location = new System.Drawing.Point(16, 4);
-            this.btnSave.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
+            this.btnSave.Location = new System.Drawing.Point(0, 0);
+            this.btnSave.Margin = new System.Windows.Forms.Padding(0, 0, 3, 0);
             this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(448, 40);
+            this.btnSave.Size = new System.Drawing.Size(190, 32);
             this.btnSave.TabIndex = 0;
-            this.btnSave.Text = "💵 COLLECT PAYMENT";
+            this.btnSave.Text = "💵 RECORD PAYMENT";
             this.btnSave.UseVisualStyleBackColor = false;
             this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
 
             this.tblUpdateDelete.ColumnCount = 2;
             this.tblUpdateDelete.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.tblUpdateDelete.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tblUpdateDelete.Controls.Add(this.btnUpdate, 0, 0);
-            this.tblUpdateDelete.Controls.Add(this.btnDelete, 1, 0);
+            this.tblUpdateDelete.Controls.Add(this.btnSave, 0, 0);
+            this.tblUpdateDelete.Controls.Add(this.btnUpdate, 1, 0);
             this.tblUpdateDelete.Dock = System.Windows.Forms.DockStyle.Top;
-            this.tblUpdateDelete.Location = new System.Drawing.Point(16, 50);
-            this.tblUpdateDelete.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
+            this.tblUpdateDelete.Location = new System.Drawing.Point(12, 5);
+            this.tblUpdateDelete.Margin = new System.Windows.Forms.Padding(0);
             this.tblUpdateDelete.Name = "tblUpdateDelete";
             this.tblUpdateDelete.RowCount = 1;
-            this.tblUpdateDelete.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblUpdateDelete.Size = new System.Drawing.Size(448, 38);
-            this.tblUpdateDelete.TabIndex = 1;
+            this.tblUpdateDelete.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 32F));
+            this.tblUpdateDelete.Size = new System.Drawing.Size(386, 32);
+            this.tblUpdateDelete.TabIndex = 0;
 
-            this.btnUpdate.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
+            this.btnUpdate.BackColor = System.Drawing.Color.FromArgb(25, 135, 84);
             this.btnUpdate.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnUpdate.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnUpdate.FlatAppearance.BorderSize = 0;
             this.btnUpdate.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnUpdate.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
+            this.btnUpdate.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold);
             this.btnUpdate.ForeColor = System.Drawing.Color.White;
-            this.btnUpdate.Location = new System.Drawing.Point(0, 0);
-            this.btnUpdate.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
+            this.btnUpdate.Location = new System.Drawing.Point(196, 0);
+            this.btnUpdate.Margin = new System.Windows.Forms.Padding(3, 0, 0, 0);
             this.btnUpdate.Name = "btnUpdate";
-            this.btnUpdate.Size = new System.Drawing.Size(220, 38);
-            this.btnUpdate.TabIndex = 0;
-            this.btnUpdate.Text = "✏️ UPDATE";
+            this.btnUpdate.Size = new System.Drawing.Size(190, 32);
+            this.btnUpdate.TabIndex = 1;
+            this.btnUpdate.Text = "✏️ UPDATE RECEIPT";
             this.btnUpdate.UseVisualStyleBackColor = false;
             this.btnUpdate.Click += new System.EventHandler(this.BtnUpdate_Click);
 
-            this.btnDelete.BackColor = System.Drawing.Color.FromArgb(239, 68, 68);
-            this.btnDelete.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnDelete.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnDelete.FlatAppearance.BorderSize = 0;
-            this.btnDelete.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnDelete.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.btnDelete.ForeColor = System.Drawing.Color.White;
-            this.btnDelete.Location = new System.Drawing.Point(228, 0);
-            this.btnDelete.Margin = new System.Windows.Forms.Padding(4, 0, 0, 0);
+            this.btnDelete.Location = new System.Drawing.Point(0, 0);
             this.btnDelete.Name = "btnDelete";
-            this.btnDelete.Size = new System.Drawing.Size(220, 38);
-            this.btnDelete.TabIndex = 1;
-            this.btnDelete.Text = "🗑️ DELETE";
-            this.btnDelete.UseVisualStyleBackColor = false;
+            this.btnDelete.Size = new System.Drawing.Size(0, 0);
+            this.btnDelete.TabIndex = 99;
+            this.btnDelete.Visible = false;
             this.btnDelete.Click += new System.EventHandler(this.BtnDelete_Click);
 
             this.tblClearPrint.ColumnCount = 2;
@@ -335,42 +349,43 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.tblClearPrint.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.tblClearPrint.Controls.Add(this.btnClear, 0, 0);
             this.tblClearPrint.Controls.Add(this.btnPrintSlip, 1, 0);
-            this.tblClearPrint.Dock = System.Windows.Forms.DockStyle.Top;
-            this.tblClearPrint.Location = new System.Drawing.Point(16, 94);
+            this.tblClearPrint.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.tblClearPrint.Location = new System.Drawing.Point(12, 39);
             this.tblClearPrint.Margin = new System.Windows.Forms.Padding(0);
             this.tblClearPrint.Name = "tblClearPrint";
             this.tblClearPrint.RowCount = 1;
-            this.tblClearPrint.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblClearPrint.Size = new System.Drawing.Size(448, 36);
-            this.tblClearPrint.TabIndex = 2;
+            this.tblClearPrint.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 28F));
+            this.tblClearPrint.Size = new System.Drawing.Size(386, 28);
+            this.tblClearPrint.TabIndex = 1;
 
-            this.btnClear.BackColor = System.Drawing.Color.FromArgb(148, 163, 184);
+            this.btnClear.BackColor = System.Drawing.Color.FromArgb(241, 245, 249);
             this.btnClear.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnClear.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnClear.FlatAppearance.BorderSize = 0;
+            this.btnClear.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(203, 213, 225);
+            this.btnClear.FlatAppearance.BorderSize = 1;
             this.btnClear.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnClear.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.btnClear.ForeColor = System.Drawing.Color.White;
+            this.btnClear.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold);
+            this.btnClear.ForeColor = System.Drawing.Color.FromArgb(71, 85, 105);
             this.btnClear.Location = new System.Drawing.Point(0, 0);
-            this.btnClear.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
+            this.btnClear.Margin = new System.Windows.Forms.Padding(0, 0, 3, 0);
             this.btnClear.Name = "btnClear";
-            this.btnClear.Size = new System.Drawing.Size(220, 36);
+            this.btnClear.Size = new System.Drawing.Size(190, 28);
             this.btnClear.TabIndex = 0;
-            this.btnClear.Text = "🧹 CLEAR";
+            this.btnClear.Text = "🧹 CLEAR FORM";
             this.btnClear.UseVisualStyleBackColor = false;
             this.btnClear.Click += new System.EventHandler(this.BtnClear_Click);
 
-            this.btnPrintSlip.BackColor = System.Drawing.Color.FromArgb(217, 119, 6);
+            this.btnPrintSlip.BackColor = System.Drawing.Color.FromArgb(14, 165, 233);
             this.btnPrintSlip.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnPrintSlip.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnPrintSlip.FlatAppearance.BorderSize = 0;
             this.btnPrintSlip.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnPrintSlip.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
+            this.btnPrintSlip.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold);
             this.btnPrintSlip.ForeColor = System.Drawing.Color.White;
-            this.btnPrintSlip.Location = new System.Drawing.Point(228, 0);
-            this.btnPrintSlip.Margin = new System.Windows.Forms.Padding(4, 0, 0, 0);
+            this.btnPrintSlip.Location = new System.Drawing.Point(196, 0);
+            this.btnPrintSlip.Margin = new System.Windows.Forms.Padding(3, 0, 0, 0);
             this.btnPrintSlip.Name = "btnPrintSlip";
-            this.btnPrintSlip.Size = new System.Drawing.Size(220, 36);
+            this.btnPrintSlip.Size = new System.Drawing.Size(190, 28);
             this.btnPrintSlip.TabIndex = 1;
             this.btnPrintSlip.Text = "🧾 PRINT RECEIPT";
             this.btnPrintSlip.UseVisualStyleBackColor = false;
@@ -379,12 +394,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlFormActionsBar.BackColor = System.Drawing.Color.White;
             this.pnlFormActionsBar.Controls.Add(this.tblClearPrint);
             this.pnlFormActionsBar.Controls.Add(this.tblUpdateDelete);
-            this.pnlFormActionsBar.Controls.Add(this.btnSave);
             this.pnlFormActionsBar.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.pnlFormActionsBar.Location = new System.Drawing.Point(0, 648);
+            this.pnlFormActionsBar.Location = new System.Drawing.Point(0, 714);
             this.pnlFormActionsBar.Name = "pnlFormActionsBar";
-            this.pnlFormActionsBar.Padding = new System.Windows.Forms.Padding(16, 4, 16, 8);
-            this.pnlFormActionsBar.Size = new System.Drawing.Size(480, 140);
+            this.pnlFormActionsBar.Padding = new System.Windows.Forms.Padding(12, 5, 12, 7);
+            this.pnlFormActionsBar.Size = new System.Drawing.Size(600, 74);
             this.pnlFormActionsBar.TabIndex = 2;
 
             this.pnlFormBody.AutoScroll = true;
@@ -394,13 +408,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlFormBody.Controls.Add(this.txtRefNo);
             this.pnlFormBody.Controls.Add(this.lblRef);
             this.pnlFormBody.Controls.Add(this.tblPaymentRow);
+            this.pnlFormBody.Controls.Add(this.pnlLinkedInvoice);
             this.pnlFormBody.Controls.Add(this.cbInvoice);
             this.pnlFormBody.Controls.Add(this.lblInv);
             this.pnlFormBody.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlFormBody.Location = new System.Drawing.Point(0, 38);
             this.pnlFormBody.Name = "pnlFormBody";
             this.pnlFormBody.Padding = new System.Windows.Forms.Padding(16, 8, 16, 8);
-            this.pnlFormBody.Size = new System.Drawing.Size(480, 610);
+            this.pnlFormBody.Size = new System.Drawing.Size(600, 676);
             this.pnlFormBody.TabIndex = 1;
 
             this.pnlGridCard.BackColor = System.Drawing.Color.White;
@@ -408,12 +423,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlGridCard.Controls.Add(this.pnlSummary);
             this.pnlGridCard.Controls.Add(this.pnlGridHeaderBar);
             this.pnlGridCard.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pnlGridCard.Location = new System.Drawing.Point(480, 0);
+            this.pnlGridCard.Location = new System.Drawing.Point(410, 0);
             this.pnlGridCard.Margin = new System.Windows.Forms.Padding(0);
             this.pnlGridCard.MinimumSize = new System.Drawing.Size(480, 300);
             this.pnlGridCard.Name = "pnlGridCard";
             this.pnlGridCard.Padding = new System.Windows.Forms.Padding(16);
-            this.pnlGridCard.Size = new System.Drawing.Size(908, 748);
+            this.pnlGridCard.Size = new System.Drawing.Size(978, 788);
             this.pnlGridCard.TabIndex = 1;
 
             this.pnlGridHeaderBar.AutoSize = true;
@@ -467,7 +482,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnClearSearch.Location = new System.Drawing.Point(228, 4);
             this.btnClearSearch.Margin = new System.Windows.Forms.Padding(4, 4, 8, 0);
             this.btnClearSearch.Name = "btnClearSearch";
-            this.btnClearSearch.Size = new System.Drawing.Size(28, 26);
+            this.btnClearSearch.Size = new System.Drawing.Size(34, 28);
             this.btnClearSearch.TabIndex = 1;
             this.btnClearSearch.Text = "✖";
             this.btnClearSearch.UseVisualStyleBackColor = false;
@@ -571,6 +586,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private System.Windows.Forms.Label lblFormHeader;
         private System.Windows.Forms.Label lblInv;
         private System.Windows.Forms.ComboBox cbInvoice;
+        private System.Windows.Forms.Panel pnlLinkedInvoice;
+        private System.Windows.Forms.Label lblLinkedInvoiceInfo;
         private System.Windows.Forms.TableLayoutPanel tblPaymentRow;
         private System.Windows.Forms.Panel pnlAmtCol;
         private System.Windows.Forms.Label lblAmt;

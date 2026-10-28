@@ -11,6 +11,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     {
         private Button? activeTabBtn = null;
         private readonly Dictionary<string, Button> tabButtons = new Dictionary<string, Button>();
+        /// <summary>Key of the tab that is showing now (used to come back to the same screen after a theme change).</summary>
+        public string? CurrentTabKey => System.Linq.Enumerable.FirstOrDefault(tabButtons, k => k.Value == activeTabBtn).Key;
         private readonly Dictionary<string, UserControl> cachedViews = new Dictionary<string, UserControl>();
 
         public Action<Models.Truck>? OnDispatchTruckForward;
@@ -18,9 +20,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public ResourcesHubView(string defaultTab = "Trucks")
         {
             InitializeComponent();
+            Pal.RemapTree(this);
             SetupTabs();
-            SelectTab(defaultTab);
             UIThemeHelper.ApplyTheme(this);
+            SelectTab(defaultTab);
         }
 
         private void SetupTabs()
@@ -35,7 +38,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return tv;
             });
 
-            AddTab("Crew", "👨‍✈️  Crew Management", () => new CrewManagementView());
+            AddTab("Crew", "👨‍✈️  Crew Management", () =>
+            {
+                var cv = new CrewManagementView();
+                cv.OnViewCrewHistoryRequested = (crewId) =>
+                {
+                    ViewCrewHistory(crewId);
+                };
+                return cv;
+            });
+
+            AddTab("CrewHistory", "📋  Crew Trip History", () => new CrewTripHistoryView());
             AddTab("History", "📜  Resource History", () => new ModuleHistoryView("Trucks & Crew Resource History", new[] { "Trucks", "Crews" }, isAdminOnly: true));
         }
 
@@ -52,13 +65,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 0, 8, 0),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                BackColor = Color.White,
-                ForeColor = Color.FromArgb(71, 85, 105),
+                BackColor = Pal.White,
+                ForeColor = Pal.C(71, 85, 105),
                 Cursor = Cursors.Hand
             };
             btn.FlatAppearance.BorderSize = 1;
-            btn.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
-
+            btn.FlatAppearance.BorderColor = Pal.C(226, 232, 240);
             btn.Click += (s, e) =>
             {
                 if (!cachedViews.TryGetValue(key, out var view))
@@ -86,16 +98,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (activeTabBtn != null)
             {
-                activeTabBtn.BackColor = Color.White;
-                activeTabBtn.ForeColor = Color.FromArgb(71, 85, 105);
-                activeTabBtn.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
+                activeTabBtn.BackColor = Pal.White;
+                activeTabBtn.ForeColor = Pal.C(71, 85, 105);
+                activeTabBtn.FlatAppearance.BorderColor = Pal.C(226, 232, 240);
             }
 
             activeTabBtn = btn;
-            activeTabBtn.BackColor = Color.FromArgb(15, 23, 42);
-            activeTabBtn.ForeColor = Color.White;
-            activeTabBtn.FlatAppearance.BorderColor = Color.FromArgb(15, 23, 42);
-
+            activeTabBtn.BackColor = Pal.C(15, 23, 42);
+            activeTabBtn.ForeColor = Pal.White;
+            activeTabBtn.FlatAppearance.BorderColor = Pal.C(15, 23, 42);
             pnlContentHost.SuspendLayout();
             pnlContentHost.Controls.Clear();
             view.Dock = DockStyle.Fill;
@@ -105,6 +116,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (view is IRefreshable refreshable)
             {
                 refreshable.RefreshData();
+            }
+        }
+
+        public void ViewCrewHistory(int crewId)
+        {
+            SelectTab("CrewHistory");
+            if (cachedViews.TryGetValue("CrewHistory", out var view) && view is CrewTripHistoryView chv)
+            {
+                chv.SelectCrew(crewId);
             }
         }
 

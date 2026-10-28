@@ -479,7 +479,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnClearSearch.Location = new System.Drawing.Point(228, 4);
             this.btnClearSearch.Margin = new System.Windows.Forms.Padding(4, 4, 8, 0);
             this.btnClearSearch.Name = "btnClearSearch";
-            this.btnClearSearch.Size = new System.Drawing.Size(28, 26);
+            this.btnClearSearch.Size = new System.Drawing.Size(34, 28);
             this.btnClearSearch.TabIndex = 1;
             this.btnClearSearch.Text = "✖";
             this.btnClearSearch.UseVisualStyleBackColor = false;

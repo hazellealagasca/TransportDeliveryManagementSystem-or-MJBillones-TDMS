@@ -52,7 +52,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void InitializeComponent()
         {
             this.SuspendLayout();
-            this.BackColor = Color.FromArgb(248, 250, 252);
+            this.BackColor = Pal.C(248, 250, 252);
             this.Dock = DockStyle.Fill;
             this.Font = new Font("Segoe UI", 9.5F);
             this.Padding = new Padding(24);
@@ -101,12 +101,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblOps.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tblOps.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
 
-            Label lblDep = new Label { Text = "Default Schedule Departure Time:", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 4, 0, 2) };
+            Label lblDep = new Label { Text = "Default Schedule Departure Time:", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 4, 0, 2) };
             cbDefaultDeparture = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F), Margin = new Padding(0, 0, 12, 10) };
             cbDefaultDeparture.Items.AddRange(new object[] { "05:00 AM", "06:00 AM", "07:00 AM", "08:00 AM", "09:00 AM", "10:00 AM", "01:00 PM" });
             cbDefaultDeparture.SelectedIndex = 3;
 
-            Label lblRef = new Label { Text = "Automatic Grid Refresh Rate:", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 4, 0, 2) };
+            Label lblRef = new Label { Text = "Automatic Grid Refresh Rate:", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 4, 0, 2) };
             cbRefreshInterval = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F), Margin = new Padding(0, 0, 0, 10) };
             cbRefreshInterval.Items.AddRange(new object[] { "Manual Refresh Only", "Every 30 Seconds", "Every 60 Seconds", "Every 5 Minutes" });
             cbRefreshInterval.SelectedIndex = 0;
@@ -120,7 +120,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Allow Multi-Drop Combined Destinations in 1 Dispatch Trip",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
                 Cursor = Cursors.Hand,
                 Dock = DockStyle.Top,
@@ -131,7 +131,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Require Empty Crates Return Tracking on Trip Reports",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
                 Cursor = Cursors.Hand,
                 Dock = DockStyle.Top,
@@ -142,7 +142,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Automatically Recommend Optimal Vehicle from Active Trucks",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
                 Cursor = Cursors.Hand,
                 Dock = DockStyle.Top,
@@ -169,12 +169,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblDisplay.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tblDisplay.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
 
-            Label lblCur = new Label { Text = "Currency Display Symbol:", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 4, 0, 2) };
+            Label lblCur = new Label { Text = "Currency Display Symbol:", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 4, 0, 2) };
             cbCurrency = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F), Margin = new Padding(0, 0, 12, 10) };
             cbCurrency.Items.AddRange(new object[] { "PHP (Philippine Peso)", "₱ (Peso Symbol)", "USD ($)" });
             cbCurrency.SelectedIndex = 0;
 
-            Label lblDate = new Label { Text = "Standard Date Display Format:", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 4, 0, 2) };
+            Label lblDate = new Label { Text = "Standard Date Display Format:", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 4, 0, 2) };
             cbDateFormat = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F), Margin = new Padding(0, 0, 0, 10) };
             cbDateFormat.Items.AddRange(new object[] { "yyyy-MM-dd (ISO Standard)", "MM/dd/yyyy (US Standard)", "dd/MM/yyyy (UK Standard)", "MMMM dd, yyyy (Long Format)" });
             cbDateFormat.SelectedIndex = 0;
@@ -183,7 +183,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Enable Floating Notification Toasts for Business Events",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
                 Checked = true,
                 Cursor = Cursors.Hand,
@@ -195,7 +195,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Start Application with Navigation Sidebar Menu Collapsed",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
                 Checked = true,
                 Cursor = Cursors.Hand,
@@ -207,7 +207,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Automated Proactive Overdue Invoices & Trip Alerts",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
                 Checked = true,
                 Cursor = Cursors.Hand,
@@ -219,7 +219,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Alert When Ready Available Trucks Fall to 1 Vehicle",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
                 Checked = true,
                 Cursor = Cursors.Hand,
@@ -252,8 +252,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "🔑 Configure Security Question & Password...",
                 AutoSize = true,
                 Height = 36,
-                BackColor = Color.FromArgb(15, 23, 42),
-                ForeColor = Color.White,
+                BackColor = Pal.C(15, 23, 42),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
@@ -286,8 +286,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Left,
                 Width = 340,
                 Height = 44,
-                BackColor = Color.FromArgb(185, 28, 28),
-                ForeColor = Color.White,
+                BackColor = Pal.C(185, 28, 28),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -299,7 +299,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(22, 101, 52),
+                ForeColor = Pal.C(22, 101, 52),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(16, 0, 0, 0),
                 Text = ""
@@ -345,7 +345,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                BackColor = Color.White,
+                BackColor = Pal.White,
                 Padding = new Padding(20, 16, 20, 16),
                 Margin = new Padding(0, 0, 0, 16)
             };
@@ -354,7 +354,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = title,
                 Font = new Font("Segoe UI", 12F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(15, 23, 42),
+                ForeColor = Pal.C(15, 23, 42),
                 AutoSize = true,
                 Dock = DockStyle.Top,
                 Margin = new Padding(0, 0, 0, 2)
@@ -364,7 +364,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = subtitle,
                 Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.FromArgb(100, 116, 139),
+                ForeColor = Pal.C(100, 116, 139),
                 AutoSize = true,
                 Dock = DockStyle.Top,
                 Padding = new Padding(0, 0, 0, 12)
@@ -381,7 +381,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = label,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(51, 65, 85),
+                ForeColor = Pal.C(51, 65, 85),
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 Margin = new Padding(0, 4, 0, 2)
@@ -416,8 +416,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 txtCompanyName.Text = MJdatabase.GetSystemSetting("CompanyName", "M.J. Billones Transport Service");
                 txtCompanyTagline.Text = MJdatabase.GetSystemSetting("CompanyTagline", "Reliable Cold Chain & Cargo Logistics");
                 txtCompanyContact.Text = MJdatabase.GetSystemSetting("CompanyContact", "0917-123-4567");
-                txtCompanyTin.Text = MJdatabase.GetSystemSetting("CompanyTin", "123-456-789-000");
-                txtCompanyAddress.Text = MJdatabase.GetSystemSetting("CompanyAddress", "Cavite / Batangas Operations Depot");
+                txtCompanyTin.Text = MJdatabase.GetSystemSetting("CompanyTin", "708-839-875-000");
+                txtCompanyAddress.Text = MJdatabase.GetSystemSetting("CompanyAddress", "Jasmin St., San Francisco, Tarlac City");
                 txtInvoiceFooter.Text = MJdatabase.GetSystemSetting("InvoiceFooter", "Thank you for your business! All deliveries are subject to standard transport terms.");
 
                 string dep = MJdatabase.GetSystemSetting("DefaultDepartureTime", "08:00 AM");
@@ -489,8 +489,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.SetSystemSetting("NotifyLowTrucks", chkNotifyLowTrucks.Checked ? "True" : "False", "Alert when available trucks fall to 1 vehicle");
 
                 lblStatus.Text = "⚡ Auto-saved!";
-                lblStatus.ForeColor = Color.FromArgb(22, 101, 52);
-
+                lblStatus.ForeColor = Pal.C(22, 101, 52);
                 if (notify)
                 {
                     EventNotificationService.Publish("Preferences Saved", "System customization preferences updated successfully.", ToastType.Success, this);
@@ -506,8 +505,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AutoSavePreferences(true);
 
                 lblStatus.Text = "✅ System customization preferences successfully saved!";
-                lblStatus.ForeColor = Color.FromArgb(22, 101, 52);
-
+                lblStatus.ForeColor = Pal.C(22, 101, 52);
                 System.Windows.Forms.Timer t = new System.Windows.Forms.Timer { Interval = 3500 };
                 t.Tick += (ts, te) =>
                 {

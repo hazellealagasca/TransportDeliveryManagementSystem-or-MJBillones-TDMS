@@ -23,7 +23,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.Text = title;
             this.Size = new Size(800, 600);
             this.StartPosition = FormStartPosition.CenterParent;
-            this.BackColor = Color.FromArgb(15, 23, 42);
+            this.BackColor = Pal.C(15, 23, 42);
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.MinimumSize = new Size(400, 300);
             this.MaximizeBox = true;
@@ -33,7 +33,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Dock = DockStyle.Top,
                 Height = 45,
-                BackColor = Color.FromArgb(30, 41, 59),
+                BackColor = Pal.C(30, 41, 59),
                 Padding = new Padding(15, 10, 15, 10)
             };
 
@@ -41,7 +41,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Dock = DockStyle.Left,
                 Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold),
-                ForeColor = Color.White,
+                ForeColor = Pal.White,
                 AutoSize = true,
                 Text = title
             };
@@ -51,8 +51,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Right,
                 Text = "✖ Close",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                ForeColor = Color.White,
-                BackColor = Color.FromArgb(153, 27, 27),
+                ForeColor = Pal.White,
+                BackColor = Pal.C(153, 27, 27),
                 FlatStyle = FlatStyle.Flat,
                 Width = 90,
                 Cursor = Cursors.Hand
@@ -67,7 +67,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Dock = DockStyle.Fill,
                 SizeMode = PictureBoxSizeMode.Zoom,
-                BackColor = Color.FromArgb(15, 23, 42)
+                BackColor = Pal.C(15, 23, 42)
             };
 
             this.Controls.Add(picViewer);

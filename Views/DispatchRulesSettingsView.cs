@@ -30,7 +30,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void InitializeComponent()
         {
             this.SuspendLayout();
-            this.BackColor = Color.FromArgb(248, 250, 252);
+            this.BackColor = Pal.C(248, 250, 252);
             this.Dock = DockStyle.Fill;
             this.Font = new Font("Segoe UI", 10F);
             this.Padding = new Padding(24);
@@ -41,7 +41,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                BackColor = Color.White,
+                BackColor = Pal.White,
                 Padding = new Padding(24),
                 Margin = new Padding(0, 0, 0, 16)
             };
@@ -60,7 +60,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "🚚 Operations & Dispatch Routing Rules",
                 Font = new Font("Segoe UI", 13F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(15, 23, 42),
+                ForeColor = Pal.C(15, 23, 42),
                 AutoSize = true,
                 Margin = new Padding(0, 0, 0, 4)
             };
@@ -69,7 +69,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Configure multi-destination delivery trip parameters, loading schedule flexibility, and dispatch assignment behaviors.",
                 Font = new Font("Segoe UI", 9.5F),
-                ForeColor = Color.FromArgb(100, 116, 139),
+                ForeColor = Pal.C(100, 116, 139),
                 AutoSize = true,
                 Margin = new Padding(0, 0, 0, 18)
             };
@@ -78,7 +78,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Allow Multiple Destinations in 1 Dispatch Trip (Multi-Drop Combined Delivery)",
                 Font = new Font("Segoe UI Semibold", 10.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
                 Cursor = Cursors.Hand,
                 Margin = new Padding(0, 0, 0, 6)
@@ -89,7 +89,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                BackColor = Color.FromArgb(239, 246, 255),
+                BackColor = Pal.C(239, 246, 255),
                 Padding = new Padding(14, 12, 14, 12),
                 Margin = new Padding(0, 0, 0, 16)
             };
@@ -98,7 +98,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "ℹ️ When enabled: Loading Schedule Management accepts multi-drop destinations (e.g., 'TRECE / DASMARINAS / TAGAYTAY') and Delivery Dispatch allows combining multiple destination loading orders into 1 single truck dispatch trip without duplicate assignment lockouts.\n\nWhen disabled: Every dispatch trip is strictly constrained to a single destination and 1:1 loading schedule.",
                 Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.FromArgb(30, 58, 138),
+                ForeColor = Pal.C(30, 58, 138),
                 Dock = DockStyle.Top,
                 AutoSize = true
             };
@@ -108,7 +108,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Require Empty Crates Return Tracking on Trip Documentation",
                 Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(51, 65, 85),
+                ForeColor = Pal.C(51, 65, 85),
                 AutoSize = true,
                 Cursor = Cursors.Hand,
                 Margin = new Padding(0, 0, 0, 6)
@@ -118,7 +118,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Automatically Recommend Optimal Truck based on Total Volume (G-Crates + E-Crates)",
                 Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(51, 65, 85),
+                ForeColor = Pal.C(51, 65, 85),
                 AutoSize = true,
                 Cursor = Cursors.Hand,
                 Margin = new Padding(0, 0, 0, 18)
@@ -138,8 +138,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "💾  Save Dispatch Preferences",
                 Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold),
-                BackColor = Color.FromArgb(220, 38, 38),
-                ForeColor = Color.White,
+                BackColor = Pal.C(220, 38, 38),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Height = 40,
                 Width = 240,
@@ -153,7 +153,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(22, 101, 52),
+                ForeColor = Pal.C(22, 101, 52),
                 AutoSize = true,
                 Padding = new Padding(0, 10, 0, 0)
             };
@@ -205,8 +205,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 EventNotificationService.Publish("Dispatch Rules Saved", "Dispatch routing preferences updated successfully.", ToastType.Success, this);
 
                 lblStatusToast.Text = "✅ Dispatch routing preferences successfully saved!";
-                lblStatusToast.ForeColor = Color.FromArgb(22, 101, 52);
-
+                lblStatusToast.ForeColor = Pal.C(22, 101, 52);
                 System.Windows.Forms.Timer t = new System.Windows.Forms.Timer { Interval = 3500 };
                 t.Tick += (ts, te) =>
                 {

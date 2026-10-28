@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
+using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Forms;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
 
@@ -24,15 +26,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Button btnCloseForm = null!;
         private Panel pnlMultiDropInfo = null!;
         private Label lblMultiDropDetails = null!;
+        private DataGridView gridStores = null!;
+        private Panel pnlTripFooter = null!;
+        private TextBox txtTruckTimeIn = null!;
+        private TextBox txtTruckTimeOut = null!;
+        private TextBox txtDtrApprovedBy = null!;
+        private TextBox txtReturnCheckedBy = null!;
+        private TextBox txtDtrPreparedBy = null!;
+        private TextBox txtDrPreparedBy = null!;
+        private TextBox txtDrCheckedBy = null!;
+        private TextBox txtGuardName = null!;
+        private bool isUpdatingStoreGrid = false;
+        private Label? lblDispatchInfoBanner;
 
         public TripReportView()
         {
             InitializeComponent();
+            Pal.RemapTree(this);
             gridTripReports.BringToFront();
             InitializeMultiDropTripPanel();
             SetupGridColumns();
             SetupContextMenu();
-            gridTripReports.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && gridTripReports.Rows[e.RowIndex].DataBoundItem is TripReport item) RecordDetailsDialog.ShowDetails(this, item); };
+            gridTripReports.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && gridTripReports.Rows[e.RowIndex].DataBoundItem is TripReport item) OpenEditTripReport(item); };
             gridTripReports.ColumnHeaderMouseClick += (s, e) => {
                 if (e.ColumnIndex < 0 || e.ColumnIndex >= gridTripReports.Columns.Count) return;
                 string col = gridTripReports.Columns[e.ColumnIndex].DataPropertyName;
@@ -46,15 +61,36 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnPrint.Visible = false;
 
+            var btnPrintOfficialTrip = new Button
+            {
+                Text = "📋 Official Trip Report",
+                Size = new Size(165, 30),
+                BackColor = Pal.C(30, 58, 138),
+                ForeColor = Pal.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 4, 8, 4)
+            };
+            btnPrintOfficialTrip.FlatAppearance.BorderSize = 0;
+            btnPrintOfficialTrip.Click += (s, e) => PrintSelectedTripReport();
+            pnlGridActionsFlow.Controls.Add(btnPrintOfficialTrip);
+
             var menuActions = new ContextMenuStrip();
+            menuActions.Items.Add("📋 Print Official Trip Report", null, (s, e) => PrintSelectedTripReport());
             menuActions.Items.Add("📊 Export Trip Documentation to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridTripReports, "Trip_Reports", "Completed Trip Reports"));
             menuActions.Items.Add("🖨️ Print Trip Reports Register", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
 
+            currentFormWidth = UIThemeHelper.GetAdaptiveDrawerWidth(this, 420F, 480F);
             InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
+            StyleFullPageForm();
+            InitReportCenter();
         }
+
+        private float currentFormWidth = 420F;
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
@@ -70,17 +106,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             btnToggleForm = new Button
             {
-                Text = "📝 + New / Form ▾",
-                Size = new Size(150, 30),
-                BackColor = Color.FromArgb(30, 41, 59),
-                ForeColor = Color.White,
+                Text = "＋ New trip report",
+                Size = new Size(Dpi(160), 30),
+                BackColor = Pal.C(185, 28, 28),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
                 Margin = new Padding(0, 4, 8, 4)
             };
             btnToggleForm.FlatAppearance.BorderSize = 0;
-            btnToggleForm.Click += (s, e) => SetFormVisibility(!pnlForm.Visible);
+            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) SetFormVisibility(false); else OpenNewTripReport(); };
+            UIThemeHelper.SetButtonRole(btnToggleForm, "primary");
             pnlGridActionsFlow.Controls.Add(btnToggleForm);
             pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
 
@@ -90,8 +127,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Right,
                 Width = 72,
                 Height = 30,
-                BackColor = Color.FromArgb(241, 245, 249),
-                ForeColor = Color.FromArgb(71, 85, 105),
+                BackColor = Pal.C(241, 245, 249),
+                ForeColor = Pal.C(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -103,28 +140,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetFormVisibility(false);
         }
 
-        private void SetFormVisibility(bool visible)
-        {
-            pnlForm.Visible = visible;
-            if (tblMasterContent.ColumnStyles.Count > 0)
-            {
-                tblMasterContent.ColumnStyles[0].Width = visible ? 480F : 0F;
-                tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
-            }
-            if (tblMasterContent.ColumnStyles.Count > 1)
-            {
-                tblMasterContent.ColumnStyles[1].Width = 100F;
-                tblMasterContent.ColumnStyles[1].SizeType = SizeType.Percent;
-            }
-            if (btnToggleForm != null)
-            {
-                btnToggleForm.Text = visible ? "✕ Hide Form ▴" : "📝 + New / Form ▾";
-                btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
-                btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
-            }
-            MainForm.Instance?.NotifyDrawerToggled(visible);
-        }
-
         public void RefreshData()
         {
             LoadData();
@@ -132,46 +147,517 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void InitializeMultiDropTripPanel()
         {
+            tblTimes.Visible = false;
+            tblManagerNames.Visible = false;
+
+            lblDelGCrate.Text = "Delivered G-crates";
+            lblDelECrate.Text = "Delivered E-crates";
+            lblRetGCrate.Text = "Returned G-crates";
+            lblRetECrate.Text = "Returned E-crates";
+            lblDel.Text = "Dispatch order";
+            lblRem.Text = "QA / store remarks";
+            lblDispatchInfoBanner = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = Dpi(58),
+                BackColor = Pal.C(240, 253, 244),
+                ForeColor = Pal.C(22, 101, 52),
+                Font = new Font("Segoe UI Semibold", 9F),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(Dpi(12), Dpi(4), Dpi(12), Dpi(4)),
+                Margin = new Padding(0, Dpi(8), 0, 0),
+                AutoEllipsis = true,
+                Text = "ℹ️ Pick a dispatch order above to load its route, truck, crew and stores."
+            };
+
             pnlMultiDropInfo = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 60,
-                Visible = false,
-                BackColor = Color.FromArgb(240, 253, 244),
-                Padding = new Padding(10),
-                Margin = new Padding(0, 0, 0, 8)
+                Height = Dpi(300),
+                Visible = true,
+                BackColor = AppTheme.Surface,
+                Padding = new Padding(0),
+                Margin = new Padding(0)
             };
+
+            var pnlMultiDropHeaderBar = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                Height = Dpi(46),
+                ColumnCount = 3,
+                RowCount = 1,
+                BackColor = AppTheme.Surface,
+                Margin = new Padding(0)
+            };
+
+            pnlMultiDropHeaderBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            pnlMultiDropHeaderBar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            pnlMultiDropHeaderBar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             lblMultiDropDetails = new Label
             {
                 Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 8.5F),
-                ForeColor = Color.FromArgb(22, 101, 52),
-                Text = ""
+                Font = new Font("Segoe UI Semibold", 10.5F),
+                ForeColor = AppTheme.TextPrimary,
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoEllipsis = true,
+                Text = "🏪 Stores & crates for this trip"
             };
-            pnlMultiDropInfo.Controls.Add(lblMultiDropDetails);
-            pnlFormBody.Controls.Add(pnlMultiDropInfo);
-            int dIdx = pnlFormBody.Controls.IndexOf(cbDelivery);
-            if (dIdx >= 0)
+
+            Button MakeBarButton(string text, string role)
             {
-                pnlFormBody.Controls.SetChildIndex(pnlMultiDropInfo, dIdx + 1);
+                var b = new Button
+                {
+                    Text = text,
+                    Height = Dpi(34),
+                    AutoSize = true,
+                    Padding = new Padding(Dpi(10), 0, Dpi(10), 0),
+                    Font = new Font("Segoe UI Semibold", 9F),
+                    FlatStyle = FlatStyle.Flat,
+                    Cursor = Cursors.Hand,
+                    Margin = new Padding(Dpi(6), Dpi(4), 0, Dpi(4))
+                };
+                b.FlatAppearance.BorderSize = 0;
+                UIThemeHelper.SetButtonRole(b, role);
+                return b;
             }
+            var btnAddTripStoreRow = MakeBarButton("➕ Add store", "secondary");
+            btnAddTripStoreRow.Click += (s, e) =>
+            {
+                if (gridStores == null) return;
+                int nextIdx = gridStores.Rows.Count + 1;
+                int rIdx = gridStores.Rows.Add($"ST-{nextIdx:00}", $"Store {nextIdx}", "", "08:00 AM", "08:30 AM", "", 0, 0, "", "", "", 0, 0, "");
+                SizeStoreTable(gridStores.Rows.Count);
+                if (rIdx >= 0 && gridStores.Columns.Contains("colStore"))
+                {
+                    gridStores.CurrentCell = gridStores.Rows[rIdx].Cells["colStore"];
+                    gridStores.BeginEdit(true);
+                }
+            };
+
+            var btnEditTripStoreTable = MakeBarButton("✎ Edit table", "secondary");
+            btnEditTripStoreTable.Click += (s, e) => OpenTripStoreTableEditor();
+            pnlMultiDropHeaderBar.Controls.Add(lblMultiDropDetails, 0, 0);
+            pnlMultiDropHeaderBar.Controls.Add(btnAddTripStoreRow, 1, 0);
+            pnlMultiDropHeaderBar.Controls.Add(btnEditTripStoreTable, 2, 0);
+            var lblStoresHint = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = Dpi(24),
+                TextAlign = ContentAlignment.TopLeft,
+                Font = new Font("Segoe UI", 8.75F),
+                ForeColor = AppTheme.TextMuted,
+                AutoEllipsis = true,
+                Text = "Yellow cells can be edited. Changes here apply to this trip report only; the crate totals below add up automatically."
+            };
+            gridStores = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                BackgroundColor = AppTheme.Surface,
+                BorderStyle = BorderStyle.FixedSingle,
+                RowHeadersVisible = false,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                AllowUserToResizeRows = false,
+                SelectionMode = DataGridViewSelectionMode.CellSelect,
+                EditMode = DataGridViewEditMode.EditOnEnter,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                ScrollBars = ScrollBars.Both,
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+                ColumnHeadersHeight = Dpi(34),
+                RowTemplate = { Height = Dpi(30) },
+                Font = new Font("Segoe UI", 9F),
+                EnableHeadersVisualStyles = false
+            };
+            gridStores.ColumnHeadersDefaultCellStyle.BackColor = Pal.C(219, 234, 254);
+            gridStores.ColumnHeadersDefaultCellStyle.ForeColor = Pal.C(30, 58, 138);
+            gridStores.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI Semibold", 8.5F);
+            var roStyle = new DataGridViewCellStyle { BackColor = Pal.C(248, 250, 252), ForeColor = Pal.C(15, 23, 42) };
+            var editStyle = new DataGridViewCellStyle { BackColor = Pal.C(254, 252, 232), ForeColor = Pal.C(15, 23, 42) };
+            var editNumStyle = new DataGridViewCellStyle { BackColor = Pal.C(254, 252, 232), ForeColor = Pal.C(15, 23, 42), Alignment = DataGridViewContentAlignment.MiddleRight };
+            DataGridViewTextBoxColumn Col(string name, string header, int weight, DataGridViewCellStyle style, int min = 48) =>
+                new DataGridViewTextBoxColumn { Name = name, HeaderText = header, FillWeight = weight, MinimumWidth = Dpi(min), ReadOnly = false, DefaultCellStyle = new DataGridViewCellStyle(style) };
+            gridStores.Columns.Add(Col("colCode", "Store code", 72, editStyle, 60));
+            gridStores.Columns["colCode"]!.DefaultCellStyle.Font = new Font("Segoe UI Semibold", 9F);
+            gridStores.Columns.Add(Col("colStore", "Store name", 150, editStyle, 110));
+            gridStores.Columns.Add(Col("colDr", "DR / Inv #", 90, editStyle, 70));
+            gridStores.Columns.Add(Col("colIn", "Store in", 66, editStyle, 58));
+            gridStores.Columns.Add(Col("colOut", "Store out", 66, editStyle, 58));
+            gridStores.Columns.Add(Col("colRep", "Representative", 120, editStyle, 90));
+            gridStores.Columns.Add(Col("colLoadE", "Load E", 56, editNumStyle));
+            gridStores.Columns.Add(Col("colLoadG", "Load G", 56, editNumStyle));
+            gridStores.Columns.Add(Col("colBox", "Box", 44, editStyle, 40));
+            gridStores.Columns.Add(Col("colPfoods", "PFOODS", 56, editStyle, 48));
+            gridStores.Columns.Add(Col("colMi", "M.I", 44, editStyle, 40));
+            gridStores.Columns.Add(Col("colRetE", "Ret E", 56, editNumStyle));
+            gridStores.Columns.Add(Col("colRetG", "Ret G", 56, editNumStyle));
+            gridStores.Columns.Add(Col("colRem", "Remarks", 110, editStyle, 80));
+            gridStores.CellValueChanged += (s, e) =>
+            {
+                if (isBindingForm || isUpdatingStoreGrid || e.RowIndex < 0) return;
+                RecalculateTotalsFromStoreGrid();
+            };
+            gridStores.CurrentCellDirtyStateChanged += (s, e) =>
+            {
+                if (gridStores.IsCurrentCellDirty)
+                {
+                    gridStores.CommitEdit(DataGridViewDataErrorContexts.Commit);
+                }
+            };
+
+            pnlMultiDropInfo.Controls.Add(gridStores);
+            pnlMultiDropInfo.Controls.Add(lblStoresHint);
+            pnlMultiDropInfo.Controls.Add(pnlMultiDropHeaderBar);
+
+            pnlTripFooter = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = Dpi(150),
+                BackColor = AppTheme.Surface,
+                Padding = new Padding(0),
+                Margin = new Padding(0)
+            };
+
+            var tblFooter = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 4,
+                RowCount = 4,
+                BackColor = AppTheme.Surface
+            };
+            for (int i = 0; i < 4; i++) tblFooter.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tblFooter.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(24)));
+            tblFooter.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(44)));
+            tblFooter.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(24)));
+            tblFooter.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(44)));
+            Label MakeLbl(string t) => new Label { Text = t, Dock = DockStyle.Fill, TextAlign = ContentAlignment.BottomLeft, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextSecondary, Margin = new Padding(0, 0, Dpi(12), Dpi(2)) };
+            TextBox MakeTxt(string def) => new TextBox { Text = def, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10F), Margin = new Padding(0, Dpi(2), Dpi(12), Dpi(6)) };
+            txtTruckTimeIn = MakeTxt("2042");
+            txtTruckTimeOut = MakeTxt("0139");
+            txtDtrApprovedBy = MakeTxt("RAMIL MENDOZA");
+            txtReturnCheckedBy = MakeTxt("");
+            txtDtrPreparedBy = MakeTxt("XERXES RYAN MANRIQUE");
+            txtDrPreparedBy = MakeTxt("VINJOHN VILLAMOR");
+            txtDrCheckedBy = MakeTxt("JOE-EM FLORES");
+            txtGuardName = MakeTxt("");
+
+            tblFooter.Controls.Add(MakeLbl("Truck time in"), 0, 0);
+            tblFooter.Controls.Add(MakeLbl("Truck time out"), 1, 0);
+            tblFooter.Controls.Add(MakeLbl("DTR approved by"), 2, 0);
+            tblFooter.Controls.Add(MakeLbl("Return checked by"), 3, 0);
+            tblFooter.Controls.Add(txtTruckTimeIn, 0, 1);
+            tblFooter.Controls.Add(txtTruckTimeOut, 1, 1);
+            tblFooter.Controls.Add(txtDtrApprovedBy, 2, 1);
+            tblFooter.Controls.Add(txtReturnCheckedBy, 3, 1);
+
+            tblFooter.Controls.Add(MakeLbl("DTR prepared by"), 0, 2);
+            tblFooter.Controls.Add(MakeLbl("DR prepared by"), 1, 2);
+            tblFooter.Controls.Add(MakeLbl("DR checked by"), 2, 2);
+            tblFooter.Controls.Add(MakeLbl("Guard name & sign"), 3, 2);
+            tblFooter.Controls.Add(txtDtrPreparedBy, 0, 3);
+            tblFooter.Controls.Add(txtDrPreparedBy, 1, 3);
+            tblFooter.Controls.Add(txtDrCheckedBy, 2, 3);
+            tblFooter.Controls.Add(txtGuardName, 3, 3);
+
+            pnlTripFooter.Controls.Add(tblFooter);
+            InitializeCrewPaySection();
+            BuildTripReportCards();
+        }
+        private void SizeStoreTable(int rowCount)
+        {
+            if (pnlMultiDropInfo == null) return;
+            int chrome = Dpi(46) + Dpi(24) + Dpi(34) + Dpi(22);
+            int h = chrome + Math.Max(3, rowCount) * Dpi(30);
+            pnlMultiDropInfo.Height = Math.Clamp(h, Dpi(240), Dpi(560));
         }
 
         private void UpdateMultiDropTripInfo(Delivery d)
         {
-            if (d.IsMultiDrop)
+            if (d == null || gridStores == null) return;
+            isUpdatingStoreGrid = true;
+            try
             {
-                var stops = MJdatabase.GetDispatchStops(d.Id);
-                string stopsSummary = stops.Count > 0
-                    ? string.Join(" ➔ ", stops.Select(s => $"{s.StopSequence}. {s.ClientName} ({s.TotalCrates} cr)"))
-                    : d.LoadingScheduleInfo;
-                lblMultiDropDetails.Text = $"🗺️ Consolidated Multi-Drop Route ({d.TotalStopsCount} stops):\n{stopsSummary}";
+                gridStores.Rows.Clear();
+                var stops = MJdatabase.GetOrBuildTripStopsForDelivery(d);
+                var route = MJdatabase.FindRouteByNameOrCode(d.Destination) ?? MJdatabase.FindRouteByNameOrCode(d.LoadingScheduleInfo);
+                string routeTitle = route != null ? $"{route.RouteCode} - {route.RouteName}" : d.CleanRouteDisplay;
+                string refNum = $"RCS VILLASIS{d.DispatchDate:MMddyy}-{d.Id:D3}";
+                if (lblDispatchInfoBanner != null)
+                {
+                    lblDispatchInfoBanner.Text = $"📄 REF: {refNum}   |   🛣️ ROUTE: {routeTitle}   |   📅 DATE: {d.DispatchDate:dd/MM/yyyy} (STD ETD: {d.DepartureTime})" + Environment.NewLine + $"🚚 TRUCK: {d.TruckInfo}   |   👤 DRIVER: {d.DriverName}   |   🤝 HELPER: {d.AideDisplay}";
+                }
+                var incidents = MJdatabase.GetIncidentReports().FindAll(ir => ir.DeliveryId == d.Id);
+                if (incidents.Count > 0)
+                {
+                    string incSummary = string.Join(" | ", incidents.Select(i => $"{i.Cause}: {i.DamagedQuantity} damaged crates (PHP {i.EstimatedCost:N2})"));
+                    if (lblDispatchInfoBanner != null)
+                    {
+                        lblDispatchInfoBanner.Text += Environment.NewLine + $"⚠️ INCIDENT RECORDED: {incSummary}";
+                        lblDispatchInfoBanner.BackColor = Pal.C(254, 242, 242);
+                        lblDispatchInfoBanner.ForeColor = Pal.C(185, 28, 28);
+                    }
+                    if (string.IsNullOrWhiteSpace(txtRemarks.Text))
+                    {
+                        txtRemarks.Text = $"Incident Recorded: {incSummary}";
+                    }
+                }
+                else
+                {
+                    if (lblDispatchInfoBanner != null)
+                    {
+                        lblDispatchInfoBanner.BackColor = Pal.C(240, 253, 244);
+                        lblDispatchInfoBanner.ForeColor = Pal.C(22, 101, 52);
+                    }
+                }
+
+                if (lblDispatchInfoBanner != null)
+                {
+                    int lines = lblDispatchInfoBanner.Text.Split('\n').Length;
+                    lblDispatchInfoBanner.Height = Dpi(16) + lines * Dpi(21);
+                }
+                lblMultiDropDetails.Text = $"🏪 Stores & crates for this trip  ·  {routeTitle} ({stops.Count} stores)";
+                foreach (var s in stops)
+                {
+                    int loadE = (s.DeliveredECrates > 0 || s.DeliveredGCrates > 0) ? s.DeliveredECrates : s.ECrate;
+                    int loadG = (s.DeliveredECrates > 0 || s.DeliveredGCrates > 0) ? s.DeliveredGCrates : s.GCrate;
+                    int retE = (s.ReturnedECrates > 0 || s.ReturnedGCrates > 0) ? s.ReturnedECrates : loadE;
+                    int retG = (s.ReturnedECrates > 0 || s.ReturnedGCrates > 0) ? s.ReturnedGCrates : loadG;
+
+                    int rIdx = gridStores.Rows.Add(
+                        s.StoreCode,
+                        s.Destination,
+                        s.DrNumbers,
+                        s.ArrivalTime,
+                        s.DepartureTime,
+                        s.StoreManagerName,
+                        loadE,
+                        loadG,
+                        s.OthersBox,
+                        s.OthersPfoods,
+                        s.OthersMi,
+                        retE,
+                        retG,
+                        s.Remarks
+                    );
+                    gridStores.Rows[rIdx].Tag = s;
+                }
+                SizeStoreTable(stops.Count);
                 pnlMultiDropInfo.Visible = true;
             }
-            else
+            finally
             {
-                pnlMultiDropInfo.Visible = false;
+                isUpdatingStoreGrid = false;
             }
+        }
+
+        private void OpenTripStoreTableEditor()
+        {
+            if (gridStores == null) return;
+
+            var colSpecs = new List<SpecialTripColumnDef>();
+            foreach (DataGridViewColumn col in gridStores.Columns)
+            {
+                colSpecs.Add(new SpecialTripColumnDef
+                {
+                    Key = col.Name,
+                    HeaderText = col.HeaderText,
+                    Width = col.Width,
+                    IsFill = false
+                });
+            }
+
+            var rowDicts = new List<Dictionary<string, string>>();
+            foreach (DataGridViewRow row in gridStores.Rows)
+            {
+                if (row.IsNewRow) continue;
+                var dict = new Dictionary<string, string>();
+                foreach (DataGridViewColumn col in gridStores.Columns)
+                {
+                    dict[col.Name] = row.Cells[col.Name].Value?.ToString() ?? "";
+                }
+                rowDicts.Add(dict);
+            }
+
+            using var dlg = new SpecialTripTableEditorDialog(
+                lblMultiDropDetails.Text,
+                "Customize store breakdown columns, headers, store times, representatives, and crate counts.",
+                colSpecs,
+                rowDicts);
+
+            if (dlg.ShowDialog(this.FindForm()) == DialogResult.OK)
+            {
+                lblMultiDropDetails.Text = dlg.EditedTableTitle;
+                isUpdatingStoreGrid = true;
+                try
+                {
+                    foreach (var spec in dlg.EditedColumns)
+                    {
+                        if (gridStores.Columns.Contains(spec.Key) && gridStores.Columns[spec.Key] is DataGridViewColumn existingCol)
+                        {
+                            existingCol.HeaderText = spec.HeaderText;
+                        }
+                        else
+                        {
+                            gridStores.Columns.Add(new DataGridViewTextBoxColumn
+                            {
+                                Name = spec.Key,
+                                HeaderText = spec.HeaderText,
+                                Width = Math.Max(70, spec.Width),
+                                ReadOnly = false
+                            });
+                        }
+                    }
+
+                    gridStores.Rows.Clear();
+                    foreach (var rDict in dlg.EditedRows)
+                    {
+                        int rIdx = gridStores.Rows.Add();
+                        var gRow = gridStores.Rows[rIdx];
+                        foreach (var kv in rDict)
+                        {
+                            if (gridStores.Columns.Contains(kv.Key))
+                            {
+                                gRow.Cells[kv.Key].Value = kv.Value;
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    isUpdatingStoreGrid = false;
+                }
+                RecalculateTotalsFromStoreGrid();
+            }
+        }
+
+        private void RecalculateTotalsFromStoreGrid()
+        {
+            if (isUpdatingStoreGrid || gridStores == null) return;
+            isUpdatingStoreGrid = true;
+            try
+            {
+                int sumLoadE = 0, sumLoadG = 0, sumRetE = 0, sumRetG = 0;
+                string firstRep = "";
+                string firstIn = "";
+                string lastOut = "";
+
+                foreach (DataGridViewRow row in gridStores.Rows)
+                {
+                    if (row.IsNewRow) continue;
+                    int le = int.TryParse(row.Cells["colLoadE"].Value?.ToString(), out int ple) ? Math.Max(0, ple) : 0;
+                    int lg = int.TryParse(row.Cells["colLoadG"].Value?.ToString(), out int plg) ? Math.Max(0, plg) : 0;
+                    int re = int.TryParse(row.Cells["colRetE"].Value?.ToString(), out int pre) ? Math.Max(0, pre) : 0;
+                    int rg = int.TryParse(row.Cells["colRetG"].Value?.ToString(), out int prg) ? Math.Max(0, prg) : 0;
+                    row.Cells["colLoadE"].Value = le;
+                    row.Cells["colLoadG"].Value = lg;
+                    row.Cells["colRetE"].Value = re;
+                    row.Cells["colRetG"].Value = rg;
+                    sumLoadE += le;
+                    sumLoadG += lg;
+                    sumRetE += re;
+                    sumRetG += rg;
+
+                    string rep = row.Cells["colRep"].Value?.ToString()?.Trim() ?? "";
+                    if (string.IsNullOrEmpty(firstRep) && !string.IsNullOrEmpty(rep)) firstRep = rep;
+
+                    string sIn = row.Cells["colIn"].Value?.ToString()?.Trim() ?? "";
+                    if (string.IsNullOrEmpty(firstIn) && !string.IsNullOrEmpty(sIn)) firstIn = sIn;
+
+                    string sOut = row.Cells["colOut"].Value?.ToString()?.Trim() ?? "";
+                    if (!string.IsNullOrEmpty(sOut)) lastOut = sOut;
+                }
+
+                numDeliveredECrates.Value = Math.Min(numDeliveredECrates.Maximum, sumLoadE);
+                numDeliveredGCrates.Value = Math.Min(numDeliveredGCrates.Maximum, sumLoadG);
+                numReturnedECrates.Value = Math.Min(numReturnedECrates.Maximum, sumRetE);
+                numReturnedGCrates.Value = Math.Min(numReturnedGCrates.Maximum, sumRetG);
+
+                if (!string.IsNullOrEmpty(firstRep) && string.IsNullOrWhiteSpace(txtStoreManagerLastName.Text) && string.IsNullOrWhiteSpace(txtStoreManagerFirstName.Text))
+                {
+                    var sp = NameHelper.SplitFullName(firstRep);
+                    txtStoreManagerLastName.Text = string.IsNullOrWhiteSpace(sp.LastName) ? firstRep : sp.LastName;
+                    txtStoreManagerFirstName.Text = string.IsNullOrWhiteSpace(sp.FirstName) ? "Store Rep" : sp.FirstName;
+                    txtStoreManagerMiddleName.Text = sp.MiddleName;
+                }
+                if (!string.IsNullOrEmpty(firstIn)) txtArrivalTime.Text = firstIn;
+                if (!string.IsNullOrEmpty(lastOut)) txtDepartureTime.Text = lastOut;
+
+                CheckCrateVariance();
+            }
+            finally
+            {
+                isUpdatingStoreGrid = false;
+            }
+        }
+
+        private List<DispatchStop> CollectStopsFromGrid(Delivery del)
+        {
+            var list = new List<DispatchStop>();
+            if (gridStores == null) return list;
+            int seq = 1;
+            foreach (DataGridViewRow row in gridStores.Rows)
+            {
+                if (row.IsNewRow) continue;
+                var orig = row.Tag as DispatchStop;
+                int le = int.TryParse(row.Cells["colLoadE"].Value?.ToString(), out int ple) ? Math.Max(0, ple) : 0;
+                int lg = int.TryParse(row.Cells["colLoadG"].Value?.ToString(), out int plg) ? Math.Max(0, plg) : 0;
+                int re = int.TryParse(row.Cells["colRetE"].Value?.ToString(), out int pre) ? Math.Max(0, pre) : 0;
+                int rg = int.TryParse(row.Cells["colRetG"].Value?.ToString(), out int prg) ? Math.Max(0, prg) : 0;
+                string rep = row.Cells["colRep"].Value?.ToString()?.Trim() ?? "";
+                var sp = NameHelper.SplitFullName(rep);
+
+                list.Add(new DispatchStop
+                {
+                    DeliveryId = del.Id,
+                    StopSequence = seq++,
+                    LoadingScheduleId = orig?.LoadingScheduleId ?? (del.LoadingScheduleId > 0 ? del.LoadingScheduleId : null),
+                    ClientName = orig?.ClientName ?? del.ClientName,
+                    StoreCode = row.Cells["colCode"].Value?.ToString()?.Trim() ?? "",
+                    Destination = row.Cells["colStore"].Value?.ToString()?.Trim() ?? "",
+                    DrNumbers = row.Cells["colDr"].Value?.ToString()?.Trim() ?? "",
+                    ArrivalTime = row.Cells["colIn"].Value?.ToString()?.Trim() ?? "",
+                    DepartureTime = row.Cells["colOut"].Value?.ToString()?.Trim() ?? "",
+                    StoreManagerName = rep,
+                    StoreManagerLastName = sp.LastName,
+                    StoreManagerFirstName = sp.FirstName,
+                    StoreManagerMiddleName = sp.MiddleName,
+                    ECrate = orig?.ECrate > 0 ? orig.ECrate : le,
+                    GCrate = orig?.GCrate > 0 ? orig.GCrate : lg,
+                    TotalCrates = (orig?.ECrate > 0 ? orig.ECrate : le) + (orig?.GCrate > 0 ? orig.GCrate : lg),
+                    DeliveredECrates = le,
+                    DeliveredGCrates = lg,
+                    DeliveredCrates = le + lg,
+                    OthersBox = row.Cells["colBox"].Value?.ToString()?.Trim() ?? "",
+                    OthersPfoods = row.Cells["colPfoods"].Value?.ToString()?.Trim() ?? "",
+                    OthersMi = row.Cells["colMi"].Value?.ToString()?.Trim() ?? "",
+                    ReturnedECrates = re,
+                    ReturnedGCrates = rg,
+                    ReturnedCrates = re + rg,
+                    Remarks = row.Cells["colRem"].Value?.ToString()?.Trim() ?? "",
+                    Status = "Delivered"
+                });
+            }
+            return list;
+        }
+
+        private void PrintSelectedTripReport()
+        {
+            if (selectedTripReport != null)
+            {
+                PrintHelper.PrintOfficialTripReport(selectedTripReport.DeliveryId, selectedTripReport.DispatchNumber);
+                return;
+            }
+            if (cbDelivery.SelectedIndex >= 0)
+            {
+                string selText = cbDelivery.SelectedItem?.ToString() ?? "";
+                var selDel = allDeliveries.FirstOrDefault(del => selText.StartsWith(del.DispatchNumber + " - "));
+                if (selDel != null)
+                {
+                    var stops = CollectStopsFromGrid(selDel);
+                    PrintHelper.PrintOfficialTripReport(selDel, selectedTripReport, stops.Count > 0 ? stops : null);
+                    return;
+                }
+            }
+            MessageBox.Show("Please select a Trip Report or Dispatch Order to print the Official Trip Report.", "Select Trip", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void SetupEvents()
@@ -179,15 +665,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbDelivery.SelectedIndexChanged += (s, e) =>
             {
                 if (isBindingForm) return;
-                if (cbDelivery.SelectedIndex >= 0 && cbDelivery.SelectedIndex < allDeliveries.Count)
+                string selText = cbDelivery.SelectedItem?.ToString() ?? "";
+                var d = allDeliveries.FirstOrDefault(del => selText.StartsWith(del.DispatchNumber + " - "));
+                if (d != null)
                 {
-                    var d = allDeliveries[cbDelivery.SelectedIndex];
-                    numDeliveredGCrates.Value = Math.Max(0, d.GCrate);
-                    numDeliveredECrates.Value = Math.Max(0, d.ECrate);
-                    numReturnedGCrates.Value = 0;
-                    numReturnedECrates.Value = 0;
-                    CheckCrateVariance();
                     UpdateMultiDropTripInfo(d);
+                    RecalculateTotalsFromStoreGrid();
+                    LoadCrewPay(d);
                 }
             };
 
@@ -206,7 +690,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
             string selText = cbDelivery.SelectedItem?.ToString() ?? "";
-            var selDel = allDeliveries.FirstOrDefault(del => selText.StartsWith(del.DispatchNumber));
+            var selDel = allDeliveries.FirstOrDefault(del => selText.StartsWith(del.DispatchNumber + " - "));
             if (selDel == null)
             {
                 btnLogIncident.Visible = false;
@@ -234,7 +718,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (cbDelivery.SelectedIndex < 0) return;
             string selText = cbDelivery.SelectedItem?.ToString() ?? "";
-            var selDel = allDeliveries.FirstOrDefault(del => selText.StartsWith(del.DispatchNumber));
+            var selDel = allDeliveries.FirstOrDefault(del => selText.StartsWith(del.DispatchNumber + " - "));
             if (selDel == null) return;
 
             int dgc = (int)numDeliveredGCrates.Value;
@@ -252,7 +736,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridTripReports.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             gridTripReports.ScrollBars = ScrollBars.Both;
             gridTripReports.AllowUserToResizeColumns = true;
-            gridTripReports.ShowCellToolTips = true;
+            gridTripReports.ShowCellToolTips = false;
             gridTripReports.Columns.Clear();
             gridTripReports.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TripReportNumber", HeaderText = "Report #", FillWeight = 110, MinimumWidth = 125, ReadOnly = true });
             gridTripReports.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DispatchNumber", HeaderText = "Dispatch #", FillWeight = 110, MinimumWidth = 125, ReadOnly = true });
@@ -271,13 +755,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void GridTripReports_SelectionChanged(object? sender, EventArgs e)
         {
+            // While the form is open the list is hidden; don't let a background refresh overwrite what is being typed.
+            if (pnlForm.Visible) return;
             if (gridTripReports.SelectedRows.Count > 0 && gridTripReports.SelectedRows[0].DataBoundItem is TripReport tr)
             {
                 isBindingForm = true;
                 selectedTripReport = tr;
 
-                int dIdx = allDeliveries.FindIndex(d => d.Id == selectedTripReport.DeliveryId);
-                if (dIdx >= 0 && dIdx < cbDelivery.Items.Count) cbDelivery.SelectedIndex = dIdx;
+                int dIdx = -1;
+                for (int i = 0; i < cbDelivery.Items.Count; i++)
+                {
+                    if ((cbDelivery.Items[i]?.ToString() ?? "").StartsWith(selectedTripReport.DispatchNumber + " - "))
+                    {
+                        dIdx = i;
+                        break;
+                    }
+                }
+                if (dIdx >= 0) cbDelivery.SelectedIndex = dIdx;
 
                 txtArrivalTime.Text = string.IsNullOrEmpty(selectedTripReport.ArrivalTime) ? "10:00 AM" : selectedTripReport.ArrivalTime;
                 txtDepartureTime.Text = string.IsNullOrEmpty(selectedTripReport.DepartureTime) ? "11:30 AM" : selectedTripReport.DepartureTime;
@@ -289,9 +783,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 txtStoreManagerFirstName.Text = selectedTripReport.StoreManagerFirstName ?? "";
                 txtStoreManagerMiddleName.Text = selectedTripReport.StoreManagerMiddleName ?? "";
                 txtRemarks.Text = selectedTripReport.Remarks;
-                var del = allDeliveries.FirstOrDefault(d => d.Id == selectedTripReport.DeliveryId);
+                if (txtTruckTimeIn != null) txtTruckTimeIn.Text = string.IsNullOrWhiteSpace(selectedTripReport.TruckTimeIn) ? "2042" : selectedTripReport.TruckTimeIn;
+                if (txtTruckTimeOut != null) txtTruckTimeOut.Text = string.IsNullOrWhiteSpace(selectedTripReport.TruckTimeOut) ? "0139" : selectedTripReport.TruckTimeOut;
+                if (txtDtrApprovedBy != null) txtDtrApprovedBy.Text = string.IsNullOrWhiteSpace(selectedTripReport.DtrApprovedBy) ? "RAMIL MENDOZA" : selectedTripReport.DtrApprovedBy;
+                if (txtReturnCheckedBy != null) txtReturnCheckedBy.Text = selectedTripReport.ReturnCheckedBy ?? "";
+                if (txtDtrPreparedBy != null) txtDtrPreparedBy.Text = string.IsNullOrWhiteSpace(selectedTripReport.DtrPreparedBy) ? "XERXES RYAN MANRIQUE" : selectedTripReport.DtrPreparedBy;
+                if (txtDrPreparedBy != null) txtDrPreparedBy.Text = string.IsNullOrWhiteSpace(selectedTripReport.DrPreparedBy) ? "VINJOHN VILLAMOR" : selectedTripReport.DrPreparedBy;
+                if (txtDrCheckedBy != null) txtDrCheckedBy.Text = string.IsNullOrWhiteSpace(selectedTripReport.DrCheckedBy) ? "JOE-EM FLORES" : selectedTripReport.DrCheckedBy;
+                if (txtGuardName != null) txtGuardName.Text = selectedTripReport.GuardName ?? "";
+                var del = allDeliveries.FirstOrDefault(d => d.Id == selectedTripReport.DeliveryId || d.DispatchNumber == selectedTripReport.DispatchNumber);
                 if (del != null) UpdateMultiDropTripInfo(del);
-                lblFormHeader.Text = "Trip Completion Record";
+                LoadCrewPay(del);
                 isBindingForm = false;
             }
         }
@@ -301,35 +803,44 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 allDeliveries = await MJdatabase.GetDeliveriesAsync();
-                var pendingOrTransit = allDeliveries.FindAll(d => d.Status == "Pending" || d.Status == "In Transit" || d.Status == "Delayed");
-
+                crewCache = null;
+                var activeStatuses = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Scheduled", "Pending", "In Transit", "Rescheduled", "Dispatched" };
+                allTripReports = await MJdatabase.GetTripReportsAsync();
+                var reported = new HashSet<string>(allTripReports.Select(t => t.DispatchNumber ?? ""), StringComparer.OrdinalIgnoreCase);
+                // Orders still needing a report come first: on the road, then delivered without a report, then the rest.
+                // Only dispatches marked Completed in Dispatch can get a trip report (plus any that already have one, so it can be edited).
+                var ordered = allDeliveries
+                    .Where(d => DispatchGate.IsCompleted(d.Status) || reported.Contains(d.DispatchNumber ?? ""))
+                    .OrderBy(d => activeStatuses.Contains(d.Status ?? "") ? 0
+                                : (string.Equals(d.Status, "Completed", StringComparison.OrdinalIgnoreCase) && !reported.Contains(d.DispatchNumber ?? "")) ? 1
+                                : string.Equals(d.Status, "Cancelled", StringComparison.OrdinalIgnoreCase) ? 3 : 2)
+                    .ToList();
+                string? keepDispatch = pnlForm.Visible ? GetSelectedDelivery()?.DispatchNumber : null;
+                bool wasBinding = isBindingForm;
+                isBindingForm = true;
                 cbDelivery.Items.Clear();
                 if (allDeliveries.Count == 0)
                 {
                     cbDelivery.Text = "(No dispatch orders created yet)";
                 }
-                else if (pendingOrTransit.Count == 0)
+                else if (ordered.Count == 0)
                 {
-                    foreach (var d in allDeliveries)
-                    {
-                        cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo} [{d.Status}] ({d.DriverName})");
-                    }
-                    if (cbDelivery.Items.Count > 0) cbDelivery.SelectedIndex = 0;
+                    cbDelivery.Text = "(No completed dispatches yet — mark a dispatch completed first)";
                 }
                 else
                 {
-                    foreach (var d in pendingOrTransit)
+                    foreach (var d in ordered)
                     {
-                        cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo} [{d.Status}] ({d.DriverName})");
+                        string tag = reported.Contains(d.DispatchNumber ?? "") ? "  ✓ report filed" : "";
+                        cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo} [{d.Status}] ({d.DriverName}){tag}");
                     }
-                    foreach (var d in allDeliveries.Where(d => d.Status != "Pending" && d.Status != "In Transit" && d.Status != "Delayed"))
-                    {
-                        cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo} [{d.Status}] ({d.DriverName})");
-                    }
-                    if (cbDelivery.Items.Count > 0) cbDelivery.SelectedIndex = 0;
+                    int keepIdx = keepDispatch == null ? -1 : FindDeliveryItemIndex(keepDispatch);
+                    cbDelivery.SelectedIndex = keepIdx >= 0 ? keepIdx : 0;
                 }
 
-                allTripReports = await MJdatabase.GetTripReportsAsync();
+                isBindingForm = wasBinding;
+                RefreshCenterData();
+                ApplyPendingPicks();
                 FilterGridData();
                 var reports = allTripReports;
 
@@ -337,6 +848,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int totalRet = reports.Sum(r => r.ReturnedCrates);
                 lblSummary.Text = $"📊 Total Completed Trips: {reports.Count:N0}  |  📥 Delivered: {totalDel:N0} Crates  |  🔄 Returned Empties: {totalRet:N0} Crates";
                 CheckAndPromptDraft();
+                dataLoaded = true;
+                if (pendingOpenDispatch != null)
+                {
+                    string p = pendingOpenDispatch;
+                    pendingOpenDispatch = null;
+                    OpenForDispatch(p);
+                }
             }
             catch (Exception ex)
             {
@@ -348,6 +866,35 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
+                var valErrors = new List<string>();
+                Control? firstInvalid = null;
+                ValidationHelper.ClearErrors(pnlFormBody);
+
+                if (cbDelivery.SelectedIndex < 0)
+                {
+                    ValidationHelper.ApplyValidationState(cbDelivery, false, "Dispatch order selection is required.");
+                    valErrors.Add("Dispatch order selection is required.");
+                    firstInvalid ??= cbDelivery;
+                }
+                if (string.IsNullOrWhiteSpace(txtStoreManagerLastName.Text) && string.IsNullOrWhiteSpace(txtStoreManagerFirstName.Text))
+                {
+                    ValidationHelper.ApplyValidationState(txtStoreManagerLastName, false, "Store Manager / Representative is required.");
+                    valErrors.Add("Store Manager / Representative Name is required.");
+                    firstInvalid ??= txtStoreManagerLastName;
+                }
+                int plannedDelivered = (int)numDeliveredGCrates.Value + (int)numDeliveredECrates.Value;
+                if (plannedDelivered <= 0)
+                {
+                    ValidationHelper.ApplyValidationState(numDeliveredGCrates, false, "Total delivered crates must be greater than zero.");
+                    valErrors.Add("Total delivered crates must be greater than 0.");
+                    firstInvalid ??= numDeliveredGCrates;
+                }
+
+                if (!ValidationHelper.ShowValidationSummaryIfAny(this, valErrors, firstInvalid))
+                {
+                    return;
+                }
+
                 if (cbDelivery.SelectedIndex < 0)
                 {
                     MessageBox.Show("Please select a dispatch order to complete.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -355,16 +902,84 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
 
                 string selText = cbDelivery.SelectedItem?.ToString() ?? "";
-                var selDel = allDeliveries.FirstOrDefault(del => selText.StartsWith(del.DispatchNumber));
+                var selDel = allDeliveries.FirstOrDefault(del => selText.StartsWith(del.DispatchNumber + " - "));
+                if (selDel != null && !DispatchGate.RequireCompleted(this, DispatchGate.Fresh(selDel), "file its trip report")) return;
                 if (selDel == null)
                 {
                     MessageBox.Show("Selected dispatch order not found. Please refresh and try again.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
+                var stopsToSave = CollectStopsFromGrid(selDel);
                 string smLastName = txtStoreManagerLastName.Text.Trim();
                 string smFirstName = txtStoreManagerFirstName.Text.Trim();
                 string smMiddleName = txtStoreManagerMiddleName.Text.Trim();
+
+                if (string.IsNullOrWhiteSpace(smLastName) && string.IsNullOrWhiteSpace(smFirstName))
+                {
+                    var firstRepStop = stopsToSave.FirstOrDefault(st => !string.IsNullOrWhiteSpace(st.StoreManagerName));
+                    if (firstRepStop != null)
+                    {
+                        var sp = NameHelper.SplitFullName(firstRepStop.StoreManagerName);
+                        smLastName = string.IsNullOrWhiteSpace(sp.LastName) ? firstRepStop.StoreManagerName : sp.LastName;
+                        smFirstName = string.IsNullOrWhiteSpace(sp.FirstName) ? "Store Rep" : sp.FirstName;
+                        smMiddleName = sp.MiddleName;
+                        txtStoreManagerLastName.Text = smLastName;
+                        txtStoreManagerFirstName.Text = smFirstName;
+                        txtStoreManagerMiddleName.Text = smMiddleName;
+                    }
+                    else
+                    {
+                        smLastName = "Store";
+                        smFirstName = "Representative";
+                        txtStoreManagerLastName.Text = smLastName;
+                        txtStoreManagerFirstName.Text = smFirstName;
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(smLastName) && string.IsNullOrWhiteSpace(smFirstName))
+                {
+                    var firstRepStop = stopsToSave.FirstOrDefault(st => !string.IsNullOrWhiteSpace(st.StoreManagerName));
+                    if (firstRepStop != null)
+                    {
+                        var sp = NameHelper.SplitFullName(firstRepStop.StoreManagerName);
+                        smLastName = string.IsNullOrWhiteSpace(sp.LastName) ? firstRepStop.StoreManagerName : sp.LastName;
+                        smFirstName = string.IsNullOrWhiteSpace(sp.FirstName) ? "Store Rep" : sp.FirstName;
+                        smMiddleName = sp.MiddleName;
+                        txtStoreManagerLastName.Text = smLastName;
+                        txtStoreManagerFirstName.Text = smFirstName;
+                        txtStoreManagerMiddleName.Text = smMiddleName;
+                    }
+                    else
+                    {
+                        smLastName = "Store";
+                        smFirstName = "Representative";
+                        txtStoreManagerLastName.Text = smLastName;
+                        txtStoreManagerFirstName.Text = smFirstName;
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(smLastName) && string.IsNullOrWhiteSpace(smFirstName))
+                {
+                    var firstRepStop = stopsToSave.FirstOrDefault(st => !string.IsNullOrWhiteSpace(st.StoreManagerName));
+                    if (firstRepStop != null)
+                    {
+                        var sp = NameHelper.SplitFullName(firstRepStop.StoreManagerName);
+                        smLastName = string.IsNullOrWhiteSpace(sp.LastName) ? firstRepStop.StoreManagerName : sp.LastName;
+                        smFirstName = string.IsNullOrWhiteSpace(sp.FirstName) ? "Store Rep" : sp.FirstName;
+                        smMiddleName = sp.MiddleName;
+                        txtStoreManagerLastName.Text = smLastName;
+                        txtStoreManagerFirstName.Text = smFirstName;
+                        txtStoreManagerMiddleName.Text = smMiddleName;
+                    }
+                    else
+                    {
+                        smLastName = "Store";
+                        smFirstName = "Representative";
+                        txtStoreManagerLastName.Text = smLastName;
+                        txtStoreManagerFirstName.Text = smFirstName;
+                    }
+                }
 
                 if (string.IsNullOrWhiteSpace(smLastName) || !SecurityHelper.IsValidName(smLastName))
                 {
@@ -437,14 +1052,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     StoreManagerMiddleName = smMiddleName,
                     StoreManagerName = storeManagerName,
                     Remarks = txtRemarks.Text.Trim(),
-                    ReportDate = DateTime.Now
+                    ReportDate = DateTime.Now,
+                    TruckTimeIn = txtTruckTimeIn?.Text?.Trim() ?? "2042",
+                    TruckTimeOut = txtTruckTimeOut?.Text?.Trim() ?? "0139",
+                    DtrApprovedBy = txtDtrApprovedBy?.Text?.Trim() ?? "RAMIL MENDOZA",
+                    ReturnCheckedBy = txtReturnCheckedBy?.Text?.Trim() ?? "",
+                    DtrPreparedBy = txtDtrPreparedBy?.Text?.Trim() ?? "XERXES RYAN MANRIQUE",
+                    DrPreparedBy = txtDrPreparedBy?.Text?.Trim() ?? "VINJOHN VILLAMOR",
+                    DrCheckedBy = txtDrCheckedBy?.Text?.Trim() ?? "JOE-EM FLORES",
+                    GuardName = txtGuardName?.Text?.Trim() ?? ""
                 };
 
+                if (stopsToSave.Count > 0)
+                {
+                    MJdatabase.SaveDispatchStops(selDel.Id, stopsToSave);
+                }
                 MJdatabase.SaveTripReport(tr);
+                SaveCrewPayFor(selDel.Id);
                 MJdatabase.ClearFormDraft("TripReport", SessionContext.CurrentUsername);
                 if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
-                MessageBox.Show("Trip Report saved and Delivery marked Completed successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
+                MessageBox.Show("Trip Report saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 if (totalDispatched > totalDelivered)
                 {
                     int missing = totalDispatched - totalDelivered;
@@ -476,9 +1103,77 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                var selDel = allDeliveries.FirstOrDefault(d => d.Id == selectedTripReport.DeliveryId || d.DispatchNumber == selectedTripReport.DispatchNumber);
+                var stopsToSave = selDel != null ? CollectStopsFromGrid(selDel) : new List<DispatchStop>();
                 string smLastName = txtStoreManagerLastName.Text.Trim();
                 string smFirstName = txtStoreManagerFirstName.Text.Trim();
                 string smMiddleName = txtStoreManagerMiddleName.Text.Trim();
+
+                if (string.IsNullOrWhiteSpace(smLastName) && string.IsNullOrWhiteSpace(smFirstName))
+                {
+                    var firstRepStop = stopsToSave.FirstOrDefault(st => !string.IsNullOrWhiteSpace(st.StoreManagerName));
+                    if (firstRepStop != null)
+                    {
+                        var sp = NameHelper.SplitFullName(firstRepStop.StoreManagerName);
+                        smLastName = string.IsNullOrWhiteSpace(sp.LastName) ? firstRepStop.StoreManagerName : sp.LastName;
+                        smFirstName = string.IsNullOrWhiteSpace(sp.FirstName) ? "Store Rep" : sp.FirstName;
+                        smMiddleName = sp.MiddleName;
+                        txtStoreManagerLastName.Text = smLastName;
+                        txtStoreManagerFirstName.Text = smFirstName;
+                        txtStoreManagerMiddleName.Text = smMiddleName;
+                    }
+                    else
+                    {
+                        smLastName = "Store";
+                        smFirstName = "Representative";
+                        txtStoreManagerLastName.Text = smLastName;
+                        txtStoreManagerFirstName.Text = smFirstName;
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(smLastName) && string.IsNullOrWhiteSpace(smFirstName))
+                {
+                    var firstRepStop = stopsToSave.FirstOrDefault(st => !string.IsNullOrWhiteSpace(st.StoreManagerName));
+                    if (firstRepStop != null)
+                    {
+                        var sp = NameHelper.SplitFullName(firstRepStop.StoreManagerName);
+                        smLastName = string.IsNullOrWhiteSpace(sp.LastName) ? firstRepStop.StoreManagerName : sp.LastName;
+                        smFirstName = string.IsNullOrWhiteSpace(sp.FirstName) ? "Store Rep" : sp.FirstName;
+                        smMiddleName = sp.MiddleName;
+                        txtStoreManagerLastName.Text = smLastName;
+                        txtStoreManagerFirstName.Text = smFirstName;
+                        txtStoreManagerMiddleName.Text = smMiddleName;
+                    }
+                    else
+                    {
+                        smLastName = "Store";
+                        smFirstName = "Representative";
+                        txtStoreManagerLastName.Text = smLastName;
+                        txtStoreManagerFirstName.Text = smFirstName;
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(smLastName) && string.IsNullOrWhiteSpace(smFirstName))
+                {
+                    var firstRepStop = stopsToSave.FirstOrDefault(st => !string.IsNullOrWhiteSpace(st.StoreManagerName));
+                    if (firstRepStop != null)
+                    {
+                        var sp = NameHelper.SplitFullName(firstRepStop.StoreManagerName);
+                        smLastName = string.IsNullOrWhiteSpace(sp.LastName) ? firstRepStop.StoreManagerName : sp.LastName;
+                        smFirstName = string.IsNullOrWhiteSpace(sp.FirstName) ? "Store Rep" : sp.FirstName;
+                        smMiddleName = sp.MiddleName;
+                        txtStoreManagerLastName.Text = smLastName;
+                        txtStoreManagerFirstName.Text = smFirstName;
+                        txtStoreManagerMiddleName.Text = smMiddleName;
+                    }
+                    else
+                    {
+                        smLastName = "Store";
+                        smFirstName = "Representative";
+                        txtStoreManagerLastName.Text = smLastName;
+                        txtStoreManagerFirstName.Text = smFirstName;
+                    }
+                }
 
                 if (string.IsNullOrWhiteSpace(smLastName) || !SecurityHelper.IsValidName(smLastName))
                 {
@@ -534,8 +1229,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedTripReport.StoreManagerMiddleName = smMiddleName;
                 selectedTripReport.StoreManagerName = storeManagerName;
                 selectedTripReport.Remarks = txtRemarks.Text.Trim();
+                selectedTripReport.TruckTimeIn = txtTruckTimeIn?.Text?.Trim() ?? "2042";
+                selectedTripReport.TruckTimeOut = txtTruckTimeOut?.Text?.Trim() ?? "0139";
+                selectedTripReport.DtrApprovedBy = txtDtrApprovedBy?.Text?.Trim() ?? "RAMIL MENDOZA";
+                selectedTripReport.ReturnCheckedBy = txtReturnCheckedBy?.Text?.Trim() ?? "";
+                selectedTripReport.DtrPreparedBy = txtDtrPreparedBy?.Text?.Trim() ?? "XERXES RYAN MANRIQUE";
+                selectedTripReport.DrPreparedBy = txtDrPreparedBy?.Text?.Trim() ?? "VINJOHN VILLAMOR";
+                selectedTripReport.DrCheckedBy = txtDrCheckedBy?.Text?.Trim() ?? "JOE-EM FLORES";
+                selectedTripReport.GuardName = txtGuardName?.Text?.Trim() ?? "";
 
+                if (selDel != null && stopsToSave.Count > 0)
+                {
+                    MJdatabase.SaveDispatchStops(selDel.Id, stopsToSave);
+                }
                 MJdatabase.SaveTripReport(selectedTripReport);
+                if (selDel != null) SaveCrewPayFor(selDel.Id);
                 MessageBox.Show("Trip Report updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadData();
@@ -557,13 +1265,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
-                var res = MessageBox.Show($"Are you sure you want to delete Trip Report {selectedTripReport.TripReportNumber}?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                var res = MessageBox.Show($"Are you sure you want to delete Trip Report {selectedTripReport.TripReportNumber}?\n\n" + MJdatabase.DeletePolicyNote("TripReports"), "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
                 if (res == DialogResult.Yes)
                 {
                     bool deleted = MJdatabase.DeleteRecord("TripReports", selectedTripReport.Id);
                     if (deleted)
                     {
-                        MessageBox.Show("Trip Report deleted successfully!", "Deleted", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         ClearFields();
                         LoadData();
                     }
@@ -582,6 +1290,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void BtnClear_Click(object? sender, EventArgs e)
         {
             ClearFields();
+            if (pnlForm.Visible) LoadSelectedDeliveryIntoForm();
         }
 
         private void FilterGridData()
@@ -596,21 +1305,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     (!string.IsNullOrEmpty(t.StoreManagerLastName) && t.StoreManagerLastName.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(t.StoreManagerFirstName) && t.StoreManagerFirstName.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(t.StoreManagerMiddleName) && t.StoreManagerMiddleName.ToLower().Contains(q)) ||
-                    (!string.IsNullOrEmpty(t.Remarks) && t.Remarks.ToLower().Contains(q))
+                    (!string.IsNullOrEmpty(t.Remarks) && t.Remarks.ToLower().Contains(q)) ||
+                    (DeliveryOf(t) is Delivery dq && ((dq.ClientName ?? "").ToLower().Contains(q) || (dq.DriverName ?? "").ToLower().Contains(q) || (dq.TruckInfo ?? "").ToLower().Contains(q)))
                 ).ToList();
 
+            filtered = ApplyCenter(filtered).ToList();
+            if (!string.IsNullOrEmpty(currentSortColumn))
+            {
+                var prop = typeof(TripReport).GetProperty(currentSortColumn);
+                if (prop != null) filtered = (isSortAscending ? filtered.OrderBy(x => prop.GetValue(x)) : filtered.OrderByDescending(x => prop.GetValue(x))).ToList();
+            }
             gridTripReports.DataSource = null;
             gridTripReports.DataSource = filtered;
-            lblGridHeader.Text = string.IsNullOrEmpty(q)
-                ? $"Completed Trips Log ({allTripReports.Count})"
-                : $"Completed Trips Log - Showing {filtered.Count} of {allTripReports.Count}";
-
+            lblGridHeader.Text = filtered.Count == allTripReports.Count
+                ? $"Trip reports ({allTripReports.Count})"
+                : $"Trip reports — showing {filtered.Count} of {allTripReports.Count}";
             if (filtered.Count > 0)
             {
                 gridTripReports.ClearSelection();
                 gridTripReports.Rows[0].Selected = true;
             }
-            else
+            else if (!pnlForm.Visible)
             {
                 isBindingForm = true;
                 selectedTripReport = null;
@@ -618,7 +1333,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 txtStoreManagerFirstName.Text = "";
                 txtStoreManagerMiddleName.Text = "";
                 txtRemarks.Text = "";
-                lblFormHeader.Text = "Trip Completion Record";
                 isBindingForm = false;
             }
         }
@@ -632,6 +1346,48 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             txtGridSearch.Text = "";
             txtGridSearch.Focus();
+        }
+
+        private bool dataLoaded = false;
+        private string? pendingOpenDispatch;
+        private int FindDeliveryItemIndex(string dispatchNumber)
+        {
+            for (int i = 0; i < cbDelivery.Items.Count; i++)
+            {
+                if ((cbDelivery.Items[i]?.ToString() ?? "").StartsWith(dispatchNumber + " - ", StringComparison.OrdinalIgnoreCase)) return i;
+            }
+            return -1;
+        }
+        /// <summary>Opens the trip report for a dispatch: its existing report for editing, or a new report with the dispatch picked.</summary>
+        public void OpenForDispatch(string dispatchNumber)
+        {
+            if (string.IsNullOrWhiteSpace(dispatchNumber)) return;
+            if (!dataLoaded)
+            {
+                pendingOpenDispatch = dispatchNumber;
+                return;
+            }
+            var existing = allTripReports.FirstOrDefault(t => string.Equals(t.DispatchNumber, dispatchNumber, StringComparison.OrdinalIgnoreCase));
+            if (pnlForm.Visible) SetFormVisibility(false);
+            if (existing != null)
+            {
+                txtGridSearch.Text = dispatchNumber;
+                OpenEditTripReport(existing);
+                return;
+            }
+            var target = allDeliveries.FirstOrDefault(d => string.Equals(d.DispatchNumber, dispatchNumber, StringComparison.OrdinalIgnoreCase));
+            if (target != null && !DispatchGate.RequireCompleted(FindForm(), DispatchGate.Fresh(target), "file its trip report")) return;
+            OpenNewTripReport();
+            int idx = FindDeliveryItemIndex(dispatchNumber);
+            if (idx >= 0 && cbDelivery.SelectedIndex != idx) cbDelivery.SelectedIndex = idx;
+        }
+        public void FilterByDispatch(string dispatchNumber)
+        {
+            if (txtGridSearch != null)
+            {
+                txtGridSearch.Text = dispatchNumber ?? "";
+                txtGridSearch.Focus();
+            }
         }
 
         private void BtnPrint_Click(object? sender, EventArgs e)
@@ -677,8 +1433,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtStoreManagerFirstName.Text = "";
             txtStoreManagerMiddleName.Text = "";
             txtRemarks.Text = "";
+            if (txtTruckTimeIn != null) txtTruckTimeIn.Text = "2042";
+            if (txtTruckTimeOut != null) txtTruckTimeOut.Text = "0139";
+            if (txtDtrApprovedBy != null) txtDtrApprovedBy.Text = "RAMIL MENDOZA";
+            if (txtReturnCheckedBy != null) txtReturnCheckedBy.Text = "";
+            if (txtDtrPreparedBy != null) txtDtrPreparedBy.Text = "XERXES RYAN MANRIQUE";
+            if (txtDrPreparedBy != null) txtDrPreparedBy.Text = "VINJOHN VILLAMOR";
+            if (txtDrCheckedBy != null) txtDrCheckedBy.Text = "JOE-EM FLORES";
+            if (txtGuardName != null) txtGuardName.Text = "";
             if (cbDelivery.Items.Count > 0) cbDelivery.SelectedIndex = 0;
             if (pnlMultiDropInfo != null) pnlMultiDropInfo.Visible = false;
+            LoadCrewPay(null);
         }
 
         [System.ComponentModel.Browsable(false)]
@@ -687,39 +1452,40 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void SetupContextMenu()
         {
-            var menu = new ContextMenuStrip();
-            menu.Font = new Font("Segoe UI Semibold", 9F);
-
-            var itemDetails = new ToolStripMenuItem("🔍 View Full Details & History", null, (s, e) => {
-                if (selectedTripReport != null) RecordDetailsDialog.ShowDetails(this, selectedTripReport);
+            RowMenu.Attach(gridTripReports, (m, rows) =>
+            {
+                if (rows[0].DataBoundItem is not TripReport tr) return;
+                selectedTripReport = tr;
+                int shortCrates = 0;
+                var del = RowMenu.FindDelivery(tr.DeliveryId, tr.DispatchNumber);
+                if (del != null) shortCrates = Math.Max(0, del.TotalCrates - tr.DeliveredCrates - tr.ReturnedCrates);
+                Invoice? invoice = null;
+                try { invoice = tr.DeliveryId > 0 ? MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == tr.DeliveryId) : null; } catch { }
+                bool invoiced = invoice != null;
+                m.Items.AddRange(RowMenu.Header($"📋  Trip report {tr.TripReportNumber}",
+                    $"Dispatch {tr.DispatchNumber} · {tr.ReportDate:MMM d, yyyy} · {tr.DeliveredCrates} delivered, {tr.ReturnedCrates} returned{(shortCrates > 0 ? $" · {shortCrates} unaccounted" : "")}"));
+                m.Items.Add(RowMenu.Item("Edit trip report", () => OpenEditTripReport(tr), "Enter"));
+                m.Items.Add(RowMenu.Item($"Open dispatch {tr.DispatchNumber}", () => RowMenu.OpenDispatch(this, tr.DeliveryId, tr.DispatchNumber)));
+                m.Items.Add(RowMenu.Sep());
+                if (!invoiced) m.Items.Add(RowMenu.Good("Issue billing invoice for this trip", () => { if (del != null) MainForm.Instance?.CreateInvoiceForDelivery(del); }, del != null));
+                else m.Items.Add(RowMenu.Item($"Show invoice {invoice!.InvoiceNumber}", () => MainForm.Instance?.ShowFinanceRecords("Billing", invoice.InvoiceNumber)));
+                m.Items.Add(RowMenu.Item(shortCrates > 0 ? $"Log incident ({shortCrates} crates unaccounted)" : "Log an incident for this trip", () =>
+                    OnLogIncidentRequested?.Invoke(tr.DeliveryId, tr.DispatchNumber, shortCrates, del?.DispatchDate ?? tr.ReportDate)));
+                m.Items.Add(RowMenu.Item("Show incidents for this dispatch", () => MainForm.Instance?.ShowIncidentsForDispatch(tr.DispatchNumber)));
+                m.Items.Add(RowMenu.Sep());
+                m.Items.Add(RowMenu.Sub("🖨️  Print",
+                    RowMenu.Item("Official trip report", () => PrintSelectedTripReport()),
+                    RowMenu.Item("End-to-end delivery dossier", () => PrintHelper.PrintEndToEndDeliveryDossier(tr.DeliveryId, tr.DispatchNumber)),
+                    RowMenu.Item("Trip report register (table)", () => BtnPrint_Click(this, EventArgs.Empty))));
+                m.Items.Add(RowMenu.CopySub(this, ("Trip report number", tr.TripReportNumber), ("Dispatch number", tr.DispatchNumber), ("Store manager", tr.StoreManagerName),
+                    ("Summary", $"{tr.TripReportNumber} for {tr.DispatchNumber}: {tr.DeliveredCrates} crates delivered, {tr.ReturnedCrates} returned, arrived {tr.ArrivalTime}, left {tr.DepartureTime}")));
+                m.Items.Add(RowMenu.ExportSub(gridTripReports, "Trip_Reports", "Trip Reports", () => BtnPrint_Click(this, EventArgs.Empty)));
+                m.Items.Add(RowMenu.Sep());
+                m.Items.Add(RowMenu.Danger("Delete trip report…", () => { selectedTripReport = tr; BtnDelete_Click(this, EventArgs.Empty); }, !invoiced || SessionContext.IsAdmin));
             });
-            var itemCopyTrip = new ToolStripMenuItem("📋 Copy Trip Report #", null, (s, e) => {
-                if (selectedTripReport != null) { Clipboard.SetText(selectedTripReport.TripReportNumber); ToastHelper.ShowToast(this, "Trip Report # copied ✓"); }
-            });
-            var itemInvoice = new ToolStripMenuItem("💰 Issue Billing Invoice for Trip", null, (s, e) => {
-                if (selectedTripReport != null) OnCreateInvoiceRequested?.Invoke(selectedTripReport);
-            });
-            var itemEdit = new ToolStripMenuItem("✏️ Edit Trip Report", null, (s, e) => {
-                SetFormVisibility(true);
-                cbDelivery.Focus();
-            });
-            var itemPrint = new ToolStripMenuItem("📄 Print Trip Summary Report", null, BtnPrint_Click);
-            var itemDelete = new ToolStripMenuItem("🗑️ Delete Trip Report", null, BtnDelete_Click);
-            var itemExportCsv = new ToolStripMenuItem("📊 Export Table to CSV...", null, (s, e) => {
-                DataExportHelper.ExportToCsv(gridTripReports, "Trip_Reports", "Completed Trip Reports");
-            });
-            var itemExportExcel = new ToolStripMenuItem("📑 Export Table to Excel (.xml)...", null, (s, e) => {
-                DataExportHelper.ExportToExcelXml(gridTripReports, "Trip_Reports", "Completed Trip Reports");
-            });
-
-            menu.Items.AddRange(new ToolStripItem[] { itemDetails, itemCopyTrip, new ToolStripSeparator(), itemEdit, itemInvoice, new ToolStripSeparator(), itemPrint, itemExportCsv, itemExportExcel, new ToolStripSeparator(), itemDelete });
-
-            gridTripReports.CellMouseDown += (s, e) => {
-                if (e.Button == MouseButtons.Right && e.RowIndex >= 0) {
-                    gridTripReports.ClearSelection();
-                    gridTripReports.Rows[e.RowIndex].Selected = true;
-                    menu.Show(gridTripReports, gridTripReports.PointToClient(Cursor.Position));
-                }
+            gridTripReports.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Enter && gridTripReports.CurrentRow?.DataBoundItem is TripReport tr) { OpenEditTripReport(tr); e.Handled = true; e.SuppressKeyPress = true; }
             };
         }
 
@@ -740,7 +1506,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (pnlDraftBanner != null) pnlFormBody.Controls.Remove(pnlDraftBanner);
                     pnlDraftBanner = DraftAutoSaveService.CreateDraftBanner("Trip Report", draft.Value.LastSaved, RestoreDraft, DiscardDraft);
                     pnlFormBody.Controls.Add(pnlDraftBanner);
-                    pnlDraftBanner.BringToFront();
+                    pnlFormBody.Controls.SetChildIndex(pnlDraftBanner, pnlFormBody.Controls.Count - 1);
                 }
             }
             catch { }

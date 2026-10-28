@@ -1,0 +1,188 @@
+M.J. BILLONES TRANSPORT SERVICE
+Transport Delivery Management System (TDMS) — Complete System Architecture & End-to-End Operational Functionality Guide
+Application Version: Enterprise .NET 9 WinForms
+Architecture: Model-View-Presenter (MVP) / SQLite
+Documentation Scope: 100% Comprehensive (Start to Finish)
+1. SYSTEM EXECUTIVE OVERVIEW & ARCHITECTURE
+The Transport Delivery Management System (TDMS) for M.J. Billones Transport Service is an enterprise-grade desktop management software solution engineered on Microsoft .NET 9 (C# Windows Forms) and an optimized SQLite database engine. The system automates and integrates the end-to-end transport logistics lifecycle: starting from initial loading schedule planning and dispatch assignments, progressing through real-time transit tracking, incident resolution, trip completion reporting, and culminating in customer invoicing, automated Statement of Account (SOA) billing, and official collection receipting.
+Architectural Pattern: Model-View-Presenter (MVP) and Modular UserControl Hub architecture ensuring strict separation between UI presentation, operational business rules, and database persistence.
+Data Persistence & Storage: Embedded SQLite database (MJdatabase.cs) with automated schema migrations, zero external server dependencies, foreign key enforcement, transaction rollbacks, and built-in hot backup/restore.
+User Interface Standards: Modern responsive design powered by UIThemeHelper with side-by-side dynamic resizable form drawers, high-DPI scaling, customized palettes (Teal Accent & Slate Dark), auto-saving drafts, and print/export utilities.
+2. AUTHENTICATION, USER MANAGEMENT & SECURITY ARCHITECTURE
+Access to the TDMS is guarded by multi-tiered security layers ensuring role-based authorization, cryptographic password protection, failed login lockouts, and immutable audit logging.
+2.1 Secure Login Workflow & Account Lifecycle
+Secure Authentication Form (LoginForm): Validates username and cryptographically salted SHA-256 hashed passwords. Tracks consecutive failed login attempts; triggers temporary account lockout upon reaching maximum threshold to prevent brute-force attacks.
+User Session Context (SessionContext.cs): Initializes immutable session state upon successful authentication, caching CurrentUserId, CurrentUsername, CurrentUserRole ('Admin' vs 'Dispatcher' vs 'Staff'), FullName, and LoginTimestamp across all hub views.
+Self-Service Password Reset (ForgotPasswordForm): Allows authorized users to initiate secure password recovery, requiring pre-configured security question verification before committing hashed password resets.
+User Management & RBAC View (UserManagementView): Provides administrator controls to provision user accounts, update profile credentials, assign granular role permissions (Admin, Dispatcher, Billing Officer), toggle active/suspended statuses, and audit last active timestamps.
+User Profile Dialog (UserProfileDialog): Permits the logged-in user to review their session telemetry, change passwords with current-password confirmation, and update contact details.
+2.2 Role-Based Access Control (RBAC) Matrix
+Module / Capability
+Administrator
+Dispatcher
+Billing / Finance
+General Staff
+Dashboard Analytics & KPIs
+Full View & Action
+Full View & Action
+Financial KPIs Only
+Read-Only
+Loading & Dispatch Operations
+Full Control
+Full Operational Control
+View Only
+View Only
+Trip Reports & Incident Cases
+Full Control
+Record & Close Trips
+Cost Review Only
+Report Only
+Billing, SOA & Collections
+Full Control
+Restricted
+Full Billing Control
+Restricted
+Master Data (Rates & Clients)
+Full Configuration
+View Rates
+View Rates
+Restricted
+Resources (Trucks & Personnel)
+Full CRUD
+Status Update Only
+View Drivers
+Restricted
+Database Backup & System Settings
+Full Admin Privileges
+No Access
+No Access
+No Access
+3. OPERATIONS HUB: END-TO-END DISPATCH & TRIP LIFECYCLE
+The Operations Hub (OperationsHubView) is the core operational engine of the business, coordinating five interlinked operational phases in strict sequential order.
+3.1 Loading Schedule Management (LoadingManagementView)
+Trip Pre-Planning & Ingestion: Records upcoming client hauling orders, expected loading dates, client company selections, warehouse pickup points, delivery destination addresses, cargo categories, and estimated pallet/tonnage capacities.
+Dynamic Side-by-Side Drawer: Features an interactive side-by-side resizable drawer with live input validation, auto-calculation of cargo volumes, and draft auto-saving to prevent loss of in-progress entries.
+Smart Truck Allocation Recommendation: Algorithm evaluates cargo weight and destination terrain against available truck fleet profiles, recommending the optimal truck class and body type.
+Peak Season Surcharge Toggle: One-click toggle applies automatic holiday/peak demand rate multipliers directly to planned load manifests.
+3.2 Fleet Dispatch Management (DispatchManagementView)
+Load-to-Dispatch Promotion: Seamlessly converts validated loading schedules into active live dispatch manifests, assigning official Waybill / Dispatch Tracking Numbers.
+Resource Binding & Conflict Prevention: Assigns an available prime mover truck, licensed driver, and assistant crew/helpers. Built-in validation blocks double-booking of trucks or crew currently assigned to active on-the-road trips.
+Multi-Stop Route Sequencing (AddStopDialog): Supports complex delivery routes with intermediate drop-offs, tracking waypoint sequence numbers, customer contact names, and partial cargo allocations per stop.
+Time Window & Departure Precision: Integrates the Analog Clock & Time Picker dialog (AnalogClockTimePickerDialog) to enforce accurate scheduled departure and expected delivery arrival timestamps.
+Batch Status Updating & Waybill Generation: Allows dispatchers to select multiple transit dispatches simultaneously for batch status updates ('Scheduled', 'Dispatched', 'In Transit', 'Delayed', 'Delivered').
+3.3 Trip Execution & Finalization (TripReportView)
+Post-Trip Debriefing & Reconciliation: Completed dispatches are promoted to Trip Reports upon truck return to base. Dispatchers record actual arrival timestamps, odometer start/end kilometers, and calculated trip fuel consumption.
+Expense Tracking & Allowance Liquidation: Logs authorized toll fees, driver allowances, parking expenses, and unplanned logistical disbursements to calculate net trip operating margins.
+Direct Dispatch Integration: One-click loading of active dispatch data into trip records with side-by-side resizable docking and draft autosave recovery.
+3.4 Incident & Cargo Exception Management (IncidentReportView)
+Transit Disruption Reporting: Captures unforeseen disruptions including vehicle breakdowns, mechanical faults, traffic blockages, bad weather, cargo damage, or delivery delays.
+Financial Liability & Chargeability: Classifies incident cost liabilities with a dedicated toggle (Chargeable to Driver / Company Shoulder / Client Claim), capturing repair or replacement expenses.
+Visual Photographic Evidence (PhotoViewerDialog): Embeds high-resolution digital image attachments of damage manifests, incident scene photos, or official police/MMDA traffic reports with zoom/pan viewer.
+3.5 Operations History & Audit Trails (ModuleHistoryView)
+Historical Telemetry: Comprehensive historical search across all completed, archived, and cancelled dispatches, enabling date-range filtering, driver performance review, and route efficiency audits.
+4. RESOURCES HUB: FLEET & CREW MANAGEMENT
+The Resources Hub (ResourcesHubView) provides comprehensive management of the transport company's physical rolling stock and human capital.
+4.1 Truck Fleet Master Management (TruckManagementView)
+Fleet Asset Catalog: Maintains complete profiles for every vehicle: Plate Number, Chassis Number, Engine Number, Make, Model, Body Type (Wing Van, Dropside, Closed Van, Refrigerated, Flatbed), and Maximum Load Weight Capacity (KG).
+Operational Readiness & Availability: Real-time state indicators ('Available', 'Dispatched / In Transit', 'Under Maintenance', 'Inactive'). Automated checks prevent allocating non-roadworthy trucks.
+Side-by-Side Dynamic Resizing: Equipped with the 6px vertical draggable splitter grip, allowing dispatchers to adjust form entry vs fleet grid view proportions seamlessly.
+4.2 Crew & Personnel Management (CrewManagementView)
+Workforce Database: Maintains records for Drivers, Lead Couriers, and Cargo Handlers, including contact numbers, home addresses, government IDs, and emergency contacts.
+License Compliance & Expiry Monitoring: Tracks Professional Driver's License numbers and expiration dates with proactive UI warnings for upcoming renewals to guarantee legal road compliance.
+Availability & Duty Status: Tracks crew shifts, sick leaves, active trip assignments, and total completed hauls.
+Official Crew Dossier & Pay Slip Printing (Printer.cs): Generates professional HTML-rendered Crew Dossiers with complete delivery trip history and calculates trip-based driver payroll summaries over customized pay periods.
+5. FINANCE HUB: BILLING, INVOICING & PAYMENT COLLECTIONS
+The Finance Hub (FinanceHubView) manages the monetization pipeline, linking completed deliveries to billing accounts, receivables ledger, and cash receipts.
+5.1 Invoicing & Statement of Account (BillingView & GenerateSoaDialog)
+Delivery-to-Invoice Generation: Fetches completed delivery trips and matches them with negotiated client rate matrices to calculate base hauling fees, distance surcharges, and peak multipliers.
+Statement of Account (SOA) Consolidation: Groups multiple unsettled client delivery invoices into a single formal Statement of Account (SOA) with customizable billing period date cutoffs.
+Tax Calculation & Discounting: Calculates Value Added Tax (VAT 12%), Withholding Tax deductions (EWT 1% / 2%), and customer trade discounts.
+Official Print Layout (Printer.cs): Renders company-branded Statement of Account documents ready for direct physical printing or export to client-ready digital formats.
+5.2 Collection Receipts & Accounts Receivable (CollectionView)
+Payment Ingestion & Settlement: Records full, partial, and installment payments against open SOAs and individual invoices.
+Payment Instrument Support: Captures Cash, Bank Wire Transfer, Check (with Check Number, Issuing Bank, and Check Date), and E-Wallet transactions.
+Official Receipt (OR) Generator: Generates legally compliant Official Collection Receipts complete with BIR-compliant fields, payee details, amount in words, and authorized signatory placeholders.
+Aging of Accounts Receivable: Visual indicators highlight outstanding accounts: Current (< 30 days), Overdue (31-60 days), and Critical Delinquent (> 90 days).
+6. MASTER DATA HUB: CONTRACT RATES, CLIENTS & CATEGORIES
+The Master Data Hub (MasterDataHubView) ensures operational consistency by standardizing enterprise tariffs, client rosters, and system taxonomies.
+6.1 Route Pricing Matrix (RateMatrixView)
+Dynamic Rate Modeling: Configures standardized billing rates defined by Origin City/Municipality, Destination Province, Truck Capacity Type (e.g. 4-Wheeler, 6-Wheeler Forward, 10-Wheeler Wing Van), Base Freight Price, and Excess Kilometer Fees.
+Peak & Surcharge Configurator: Configures seasonal peak multipliers (e.g., Q4 Christmas logistics surcharges or island crossing inter-modal ferry fees).
+6.2 Client Company Master Registry (CategoryManagementView & MasterDataHubView)
+Client Corporate Profiles: Stores corporate trading names, billing addresses, Taxpayer Identification Numbers (TIN), business registration documents, key liaison contacts, and agreed payment credit terms (COD, Net 15, Net 30, Net 60).
+Lookup Taxonomies & Dynamic Categories (CategoryManagementForm): Allows administrators to add, rename, or retire operational lookup categories without touching source code (Cargo Types, Expense Codes, Incident Severity Levels, Failure Root Causes).
+7. DASHBOARD & BUSINESS INTELLIGENCE (DASHBOARDVIEW)
+The executive dashboard provides real-time situational awareness across the transport enterprise with instant drill-down capabilities.
+Real-Time KPI Metric Cards: Live summaries of Trucks Currently in Transit, Pending Dispatches Awaiting Assignment, Open Overdue Invoices, and Active Incidents.
+Quick Interactive Filter Shortcuts: One-click KPI action buttons navigate directly to filtered grid views (e.g., clicking 'In Transit' opens Operations with on-road filters applied).
+Graphical Revenue & Volume Charts: Renders monthly revenue trajectories, trip volume breakdowns by cargo category, and fleet utilization percentages.
+Fleet Status Gauges: Visual breakdowns of fleet availability (Active, Idle, Scheduled, Maintenance).
+8. REPORTING, DATA EXPORT & DOCUMENT SERVICES
+TDMS provides comprehensive document generation, reporting, and external data exchange mechanisms.
+Dedicated Reports Center (ReportsView): Enables cross-tabular operational and financial reporting with customizable parameters (Date Ranges, Client Filters, Truck Groups, Driver Performance).
+Enterprise HTML Print Generator (Printer.cs): Outputs crisp, typography-optimized documents utilizing embedded HTML/CSS rendering for high-resolution laser and PDF printing:
+Official Print Formats Included: Delivery Waybills, Statement of Accounts (SOA), Official Collection Receipts (OR), Driver Pay Slips, Fleet Health Audit Dossiers, and Incident Investigation Briefs.
+Multi-Format Data Exporter (DataExportHelper.cs): Every DataGridView across all modules features right-click export context menus supporting CSV and native Microsoft Excel XML with automatic column header sanitization and date formatting.
+9. SYSTEM ADMINISTRATION, SECURITY AUDIT & BACKUP
+Built-in utilities ensure enterprise governance, data continuity, disaster recovery, and regulatory compliance.
+Security Audit Logging (SecurityAuditView): Chronological immutable security register tracking every login attempt, failed authentication, unauthorized access probe, and password modification.
+Granular Record Audit Trail (MJdatabase.LogAuditTrail): Records field-level change history: captures Action Type ('CREATE', 'UPDATE', 'DELETE', 'STATUS_CHANGE'), affected Table Name, Record ID, Target Field, Old Value, New Value, Responsible Username, and Timestamp.
+Hot Database Backup & Restore Engine (BackupRestoreView): Performs zero-downtime hot database backups of the live SQLite database into timestamped archive files (.bak / .sqlite). Offers safe point-in-time database restoration with automated backup validation before overwrite.
+System Customization & Preferences (SystemCustomizationView & SettingsView): Allows administrators to configure company legal names, registered business addresses, BIR registration numbers, currency formatting (PHP / ₱), default billing payment terms, and theme accent colors.
+10. END-TO-END SYSTEM LIFECYCLE (WORKFLOW CHEAT SHEET)
+The complete operational flow of TDMS from customer request to financial settlement is summarized in the matrix below:
+Step
+Operational Phase
+Primary View / Module
+Inputs / Actions Taken
+Outputs & Business Outcomes
+1
+Authentication
+LoginForm
+Enter credentials; MFA / Lockout validation
+Secure SessionContext established
+2
+Order Ingestion
+LoadingManagementView
+Client order, cargo volume, destination
+Validated Loading Schedule manifest
+3
+Resource Matching
+DispatchManagementView
+Allocate Truck, Driver, Crew & Route Stops
+Official Waybill & Active Trip Dispatch
+4
+Transit Tracking
+OperationsHubView / Dashboard
+Live status updates, delay logging
+Real-time fleet situational awareness
+5
+Exception Handling
+IncidentReportView / PhotoViewer
+Record mechanical/cargo issue, attach photos
+Resolved claim & liability attribution
+6
+Trip Debriefing
+TripReportView
+Odometer km, fuel consumed, trip expenses
+Trip closed & gross margin calculated
+7
+Billing & Invoicing
+BillingView / GenerateSoaDialog
+Select trips, apply Rate Matrix, generate SOA
+Client Statement of Account generated
+8
+Payment Collection
+CollectionView / Printer.cs
+Record Cash/Check payment against SOA
+Official Collection Receipt issued
+9
+Crew Remuneration
+CrewManagementView / Printer.cs
+Aggregate completed hauls for pay period
+Calculated Driver Pay Slip & Dossier
+10
+Audit & Archive
+ReportsView / BackupRestoreView
+Generate monthly metrics, perform DB backup
+Secure archive & business intelligence

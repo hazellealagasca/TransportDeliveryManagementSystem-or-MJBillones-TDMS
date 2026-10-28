@@ -19,6 +19,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public ReportsView()
         {
             InitializeComponent();
+            Pal.RemapTree(this);
             gridReport.BringToFront();
             SetupGridColumns();
             if (!SessionContext.IsAdmin && cbReportType.Items.Contains("System Activity & Audit Trail (Admin)"))
@@ -40,6 +41,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             menuActions.Items.Add("📄 Print Pay Slip", null, BtnPrintPaySlip_Click);
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             flowActions.Controls.Add(btnActions);
+            RowMenu.AttachBasic(gridReport, "Report", "Report", () => BtnPrint_Click(this, EventArgs.Empty));
         }
 
         public void RefreshData()
@@ -53,7 +55,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridReport.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             gridReport.AllowUserToResizeColumns = true;
             gridReport.ScrollBars = ScrollBars.Both;
-            gridReport.ShowCellToolTips = true;
+            gridReport.ShowCellToolTips = false;
         }
 
         private void CbReportType_SelectedIndexChanged(object? sender, EventArgs e)
@@ -233,7 +235,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         crews = crews.Where(c => c.FullName.ToLower().Contains(search) ||
                                                  c.Role.ToLower().Contains(search) ||
                                                  c.ContactNumber.ToLower().Contains(search) ||
-                                                 c.LicenseNumber.ToLower().Contains(search)).ToList();
+                                                 c.LicenseDisplay.ToLower().Contains(search)).ToList();
                     }
 
                     var cleanCrews = crews.Select(c => new
@@ -241,7 +243,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         Full_Name = c.FullName,
                         Role = c.Role,
                         Contact_Number = c.ContactNumber,
-                        Drivers_License = c.LicenseNumber,
+                        Drivers_License = c.LicenseDisplay,
                         Employment_Type = c.IsSeasonal ? "Seasonal / Extra" : "Regular Active",
                         Availability = c.IsAvailable ? "Active" : "On Trip",
                         Status = c.IsActive ? "Active" : "Inactive"
@@ -352,6 +354,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     decimal totalPayoutSum = 0;
                     int totalTripsSum = 0;
 
+                    // Pay saved on each trip report wins; trips without saved pay use the crew member's standard rates.
+                    var recordedPay = await Task.Run(() => MJdatabase.GetAllTripCrewPay());
+                    if (myLoadId != loadOperationId || this.IsDisposed || !this.IsHandleCreated) return;
                     foreach (var c in allCrews)
                     {
                         var myTrips = completedDels.Where(d =>
@@ -360,10 +365,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         ).ToList();
 
                         int tripCount = myTrips.Count;
-                        decimal baseWages = tripCount * c.DailyWage;
-                        decimal allowances = tripCount * c.FoodAllowance;
-                        decimal netPayout = baseWages + allowances;
-
+                        var tripPay = myTrips.Select(t => MJdatabase.ResolveTripPay(c, t, recordedPay)).ToList();
+                        decimal baseWages = tripPay.Sum(p => p.BasePay);
+                        decimal allowances = tripPay.Sum(p => p.Allowance);
+                        decimal extras = tripPay.Sum(p => p.Extra);
+                        decimal deductions = tripPay.Sum(p => p.Deduction);
+                        decimal netPayout = baseWages + allowances + extras - deductions;
                         totalTripsSum += tripCount;
                         totalPayoutSum += netPayout;
 
@@ -377,6 +384,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             Total_Wages = $"PHP {baseWages:N2}",
                             Food_Allowance = $"PHP {c.FoodAllowance:N2}",
                             Total_Allowance = $"PHP {allowances:N2}",
+                            Extra_OT = $"PHP {extras:N2}",
+                            Deductions = $"PHP {deductions:N2}",
                             Net_Compensation = $"PHP {netPayout:N2}"
                         });
                     }

@@ -9,9 +9,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 {
     public class RegisterDialog : Form
     {
+        private bool isAdminMode = true;
         private TextBox txtLastName = new TextBox();
         private TextBox txtFirstName = new TextBox();
         private TextBox txtMiddleName = new TextBox();
+        private ComboBox cbRole = new ComboBox();
         private TextBox txtContact = new TextBox();
         private TextBox txtUsername = new TextBox();
         private TextBox txtPassword = new TextBox();
@@ -25,45 +27,52 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Label lblError = new Label();
         private bool isPasswordVisible = false;
 
-        public RegisterDialog()
+        public RegisterDialog() : this(true)
         {
+        }
+
+        public RegisterDialog(bool isAdminMode)
+        {
+            this.isAdminMode = isAdminMode;
             InitializeComponent();
         }
 
         private void InitializeComponent()
         {
-            this.Text = "Staff Self-Registration - M.J. Billones Transport Service";
-            this.ClientSize = new Size(520, 680);
-            this.MinimumSize = new Size(460, 600);
+            this.Text = isAdminMode ? "Staff Account Registration - Admin Settings" : "Staff Self-Registration - M.J. Billones Transport Service";
+            this.ClientSize = new Size(520, 720);
+            this.MinimumSize = new Size(460, 620);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
-            this.BackColor = Color.White;
+            this.BackColor = Pal.White;
             this.Font = new Font("Segoe UI", 9.5F);
 
             Panel pnlHeader = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 80,
-                BackColor = Color.FromArgb(127, 29, 29),
+                BackColor = Pal.C(127, 29, 29),
                 Padding = new Padding(20, 14, 20, 14)
             };
 
             Label lblTitle = new Label
             {
-                Text = "📝 Staff Account Registration",
+                Text = isAdminMode ? "📝 Register Staff Account" : "📝 Staff Account Registration",
                 Font = new Font("Segoe UI", 13.5F, FontStyle.Bold),
-                ForeColor = Color.White,
+                ForeColor = Pal.White,
                 AutoSize = true,
                 Dock = DockStyle.Top
             };
 
             Label lblSubtitle = new Label
             {
-                Text = "Register a new Office Staff account for M.J. Billones Transport Service.",
+                Text = isAdminMode
+                    ? "Register and provision a verified staff user account with assigned system role."
+                    : "Register a new Office Staff account for M.J. Billones Transport Service.",
                 Font = new Font("Segoe UI", 8.5F),
-                ForeColor = Color.FromArgb(254, 205, 211),
+                ForeColor = Pal.C(254, 205, 211),
                 AutoSize = true,
                 Dock = DockStyle.Bottom
             };
@@ -90,10 +99,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblNames.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.34F));
             tblNames.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
 
-            Label lblLastName = new Label { Text = "Last Name *", Dock = DockStyle.Fill, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Margin = new Padding(0, 0, 4, 4) };
-            Label lblFirstName = new Label { Text = "First Name *", Dock = DockStyle.Fill, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Margin = new Padding(4, 0, 4, 4) };
-            Label lblMiddleName = new Label { Text = "Middle Name", Dock = DockStyle.Fill, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Margin = new Padding(4, 0, 0, 4) };
-
+            Label lblLastName = new Label { Text = "Last Name *", Dock = DockStyle.Fill, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Margin = new Padding(0, 0, 4, 4) };
+            Label lblFirstName = new Label { Text = "First Name *", Dock = DockStyle.Fill, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Margin = new Padding(4, 0, 4, 4) };
+            Label lblMiddleName = new Label { Text = "Middle Name", Dock = DockStyle.Fill, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Margin = new Padding(4, 0, 0, 4) };
             txtLastName.Dock = DockStyle.Fill;
             txtLastName.Font = new Font("Segoe UI", 10F);
             txtLastName.MaxLength = 100;
@@ -116,21 +124,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblNames.Controls.Add(txtFirstName, 1, 1);
             tblNames.Controls.Add(txtMiddleName, 2, 1);
 
-            Label lblContact = new Label { Text = "Contact Mobile Number *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
+            Label lblRole = new Label { Text = "Assigned User Role *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
+            cbRole.Dock = DockStyle.Top;
+            cbRole.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbRole.Font = new Font("Segoe UI", 10F);
+            cbRole.Items.AddRange(new object[]
+            {
+                "Dispatcher",
+                "Billing Clerk",
+                "Office Staff",
+                "Owner/Admin"
+            });
+            cbRole.SelectedIndex = 0;
+            cbRole.Margin = new Padding(0, 0, 0, 10);
+
+            Label lblContact = new Label { Text = "Contact Mobile Number *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
             txtContact.Dock = DockStyle.Top;
             txtContact.Font = new Font("Segoe UI", 10F);
             txtContact.PlaceholderText = "e.g. 09171234567";
             txtContact.MaxLength = 20;
             txtContact.Margin = new Padding(0, 0, 0, 10);
 
-            Label lblUsername = new Label { Text = "Desired Username *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
+            Label lblUsername = new Label { Text = "Desired Username *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
             txtUsername.Dock = DockStyle.Top;
             txtUsername.Font = new Font("Segoe UI", 10F);
             txtUsername.MaxLength = 50;
             txtUsername.Margin = new Padding(0, 0, 0, 10);
 
-            Label lblPassword = new Label { Text = "Password * (Minimum 6 characters, alphanumeric)", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
-
+            Label lblPassword = new Label { Text = "Password * (Minimum 6 characters, alphanumeric)", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
             TableLayoutPanel tblPassword = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
@@ -163,14 +184,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblPassword.Controls.Add(txtPassword, 0, 0);
             tblPassword.Controls.Add(btnShowPassword, 1, 0);
 
-            Label lblConfirmPassword = new Label { Text = "Confirm Password *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
+            Label lblConfirmPassword = new Label { Text = "Confirm Password *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
             txtConfirmPassword.Dock = DockStyle.Top;
             txtConfirmPassword.Font = new Font("Segoe UI", 10F);
             txtConfirmPassword.PasswordChar = '●';
             txtConfirmPassword.MaxLength = 128;
             txtConfirmPassword.Margin = new Padding(0, 0, 0, 10);
 
-            Label lblQuestion = new Label { Text = "Security Question (for offline account recovery) *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
+            Label lblQuestion = new Label { Text = "Security Question (for offline account recovery) *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
             cbSecurityQuestion.Dock = DockStyle.Top;
             cbSecurityQuestion.DropDownStyle = ComboBoxStyle.DropDownList;
             cbSecurityQuestion.Font = new Font("Segoe UI", 10F);
@@ -198,7 +219,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 txtCustomQuestion.Visible = cbSecurityQuestion.SelectedIndex == cbSecurityQuestion.Items.Count - 1;
             };
 
-            Label lblAnswer = new Label { Text = "Security Answer *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
+            Label lblAnswer = new Label { Text = "Security Answer *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };
             txtSecurityAnswer.Dock = DockStyle.Top;
             txtSecurityAnswer.Font = new Font("Segoe UI", 10F);
             txtSecurityAnswer.MaxLength = 200;
@@ -206,7 +227,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             lblError.Dock = DockStyle.Top;
             lblError.AutoSize = true;
-            lblError.ForeColor = Color.FromArgb(220, 38, 38);
+            lblError.ForeColor = Pal.C(220, 38, 38);
             lblError.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
             lblError.Visible = false;
             lblError.Margin = new Padding(0, 4, 0, 10);
@@ -224,8 +245,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnSubmit.Text = "REGISTER ACCOUNT";
             btnSubmit.Dock = DockStyle.Fill;
-            btnSubmit.BackColor = Color.FromArgb(185, 28, 28);
-            btnSubmit.ForeColor = Color.White;
+            btnSubmit.BackColor = Pal.C(185, 28, 28);
+            btnSubmit.ForeColor = Pal.White;
             btnSubmit.FlatStyle = FlatStyle.Flat;
             btnSubmit.FlatAppearance.BorderSize = 0;
             btnSubmit.Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold);
@@ -235,8 +256,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnCancel.Text = "CANCEL";
             btnCancel.Dock = DockStyle.Fill;
-            btnCancel.BackColor = Color.FromArgb(241, 245, 249);
-            btnCancel.ForeColor = Color.FromArgb(51, 65, 85);
+            btnCancel.BackColor = Pal.C(241, 245, 249);
+            btnCancel.ForeColor = Pal.C(51, 65, 85);
             btnCancel.FlatStyle = FlatStyle.Flat;
             btnCancel.FlatAppearance.BorderSize = 0;
             btnCancel.Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold);
@@ -262,6 +283,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlBody.Controls.Add(lblUsername);
             pnlBody.Controls.Add(txtContact);
             pnlBody.Controls.Add(lblContact);
+            if (isAdminMode)
+            {
+                pnlBody.Controls.Add(cbRole);
+                pnlBody.Controls.Add(lblRole);
+            }
             pnlBody.Controls.Add(tblNames);
 
             this.Controls.Add(pnlBody);
@@ -273,6 +299,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string lastName = txtLastName.Text.Trim();
             string firstName = txtFirstName.Text.Trim();
             string middleName = txtMiddleName.Text.Trim();
+            string selectedRole = isAdminMode ? (cbRole.SelectedItem?.ToString() ?? "Office Staff") : "Office Staff";
             string contact = txtContact.Text.Trim();
             string username = txtUsername.Text.Trim();
             string password = txtPassword.Text;
@@ -362,8 +389,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     ContactNumber = contact,
                     Username = username,
                     Password = password,
-                    Role = "Office Staff",
-                    IsActive = false,
+                    Role = selectedRole,
+                    IsActive = true,
                     CreatedAt = DateTime.Now,
                     SecurityQuestion = question,
                     SecurityAnswer = answer
@@ -372,10 +399,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 await MJdatabase.RegisterStaffUserAsync(newUser);
 
                 MessageBox.Show(
-                    "Registration submitted successfully!\n\n" +
-                    "For company security, your account will be activated once reviewed and approved by the Business Owner (Marie Ann J. Billones).\n\n" +
-                    "You may log in after approval.",
-                    "Account Pending Approval",
+                    $"Staff account '{username}' ({selectedRole}) has been successfully created and activated.",
+                    "Account Registered",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information
                 );

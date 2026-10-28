@@ -101,7 +101,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblTitle.Visible = false;
 
             this.tblMasterContent.ColumnCount = 2;
-            this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 480F));
+            this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 410F));
             this.tblMasterContent.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tblMasterContent.Controls.Add(this.pnlForm, 0, 0);
             this.tblMasterContent.Controls.Add(this.pnlGridCard, 1, 0);
@@ -123,7 +123,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlForm.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
             this.pnlForm.Name = "pnlForm";
             this.pnlForm.Padding = new System.Windows.Forms.Padding(0);
-            this.pnlForm.Size = new System.Drawing.Size(480, 788);
+            this.pnlForm.Size = new System.Drawing.Size(410, 788);
             this.pnlForm.TabIndex = 0;
 
             this.pnlFormHeaderBar.BackColor = System.Drawing.Color.FromArgb(248, 250, 252);
@@ -132,7 +132,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlFormHeaderBar.Location = new System.Drawing.Point(0, 0);
             this.pnlFormHeaderBar.Name = "pnlFormHeaderBar";
             this.pnlFormHeaderBar.Padding = new System.Windows.Forms.Padding(12, 6, 12, 6);
-            this.pnlFormHeaderBar.Size = new System.Drawing.Size(480, 38);
+            this.pnlFormHeaderBar.Size = new System.Drawing.Size(410, 38);
             this.pnlFormHeaderBar.TabIndex = 0;
 
             this.lblFormHeader.AutoSize = true;
@@ -299,7 +299,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.tblPhotoModule.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.tblPhotoModule.ColumnCount = 2;
-            this.tblPhotoModule.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 130F));
+            this.tblPhotoModule.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 90F));
             this.tblPhotoModule.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tblPhotoModule.Controls.Add(this.picPhoto, 0, 0);
             this.tblPhotoModule.Controls.Add(this.tblPhotoActions, 1, 0);
@@ -308,7 +308,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.tblPhotoModule.Name = "tblPhotoModule";
             this.tblPhotoModule.RowCount = 1;
             this.tblPhotoModule.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblPhotoModule.Size = new System.Drawing.Size(536, 82);
+            this.tblPhotoModule.Size = new System.Drawing.Size(378, 82);
             this.tblPhotoModule.TabIndex = 10;
 
             this.picPhoto.BackColor = System.Drawing.Color.FromArgb(241, 245, 249);
@@ -317,7 +317,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.picPhoto.Location = new System.Drawing.Point(0, 0);
             this.picPhoto.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
             this.picPhoto.Name = "picPhoto";
-            this.picPhoto.Size = new System.Drawing.Size(122, 82);
+            this.picPhoto.Size = new System.Drawing.Size(82, 82);
             this.picPhoto.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picPhoto.TabIndex = 0;
             this.picPhoto.TabStop = false;
@@ -327,7 +327,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.tblPhotoActions.Controls.Add(this.btnUploadPhoto, 0, 0);
             this.tblPhotoActions.Controls.Add(this.tblViewRemovePhoto, 0, 1);
             this.tblPhotoActions.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tblPhotoActions.Location = new System.Drawing.Point(130, 0);
+            this.tblPhotoActions.Location = new System.Drawing.Point(90, 0);
             this.tblPhotoActions.Margin = new System.Windows.Forms.Padding(0);
             this.tblPhotoActions.Name = "tblPhotoActions";
             this.tblPhotoActions.RowCount = 2;
@@ -398,93 +398,83 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnRemovePhoto.UseVisualStyleBackColor = false;
             this.btnRemovePhoto.Click += new System.EventHandler(this.BtnRemovePhoto_Click);
 
-            this.btnSave.BackColor = System.Drawing.Color.FromArgb(239, 68, 68);
-            this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnSave.Dock = System.Windows.Forms.DockStyle.Top;
-            this.btnSave.FlatAppearance.BorderSize = 0;
-            this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnSave.Font = new System.Drawing.Font("Segoe UI Semibold", 10F, System.Drawing.FontStyle.Bold);
-            this.btnSave.ForeColor = System.Drawing.Color.White;
-            this.btnSave.Location = new System.Drawing.Point(16, 4);
-            this.btnSave.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
-            this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(448, 40);
-            this.btnSave.TabIndex = 0;
-            this.btnSave.Text = "🚨 FILE DAMAGE REPORT";
-            this.btnSave.UseVisualStyleBackColor = false;
-            this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
-
             this.tblUpdateDelete.ColumnCount = 2;
             this.tblUpdateDelete.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.tblUpdateDelete.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tblUpdateDelete.Controls.Add(this.btnUpdate, 0, 0);
-            this.tblUpdateDelete.Controls.Add(this.btnDelete, 1, 0);
+            this.tblUpdateDelete.Controls.Add(this.btnSave, 0, 0);
+            this.tblUpdateDelete.Controls.Add(this.btnUpdate, 1, 0);
             this.tblUpdateDelete.Dock = System.Windows.Forms.DockStyle.Top;
-            this.tblUpdateDelete.Location = new System.Drawing.Point(16, 50);
-            this.tblUpdateDelete.Margin = new System.Windows.Forms.Padding(0, 0, 0, 6);
+            this.tblUpdateDelete.Location = new System.Drawing.Point(12, 5);
+            this.tblUpdateDelete.Margin = new System.Windows.Forms.Padding(0);
             this.tblUpdateDelete.Name = "tblUpdateDelete";
             this.tblUpdateDelete.RowCount = 1;
-            this.tblUpdateDelete.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblUpdateDelete.Size = new System.Drawing.Size(448, 38);
-            this.tblUpdateDelete.TabIndex = 1;
+            this.tblUpdateDelete.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 32F));
+            this.tblUpdateDelete.Size = new System.Drawing.Size(386, 32);
+            this.tblUpdateDelete.TabIndex = 0;
 
-            this.btnUpdate.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
+            this.btnSave.BackColor = System.Drawing.Color.FromArgb(13, 110, 253);
+            this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnSave.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.btnSave.FlatAppearance.BorderSize = 0;
+            this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnSave.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold);
+            this.btnSave.ForeColor = System.Drawing.Color.White;
+            this.btnSave.Location = new System.Drawing.Point(0, 0);
+            this.btnSave.Margin = new System.Windows.Forms.Padding(0, 0, 3, 0);
+            this.btnSave.Name = "btnSave";
+            this.btnSave.Size = new System.Drawing.Size(190, 32);
+            this.btnSave.TabIndex = 0;
+            this.btnSave.Text = "💾 SUBMIT INCIDENT";
+            this.btnSave.UseVisualStyleBackColor = false;
+            this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
+
+            this.btnUpdate.BackColor = System.Drawing.Color.FromArgb(25, 135, 84);
             this.btnUpdate.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnUpdate.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnUpdate.FlatAppearance.BorderSize = 0;
             this.btnUpdate.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnUpdate.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
+            this.btnUpdate.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold);
             this.btnUpdate.ForeColor = System.Drawing.Color.White;
-            this.btnUpdate.Location = new System.Drawing.Point(0, 0);
-            this.btnUpdate.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
+            this.btnUpdate.Location = new System.Drawing.Point(196, 0);
+            this.btnUpdate.Margin = new System.Windows.Forms.Padding(3, 0, 0, 0);
             this.btnUpdate.Name = "btnUpdate";
-            this.btnUpdate.Size = new System.Drawing.Size(220, 38);
-            this.btnUpdate.TabIndex = 0;
-            this.btnUpdate.Text = "✏️ UPDATE";
+            this.btnUpdate.Size = new System.Drawing.Size(190, 32);
+            this.btnUpdate.TabIndex = 1;
+            this.btnUpdate.Text = "✏️ UPDATE INCIDENT";
             this.btnUpdate.UseVisualStyleBackColor = false;
             this.btnUpdate.Click += new System.EventHandler(this.BtnUpdate_Click);
 
-            this.btnDelete.BackColor = System.Drawing.Color.FromArgb(239, 68, 68);
-            this.btnDelete.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnDelete.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnDelete.FlatAppearance.BorderSize = 0;
-            this.btnDelete.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnDelete.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.btnDelete.ForeColor = System.Drawing.Color.White;
-            this.btnDelete.Location = new System.Drawing.Point(228, 0);
-            this.btnDelete.Margin = new System.Windows.Forms.Padding(4, 0, 0, 0);
+            this.btnDelete.Location = new System.Drawing.Point(0, 0);
             this.btnDelete.Name = "btnDelete";
-            this.btnDelete.Size = new System.Drawing.Size(220, 38);
-            this.btnDelete.TabIndex = 1;
-            this.btnDelete.Text = "🗑️ DELETE";
-            this.btnDelete.UseVisualStyleBackColor = false;
-            this.btnDelete.Click += new System.EventHandler(this.BtnDelete_Click);
+            this.btnDelete.Size = new System.Drawing.Size(0, 0);
+            this.btnDelete.TabIndex = 99;
+            this.btnDelete.Visible = false;
 
-            this.btnClear.BackColor = System.Drawing.Color.FromArgb(148, 163, 184);
+            this.btnClear.BackColor = System.Drawing.Color.FromArgb(241, 245, 249);
             this.btnClear.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnClear.Dock = System.Windows.Forms.DockStyle.Top;
-            this.btnClear.FlatAppearance.BorderSize = 0;
+            this.btnClear.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.btnClear.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(203, 213, 225);
+            this.btnClear.FlatAppearance.BorderSize = 1;
             this.btnClear.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnClear.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.btnClear.ForeColor = System.Drawing.Color.White;
-            this.btnClear.Location = new System.Drawing.Point(16, 94);
+            this.btnClear.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold);
+            this.btnClear.ForeColor = System.Drawing.Color.FromArgb(71, 85, 105);
+            this.btnClear.Location = new System.Drawing.Point(12, 39);
             this.btnClear.Margin = new System.Windows.Forms.Padding(0);
             this.btnClear.Name = "btnClear";
-            this.btnClear.Size = new System.Drawing.Size(448, 36);
-            this.btnClear.TabIndex = 2;
-            this.btnClear.Text = "🧹 CLEAR";
+            this.btnClear.Size = new System.Drawing.Size(386, 28);
+            this.btnClear.TabIndex = 1;
+            this.btnClear.Text = "🧹 CLEAR FORM";
             this.btnClear.UseVisualStyleBackColor = false;
             this.btnClear.Click += new System.EventHandler(this.BtnClear_Click);
 
             this.pnlFormActionsBar.BackColor = System.Drawing.Color.White;
             this.pnlFormActionsBar.Controls.Add(this.btnClear);
             this.pnlFormActionsBar.Controls.Add(this.tblUpdateDelete);
-            this.pnlFormActionsBar.Controls.Add(this.btnSave);
             this.pnlFormActionsBar.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.pnlFormActionsBar.Location = new System.Drawing.Point(0, 650);
+            this.pnlFormActionsBar.Location = new System.Drawing.Point(0, 714);
             this.pnlFormActionsBar.Name = "pnlFormActionsBar";
-            this.pnlFormActionsBar.Padding = new System.Windows.Forms.Padding(16, 4, 16, 8);
-            this.pnlFormActionsBar.Size = new System.Drawing.Size(480, 138);
+            this.pnlFormActionsBar.Padding = new System.Windows.Forms.Padding(12, 5, 12, 7);
+            this.pnlFormActionsBar.Size = new System.Drawing.Size(410, 74);
             this.pnlFormActionsBar.TabIndex = 2;
 
             this.pnlFormBody.AutoScroll = true;
@@ -571,7 +561,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnClearSearch.Location = new System.Drawing.Point(228, 4);
             this.btnClearSearch.Margin = new System.Windows.Forms.Padding(4, 4, 8, 0);
             this.btnClearSearch.Name = "btnClearSearch";
-            this.btnClearSearch.Size = new System.Drawing.Size(28, 26);
+            this.btnClearSearch.Size = new System.Drawing.Size(34, 28);
             this.btnClearSearch.TabIndex = 1;
             this.btnClearSearch.Text = "✖";
             this.btnClearSearch.UseVisualStyleBackColor = false;
@@ -630,8 +620,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblSummary.TabIndex = 0;
             this.lblSummary.Text = "Ready";
 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 19F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.tblMasterContent);
             this.Controls.Add(this.lblTitle);
             this.Name = "IncidentReportView";

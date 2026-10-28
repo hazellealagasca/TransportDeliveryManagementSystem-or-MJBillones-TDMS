@@ -35,14 +35,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
-            this.BackColor = Color.FromArgb(248, 250, 252);
+            this.BackColor = Pal.C(248, 250, 252);
             this.Font = new Font("Segoe UI", 9F);
 
             Panel pnlHeader = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 76,
-                BackColor = Color.FromArgb(15, 23, 42),
+                BackColor = Pal.C(15, 23, 42),
                 Padding = new Padding(24, 14, 24, 14)
             };
 
@@ -50,7 +50,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "📅 Reschedule Loading Order",
                 Font = new Font("Segoe UI", 12F, FontStyle.Bold),
-                ForeColor = Color.White,
+                ForeColor = Pal.White,
                 Location = new Point(20, 12),
                 AutoSize = true
             };
@@ -59,7 +59,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = $"Adjust target dispatch date and departure time for {schedule.ClientName}",
                 Font = new Font("Segoe UI", 8.5F),
-                ForeColor = Color.FromArgb(148, 163, 184),
+                ForeColor = Pal.C(148, 163, 184),
                 Location = new Point(20, 40),
                 AutoSize = true
             };
@@ -78,7 +78,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Location = new Point(20, 10),
                 Size = new Size(484, 135),
-                BackColor = Color.FromArgb(241, 245, 249),
+                BackColor = Pal.C(241, 245, 249),
                 BorderStyle = BorderStyle.FixedSingle
             };
 
@@ -86,7 +86,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = $"Order Number: #{schedule.ScheduleNumber}",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(15, 23, 42),
+                ForeColor = Pal.C(15, 23, 42),
                 Location = new Point(14, 10),
                 AutoSize = true
             };
@@ -95,7 +95,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = $"Client: {schedule.ClientName}  |  Destination: {schedule.Destination}",
                 Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.FromArgb(51, 65, 85),
+                ForeColor = Pal.C(51, 65, 85),
                 Location = new Point(14, 34),
                 AutoSize = true
             };
@@ -104,7 +104,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = $"Cargo: {schedule.TotalCrates:N0} Crates ({schedule.CargoType})",
                 Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.FromArgb(51, 65, 85),
+                ForeColor = Pal.C(51, 65, 85),
                 Location = new Point(14, 58),
                 AutoSize = true
             };
@@ -113,7 +113,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = $"Current Scheduled: {schedule.ScheduleDate:MM/dd/yyyy} at {schedule.DepartureTime}",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(194, 65, 12),
+                ForeColor = Pal.C(194, 65, 12),
                 Location = new Point(14, 82),
                 AutoSize = true
             };
@@ -126,7 +126,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = priorText,
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Italic),
-                ForeColor = Color.FromArgb(100, 116, 139),
+                ForeColor = Pal.C(100, 116, 139),
                 Location = new Point(14, 106),
                 AutoSize = true
             };
@@ -137,7 +137,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "New Scheduled Date: *",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 Location = new Point(20, 160),
                 AutoSize = true
             };
@@ -155,7 +155,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "New Departure Time: *",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 Location = new Point(20, 225),
                 AutoSize = true
             };
@@ -174,8 +174,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "⏰ Clock",
                 Location = new Point(424, 248),
                 Size = new Size(80, 28),
-                BackColor = Color.FromArgb(30, 58, 138),
-                ForeColor = Color.White,
+                BackColor = Pal.C(30, 58, 138),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -194,7 +194,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Reason for Rescheduling: *",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 Location = new Point(20, 290),
                 AutoSize = true
             };
@@ -224,7 +224,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Detailed Remarks / Operational Notes:",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 Location = new Point(20, 355),
                 AutoSize = true
             };
@@ -252,7 +252,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Dock = DockStyle.Bottom,
                 Height = 64,
-                BackColor = Color.White,
+                BackColor = Pal.White,
                 Padding = new Padding(20, 14, 20, 14)
             };
 
@@ -261,14 +261,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "Cancel",
                 Size = new Size(110, 36),
                 Location = new Point(266, 14),
-                BackColor = Color.FromArgb(241, 245, 249),
-                ForeColor = Color.FromArgb(71, 85, 105),
+                BackColor = Pal.C(241, 245, 249),
+                ForeColor = Pal.C(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             btnCancel.FlatAppearance.BorderSize = 1;
-            btnCancel.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+            btnCancel.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
             btnCancel.Click += (s, e) => { this.DialogResult = DialogResult.Cancel; this.Close(); };
 
             btnConfirm = new Button
@@ -276,8 +276,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "📅 Confirm Reschedule",
                 Size = new Size(160, 36),
                 Location = new Point(384, 14),
-                BackColor = Color.FromArgb(234, 88, 12),
-                ForeColor = Color.White,
+                BackColor = Pal.C(234, 88, 12),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand

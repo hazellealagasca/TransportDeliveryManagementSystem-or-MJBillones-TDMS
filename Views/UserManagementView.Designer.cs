@@ -226,7 +226,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.cbRole.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.cbRole.FormattingEnabled = true;
             this.cbRole.Items.AddRange(new object[] {
-            "Admin",
+            "Owner/Admin",
+            "Dispatcher",
+            "Billing Clerk",
             "Office Staff"});
             this.cbRole.Location = new System.Drawing.Point(16, 216);
             this.cbRole.Name = "cbRole";
@@ -576,7 +578,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnClearSearch.Location = new System.Drawing.Point(228, 4);
             this.btnClearSearch.Margin = new System.Windows.Forms.Padding(4, 4, 8, 0);
             this.btnClearSearch.Name = "btnClearSearch";
-            this.btnClearSearch.Size = new System.Drawing.Size(28, 26);
+            this.btnClearSearch.Size = new System.Drawing.Size(34, 28);
             this.btnClearSearch.TabIndex = 1;
             this.btnClearSearch.Text = "✖";
             this.btnClearSearch.UseVisualStyleBackColor = false;

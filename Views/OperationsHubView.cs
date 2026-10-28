@@ -11,6 +11,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     {
         private Button? activeTabBtn = null;
         private readonly Dictionary<string, Button> tabButtons = new Dictionary<string, Button>();
+        /// <summary>Key of the tab that is showing now (used to come back to the same screen after a theme change).</summary>
+        public string? CurrentTabKey => System.Linq.Enumerable.FirstOrDefault(tabButtons, k => k.Value == activeTabBtn).Key;
         private readonly Dictionary<string, UserControl> cachedViews = new Dictionary<string, UserControl>();
 
         public Action<int, string, int, DateTime>? OnLogIncidentForward;
@@ -19,19 +21,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public OperationsHubView(string defaultTab = "Dispatch")
         {
             InitializeComponent();
+            Pal.RemapTree(this);
             SetupTabs();
-            SelectTab(defaultTab);
             UIThemeHelper.ApplyTheme(this);
+            SelectTab(defaultTab);
         }
 
         private void SetupTabs()
         {
-            AddTab("Dispatch", "🚚  Delivery & Dispatch", () =>
+            AddTab("Dispatch", "🚚  Loading Schedule & Dispatch", () =>
             {
                 var dv = new DispatchManagementView();
                 dv.OnRecordTripRequested = (del) =>
                 {
                     SelectTab("TripReports");
+                };
+                dv.OnNavigateToCompletedRequested = () =>
+                {
+                    SelectTab("Completed");
                 };
                 dv.OnCreateInvoiceRequested = (del) =>
                 {
@@ -40,7 +47,35 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return dv;
             });
 
-            AddTab("Incidents", "⚠️  Incident & Damage Logs", () => new IncidentReportView());
+            AddTab("Completed", "✅  Completed Dispatches", () =>
+            {
+                var cv = new CompletedDispatchesView();
+                cv.OnNavigateToIncidentRequested = (delId, dispNum) =>
+                {
+                    FilterIncidentsByDispatch(dispNum);
+                };
+                cv.OnNavigateToTripReportRequested = (delId, dispNum) =>
+                {
+                    FilterTripReportsByDispatch(dispNum);
+                };
+                cv.OnNavigateToCreateInvoiceRequested = (del) =>
+                {
+                    OnCreateInvoiceForward?.Invoke(del);
+                };
+                return cv;
+            });
+
+            AddTab("SpecialTrips", "🌟  Special Trip History", () => new SpecialTripHistoryView());
+
+            AddTab("Incidents", "⚠️  Incident & Damage Logs", () =>
+            {
+                var iv = new IncidentReportView();
+                iv.OnNavigateToTripReportRequested = (delId, dispNum) =>
+                {
+                    FilterTripReportsByDispatch(dispNum);
+                };
+                return iv;
+            });
 
             AddTab("TripReports", "📝  Trip Reports", () =>
             {
@@ -53,7 +88,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return tv;
             });
 
-            AddTab("History", "📜  Loading & Dispatch History", () => new ModuleHistoryView("Loading & Dispatch History", new[] { "LoadingSchedules", "Deliveries" }, isAdminOnly: false));
+            AddTab("History", "📜  Order History", () => new ModuleHistoryView("Order History", new[] { "LoadingSchedules", "Deliveries" }, isAdminOnly: false));
         }
 
         private void AddTab(string key, string title, Func<UserControl> viewFactory)
@@ -70,15 +105,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 0, 8, 0),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                BackColor = Color.White,
-                ForeColor = Color.FromArgb(71, 85, 105),
+                BackColor = Pal.White,
+                ForeColor = Pal.C(71, 85, 105),
                 Cursor = Cursors.Hand
             };
             btn.FlatAppearance.BorderSize = 1;
-            btn.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
-
+            btn.FlatAppearance.BorderColor = Pal.C(226, 232, 240);
             btn.Click += (s, e) =>
             {
+                if (activeTabBtn != null && activeTabBtn != btn)
+                {
+                    if (!CheckAndPromptUnsavedBeforeLeaving()) return;
+                }
                 if (!cachedViews.TryGetValue(key, out var view))
                 {
                     view = viewFactory();
@@ -90,6 +128,45 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             flowNavTabs.Controls.Add(btn);
             tabButtons[key] = btn;
+        }
+
+        /// <summary>The cached view behind a tab (created when the tab was first opened).</summary>
+        public T? GetView<T>(string key) where T : UserControl => cachedViews.TryGetValue(key, out var v) ? v as T : null;
+        public static bool SuppressUnsavedPrompt { get; set; } = false;
+
+        public bool CheckAndPromptUnsavedBeforeLeaving()
+        {
+            if (SuppressUnsavedPrompt) return true;
+            if (pnlContentHost.Controls.Count > 0 && pnlContentHost.Controls[0] is DispatchManagementView dvCurr)
+            {
+                if (dvCurr.HasUnsavedChanges())
+                {
+                    dvCurr.AutoSaveDraft();
+                    var owner = FindForm();
+                    if (owner != null) { if (owner.WindowState == FormWindowState.Minimized) owner.WindowState = FormWindowState.Normal; owner.Activate(); }
+                    var dr = MessageBox.Show(owner,
+                        "Unsaved inputs detected. Your draft was saved.\n\nDo you want to leave this tab?",
+                        "Unsaved Changes",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning);
+                    return dr == DialogResult.Yes;
+                }
+            }
+            else if (pnlContentHost.Controls.Count > 0 && pnlContentHost.Controls[0] is LoadingManagementView lvCurr)
+            {
+                if (lvCurr.HasUnsavedChanges())
+                {
+                    var owner = FindForm();
+                    if (owner != null) { if (owner.WindowState == FormWindowState.Minimized) owner.WindowState = FormWindowState.Normal; owner.Activate(); }
+                    var dr = MessageBox.Show(owner,
+                        "Unsaved inputs detected.\n\nDo you want to leave this tab?",
+                        "Unsaved Changes",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning);
+                    return dr == DialogResult.Yes;
+                }
+            }
+            return true;
         }
 
         public void SelectTab(string key)
@@ -105,16 +182,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (activeTabBtn != null)
             {
-                activeTabBtn.BackColor = Color.White;
-                activeTabBtn.ForeColor = Color.FromArgb(71, 85, 105);
-                activeTabBtn.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
+                activeTabBtn.BackColor = Pal.White;
+                activeTabBtn.ForeColor = Pal.C(71, 85, 105);
+                activeTabBtn.FlatAppearance.BorderColor = Pal.C(226, 232, 240);
             }
 
             activeTabBtn = btn;
-            activeTabBtn.BackColor = Color.FromArgb(15, 23, 42);
-            activeTabBtn.ForeColor = Color.White;
-            activeTabBtn.FlatAppearance.BorderColor = Color.FromArgb(15, 23, 42);
-
+            activeTabBtn.BackColor = Pal.C(15, 23, 42);
+            activeTabBtn.ForeColor = Pal.White;
+            activeTabBtn.FlatAppearance.BorderColor = Pal.C(15, 23, 42);
             pnlContentHost.SuspendLayout();
             pnlContentHost.Controls.Clear();
             view.Dock = DockStyle.Fill;
@@ -124,6 +200,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (view is IRefreshable refreshable)
             {
                 refreshable.RefreshData();
+            }
+        }
+
+        public void EditDeliveryInDispatch(Delivery delivery)
+        {
+            SelectTab("Dispatch");
+            if (cachedViews.TryGetValue("Dispatch", out var view) && view is DispatchManagementView dsp)
+            {
+                dsp.EditDeliveryOrder(delivery);
             }
         }
 
@@ -151,6 +236,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (cachedViews.TryGetValue("Incidents", out var view) && view is IncidentReportView inc)
             {
                 inc.PrefillFromTripVariance(deliveryId, dispatchNumber, missingCrates, tripDate);
+            }
+        }
+
+        public void FilterIncidentsByDispatch(string dispatchNumber)
+        {
+            SelectTab("Incidents");
+            if (cachedViews.TryGetValue("Incidents", out var view) && view is IncidentReportView inc)
+            {
+                inc.FilterByDispatch(dispatchNumber);
+            }
+        }
+
+        public void OpenTripReportForDispatch(Delivery delivery)
+        {
+            SelectTab("TripReports");
+            if (cachedViews.TryGetValue("TripReports", out var view) && view is TripReportView trip)
+            {
+                trip.OpenForDispatch(delivery.DispatchNumber);
+            }
+        }
+        public void FilterTripReportsByDispatch(string dispatchNumber)
+        {
+            SelectTab("TripReports");
+            if (cachedViews.TryGetValue("TripReports", out var view) && view is TripReportView trip)
+            {
+                trip.FilterByDispatch(dispatchNumber);
             }
         }
 

@@ -7,6 +7,7 @@ using System.Text;
 using System.Windows.Forms;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
+using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views;
 
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions
 {
@@ -18,6 +19,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (record == null) return;
 
+            if (record is Delivery deliveryRecord)
+            {
+                Forms.DispatchDetailsDialog.ShowFor(parent, deliveryRecord);
+                return;
+            }
             if (_activeInspector != null && !_activeInspector.IsDisposed)
             {
                 _activeInspector.Close();
@@ -32,7 +38,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Size = new Size(880, 640),
                 FormBorderStyle = FormBorderStyle.Sizable,
                 MinimumSize = new Size(760, 520),
-                BackColor = Color.FromArgb(248, 250, 252),
+                BackColor = Pal.C(248, 250, 252),
                 MaximizeBox = true,
                 MinimizeBox = true,
                 ShowInTaskbar = true
@@ -103,9 +109,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string title = "Record Details";
             string subtitle = "M.J. Billones Transport Service Management System";
             string statusBadge = "Active";
-            Color badgeBg = Color.FromArgb(220, 252, 231);
-            Color badgeFg = Color.FromArgb(22, 101, 52);
-
+            Color badgeBg = Pal.C(220, 252, 231);
+            Color badgeFg = Pal.C(22, 101, 52);
             var keyValues = new List<(string Label, string Value)>();
             var historyData = new List<object>();
             string historyTitle = "Related Operational Activity";
@@ -115,10 +120,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 title = $"🚚 Vehicle Profile: {truck.PlateNumber}";
                 subtitle = $"Vehicle • Category: {truck.TruckType}";
                 statusBadge = truck.Status;
-                if (truck.Status == "Available" || truck.Status == "Active") { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
-                else if (truck.Status == "In Use" || truck.Status == "On Trip") { badgeBg = Color.FromArgb(254, 243, 199); badgeFg = Color.FromArgb(180, 83, 9); }
-                else { badgeBg = Color.FromArgb(254, 226, 226); badgeFg = Color.FromArgb(185, 28, 28); }
-
+                if (truck.Status == "Available" || truck.Status == "Active") { badgeBg = Pal.C(220, 252, 231); badgeFg = Pal.C(22, 101, 52); }
+                else if (truck.Status == "In Use" || truck.Status == "On Trip") { badgeBg = Pal.C(254, 243, 199); badgeFg = Pal.C(180, 83, 9); }
+                else { badgeBg = Pal.C(254, 226, 226); badgeFg = Pal.C(185, 28, 28); }
                 var allDel = MJdatabase.GetDeliveries().Where(d => d.TruckId == truck.Id || (!string.IsNullOrEmpty(d.TruckInfo) && d.TruckInfo.Contains(truck.PlateNumber))).ToList();
                 int totalCratesHailed = allDel.Sum(d => d.TotalCrates);
 
@@ -149,15 +153,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 title = $"👤 Crew Profile: {crew.FullName}";
                 subtitle = $"Staff Member • Role: {crew.Role}";
                 statusBadge = crew.AvailabilityStatus;
-                if (crew.IsAvailable) { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
-                else { badgeBg = Color.FromArgb(254, 243, 199); badgeFg = Color.FromArgb(180, 83, 9); }
-
+                if (crew.IsAvailable) { badgeBg = Pal.C(220, 252, 231); badgeFg = Pal.C(22, 101, 52); }
+                else { badgeBg = Pal.C(254, 243, 199); badgeFg = Pal.C(180, 83, 9); }
                 var allDel = MJdatabase.GetDeliveries().Where(d => d.DriverId == crew.Id || (!string.IsNullOrEmpty(d.AideIds) && d.AideIds.Split(',').Contains(crew.Id.ToString())) || (!string.IsNullOrEmpty(d.DriverName) && d.DriverName.Contains(crew.FullName))).ToList();
 
                 keyValues.Add(("Full Name", crew.FullName));
                 keyValues.Add(("Designated Role", crew.Role));
                 keyValues.Add(("Contact Mobile #", crew.ContactNumber));
-                keyValues.Add(("Driver's License #", string.IsNullOrEmpty(crew.LicenseNumber) ? "N/A" : crew.LicenseNumber));
+                keyValues.Add(("Driver's License", crew.HasLicense ? crew.LicenseDisplay : "None"));
                 keyValues.Add(("Employment Type", crew.IsSeasonal ? "Seasonal / Extra" : "Regular Active"));
                                                 keyValues.Add(("Current Availability", crew.AvailabilityStatus));
                 keyValues.Add(("Total Dispatches Assigned", $"{allDel.Count} Trips"));
@@ -179,11 +182,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 title = $"📅 Loading Schedule: {sch.ScheduleNumber}";
                 subtitle = $"Client Haul Order • {sch.ClientName}";
                 statusBadge = sch.Status;
-                if (sch.Status == "Dispatched" || sch.Status == "Completed") { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
-                else if (sch.Status == "Cancelled" || sch.Status == "Past Due") { badgeBg = Color.FromArgb(254, 226, 226); badgeFg = Color.FromArgb(185, 28, 28); }
-                else if (sch.Status == "Rescheduled") { badgeBg = Color.FromArgb(238, 242, 255); badgeFg = Color.FromArgb(67, 56, 202); }
-                else { badgeBg = Color.FromArgb(254, 243, 199); badgeFg = Color.FromArgb(180, 83, 9); }
-
+                if (sch.Status == "Dispatched" || sch.Status == "Completed") { badgeBg = Pal.C(220, 252, 231); badgeFg = Pal.C(22, 101, 52); }
+                else if (sch.Status == "Cancelled" || sch.Status == "Past Due") { badgeBg = Pal.C(254, 226, 226); badgeFg = Pal.C(185, 28, 28); }
+                else if (sch.Status == "Rescheduled") { badgeBg = Pal.C(238, 242, 255); badgeFg = Pal.C(67, 56, 202); }
+                else { badgeBg = Pal.C(254, 243, 199); badgeFg = Pal.C(180, 83, 9); }
                 var matchDel = MJdatabase.GetDeliveries().FirstOrDefault(d => d.LoadingScheduleId == sch.Id || (!string.IsNullOrEmpty(d.LoadingScheduleInfo) && d.LoadingScheduleInfo.Contains(sch.ScheduleNumber)));
                 var cl = MJdatabase.GetClientByCompanyName(sch.ClientName);
 
@@ -256,11 +258,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 title = $"📦 Delivery Dispatch: {del.DispatchNumber}";
                 subtitle = $"Transit Order • Client: {clientName}";
                 statusBadge = del.Status;
-                if (del.Status == "Completed") { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
-                else if (del.Status == "Delayed") { badgeBg = Color.FromArgb(254, 226, 226); badgeFg = Color.FromArgb(185, 28, 28); }
-                else if (del.Status == "In Transit") { badgeBg = Color.FromArgb(254, 243, 199); badgeFg = Color.FromArgb(180, 83, 9); }
-                else { badgeBg = Color.FromArgb(241, 245, 249); badgeFg = Color.FromArgb(51, 65, 85); }
-
+                if (del.Status == "Completed") { badgeBg = Pal.C(220, 252, 231); badgeFg = Pal.C(22, 101, 52); }
+                else if (del.Status == "Delayed") { badgeBg = Pal.C(254, 226, 226); badgeFg = Pal.C(185, 28, 28); }
+                else if (del.Status == "In Transit") { badgeBg = Pal.C(254, 243, 199); badgeFg = Pal.C(180, 83, 9); }
+                else { badgeBg = Pal.C(241, 245, 249); badgeFg = Pal.C(51, 65, 85); }
                 var matchTrip = MJdatabase.GetTripReports().FirstOrDefault(t => t.DeliveryId == del.Id || (!string.IsNullOrEmpty(t.DispatchNumber) && t.DispatchNumber == del.DispatchNumber));
                 var matchInv = MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == del.Id);
 
@@ -271,7 +272,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 string destDisplay = !string.IsNullOrWhiteSpace(del.Destination) ? del.Destination : (string.IsNullOrEmpty(del.LoadingScheduleInfo) ? (matchSched?.Destination ?? "N/A") : del.LoadingScheduleInfo);
                 keyValues.Add(("Delivery Destination", destDisplay));
-                keyValues.Add(("Tariff / Peak Rate", del.IsPeak ? "⚡ Peak Season Surcharge Applied" : "Standard Tariff Rate"));
+                keyValues.Add(("Peak Season", del.IsPeak ? "⚡ Peak season surcharge applied" : "Regular season rate"));
                 keyValues.Add(("Route Type", del.RouteTypeDisplay));
                 keyValues.Add(("Order Reference #", del.DispatchNumber));
                 if (matchSched != null || del.LoadingScheduleId > 0)
@@ -347,8 +348,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 title = $"📝 Trip Report: {tr.TripReportNumber}";
                 subtitle = $"Delivery Audit • Client: {clientName}";
                 statusBadge = "Recorded";
-                badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52);
-
+                badgeBg = Pal.C(220, 252, 231); badgeFg = Pal.C(22, 101, 52);
                 int totalDisp = matchDel != null ? matchDel.TotalCrates : (tr.DeliveredCrates);
                 int variance = totalDisp - tr.DeliveredCrates;
 
@@ -390,11 +390,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 title = $"💰 Billing Invoice: {inv.InvoiceNumber}";
                 subtitle = $"Client Delivery Statement • {inv.ClientName}";
                 statusBadge = inv.Status;
-                if (inv.Status == "Paid") { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
-                else if (inv.Status == "Partial") { badgeBg = Color.FromArgb(254, 243, 199); badgeFg = Color.FromArgb(180, 83, 9); }
-                else if (inv.Status == "Overdue") { badgeBg = Color.FromArgb(254, 226, 226); badgeFg = Color.FromArgb(185, 28, 28); }
-                else { badgeBg = Color.FromArgb(241, 245, 249); badgeFg = Color.FromArgb(51, 65, 85); }
-
+                if (inv.Status == "Paid") { badgeBg = Pal.C(220, 252, 231); badgeFg = Pal.C(22, 101, 52); }
+                else if (inv.Status == "Partial") { badgeBg = Pal.C(254, 243, 199); badgeFg = Pal.C(180, 83, 9); }
+                else if (inv.Status == "Overdue") { badgeBg = Pal.C(254, 226, 226); badgeFg = Pal.C(185, 28, 28); }
+                else { badgeBg = Pal.C(241, 245, 249); badgeFg = Pal.C(51, 65, 85); }
                 var matchReceipts = MJdatabase.GetCollectionReceipts().Where(c => c.InvoiceId == inv.Id).ToList();
                 decimal totalPaid = matchReceipts.Sum(c => c.AmountPaid);
                 decimal balance = Math.Max(0, inv.NetAmount - totalPaid);
@@ -411,7 +410,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 keyValues.Add(("Client / Account Name", inv.ClientName));
                 keyValues.Add(("Invoice Date", inv.IssueDate.ToString("MMMM dd, yyyy")));
                 keyValues.Add(("Due Date", inv.DueDate.ToString("MMMM dd, yyyy")));
-                keyValues.Add(("Gross Delivery Tariff", $"₱{inv.TotalAmount:N2}"));
+                keyValues.Add(("Gross Delivery Rate", $"₱{inv.TotalAmount:N2}"));
                 keyValues.Add(("Damage Deductions", $"-₱{inv.Deductions:N2}"));
                 keyValues.Add(("Net Total Amount Due", $"₱{inv.NetAmount:N2}"));
                 keyValues.Add(("Total Amount Paid", $"₱{totalPaid:N2}"));
@@ -435,8 +434,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 title = $"🧾 Collection Receipt: {cr.ReceiptNumber}";
                 subtitle = $"Official Payment Receipt • Invoice: {cr.InvoiceNumber}";
                 statusBadge = "Collected ✓";
-                badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52);
-
+                badgeBg = Pal.C(220, 252, 231); badgeFg = Pal.C(22, 101, 52);
                 var matchInv = MJdatabase.GetInvoices().FirstOrDefault(i => i.Id == cr.InvoiceId || i.InvoiceNumber == cr.InvoiceNumber);
 
                 keyValues.Add(("Receipt Number (OR)", cr.ReceiptNumber));
@@ -477,9 +475,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 title = $"⚠️ Incident Report: #{inc.Id}";
                 subtitle = $"Transit Discrepancy & Claims • Client: {clientName}";
                 statusBadge = inc.Status;
-                if (inc.Status == "Resolved") { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
-                else { badgeBg = Color.FromArgb(254, 226, 226); badgeFg = Color.FromArgb(185, 28, 28); }
-
+                if (inc.Status == "Resolved") { badgeBg = Pal.C(220, 252, 231); badgeFg = Pal.C(22, 101, 52); }
+                else { badgeBg = Pal.C(254, 226, 226); badgeFg = Pal.C(185, 28, 28); }
                 keyValues.Add(("Client / Account Name", clientName));
                 keyValues.Add(("Delivery Destination", matchSched?.Destination ?? (matchDel?.LoadingScheduleInfo ?? "N/A")));
                 keyValues.Add(("Incident ID", $"INC-{inc.Id:D5}"));
@@ -513,11 +510,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 title = $"📜 Audit Log: {log.ActionType} on {log.TableName}";
                 subtitle = $"Operational History Entry • Reference: {log.RecordIdentifier}";
                 statusBadge = log.ActionType;
-                if (log.ActionType.Equals("ADD", StringComparison.OrdinalIgnoreCase)) { badgeBg = Color.FromArgb(220, 252, 231); badgeFg = Color.FromArgb(22, 101, 52); }
-                else if (log.ActionType.Equals("DELETE", StringComparison.OrdinalIgnoreCase) || log.ActionType.Equals("CANCEL", StringComparison.OrdinalIgnoreCase)) { badgeBg = Color.FromArgb(254, 226, 226); badgeFg = Color.FromArgb(185, 28, 28); }
-                else if (log.ActionType.Equals("RESCHEDULE", StringComparison.OrdinalIgnoreCase)) { badgeBg = Color.FromArgb(254, 243, 199); badgeFg = Color.FromArgb(180, 83, 9); }
-                else { badgeBg = Color.FromArgb(224, 231, 255); badgeFg = Color.FromArgb(49, 46, 129); }
-
+                if (log.ActionType.Equals("ADD", StringComparison.OrdinalIgnoreCase)) { badgeBg = Pal.C(220, 252, 231); badgeFg = Pal.C(22, 101, 52); }
+                else if (log.ActionType.Equals("DELETE", StringComparison.OrdinalIgnoreCase) || log.ActionType.Equals("CANCEL", StringComparison.OrdinalIgnoreCase)) { badgeBg = Pal.C(254, 226, 226); badgeFg = Pal.C(185, 28, 28); }
+                else if (log.ActionType.Equals("RESCHEDULE", StringComparison.OrdinalIgnoreCase)) { badgeBg = Pal.C(254, 243, 199); badgeFg = Pal.C(180, 83, 9); }
+                else { badgeBg = Pal.C(224, 231, 255); badgeFg = Pal.C(49, 46, 129); }
                 keyValues.Add(("Audit Log ID", $"#LOG-{log.Id:D6}"));
                 keyValues.Add(("Logged Timestamp", log.Timestamp.ToString("MMMM dd, yyyy HH:mm:ss")));
                 keyValues.Add(("Operator Username", log.Username));
@@ -547,28 +543,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (record is RateMatrix rm)
             {
-                title = $"🏷️ Rate Tariff: {rm.RouteName}";
+                title = $"🏷️ Rate: {rm.RouteName}";
                 subtitle = $"Delivery Rate Matrix • Destination: {rm.Destination}";
                 statusBadge = rm.IsPeakSeason ? "Peak Season" : "Regular";
-                badgeBg = rm.IsPeakSeason ? Color.FromArgb(254, 243, 199) : Color.FromArgb(220, 252, 231);
-                badgeFg = rm.IsPeakSeason ? Color.FromArgb(180, 83, 9) : Color.FromArgb(22, 101, 52);
-
+                badgeBg = rm.IsPeakSeason ? Pal.C(254, 243, 199) : Pal.C(220, 252, 231);
+                badgeFg = rm.IsPeakSeason ? Pal.C(180, 83, 9) : Pal.C(22, 101, 52);
                 keyValues.Add(("Route Name / Code", rm.RouteName));
                 keyValues.Add(("Destination Drop", rm.Destination));
                 keyValues.Add(("Truck Category / Type", rm.TruckType));
                 keyValues.Add(("Season Rate Tier", rm.IsPeakSeason ? "🔥 Peak Season Rate" : "Regular Season Rate"));
-                keyValues.Add(("Tariff Rate Amount", $"₱{rm.RateAmount:N2}"));
-
-                historyTitle = "Tariff Rate Details";
+                keyValues.Add(("Rate Amount", $"₱{rm.RateAmount:N2}"));
+                historyTitle = "Rate Details";
             }
             else if (record is User usr)
             {
                 title = $"👤 User Account: {usr.Username}";
                 subtitle = $"System User Profile • {usr.FullName}";
                 statusBadge = usr.IsActive ? "Active" : "Inactive";
-                badgeBg = usr.IsActive ? Color.FromArgb(220, 252, 231) : Color.FromArgb(254, 226, 226);
-                badgeFg = usr.IsActive ? Color.FromArgb(22, 101, 52) : Color.FromArgb(185, 28, 28);
-
+                badgeBg = usr.IsActive ? Pal.C(220, 252, 231) : Pal.C(254, 226, 226);
+                badgeFg = usr.IsActive ? Pal.C(22, 101, 52) : Pal.C(185, 28, 28);
                 keyValues.Add(("Username", usr.Username));
                 keyValues.Add(("Full Name", usr.FullName));
                 keyValues.Add(("Designated System Role", usr.Role));
@@ -594,9 +587,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 title = $"🏢 Client Profile: {cc.CompanyName}";
                 subtitle = $"Registered Client Company • Contact: {cc.ContactPerson}";
                 statusBadge = "Registered";
-                badgeBg = Color.FromArgb(220, 252, 231);
-                badgeFg = Color.FromArgb(22, 101, 52);
-
+                badgeBg = Pal.C(220, 252, 231);
+                badgeFg = Pal.C(22, 101, 52);
                 keyValues.Add(("Company Name", cc.CompanyName));
                 keyValues.Add(("Primary Contact Person", string.IsNullOrEmpty(cc.ContactPerson) ? "N/A" : cc.ContactPerson));
                 keyValues.Add(("Contact Number / Mobile", string.IsNullOrEmpty(cc.ContactNumber) ? "N/A" : cc.ContactNumber));
@@ -624,8 +616,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Panel pnlHeader = new Panel
             {
                 Dock = DockStyle.Top,
+                Width = dlg.ClientSize.Width,
                 Height = 80,
-                BackColor = Color.FromArgb(15, 23, 42),
+                BackColor = Pal.C(15, 23, 42),
                 Padding = new Padding(20, 14, 20, 14)
             };
 
@@ -633,7 +626,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = title,
                 Font = new Font("Segoe UI", 13.5F, FontStyle.Bold),
-                ForeColor = Color.White,
+                ForeColor = Pal.White,
                 Location = new Point(18, 12),
                 AutoSize = true
             };
@@ -642,7 +635,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = subtitle,
                 Font = new Font("Segoe UI", 9F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(148, 163, 184),
+                ForeColor = Pal.C(148, 163, 184),
                 Location = new Point(20, 42),
                 AutoSize = true
             };
@@ -655,13 +648,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ForeColor = badgeFg,
                 Padding = new Padding(10, 4, 10, 4),
                 AutoSize = true,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Location = new Point(dlg.ClientSize.Width - 140, 24)
             };
 
             pnlHeader.Controls.Add(lblTitle);
             pnlHeader.Controls.Add(lblSubtitle);
             pnlHeader.Controls.Add(lblBadge);
+            pnlHeader.Resize += (s, e) =>
+            {
+                lblBadge.Location = new Point(pnlHeader.ClientSize.Width - lblBadge.Width - 20, 24);
+            };
 
             TabControl tabs = new TabControl
             {
@@ -672,14 +668,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             TabPage tabOverview = new TabPage("📋 Full Record Specifications")
             {
-                BackColor = Color.White,
+                BackColor = Pal.White,
                 Padding = new Padding(12)
             };
 
             DataGridView gridProps = new DataGridView
             {
                 Dock = DockStyle.Fill,
-                BackgroundColor = Color.White,
+                BackgroundColor = Pal.White,
                 BorderStyle = BorderStyle.None,
                 RowHeadersVisible = false,
                 AllowUserToAddRows = false,
@@ -692,12 +688,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             gridProps.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Field Specification / Parameter", FillWeight = 38 });
             gridProps.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Recorded Data Value", FillWeight = 62 });
-            gridProps.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(241, 245, 249);
-            gridProps.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(51, 65, 85);
+            gridProps.ColumnHeadersDefaultCellStyle.BackColor = Pal.C(241, 245, 249);
+            gridProps.ColumnHeadersDefaultCellStyle.ForeColor = Pal.C(51, 65, 85);
             gridProps.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
             gridProps.EnableHeadersVisualStyles = false;
-            gridProps.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(248, 250, 252);
-
+            gridProps.AlternatingRowsDefaultCellStyle.BackColor = Pal.C(248, 250, 252);
             foreach (var kv in keyValues)
             {
                 gridProps.Rows.Add(kv.Label, kv.Value);
@@ -707,14 +702,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             TabPage tabHistory = new TabPage($"📊 {historyTitle}")
             {
-                BackColor = Color.White,
+                BackColor = Pal.White,
                 Padding = new Padding(12)
             };
 
             DataGridView gridHist = new DataGridView
             {
                 Dock = DockStyle.Fill,
-                BackgroundColor = Color.White,
+                BackgroundColor = Pal.White,
                 BorderStyle = BorderStyle.None,
                 RowHeadersVisible = false,
                 AllowUserToAddRows = false,
@@ -725,12 +720,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Font = new Font("Segoe UI", 9F),
                 RowTemplate = { Height = 28 }
             };
-            gridHist.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(241, 245, 249);
-            gridHist.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(51, 65, 85);
+            gridHist.ColumnHeadersDefaultCellStyle.BackColor = Pal.C(241, 245, 249);
+            gridHist.ColumnHeadersDefaultCellStyle.ForeColor = Pal.C(51, 65, 85);
             gridHist.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
             gridHist.EnableHeadersVisualStyles = false;
-            gridHist.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(248, 250, 252);
-
+            gridHist.AlternatingRowsDefaultCellStyle.BackColor = Pal.C(248, 250, 252);
             if (historyData.Count > 0)
             {
                 gridHist.DataSource = historyData;
@@ -740,7 +734,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Label lblNoHist = new Label
                 {
                     Text = "No previous activity or linked records found for this entry.",
-                    ForeColor = Color.FromArgb(148, 163, 184),
+                    ForeColor = Pal.C(148, 163, 184),
                     Font = new Font("Segoe UI", 10F, FontStyle.Italic),
                     Dock = DockStyle.Fill,
                     TextAlign = ContentAlignment.MiddleCenter
@@ -753,42 +747,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Panel pnlFooter = new Panel
             {
                 Dock = DockStyle.Bottom,
+                Width = dlg.ClientSize.Width,
                 Height = 56,
-                BackColor = Color.FromArgb(241, 245, 249),
+                BackColor = Pal.C(241, 245, 249),
                 Padding = new Padding(16, 10, 16, 10)
-            };
-
-            Button btnCopy = new Button
-            {
-                Text = "📋 Copy Full Specifications",
-                Height = 36,
-                Width = 200,
-                Location = new Point(16, 10),
-                BackColor = Color.White,
-                ForeColor = Color.FromArgb(30, 41, 59),
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            btnCopy.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
-            btnCopy.Click += (s, e) =>
-            {
-                StringBuilder sb = new StringBuilder();
-                sb.AppendLine($"=== {title.ToUpper()} ===");
-                sb.AppendLine($"Status: {statusBadge}");
-                sb.AppendLine("--------------------------------------------------");
-                foreach (var kv in keyValues)
-                {
-                    sb.AppendLine($"{kv.Label.PadRight(30)}: {kv.Value}");
-                }
-                sb.AppendLine("--------------------------------------------------");
-                sb.AppendLine($"Generated on: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-                try
-                {
-                    Clipboard.SetText(sb.ToString());
-                    ToastHelper.ShowToast(dlg, "Record details copied to clipboard ✓", ToastType.Success);
-                }
-                catch { }
             };
 
             Button btnPrint = new Button
@@ -796,13 +758,81 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "🖨️ Print Summary",
                 Height = 36,
                 Width = 140,
-                Location = new Point(226, 10),
-                BackColor = Color.FromArgb(30, 41, 59),
-                ForeColor = Color.White,
+                Location = new Point(16, 10),
+                BackColor = Pal.C(30, 41, 59),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
+
+            if (record is Delivery targetDel)
+            {
+                Button btnUpdate = new Button
+                {
+                    Text = "✏️ Update Order",
+                    Height = 36,
+                    Width = 145,
+                    Location = new Point(16, 10),
+                    BackColor = Pal.C(30, 41, 59),
+                    ForeColor = Pal.White,
+                    FlatStyle = FlatStyle.Flat,
+                    Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                    Cursor = Cursors.Hand
+                };
+                btnUpdate.FlatAppearance.BorderSize = 0;
+                btnUpdate.Click += (s, e) =>
+                {
+                    dlg.Close();
+                    if (parent is DispatchManagementView dispView)
+                    {
+                        dispView.EditDeliveryOrder(targetDel);
+                    }
+                    else if (MainForm.Instance != null)
+                    {
+                        MainForm.Instance.EditDeliveryOrderInDispatch(targetDel);
+                    }
+                };
+
+                Button btnCancelOrder = new Button
+                {
+                    Text = "🚫 Cancel Order",
+                    Height = 36,
+                    Width = 145,
+                    Location = new Point(169, 10),
+                    BackColor = Pal.C(220, 38, 38),
+                    ForeColor = Pal.White,
+                    FlatStyle = FlatStyle.Flat,
+                    Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                    Cursor = Cursors.Hand
+                };
+                btnCancelOrder.FlatAppearance.BorderSize = 0;
+                btnCancelOrder.Click += (s, e) =>
+                {
+                    if (targetDel.Status == "Cancelled")
+                    {
+                        MessageBox.Show("This dispatch order is already cancelled.", "Notice", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+
+                    string? reason = CancellationReasonDialog.PromptCancellationReason(dlg, "Dispatch Order", targetDel.DispatchNumber);
+                    if (string.IsNullOrEmpty(reason)) return;
+
+                    targetDel.Status = "Cancelled";
+                    targetDel.CancellationReason = reason;
+                    MJdatabase.SaveDelivery(targetDel);
+                    ToastHelper.ShowToast(parentForm ?? dlg, $"Dispatch order {targetDel.DispatchNumber} cancelled ✓", ToastType.Warning);
+
+                    if (parent is IRefreshable refView) refView.RefreshData();
+                    else if (parent is DispatchManagementView dv) dv.RefreshData();
+
+                    dlg.Close();
+                };
+
+                btnPrint.Location = new Point(322, 10);
+                pnlFooter.Controls.Add(btnUpdate);
+                pnlFooter.Controls.Add(btnCancelOrder);
+            }
             btnPrint.FlatAppearance.BorderSize = 0;
             btnPrint.Click += (s, e) =>
             {
@@ -816,7 +846,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     y += 24;
                     g.DrawString("Official Record Specification & Audit Summary", new Font("Segoe UI", 10F, FontStyle.Italic), Brushes.DarkSlateGray, 50, y);
                     y += 20;
-                    g.DrawLine(new Pen(Color.FromArgb(15, 23, 42), 2), 50, y, 780, y);
+                    g.DrawLine(new Pen(Pal.C(15, 23, 42), 2), 50, y, 780, y);
                     y += 18;
 
                     g.DrawString(title, new Font("Segoe UI", 12F, FontStyle.Bold), Brushes.Black, 50, y);
@@ -847,10 +877,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "✕ Close",
                 Height = 36,
                 Width = 100,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Location = new Point(dlg.ClientSize.Width - 116, 10),
-                BackColor = Color.FromArgb(226, 232, 240),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                BackColor = Pal.C(226, 232, 240),
+                ForeColor = Pal.C(30, 41, 59),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -858,9 +887,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnClose.FlatAppearance.BorderSize = 0;
             btnClose.Click += (s, e) => dlg.Close();
 
-            pnlFooter.Controls.Add(btnCopy);
             pnlFooter.Controls.Add(btnPrint);
             pnlFooter.Controls.Add(btnClose);
+            pnlFooter.Resize += (s, e) =>
+            {
+                btnClose.Location = new Point(pnlFooter.ClientSize.Width - btnClose.Width - 16, 10);
+            };
 
             dlg.Controls.Add(tabs);
             dlg.Controls.Add(pnlFooter);

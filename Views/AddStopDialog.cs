@@ -47,27 +47,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Panel pnlHeader = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 65,
-                BackColor = Color.FromArgb(240, 253, 244),
-                Padding = new Padding(20, 12, 20, 12)
+                Height = 72,
+                BackColor = Pal.C(240, 253, 244),
+                Padding = new Padding(20, 10, 20, 10)
             };
 
             Label lblTitle = new Label
             {
                 Text = $"🗺️ Add Route Stop #{nextSequence}",
                 Font = new Font("Segoe UI Semibold", 12F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(22, 101, 52),
+                ForeColor = Pal.C(22, 101, 52),
                 Dock = DockStyle.Top,
-                Height = 24
+                Height = 28,
+                TextAlign = ContentAlignment.MiddleLeft
             };
 
             Label lblSubtitle = new Label
             {
                 Text = "Attach a pending loading schedule or define a custom waypoint destination.",
                 Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.FromArgb(21, 128, 61),
+                ForeColor = Pal.C(21, 128, 61),
                 Dock = DockStyle.Bottom,
-                Height = 20
+                Height = 22,
+                TextAlign = ContentAlignment.MiddleLeft
             };
 
             pnlHeader.Controls.Add(lblTitle);
@@ -140,15 +142,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             TableLayoutPanel tblCrates = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 60,
+                Height = 56,
                 ColumnCount = 2,
-                Margin = new Padding(0, 10, 0, 0)
+                RowCount = 2,
+                Margin = new Padding(0, 8, 0, 0)
             };
             tblCrates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tblCrates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblCrates.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));
+            tblCrates.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
 
-            Label lblG = new Label { Text = "G-Crates (Plastic):", Font = UITheme.FieldLabelFont, Dock = DockStyle.Fill };
-            Label lblE = new Label { Text = "E-Crates (Wood):", Font = UITheme.FieldLabelFont, Dock = DockStyle.Fill };
+            Label lblG = new Label { Text = "G-Crates:", Font = UITheme.FieldLabelFont, Dock = DockStyle.Fill };
+            Label lblE = new Label { Text = "E-Crates:", Font = UITheme.FieldLabelFont, Dock = DockStyle.Fill };
             numGCrate = new NumericUpDown { Maximum = 10000, Value = 100, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10F) };
             numECrate = new NumericUpDown { Maximum = 10000, Value = 0, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10F) };
 
@@ -198,8 +203,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Size = new Size(100, 36),
                 Dock = DockStyle.Right,
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(226, 232, 240),
-                ForeColor = Color.FromArgb(71, 85, 105),
+                BackColor = Pal.C(226, 232, 240),
+                ForeColor = Pal.C(71, 85, 105),
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
@@ -208,15 +213,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnConfirm = new Button
             {
-                Text = "➕ Add Stop to Route",
-                Size = new Size(180, 36),
+                Text = "➕ Add Stop",
+                Size = new Size(130, 36),
                 Dock = DockStyle.Right,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = UITheme.SuccessGreen,
-                ForeColor = Color.White,
+                ForeColor = Pal.White,
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 10, 0)
+                Cursor = Cursors.Hand
             };
             btnConfirm.FlatAppearance.BorderSize = 0;
             btnConfirm.Click += (s, e) => ConfirmAdd(nextSequence);

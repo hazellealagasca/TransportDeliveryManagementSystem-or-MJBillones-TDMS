@@ -20,13 +20,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public UserManagementView()
         {
             InitializeComponent();
+            Pal.RemapTree(this);
             gridUsers.BringToFront();
             SetupGridColumns();
-            gridUsers.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && gridUsers.Rows[e.RowIndex].DataBoundItem is User item) RecordDetailsDialog.ShowDetails(this, item); };
             gridUsers.CurrentCellDirtyStateChanged += (s, e) => { if (gridUsers.IsCurrentCellDirty && gridUsers.CurrentCell is DataGridViewCheckBoxCell) gridUsers.CommitEdit(DataGridViewDataErrorContexts.Commit); };
             gridUsers.CellValueChanged += (s, e) => {
                 if (isBindingForm) return;
                 if (e.RowIndex >= 0 && gridUsers.Columns[e.ColumnIndex].DataPropertyName == "IsActive" && gridUsers.Rows[e.RowIndex].DataBoundItem is User u) {
+                    string? block = u.IsActive ? null : CheckDeactivation(u);
+                    if (block != null)
+                    {
+                        u.IsActive = true;
+                        int row = e.RowIndex;
+                        BeginInvoke(new Action(() => { try { gridUsers.InvalidateRow(row); } catch { } }));
+                        MessageBox.Show(block, "Can't deactivate", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                        return;
+                    }
                     MJdatabase.ToggleUserActive(u.Id, u.IsActive);
                     if (selectedUser != null && selectedUser.Id == u.Id) {
                         chkActive.Checked = u.IsActive;
@@ -44,6 +53,33 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             menuActions.Items.Add("🖨 Print User Directory", null, BtnPrint_Click);
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
+
+            var btnRegisterStaff = new Button
+            {
+                Text = "👤 Register Staff Account",
+                Size = new Size(185, 30),
+                BackColor = Pal.C(185, 28, 28),
+                ForeColor = Pal.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 4, 8, 4)
+            };
+            btnRegisterStaff.FlatAppearance.BorderSize = 0;
+            btnRegisterStaff.Click += (s, e) =>
+            {
+                using (var dlg = new RegisterDialog(isAdminMode: true))
+                {
+                    if (dlg.ShowDialog(this) == DialogResult.OK)
+                    {
+                        LoadUsers();
+                        ToastHelper.ShowToast(this, "New staff account registered and activated ✓", ToastType.Success);
+                    }
+                }
+            };
+            pnlGridActionsFlow.Controls.Add(btnRegisterStaff);
+            pnlGridActionsFlow.Controls.SetChildIndex(btnRegisterStaff, 1);
+                    InitFullPageForm();
         }
 
         private void InitializeFormToggle()
@@ -52,15 +88,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "📝 Input Form ▾",
                 Size = new Size(130, 30),
-                BackColor = Color.FromArgb(30, 41, 59),
-                ForeColor = Color.White,
+                BackColor = Pal.C(30, 41, 59),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
                 Margin = new Padding(0, 4, 8, 4)
             };
             btnToggleForm.FlatAppearance.BorderSize = 0;
-            btnToggleForm.Click += (s, e) => SetFormVisibility(!pnlForm.Visible);
+            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) SetFormVisibility(false); else OpenNewRecordForm(); };
             pnlGridActionsFlow.Controls.Add(btnToggleForm);
             pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
 
@@ -70,8 +106,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "✕ Close",
                 Size = new Size(80, 28),
                 Dock = DockStyle.Right,
-                BackColor = Color.FromArgb(241, 245, 249),
-                ForeColor = Color.FromArgb(71, 85, 105),
+                BackColor = Pal.C(241, 245, 249),
+                ForeColor = Pal.C(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -83,25 +119,42 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetFormVisibility(false);
         }
 
-        private void SetFormVisibility(bool visible)
+
+        // ------------------------------------------------------------------ Full-page form (same tab, back button, section cards)
+        private FullPageFormKit? formKit;
+        private void InitFullPageForm()
         {
-            pnlForm.Visible = visible;
-            if (tblMasterContent.ColumnStyles.Count > 0)
+            formKit = new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to users");
+            formKit.Build(new[]
             {
-                tblMasterContent.ColumnStyles[0].Width = visible ? 480F : 0F;
-                tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
-            }
-            if (tblMasterContent.ColumnStyles.Count > 1)
-            {
-                tblMasterContent.ColumnStyles[1].Width = 100F;
-                tblMasterContent.ColumnStyles[1].SizeType = SizeType.Percent;
-            }
+                new FullPageFormKit.Section("Sign-in", "Username, password and role.", lblU, txtUsername, lblP, tblPasswordRow, lblPassHint, lblR, cbRole),
+                new FullPageFormKit.Section("Person", "Name, contact number and whether the account is active.", tblNameRow, lblC, txtContact, chkActive)
+            });
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 Input Form ▾";
-                btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
-                btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
+                btnToggleForm.Text = "＋ New user";
+                UIThemeHelper.SetButtonRole(btnToggleForm, "primary");
             }
+            gridUsers.CellDoubleClick += (s, e) =>
+            {
+                if (e.RowIndex < 0 || gridUsers.Rows[e.RowIndex].DataBoundItem is not User) return;
+                gridUsers.ClearSelection();
+                gridUsers.Rows[e.RowIndex].Selected = true;
+                SetFormVisibility(true);
+            };
+            SetFormVisibility(false);
+        }
+        private void OpenNewRecordForm()
+        {
+            ClearFields();
+            lblFormHeader.Text = "New user account";
+            SetFormVisibility(true);
+        }
+        private void SetFormVisibility(bool visible)
+        {
+            if (formKit != null) formKit.Show(visible);
+            else pnlForm.Visible = visible;
+            if (btnToggleForm != null) btnToggleForm.Visible = !visible;
             MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
@@ -136,6 +189,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (isBindingForm) return;
                 if (selectedUser != null && selectedUser.IsActive != chkActive.Checked)
                 {
+                    string? block = chkActive.Checked ? null : CheckDeactivation(selectedUser);
+                    if (block != null)
+                    {
+                        MessageBox.Show(block, "Can't deactivate", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                        isBindingForm = true;
+                        try { chkActive.Checked = true; } finally { isBindingForm = false; }
+                        return;
+                    }
                     selectedUser.IsActive = chkActive.Checked;
                     MJdatabase.ToggleUserActive(selectedUser.Id, chkActive.Checked);
                     gridUsers.Refresh();
@@ -151,16 +212,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridUsers.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             gridUsers.ScrollBars = ScrollBars.Both;
             gridUsers.AllowUserToResizeColumns = true;
-            gridUsers.ShowCellToolTips = true;
+            gridUsers.ShowCellToolTips = false;
             gridUsers.CellFormatting += (s, e) =>
             {
                 if (e.RowIndex >= 0 && gridUsers.Rows[e.RowIndex].DataBoundItem is User u)
                 {
                     if (!u.IsActive)
                     {
-                        gridUsers.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.FromArgb(254, 243, 199);
-                        gridUsers.Rows[e.RowIndex].DefaultCellStyle.SelectionBackColor = Color.FromArgb(253, 230, 138);
-                        gridUsers.Rows[e.RowIndex].DefaultCellStyle.SelectionForeColor = Color.FromArgb(120, 53, 15);
+                        e.CellStyle.BackColor = Pal.C(254, 243, 199);
+                        e.CellStyle.SelectionBackColor = Pal.C(253, 230, 138);
+                        e.CellStyle.SelectionForeColor = Pal.C(120, 53, 15);
                     }
                 }
             };
@@ -176,6 +237,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void GridUsers_SelectionChanged(object? sender, EventArgs e)
         {
+            if (pnlForm.Visible) return; // the list is hidden while the form is open; keep what is being typed
             if (gridUsers.SelectedRows.Count > 0 && gridUsers.SelectedRows[0].DataBoundItem is User u)
             {
                 isBindingForm = true;
@@ -192,7 +254,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!selectedUser.IsActive)
                 {
                     lblFormHeader.Text = "⚠️ Pending Staff Account (Awaiting Owner Approval)";
-                    lblFormHeader.ForeColor = Color.FromArgb(180, 83, 9);
+                    lblFormHeader.ForeColor = Pal.C(180, 83, 9);
                     btnApprove.Location = new Point(16, 404);
                     btnSave.Location = new Point(16, 452);
                     tblUpdateDelete.Location = new Point(16, 502);
@@ -201,7 +263,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else
                 {
                     lblFormHeader.Text = "User Credentials Form";
-                    lblFormHeader.ForeColor = Color.FromArgb(15, 23, 42);
+                    lblFormHeader.ForeColor = Pal.C(15, 23, 42);
                     btnSave.Location = new Point(16, 404);
                     tblUpdateDelete.Location = new Point(16, 454);
                     btnClear.Location = new Point(16, 502);
@@ -372,10 +434,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     selectedUser.Password = password.Trim();
                 }
 
-                        bool isTargetAdmin = selectedUser.Role.Contains("Admin", StringComparison.OrdinalIgnoreCase) || selectedUser.Role.Contains("Owner", StringComparison.OrdinalIgnoreCase);
+                        bool isTargetAdmin = SessionContext.IsAdminRole(selectedUser.Role);
                 bool willBeActive = chkActive.Checked;
-                bool willBeAdmin = cbRole.Text.Trim().Contains("Admin", StringComparison.OrdinalIgnoreCase) || cbRole.Text.Trim().Contains("Owner", StringComparison.OrdinalIgnoreCase);
-
+                bool willBeAdmin = SessionContext.IsAdminRole(cbRole.Text);
+                if (IsCurrentUser(selectedUser) && !willBeActive)
+                {
+                    MessageBox.Show("You can't deactivate the account you are signed in with.", "Can't deactivate", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    return;
+                }
+                if (IsCurrentUser(selectedUser) && isTargetAdmin && !willBeAdmin)
+                {
+                    var ans = MessageBox.Show("You are removing administrator rights from your own account. You will lose access to this screen after signing out.\n\nContinue?", "Change your own role", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+                    if (ans != DialogResult.Yes) return;
+                }
                 if (isTargetAdmin && (!willBeActive || !willBeAdmin))
                 {
                     if (!MJdatabase.CanDeactivateOrDeleteAdmin(selectedUser.Id))
@@ -451,7 +522,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
-                if (selectedUser.Role.Contains("Admin", StringComparison.OrdinalIgnoreCase) || selectedUser.Role.Contains("Owner", StringComparison.OrdinalIgnoreCase))
+                if (IsCurrentUser(selectedUser))
+                {
+                    MessageBox.Show("You can't delete the account you are signed in with.", "Protection Alert", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    return;
+                }
+                if (SessionContext.IsAdminRole(selectedUser.Role))
                 {
                     if (!MJdatabase.CanDeactivateOrDeleteAdmin(selectedUser.Id))
                     {
@@ -466,13 +542,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
-                var res = MessageBox.Show($"Are you sure you want to delete user account '{selectedUser.Username}'?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                var res = MessageBox.Show($"Are you sure you want to delete user account '{selectedUser.Username}'?\n\n" + MJdatabase.DeletePolicyNote("Users"), "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
                 if (res == DialogResult.Yes)
                 {
                     bool deleted = MJdatabase.DeleteRecord("Users", selectedUser.Id);
                     if (deleted)
                     {
-                        MessageBox.Show("User account deleted successfully!", "Deleted", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         ClearFields();
                         LoadUsers();
                     }
@@ -509,113 +585,67 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void SetupContextMenu()
         {
-            var menu = new ContextMenuStrip();
-            var itemApprove = new ToolStripMenuItem("✅ Approve Staff Account", null, (s, e) =>
+            RowMenu.Attach(gridUsers, (m, rows) =>
             {
-                try
+                if (rows[0].DataBoundItem is not User u) return;
+                selectedUser = u;
+                bool isSelf = IsCurrentUser(u);
+                bool isPrimary = u.Username.Equals("admin", StringComparison.OrdinalIgnoreCase);
+                m.Items.AddRange(RowMenu.Header($"👤  {(string.IsNullOrWhiteSpace(u.FullName) ? u.Username : u.FullName)}",
+                    $"@{u.Username} · {u.Role} · {(u.IsActive ? "Active" : "Waiting for approval / inactive")}{(isSelf ? " · you" : "")}"));
+                if (!u.IsActive) m.Items.Add(RowMenu.Good("Approve account", () => ApproveUser(u)));
+                m.Items.Add(RowMenu.Item("Open details", () => RecordDetailsDialog.ShowDetails(this, u)));
+                m.Items.Add(RowMenu.Item("Edit account", () => { SetFormVisibility(true); txtUsername.Focus(); }));
+                m.Items.Add(RowMenu.Item("Set / reset security question…", () =>
                 {
-                    if (gridUsers.SelectedRows.Count > 0 && gridUsers.SelectedRows[0].DataBoundItem is User u && !u.IsActive)
-                    {
-                        MJdatabase.ApproveUser(u.Id);
-                        MessageBox.Show($"Staff account '{u.FullName}' has been approved!", "Approved", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        LoadUsers();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Failed to approve user account: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                    using var secDlg = new SecuritySettingsDialog(u);
+                    if (secDlg.ShowDialog(this) == DialogResult.OK) LoadUsers();
+                }));
+                if (u.IsActive) m.Items.Add(RowMenu.Item("Deactivate account", () => DeactivateUser(u), "", !isSelf && !isPrimary));
+                m.Items.Add(RowMenu.Sep());
+                m.Items.Add(RowMenu.CopySub(this, ("Username", u.Username), ("Full name", u.FullName), ("Contact number", u.ContactNumber)));
+                m.Items.Add(RowMenu.Item($"Find other {u.Role} accounts", () => RowMenu.Search(txtGridSearch, u.Role)));
+                m.Items.Add(RowMenu.ExportSub(gridUsers, "User_Accounts", "System User Accounts", () => BtnPrint_Click(this, EventArgs.Empty)));
+                m.Items.Add(RowMenu.Sep());
+                m.Items.Add(RowMenu.Danger(u.IsActive ? "Delete account…" : "Reject / delete account…", () => { selectedUser = u; BtnDelete_Click(this, EventArgs.Empty); }, !isSelf && !isPrimary));
             });
 
-            var itemReject = new ToolStripMenuItem("❌ Reject / Delete Account", null, (s, e) =>
+        }
+        private static bool IsCurrentUser(User u) =>
+            SessionContext.ActiveUser != null && (SessionContext.ActiveUser.Id == u.Id || SessionContext.ActiveUser.Username.Equals(u.Username, StringComparison.OrdinalIgnoreCase));
+        private void ApproveUser(User u)
+        {
+            try
             {
-                try
-                {
-                    if (gridUsers.SelectedRows.Count > 0 && gridUsers.SelectedRows[0].DataBoundItem is User u)
-                    {
-                        if (u.Username.Equals("admin", StringComparison.OrdinalIgnoreCase))
-                        {
-                            MessageBox.Show("Primary administrator account cannot be deleted.", "Protected", MessageBoxButtons.OK, MessageBoxIcon.Stop);
-                            return;
-                        }
-                        var conf = MessageBox.Show($"Delete user account '{u.Username}'?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                        if (conf == DialogResult.Yes)
-                        {
-                            bool deleted = MJdatabase.DeleteRecord("Users", u.Id);
-                            if (deleted)
-                            {
-                                LoadUsers();
-                            }
-                            else
-                            {
-                                MessageBox.Show("Failed to delete user account. The record may be referenced by other data or an error occurred.", "Delete Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Failed to delete user account: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            });
-
-            var itemEdit = new ToolStripMenuItem("✏️ Edit User Details", null, (s, e) => {
-                SetFormVisibility(true);
-                txtUsername.Focus();
-            });
-
-            var itemInspect = new ToolStripMenuItem("🔍 Inspect Account Details", null, (s, e) =>
+                MJdatabase.ApproveUser(u.Id);
+                ToastHelper.ShowToast(this, $"{u.FullName} can now sign in", ToastType.Success);
+                LoadUsers();
+            }
+            catch (Exception ex)
             {
-                if (gridUsers.SelectedRows.Count > 0 && gridUsers.SelectedRows[0].DataBoundItem is User u)
-                {
-                    RecordDetailsDialog.ShowDetails(this, u);
-                }
-            });
-
-            var itemSecQuestion = new ToolStripMenuItem("🔒 Set / Reset Security Recovery Question...", null, (s, e) =>
+                MessageBox.Show($"Failed to approve user account: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        private void DeactivateUser(User u)
+        {
+            string? block = CheckDeactivation(u);
+            if (block != null)
             {
-                if (gridUsers.SelectedRows.Count > 0 && gridUsers.SelectedRows[0].DataBoundItem is User u)
-                {
-                    using (var secDlg = new SecuritySettingsDialog(u))
-                    {
-                        if (secDlg.ShowDialog(this) == DialogResult.OK)
-                        {
-                            LoadUsers();
-                        }
-                    }
-                }
-            });
-
-            var itemExportCsv = new ToolStripMenuItem("📊 Export Table to CSV...", null, (s, e) =>
-            {
-                DataExportHelper.ExportToCsv(gridUsers, "User_Accounts", "System User Accounts");
-            });
-
-            var itemExportExcel = new ToolStripMenuItem("📑 Export Table to Excel (.xml)...", null, (s, e) =>
-            {
-                DataExportHelper.ExportToExcelXml(gridUsers, "User_Accounts", "System User Accounts");
-            });
-
-            menu.Opening += (s, e) =>
-            {
-                if (gridUsers.SelectedRows.Count > 0 && gridUsers.SelectedRows[0].DataBoundItem is User u)
-                {
-                    itemApprove.Visible = !u.IsActive;
-                }
-            };
-
-            menu.Items.AddRange(new ToolStripItem[] { itemApprove, itemReject, new ToolStripSeparator(), itemEdit, itemInspect, itemSecQuestion, new ToolStripSeparator(), itemExportCsv, itemExportExcel });
-            gridUsers.ContextMenuStrip = menu;
-
-            gridUsers.CellMouseDown += (s, e) =>
-            {
-                if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
-                {
-                    gridUsers.ClearSelection();
-                    gridUsers.Rows[e.RowIndex].Selected = true;
-                    if (e.ColumnIndex >= 0) gridUsers.CurrentCell = gridUsers.Rows[e.RowIndex].Cells[e.ColumnIndex];
-                }
-            };
+                MessageBox.Show(block, "Can't deactivate", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                return;
+            }
+            if (MessageBox.Show($"Deactivate {u.Username}? They won't be able to sign in until the account is approved again.", "Deactivate account", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            MJdatabase.ToggleUserActive(u.Id, false);
+            LoadUsers();
+        }
+        /// <summary>Why an account can't be switched off, or null when it can.</summary>
+        private static string? CheckDeactivation(User u)
+        {
+            if (IsCurrentUser(u)) return "You can't deactivate the account you are signed in with.";
+            if (u.Username.Equals("admin", StringComparison.OrdinalIgnoreCase)) return "The primary admin account can't be deactivated.";
+            if (SessionContext.IsAdminRole(u.Role) && !MJdatabase.CanDeactivateOrDeleteAdmin(u.Id))
+                return "This is the only active administrator. Create or approve another administrator first.";
+            return null;
         }
 
         private void BtnClear_Click(object? sender, EventArgs e)
@@ -649,7 +679,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             chkActive.Checked = true;
             btnApprove.Visible = false;
             lblFormHeader.Text = "User Credentials Form";
-            lblFormHeader.ForeColor = Color.FromArgb(15, 23, 42);
+            lblFormHeader.ForeColor = Pal.C(15, 23, 42);
             btnSave.Location = new Point(16, 404);
             tblUpdateDelete.Location = new Point(16, 454);
             btnClear.Location = new Point(16, 502);
@@ -707,7 +737,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 txtContact.Text = "";
                 btnApprove.Visible = false;
                 lblFormHeader.Text = "User Credentials Form";
-                lblFormHeader.ForeColor = Color.FromArgb(15, 23, 42);
+                lblFormHeader.ForeColor = Pal.C(15, 23, 42);
                 btnSave.Location = new Point(16, 404);
                 tblUpdateDelete.Location = new Point(16, 454);
                 btnClear.Location = new Point(16, 502);

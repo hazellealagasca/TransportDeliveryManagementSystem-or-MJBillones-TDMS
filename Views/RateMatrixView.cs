@@ -20,13 +20,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public RateMatrixView()
         {
             InitializeComponent();
+            Pal.RemapTree(this);
             gridRates.BringToFront();
             SetupGridColumns();
-            gridRates.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && gridRates.Rows[e.RowIndex].DataBoundItem is RateMatrix item) RecordDetailsDialog.ShowDetails(this, item); };
             gridRates.CurrentCellDirtyStateChanged += (s, e) => { if (gridRates.IsCurrentCellDirty && gridRates.CurrentCell is DataGridViewCheckBoxCell) gridRates.CommitEdit(DataGridViewDataErrorContexts.Commit); };
             gridRates.CellValueChanged += (s, e) => {
                 if (isBindingForm) return;
                 if (e.RowIndex >= 0 && e.ColumnIndex == 0 && gridRates.Rows[e.RowIndex].DataBoundItem is RateMatrix r) {
+                    var clash = FindPeakClash(r, r.IsPeakSeason);
+                    if (clash != null)
+                    {
+                        r.IsPeakSeason = !r.IsPeakSeason;
+                        int row = e.RowIndex;
+                        BeginInvoke(new Action(() => { try { gridRates.InvalidateRow(row); } catch { } }));
+                        MessageBox.Show(clash, "Duplicate Rate Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                        return;
+                    }
                     MJdatabase.ToggleRateMatrixPeak(r.Id, r.IsPeakSeason);
                     if (selectedRate != null && selectedRate.Id == r.Id) {
                         chkPeak.Checked = r.IsPeakSeason;
@@ -35,8 +44,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             LoadRates();
             SetupMultiDestinationMode();
-            DataExportHelper.AttachExportContextMenu(gridRates, "Transport_Rate_Matrix", "Transport and Route Rates Matrix");
-
+            SetupContextMenu();
             InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
 
@@ -46,6 +54,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             menuActions.Items.Add("🖨 Print Rate Matrix", null, BtnPrint_Click);
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
+                    InitFullPageForm();
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -64,15 +73,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "📝 + New / Form ▾",
                 Size = new Size(150, 30),
-                BackColor = Color.FromArgb(30, 41, 59),
-                ForeColor = Color.White,
+                BackColor = Pal.C(30, 41, 59),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
                 Margin = new Padding(0, 4, 8, 4)
             };
             btnToggleForm.FlatAppearance.BorderSize = 0;
-            btnToggleForm.Click += (s, e) => SetFormVisibility(!pnlForm.Visible);
+            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) SetFormVisibility(false); else OpenNewRecordForm(); };
             pnlGridActionsFlow.Controls.Add(btnToggleForm);
             pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
 
@@ -82,8 +91,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "✕ Close",
                 Size = new Size(80, 28),
                 Dock = DockStyle.Right,
-                BackColor = Color.FromArgb(241, 245, 249),
-                ForeColor = Color.FromArgb(71, 85, 105),
+                BackColor = Pal.C(241, 245, 249),
+                ForeColor = Pal.C(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -95,25 +104,42 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetFormVisibility(false);
         }
 
-        private void SetFormVisibility(bool visible)
+
+        // ------------------------------------------------------------------ Full-page form (same tab, back button, section cards)
+        private FullPageFormKit? formKit;
+        private void InitFullPageForm()
         {
-            pnlForm.Visible = visible;
-            if (tblMasterContent.ColumnStyles.Count > 0)
+            formKit = new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to rates");
+            formKit.Build(new[]
             {
-                tblMasterContent.ColumnStyles[0].Width = visible ? 480F : 0F;
-                tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
-            }
-            if (tblMasterContent.ColumnStyles.Count > 1)
-            {
-                tblMasterContent.ColumnStyles[1].Width = 100F;
-                tblMasterContent.ColumnStyles[1].SizeType = SizeType.Percent;
-            }
+                new FullPageFormKit.Section("Route & destination", "Where the rate applies.", lblDest, chkMultiDest, cbDestination, pnlMultiDest),
+                new FullPageFormKit.Section("Rate", "Truck type, season and the amount per trip.", lblTt, cbTruckType, chkPeak, lblRate, numRate)
+            });
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = visible ? "✕ Hide Form ▴" : "📝 + New / Form ▾";
-                btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
-                btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
+                btnToggleForm.Text = "＋ New rate";
+                UIThemeHelper.SetButtonRole(btnToggleForm, "primary");
             }
+            gridRates.CellDoubleClick += (s, e) =>
+            {
+                if (e.RowIndex < 0 || gridRates.Rows[e.RowIndex].DataBoundItem is not RateMatrix) return;
+                gridRates.ClearSelection();
+                gridRates.Rows[e.RowIndex].Selected = true;
+                SetFormVisibility(true);
+            };
+            SetFormVisibility(false);
+        }
+        private void OpenNewRecordForm()
+        {
+            ClearFields();
+            lblFormHeader.Text = "New rate";
+            SetFormVisibility(true);
+        }
+        private void SetFormVisibility(bool visible)
+        {
+            if (formKit != null) formKit.Show(visible);
+            else pnlForm.Visible = visible;
+            if (btnToggleForm != null) btnToggleForm.Visible = !visible;
             MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
@@ -123,6 +149,48 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         private bool isPopulatingDestinations = false;
+        private ToolTip tipRouteStores = new ToolTip { InitialDelay = 100, ReshowDelay = 100, AutoPopDelay = 15000, ShowAlways = true };
+
+        private void UpdateDestinationTooltip()
+        {
+            if (isBindingForm || !cbDestination.Visible)
+            {
+                tipRouteStores.Hide(cbDestination);
+                return;
+            }
+            string text = cbDestination.Text.Trim();
+            var matchedRoute = MJdatabase.FindRouteByNameOrCode(text);
+            if (matchedRoute != null && matchedRoute.PlacesList.Count > 0)
+            {
+                ShowRouteStoresPopup(matchedRoute);
+            }
+            else
+            {
+                tipRouteStores.SetToolTip(cbDestination, "");
+                tipRouteStores.Hide(cbDestination);
+            }
+        }
+
+        private void ShowRouteStoresPopup(DeliveryRoute? route)
+        {
+            if (route == null || route.PlacesList.Count == 0 || !this.IsHandleCreated || !cbDestination.Visible)
+            {
+                tipRouteStores.Hide(cbDestination);
+                return;
+            }
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"📍 {route.RouteCode} - {route.RouteName} ({route.PlacesList.Count} Stores):");
+            foreach (var store in route.PlacesList)
+            {
+                sb.AppendLine($"  • {store}");
+            }
+            string tipText = sb.ToString().TrimEnd();
+            tipRouteStores.SetToolTip(cbDestination, tipText);
+            if (cbDestination.Focused)
+            {
+                tipRouteStores.Show(tipText, cbDestination, 0, cbDestination.Height + 2, 8000);
+            }
+        }
 
         private void SetupMultiDestinationMode()
         {
@@ -162,6 +230,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             };
 
+            lblDest.Text = "Delivery Route (e.g. R1, R2):";
+            cbDestination.SelectedIndexChanged += (s, e) => UpdateDestinationTooltip();
+            cbDestination.TextChanged += (s, e) => UpdateDestinationTooltip();
+            cbDestination.Leave += (s, e) => tipRouteStores.Hide(cbDestination);
             btnAddQuickDest.Click += (s, e) => AddQuickDestinations();
             txtQuickAddDest.KeyDown += (s, e) =>
             {
@@ -289,21 +361,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
 
                 clbDestinations.Items.Clear();
-                var routes = MJdatabase.GetLookupItems("Destination Route");
-                if (routes.Count == 0)
+                var deliveryRoutes = MJdatabase.GetDeliveryRoutes(activeOnly: true);
+                var routeLabels = new List<string>();
+                foreach (var dr in deliveryRoutes)
                 {
-                    routes = new List<string> { "Batangas / Lipa", "Cavite / Dasmariñas", "Laguna / Calamba", "Pampanga / San Fernando", "Bulacan / Meycauayan", "Metro Manila / NCR" };
-                }
-
-                foreach (var r in routes)
-                {
-                    bool shouldCheck = existingChecked.Contains(r);
-                    clbDestinations.Items.Add(r, shouldCheck);
+                    string label = $"{dr.RouteCode} - {dr.RouteName}";
+                    routeLabels.Add(label);
+                    bool shouldCheck = existingChecked.Contains(label) || existingChecked.Contains(dr.RouteCode);
+                    clbDestinations.Items.Add(label, shouldCheck);
                 }
 
                 foreach (var extra in existingChecked)
                 {
-                    if (!routes.Contains(extra, StringComparer.OrdinalIgnoreCase))
+                    if (!routeLabels.Contains(extra, StringComparer.OrdinalIgnoreCase) &&
+                        !deliveryRoutes.Any(d => d.RouteCode.Equals(extra, StringComparison.OrdinalIgnoreCase)))
                     {
                         clbDestinations.Items.Add(extra, true);
                     }
@@ -341,9 +412,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridRates.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             gridRates.ScrollBars = ScrollBars.Both;
             gridRates.AllowUserToResizeColumns = true;
-            gridRates.ShowCellToolTips = true;
+            gridRates.ShowCellToolTips = false;
             gridRates.Columns.Clear();
-            gridRates.Columns.Add(new DataGridViewCheckBoxColumn { DataPropertyName = "IsPeakSeason", HeaderText = "Peak", FillWeight = 9, MinimumWidth = 65, ReadOnly = false });
+            gridRates.Columns.Add(new DataGridViewCheckBoxColumn { DataPropertyName = "IsPeakSeason", HeaderText = "Peak Season", FillWeight = 11, MinimumWidth = 90, ReadOnly = false });
             gridRates.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "RouteName", HeaderText = "Route / Client", FillWeight = 25, MinimumWidth = 120, ReadOnly = true });
             gridRates.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Destination", HeaderText = "Destination", FillWeight = 30, MinimumWidth = 140, ReadOnly = true });
             gridRates.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TruckType", HeaderText = "Truck Type", FillWeight = 18, MinimumWidth = 100, ReadOnly = true });
@@ -352,6 +423,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void GridRates_SelectionChanged(object? sender, EventArgs e)
         {
+            if (pnlForm.Visible) return; // the list is hidden while the form is open; keep what is being typed
             if (gridRates.SelectedRows.Count > 0 && gridRates.SelectedRows[0].DataBoundItem is RateMatrix rm)
             {
                 if (chkMultiDest.Checked)
@@ -360,7 +432,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 isBindingForm = true;
                 selectedRate = rm;
-                cbDestination.Text = selectedRate.Destination;
+                var matchedRoute = MJdatabase.FindRouteByNameOrCode(selectedRate.RouteName) ?? MJdatabase.FindRouteByNameOrCode(selectedRate.Destination);
+                cbDestination.Text = matchedRoute != null ? $"{matchedRoute.RouteCode} - {matchedRoute.RouteName}" : selectedRate.Destination;
                 cbTruckType.SelectedItem = selectedRate.TruckType;
                 chkPeak.Checked = selectedRate.IsPeakSeason;
                 numRate.Value = selectedRate.RateAmount;
@@ -373,6 +446,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
+                var valErrors = new List<string>();
+                Control? firstInvalid = null;
+                ValidationHelper.ClearErrors(pnlForm);
+
+                if (!chkMultiDest.Checked)
+                {
+                    if (!ValidationHelper.ValidateRequiredCombo(cbDestination, "Destination Route Coverage", valErrors)) firstInvalid ??= cbDestination;
+                }
+                if (!ValidationHelper.ValidateRequiredCombo(cbTruckType, "Assigned Truck Type", valErrors)) firstInvalid ??= cbTruckType;
+                if (!ValidationHelper.ValidatePositiveNumber(numRate, "Base Rate (PHP)", valErrors)) firstInvalid ??= numRate;
+                if (!ValidationHelper.ShowValidationSummaryIfAny(this, valErrors, firstInvalid))
+                {
+                    return;
+                }
                 if (chkMultiDest.Checked)
                 {
                     var selectedDests = new List<string>();
@@ -440,21 +527,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                var matchedRoute = MJdatabase.FindRouteByNameOrCode(dest);
+                string routeTitle = matchedRoute != null ? $"{matchedRoute.RouteCode} - {matchedRoute.RouteName}" : dest;
+                string fullDest = matchedRoute != null && matchedRoute.PlacesList.Count > 0
+                    ? $"{matchedRoute.RouteCode} - {matchedRoute.RouteName}: {matchedRoute.FormattedPlaces}"
+                    : routeTitle;
+
                 var existingRates = MJdatabase.GetRateMatrix();
-                var dupRate = existingRates.Find(r => (selectedRate == null || r.Id != selectedRate.Id) && r.Destination.Equals(dest, StringComparison.OrdinalIgnoreCase) && r.TruckType.Equals(ttype, StringComparison.OrdinalIgnoreCase) && r.IsPeakSeason == chkPeak.Checked);
+                var dupRate = existingRates.Find(r => (selectedRate == null || r.Id != selectedRate.Id) && (r.Destination.Equals(fullDest, StringComparison.OrdinalIgnoreCase) || r.RouteName.Equals(routeTitle, StringComparison.OrdinalIgnoreCase)) && r.TruckType.Equals(ttype, StringComparison.OrdinalIgnoreCase) && r.IsPeakSeason == chkPeak.Checked);
                 if (dupRate != null)
                 {
-                    MessageBox.Show($"DUPLICATE RATE RULE BLOCKED:\nA rate entry for Destination '{dest}', Truck Type '{ttype}', and Peak Season={chkPeak.Checked} already exists (Current Rate: PHP {dupRate.RateAmount:N2}). Duplicate rate rules are strictly prohibited.", "Duplicate Rate Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    MessageBox.Show($"DUPLICATE RATE RULE BLOCKED:\nA rate entry for Route '{routeTitle}', Truck Type '{ttype}', and Peak Season={chkPeak.Checked} already exists (Current Rate: PHP {dupRate.RateAmount:N2}). Duplicate rate rules are strictly prohibited.", "Duplicate Rate Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                     return;
                 }
 
-                MJdatabase.SaveLookupItem("Destination Route", dest);
                 MJdatabase.SaveLookupItem("Truck Type / Category", ttype);
 
                 RateMatrix rm = new RateMatrix
                 {
-                    RouteName = dest,
-                    Destination = dest,
+                    RouteName = routeTitle,
+                    Destination = fullDest,
                     TruckType = ttype,
                     IsPeakSeason = chkPeak.Checked,
                     RateAmount = numRate.Value
@@ -492,19 +584,36 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                if (string.IsNullOrWhiteSpace(ttype))
+                {
+                    MessageBox.Show("Please pick the truck type this rate applies to.", "Truck Type Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    cbTruckType.Focus();
+                    return;
+                }
+                if (numRate.Value <= 0)
+                {
+                    MessageBox.Show("The rate per trip must be more than ₱0.00.", "Rate Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    numRate.Focus();
+                    return;
+                }
+                var matchedRoute = MJdatabase.FindRouteByNameOrCode(dest);
+                string routeTitle = matchedRoute != null ? $"{matchedRoute.RouteCode} - {matchedRoute.RouteName}" : dest;
+                string fullDest = matchedRoute != null && matchedRoute.PlacesList.Count > 0
+                    ? $"{matchedRoute.RouteCode} - {matchedRoute.RouteName}: {matchedRoute.FormattedPlaces}"
+                    : routeTitle;
+
                 var existingRates = MJdatabase.GetRateMatrix();
-                var dupRate = existingRates.Find(r => r.Id != selectedRate.Id && r.Destination.Equals(dest, StringComparison.OrdinalIgnoreCase) && r.TruckType.Equals(ttype, StringComparison.OrdinalIgnoreCase) && r.IsPeakSeason == chkPeak.Checked);
+                var dupRate = existingRates.Find(r => r.Id != selectedRate.Id && (r.Destination.Equals(fullDest, StringComparison.OrdinalIgnoreCase) || r.RouteName.Equals(routeTitle, StringComparison.OrdinalIgnoreCase)) && r.TruckType.Equals(ttype, StringComparison.OrdinalIgnoreCase) && r.IsPeakSeason == chkPeak.Checked);
                 if (dupRate != null)
                 {
-                    MessageBox.Show($"DUPLICATE RATE RULE BLOCKED:\nA rate entry for Destination '{dest}', Truck Type '{ttype}', and Peak Season={chkPeak.Checked} already exists (Current Rate: PHP {dupRate.RateAmount:N2}). Duplicate rate rules are strictly prohibited.", "Duplicate Rate Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    MessageBox.Show($"DUPLICATE RATE RULE BLOCKED:\nA rate entry for Route '{routeTitle}', Truck Type '{ttype}', and Peak Season={chkPeak.Checked} already exists (Current Rate: PHP {dupRate.RateAmount:N2}). Duplicate rate rules are strictly prohibited.", "Duplicate Rate Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                     return;
                 }
 
-                MJdatabase.SaveLookupItem("Destination Route", dest);
                 MJdatabase.SaveLookupItem("Truck Type / Category", ttype);
 
-                selectedRate.RouteName = dest;
-                selectedRate.Destination = dest;
+                selectedRate.RouteName = routeTitle;
+                selectedRate.Destination = fullDest;
                 selectedRate.TruckType = ttype;
                 selectedRate.IsPeakSeason = chkPeak.Checked;
                 selectedRate.RateAmount = numRate.Value;
@@ -602,6 +711,42 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtGridSearch.Focus();
         }
 
+        private void SetupContextMenu()
+        {
+            RowMenu.Attach(gridRates, (m, rows) =>
+            {
+                if (rows[0].DataBoundItem is not RateMatrix r) return;
+                m.Items.AddRange(RowMenu.Header($"💲  {RowMenu.Short(r.RouteName, 40)}", $"{r.TruckType} · {(r.IsPeakSeason ? "Peak season" : "Regular season")} · {RowMenu.Money(r.RateAmount)} per trip"));
+                m.Items.Add(RowMenu.Item("Edit rate", () => { SetFormVisibility(true); numRate.Focus(); }));
+                m.Items.Add(RowMenu.Item(r.IsPeakSeason ? "Make it a regular-season rate" : "Make it a peak-season rate", () => TogglePeak(r)));
+                m.Items.Add(RowMenu.Sep());
+                m.Items.Add(RowMenu.CopySub(this, ("Route", r.RouteName), ("Rate amount", r.RateAmount.ToString("N2")),
+                    ("Summary", $"{r.RouteName} — {r.TruckType}, {(r.IsPeakSeason ? "peak" : "regular")}: {RowMenu.Money(r.RateAmount)}")));
+                m.Items.Add(RowMenu.Sub("🔎  Find",
+                    RowMenu.Item("Other rates for this route", () => RowMenu.Search(txtGridSearch, r.RouteName)),
+                    RowMenu.Item($"Other {r.TruckType} rates", () => RowMenu.Search(txtGridSearch, r.TruckType))));
+                m.Items.Add(RowMenu.ExportSub(gridRates, "Transport_Rate_Matrix", "Transport and Route Rates Matrix", () => BtnPrint_Click(this, EventArgs.Empty)));
+                m.Items.Add(RowMenu.Sep());
+                m.Items.Add(RowMenu.Danger("Delete rate…", () => { selectedRate = r; BtnDelete_Click(this, EventArgs.Empty); }));
+            });
+        }
+        /// <summary>Why a rate can't switch season (another rule already covers it), or null.</summary>
+        private string? FindPeakClash(RateMatrix r, bool peak)
+        {
+            var other = MJdatabase.GetRateMatrix().Find(x => x.Id != r.Id && x.IsPeakSeason == peak && x.TruckType.Equals(r.TruckType, StringComparison.OrdinalIgnoreCase)
+                && (x.RouteName.Equals(r.RouteName, StringComparison.OrdinalIgnoreCase) || x.Destination.Equals(r.Destination, StringComparison.OrdinalIgnoreCase)));
+            return other == null ? null
+                : $"There is already a {(peak ? "peak" : "regular")}-season {r.TruckType} rate for {r.RouteName} ({RowMenu.Money(other.RateAmount)}). Edit or delete that one instead.";
+        }
+        private void TogglePeak(RateMatrix r)
+        {
+            bool next = !r.IsPeakSeason;
+            var clash = FindPeakClash(r, next);
+            if (clash != null) { MessageBox.Show(clash, "Duplicate Rate Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop); return; }
+            MJdatabase.ToggleRateMatrixPeak(r.Id, next);
+            r.IsPeakSeason = next;
+            LoadRates();
+        }
         private void BtnPrint_Click(object? sender, EventArgs e)
         {
             PrintHelper.PrintGridReport("Standard Transport Rate Matrix Schedule", gridRates, "Official haulage rate schedule organized by destination coverage, vehicle type, and peak season rates.");
@@ -638,15 +783,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 if (cbTruckType.Items.Count > 0 && cbTruckType.SelectedIndex < 0) cbTruckType.SelectedIndex = 0;
 
-                var routes = MJdatabase.GetLookupItems("Destination Route");
+                var deliveryRoutes = MJdatabase.GetDeliveryRoutes(activeOnly: true);
                 cbDestination.Items.Clear();
-                if (routes.Count == 0)
+                foreach (var r in deliveryRoutes)
                 {
-                    cbDestination.Items.AddRange(new object[] { "Batangas / Lipa", "Cavite / Dasmariñas", "Laguna / Calamba", "Pampanga / San Fernando", "Bulacan / Meycauayan", "Metro Manila / NCR" });
-                }
-                else
-                {
-                    foreach (var r in routes) cbDestination.Items.Add(r);
+                    string display = $"{r.RouteCode} - {r.RouteName}";
+                    if (!cbDestination.Items.Contains(display)) cbDestination.Items.Add(display);
+                    if (!cbDestination.Items.Contains(r.RouteCode)) cbDestination.Items.Add(r.RouteCode);
                 }
 
                 PopulateMultiDestinationList();

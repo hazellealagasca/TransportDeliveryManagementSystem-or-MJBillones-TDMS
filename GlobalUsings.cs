@@ -1,0 +1,1 @@
+global using Pal = Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions.Palette;

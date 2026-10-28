@@ -12,6 +12,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 {
     public partial class CrewManagementView : UserControl, IRefreshable
     {
+        private Button btnManageRoles = null!;
+
         private Crew? selectedCrew = null;
         private List<Crew> allCrews = new List<Crew>();
         private string currentSortColumn = "FullName";
@@ -20,13 +22,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private bool isBindingForm = false;
         private Button btnToggleForm = null!;
         private Button btnCloseForm = null!;
+        public Action<int>? OnViewCrewHistoryRequested;
         public CrewManagementView()
         {
             InitializeComponent();
+            Pal.RemapTree(this);
             gridCrew.BringToFront();
             SetupGridColumns();
             SetupContextMenu();
-            gridCrew.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && gridCrew.Rows[e.RowIndex].DataBoundItem is Crew item) RecordDetailsDialog.ShowDetails(this, item); };
             gridCrew.ColumnHeaderMouseClick += (s, e) => {
                 if (e.ColumnIndex < 0 || e.ColumnIndex >= gridCrew.Columns.Count) return;
                 string col = gridCrew.Columns[e.ColumnIndex].DataPropertyName;
@@ -63,13 +66,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             };
             SetupEvents();
+            txtLastName.TextChanged += (s, e) => { if (!isBindingForm) HandleCrewInput(); };
+            txtFirstName.TextChanged += (s, e) => { if (!isBindingForm) HandleCrewInput(); };
+            txtLicense.TextChanged += (s, e) => { if (!isBindingForm && !isFormattingLicense) HandleCrewInput(); };
             txtLastName.KeyPress += (s, e) => { if (char.IsDigit(e.KeyChar)) e.Handled = true; };
             txtFirstName.KeyPress += (s, e) => { if (char.IsDigit(e.KeyChar)) e.Handled = true; };
             txtMiddleName.KeyPress += (s, e) => { if (char.IsDigit(e.KeyChar)) e.Handled = true; };
             LoadCrew();
 
+            currentFormWidth = UIThemeHelper.GetAdaptiveDrawerWidth(this, 400F, 460F);
             InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
+            pnlFormHeaderBar.Controls.SetChildIndex(lblFormHeader, 0);
+            pnlFormHeaderBar.Controls.SetChildIndex(btnCloseForm, 1);
+            SetButtonStates(false);
 
             btnPrint.Visible = false;
             var menuActions = new ContextMenuStrip();
@@ -77,7 +87,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             menuActions.Items.Add("🖨️ Print Personnel Roster", null, BtnPrint_Click);
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
+                    InitFullPageForm();
+            InitListPage();
         }
+
+        private float currentFormWidth = 400F;
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
@@ -95,28 +109,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "📝 + New / Form ▾",
                 Size = new Size(150, 30),
-                BackColor = Color.FromArgb(30, 41, 59),
-                ForeColor = Color.White,
+                BackColor = Pal.C(30, 41, 59),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
                 Margin = new Padding(0, 4, 8, 4)
             };
             btnToggleForm.FlatAppearance.BorderSize = 0;
-            btnToggleForm.Click += (s, e) => SetFormVisibility(!pnlForm.Visible);
+            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) SetFormVisibility(false); else OpenNewRecordForm(); };
             pnlGridActionsFlow.Controls.Add(btnToggleForm);
             pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
 
             btnCloseForm = new Button
             {
+                Name = "btnCloseForm",
                 Text = "✕ Close",
                 Dock = DockStyle.Right,
-                Width = 72,
-                Height = 30,
-                BackColor = Color.FromArgb(241, 245, 249),
-                ForeColor = Color.FromArgb(71, 85, 105),
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(68, 26),
+                Padding = new Padding(6, 0, 6, 0),
+                BackColor = Pal.C(241, 245, 249),
+                ForeColor = Pal.C(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             btnCloseForm.FlatAppearance.BorderSize = 0;
@@ -126,25 +143,50 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetFormVisibility(false);
         }
 
-        private void SetFormVisibility(bool visible)
+
+        // ------------------------------------------------------------------ Full-page form (same tab, back button, section cards)
+        private FullPageFormKit? formKit;
+        private void InitFullPageForm()
         {
-            pnlForm.Visible = visible;
-            if (tblMasterContent.ColumnStyles.Count > 0)
+            CreatePayFields();
+            InitClassification();
+            formKit = new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to crew");
+            formKit.Build(new[]
             {
-                tblMasterContent.ColumnStyles[0].Width = visible ? 480F : 0F;
-                tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
-            }
-            if (tblMasterContent.ColumnStyles.Count > 1)
-            {
-                tblMasterContent.ColumnStyles[1].Width = 100F;
-                tblMasterContent.ColumnStyles[1].SizeType = SizeType.Percent;
-            }
+                new FullPageFormKit.Section("Employment type", "Regular crew, or seasonal / temporary.", pnlEmployment),
+                new FullPageFormKit.Section("Role & personal details", "Driver or delivery aide / helper, name and contact number.", lblRole, cbRole, lblRoleRequirements, tblNameFields, lblContact, txtContact),
+                new FullPageFormKit.Section("Driver's license", "Classification and validity only — the license number is not stored.", pnlLicense),
+                new FullPageFormKit.Section("Photo", "ID photo of the crew member.", lblPhoto, tblPhoto, pnlPhotoSpacer)
+            });
+            // Pay is set per trip after the trip is completed, and availability follows the trips — neither is edited here.
+            tblPayFields.Visible = false;
+            if (tblPayFields.Parent != null) tblPayFields.Parent.Controls.Remove(tblPayFields);
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = visible ? "✕ Hide Form ▴" : "📝 + New / Form ▾";
-                btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
-                btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
+                btnToggleForm.Text = "＋ New crew member";
+                UIThemeHelper.SetButtonRole(btnToggleForm, "primary");
             }
+            gridCrew.CellDoubleClick += (s, e) =>
+            {
+                if (e.RowIndex < 0 || gridCrew.Rows[e.RowIndex].DataBoundItem is not Crew dc) return;
+                gridCrew.ClearSelection();
+                gridCrew.Rows[e.RowIndex].Selected = true;
+                OpenCrewProfile(dc);
+            };
+            SetFormVisibility(false);
+        }
+        private void OpenNewRecordForm()
+        {
+            ClearFields();
+            lblFormHeader.Text = "New crew member";
+            SetFormVisibility(true);
+        }
+        private void SetFormVisibility(bool visible)
+        {
+            if (formKit != null) formKit.Show(visible);
+            else pnlForm.Visible = visible;
+            if (btnToggleForm != null) btnToggleForm.Visible = !visible;
+            ShowListChrome(!visible);
             MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
@@ -214,20 +256,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             txtLicense.CharacterCasing = CharacterCasing.Upper;
             SetupLicenseAutoHyphen();
-            cbRole.SelectedIndexChanged += (s, e) =>
-            {
-                bool isDriver = cbRole.Text.Trim().IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0;
-                if (isDriver)
-                {
-                    lblLicense.Text = "Driver's License # (Required for Drivers):";
-                    txtLicense.BackColor = Color.White;
-                }
-                else
-                {
-                    lblLicense.Text = "Driver's License # (Optional for Aides):";
-                    txtLicense.BackColor = Color.FromArgb(248, 250, 252);
-                }
-            };
+
         }
 
         private void SetupGridColumns()
@@ -238,37 +267,148 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridCrew.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             gridCrew.ScrollBars = ScrollBars.Both;
             gridCrew.AllowUserToResizeColumns = true;
-            gridCrew.ShowCellToolTips = true;
+            gridCrew.ShowCellToolTips = false;
             gridCrew.Columns.Clear();
-            gridCrew.Columns.Add(new DataGridViewCheckBoxColumn { DataPropertyName = "IsAvailable", HeaderText = "Active", FillWeight = 9F, MinimumWidth = 75, ReadOnly = false });
+            gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "CrewCode", HeaderText = "Crew ID", FillWeight = 11F, MinimumWidth = 85, ReadOnly = true });
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "FullName", HeaderText = "Full Name", FillWeight = 26F, MinimumWidth = 145, ReadOnly = true });
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Role", HeaderText = "Role", FillWeight = 16F, MinimumWidth = 110, ReadOnly = true });
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ContactNumber", HeaderText = "Contact #", FillWeight = 16F, MinimumWidth = 110, ReadOnly = true });
-            gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "LicenseNumber", HeaderText = "License #", FillWeight = 18F, MinimumWidth = 120, ReadOnly = true });
+            gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "LicenseDisplay", HeaderText = "Driver's license", FillWeight = 22F, MinimumWidth = 150, ReadOnly = true });
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "AvailabilityStatus", HeaderText = "Status", FillWeight = 15F, MinimumWidth = 95, ReadOnly = true });
+        }
+
+        private static void ApplyButtonVisualState(Button btn, bool isEnabled, Color activeBgColor, Color activeFgColor)
+        {
+            btn.Enabled = isEnabled;
+            if (isEnabled)
+            {
+                btn.BackColor = activeBgColor;
+                btn.ForeColor = activeFgColor;
+                btn.Cursor = Cursors.Hand;
+            }
+            else
+            {
+                btn.BackColor = Pal.C(226, 232, 240);
+                btn.ForeColor = Pal.C(148, 163, 184);
+                btn.Cursor = Cursors.Default;
+            }
+        }
+
+        private void SetButtonStates(bool isEditing)
+        {
+            string lic = txtLicense.Text.Trim();
+            string ln = txtLastName.Text.Trim();
+            string fn = txtFirstName.Text.Trim();
+            Crew? matched = null;
+            if (!string.IsNullOrWhiteSpace(lic) && !lic.Equals("N/A", StringComparison.OrdinalIgnoreCase) && !lic.Equals("NONE", StringComparison.OrdinalIgnoreCase))
+            {
+                matched = allCrews.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c.LicenseNumber) && c.LicenseNumber.Equals(lic, StringComparison.OrdinalIgnoreCase));
+            }
+            if (matched == null && !string.IsNullOrWhiteSpace(ln) && !string.IsNullOrWhiteSpace(fn))
+            {
+                matched = allCrews.FirstOrDefault(c => c.LastName.Equals(ln, StringComparison.OrdinalIgnoreCase) && c.FirstName.Equals(fn, StringComparison.OrdinalIgnoreCase));
+            }
+
+            bool exists = (selectedCrew != null || matched != null) && (!string.IsNullOrWhiteSpace(lic) || (!string.IsNullOrWhiteSpace(ln) && !string.IsNullOrWhiteSpace(fn)));
+
+            btnSave.Enabled = !exists;
+            btnSave.Visible = !exists;
+            btnUpdate.Enabled = exists;
+            btnUpdate.Visible = exists;
+            ApplyButtonVisualState(btnSave, !exists, Pal.C(13, 110, 253), Pal.White);
+            ApplyButtonVisualState(btnUpdate, exists, Pal.C(25, 135, 84), Pal.White);
         }
 
         private void GridCrew_SelectionChanged(object? sender, EventArgs e)
         {
+            if (pnlForm.Visible) return; // the list is hidden while the form is open; keep what is being typed
             if (gridCrew.SelectedRows.Count > 0 && gridCrew.SelectedRows[0].DataBoundItem is Crew c)
             {
-                isBindingForm = true;
+                BindCrewToForm(c);
+            }
+        }
+
+        private void HandleCrewInput()
+        {
+            string lic = txtLicense.Text.Trim();
+            string ln = txtLastName.Text.Trim();
+            string fn = txtFirstName.Text.Trim();
+            Crew? matched = null;
+            if (!string.IsNullOrWhiteSpace(lic) && !lic.Equals("N/A", StringComparison.OrdinalIgnoreCase) && !lic.Equals("NONE", StringComparison.OrdinalIgnoreCase))
+            {
+                matched = allCrews.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c.LicenseNumber) && c.LicenseNumber.Equals(lic, StringComparison.OrdinalIgnoreCase));
+            }
+            if (matched == null && !string.IsNullOrWhiteSpace(ln) && !string.IsNullOrWhiteSpace(fn))
+            {
+                matched = allCrews.FirstOrDefault(c => c.LastName.Equals(ln, StringComparison.OrdinalIgnoreCase) && c.FirstName.Equals(fn, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (matched != null)
+            {
+                BindCrewToForm(matched);
+                for (int i = 0; i < gridCrew.Rows.Count; i++)
+                {
+                    if (gridCrew.Rows[i].DataBoundItem is Crew rowC && rowC.Id == matched.Id)
+                    {
+                        gridCrew.ClearSelection();
+                        gridCrew.Rows[i].Selected = true;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                selectedCrew = null;
+                SetButtonStates(false);
+            }
+        }
+
+        // ------------------------------------------------------------------ Standard pay per trip
+        private NumericUpDown numDailyWage = null!;
+        private NumericUpDown numFoodAllowance = null!;
+        private TableLayoutPanel tblPayFields = null!;
+        private void CreatePayFields()
+        {
+            int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
+            NumericUpDown Money() => new NumericUpDown { Dock = DockStyle.Fill, Maximum = 100000, DecimalPlaces = 2, ThousandsSeparator = true, Increment = 50, Font = new Font("Segoe UI", 10F), TextAlign = HorizontalAlignment.Right, Margin = new Padding(0, 0, D(16), 0) };
+            numDailyWage = Money();
+            numFoodAllowance = Money();
+            tblPayFields = new TableLayoutPanel { Height = D(62), ColumnCount = 2, RowCount = 2, Margin = new Padding(0, 0, 0, D(8)) };
+            tblPayFields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblPayFields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblPayFields.RowStyles.Add(new RowStyle(SizeType.Absolute, D(26)));
+            tblPayFields.RowStyles.Add(new RowStyle(SizeType.Absolute, D(34)));
+            Label L(string t) => new Label { Text = t, Dock = DockStyle.Fill, TextAlign = ContentAlignment.BottomLeft, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextSecondary };
+            tblPayFields.Controls.Add(L("Daily wage per trip (PHP)"), 0, 0);
+            tblPayFields.Controls.Add(L("Meal / food allowance per trip (PHP)"), 1, 0);
+            tblPayFields.Controls.Add(numDailyWage, 0, 1);
+            tblPayFields.Controls.Add(numFoodAllowance, 1, 1);
+        }
+        private static decimal ClampMoney(NumericUpDown n, decimal v) => Math.Min(n.Maximum, Math.Max(n.Minimum, v));
+        private void BindCrewToForm(Crew c)
+        {
+            isBindingForm = true;
+            try
+            {
                 selectedCrew = c;
                 txtLastName.Text = selectedCrew.LastName;
                 txtFirstName.Text = selectedCrew.FirstName;
                 txtMiddleName.Text = selectedCrew.MiddleName;
-                cbRole.Text = selectedCrew.Role;
                 txtContact.Text = selectedCrew.ContactNumber;
-                txtLicense.Text = selectedCrew.LicenseNumber;
-
+                txtLicense.Text = "";
                 chkAvailable.Checked = selectedCrew.IsAvailable;
-                chkIsSeasonal.Checked = selectedCrew.IsSeasonal;
-
+                BindClassification(selectedCrew);
+                if (numDailyWage != null) numDailyWage.Value = ClampMoney(numDailyWage, selectedCrew.DailyWage);
+                if (numFoodAllowance != null) numFoodAllowance.Value = ClampMoney(numFoodAllowance, selectedCrew.FoodAllowance);
                 currentPhotoPath = selectedCrew.PhotoPath ?? "";
                 DisplayPhotoPreview(currentPhotoPath);
-                lblFormHeader.Text = "Personnel Master Form";
+                lblFormHeader.Text = $"Personnel: {selectedCrew.FullName} ({selectedCrew.CrewCode})";
+            }
+            finally
+            {
                 isBindingForm = false;
             }
+            SetButtonStates(true);
         }
 
         private void DisplayPhotoPreview(string photoPath)
@@ -308,25 +448,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
-                var crewRoles = MJdatabase.GetLookupItems("Crew Role");
                 string currentRole = cbRole.Text;
-                cbRole.Items.Clear();
-                cbRole.Items.Add("Driver");
-                cbRole.Items.Add("Aide/Helper");
-
+                FillRoleChoices(currentRole);
                 if (!string.IsNullOrEmpty(currentRole))
                 {
-                    if (currentRole.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0)
+                    var exactMatch = cbRole.Items.Cast<string>().FirstOrDefault(i => i.Equals(currentRole.Trim(), StringComparison.OrdinalIgnoreCase));
+                    if (exactMatch != null)
+                        cbRole.SelectedItem = exactMatch;
+                    else if (currentRole.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0)
                         cbRole.SelectedItem = "Driver";
+                    else if (currentRole.IndexOf("Mechanic", StringComparison.OrdinalIgnoreCase) >= 0)
+                        cbRole.SelectedItem = "Mechanic";
+                    else if (currentRole.IndexOf("Fabricator", StringComparison.OrdinalIgnoreCase) >= 0)
+                        cbRole.SelectedItem = "Fabricator";
                     else
                         cbRole.SelectedItem = "Aide/Helper";
                 }
-                else if (cbRole.SelectedIndex < 0)
+                else if (cbRole.SelectedIndex < 0 && cbRole.Items.Count > 0)
                 {
                     cbRole.SelectedIndex = 0;
                 }
 
                 allCrews = await MJdatabase.GetCrewsAsync();
+                RefreshBusyCrew();
                 FilterGridData();
             }
             catch (Exception ex)
@@ -409,6 +553,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
+                var valErrors = new List<string>();
+                Control? firstInvalid = null;
+                ValidationHelper.ClearErrors(pnlForm);
+
+                if (!ValidationHelper.ValidateRequiredText(txtLastName, "Last Name", valErrors)) firstInvalid ??= txtLastName;
+                if (!ValidationHelper.ValidateRequiredText(txtFirstName, "First Name", valErrors)) firstInvalid ??= txtFirstName;
+                if (!ValidationHelper.ValidateRequiredCombo(cbRole, "Crew Role", valErrors)) firstInvalid ??= cbRole;
+                if (!ValidationHelper.ValidatePhoneNumber(txtContact, "Contact Number", valErrors)) firstInvalid ??= txtContact;
+                if (!ValidationHelper.ShowValidationSummaryIfAny(this, valErrors, firstInvalid))
+                {
+                    return;
+                }
+
                 if (string.IsNullOrWhiteSpace(txtLastName.Text) || string.IsNullOrWhiteSpace(txtFirstName.Text) || string.IsNullOrWhiteSpace(cbRole.Text))
                 {
                     MessageBox.Show("Last Name, First Name, and Crew Role are required.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -427,6 +584,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                if (!string.IsNullOrWhiteSpace(middleName) && !SecurityHelper.IsValidName(middleName))
+                {
+                    MessageBox.Show("Please enter a valid middle name containing only letters, spaces, hyphens, and apostrophes, or leave it blank.", "Invalid Middle Name", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtMiddleName.Focus();
+                    return;
+                }
                 string contact = txtContact.Text.Trim();
                 if (!string.IsNullOrEmpty(contact) && !SecurityHelper.IsValidPhone(contact))
                 {
@@ -435,33 +598,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                if (!ValidateClassification()) return;
                 string role = cbRole.Text.Trim();
-                bool isDriver = role.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0;
-                string license = txtLicense.Text.Trim().ToUpper();
-
-                if (isDriver)
-                {
-                    if (string.IsNullOrWhiteSpace(license) || !SecurityHelper.IsValidLicenseNumber(license, true))
-                    {
-                        MessageBox.Show("A valid Philippine driver's license number (e.g. N01-23-456789 or D02-14-123456) is mandatory for Driver personnel.", "Driver License Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        txtLicense.Focus();
-                        return;
-                    }
-                }
-                else
-                {
-                    if (!string.IsNullOrWhiteSpace(license) && !license.Equals("N/A", StringComparison.OrdinalIgnoreCase) && !license.Equals("NONE", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (!SecurityHelper.IsValidLicenseNumber(license, false))
-                        {
-                            MessageBox.Show("Invalid driver's license format. If provided for non-driver crew, it must be a valid Philippine Driver's License format (e.g. N01-23-456789 or D02-14-123456), or left blank / N/A.", "Invalid License Format", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                            txtLicense.Focus();
-                            return;
-                        }
-                    }
-                }
-
-                string? duplicate = MJdatabase.ValidateDuplicateCrew(0, name, contact, license, lastName, firstName);
+                string? duplicate = MJdatabase.ValidateDuplicateCrew(0, name, contact, null, lastName, firstName);
                 if (!string.IsNullOrEmpty(duplicate))
                 {
                     MessageBox.Show(duplicate, "Duplicate Crew Information Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
@@ -478,15 +617,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     MiddleName = middleName,
                     Role = role,
                     ContactNumber = contact,
-                    LicenseNumber = isDriver ? license : (string.IsNullOrWhiteSpace(license) || license == "N/A" || license == "NONE" ? string.Empty : license),
                     DailyWage = 0,
                     FoodAllowance = 0,
-                    IsAvailable = chkAvailable.Checked,
+                    IsAvailable = true,
                     IsActive = true,
-                    IsSeasonal = chkIsSeasonal.Checked,
                     PhotoPath = currentPhotoPath
                 };
 
+                ApplyClassification(crew);
                 MJdatabase.SaveCrew(crew);
                 MessageBox.Show("Crew member registered successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
@@ -544,33 +682,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                if (!ValidateClassification()) return;
                 string role = cbRole.Text.Trim();
                 bool isDriver = role.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0;
-                string license = txtLicense.Text.Trim().ToUpper();
-
-                if (isDriver)
+                bool wasDriver = selectedCrew.Role.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0;
+                if (wasDriver && !isDriver && MJdatabase.IsDriverOnActiveTrip(selectedCrew.Id))
                 {
-                    if (string.IsNullOrWhiteSpace(license) || !SecurityHelper.IsValidLicenseNumber(license, true))
-                    {
-                        MessageBox.Show("A valid Philippine driver's license number (e.g. N01-23-456789 or D02-14-123456) is mandatory for Driver personnel.", "Driver License Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        txtLicense.Focus();
-                        return;
-                    }
-                }
-                else
-                {
-                    if (!string.IsNullOrWhiteSpace(license) && !license.Equals("N/A", StringComparison.OrdinalIgnoreCase) && !license.Equals("NONE", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (!SecurityHelper.IsValidLicenseNumber(license, false))
-                        {
-                            MessageBox.Show("Invalid driver's license format. If provided for non-driver crew, it must be a valid Philippine Driver's License format (e.g. N01-23-456789 or D02-14-123456), or left blank / N/A.", "Invalid License Format", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                            txtLicense.Focus();
-                            return;
-                        }
-                    }
+                    MessageBox.Show($"{selectedCrew.FullName} is the driver on an open dispatch. Complete or reassign that trip before changing their role.", "Driver on a trip", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    cbRole.Focus();
+                    return;
                 }
 
-                string? duplicate = MJdatabase.ValidateDuplicateCrew(selectedCrew.Id, name, contact, license, lastName, firstName);
+                string? duplicate = MJdatabase.ValidateDuplicateCrew(selectedCrew.Id, name, contact, null, lastName, firstName);
                 if (!string.IsNullOrEmpty(duplicate))
                 {
                     MessageBox.Show(duplicate, "Duplicate Crew Information Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
@@ -583,12 +706,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedCrew.FirstName = firstName;
                 selectedCrew.MiddleName = middleName;
                 selectedCrew.FullName = name;
-                selectedCrew.Role = role;
                 selectedCrew.ContactNumber = contact;
-                selectedCrew.LicenseNumber = license;
-
-                selectedCrew.IsAvailable = chkAvailable.Checked;
-                selectedCrew.IsSeasonal = chkIsSeasonal.Checked;
+                ApplyClassification(selectedCrew);
                 selectedCrew.PhotoPath = currentPhotoPath;
 
                 MJdatabase.SaveCrew(selectedCrew);
@@ -620,13 +739,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
-                var res = MessageBox.Show($"Are you sure you want to deactivate/delete crew record for '{selectedCrew.FullName}'?", "Confirm Deletion", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                var res = MessageBox.Show($"Are you sure you want to deactivate/delete crew record for '{selectedCrew.FullName}'?\n\n" + MJdatabase.DeletePolicyNote("Crews"), "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
                 if (res == DialogResult.Yes)
                 {
                     bool deleted = MJdatabase.DeleteRecord("Crews", selectedCrew.Id);
                     if (deleted)
                     {
-                        MessageBox.Show("Crew record deleted successfully!", "Deleted", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         ClearFields();
                         LoadCrew();
                     }
@@ -653,6 +772,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var filtered = string.IsNullOrEmpty(q)
                 ? allCrews
                 : allCrews.Where(c =>
+                    (!string.IsNullOrEmpty(c.CrewCode) && c.CrewCode.ToLower().Contains(q)) ||
+                    c.Id.ToString() == q ||
                     (!string.IsNullOrEmpty(c.FullName) && c.FullName.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(c.LastName) && c.LastName.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(c.FirstName) && c.FirstName.ToLower().Contains(q)) ||
@@ -663,8 +784,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     (!string.IsNullOrEmpty(c.AvailabilityStatus) && c.AvailabilityStatus.ToLower().Contains(q))
                 ).ToList();
 
+            filtered = filtered.Where(CrewPassesTile).ToList();
+            UpdateCrewTiles();
             switch (currentSortColumn)
             {
+                case "CrewCode":
+                    filtered = isSortAscending ? filtered.OrderBy(c => c.Id).ToList() : filtered.OrderByDescending(c => c.Id).ToList();
+                    break;
                 case "FullName":
                     filtered = isSortAscending ? filtered.OrderBy(c => c.FullName).ToList() : filtered.OrderByDescending(c => c.FullName).ToList();
                     break;
@@ -694,11 +820,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridCrew.SelectionChanged -= GridCrew_SelectionChanged;
             gridCrew.DataSource = null;
             gridCrew.DataSource = filtered;
-            lblGridHeader.Text = string.IsNullOrEmpty(q)
-                ? $"Active Personnel Directory ({allCrews.Count})"
-                : $"Active Personnel Directory - Showing {filtered.Count} of {allCrews.Count}";
-
-            if (filtered.Count > 0)
+            lblGridHeader.Text = string.IsNullOrEmpty(q) && crewTileFilter == null
+                ? $"All crew · {allCrews.Count}"
+                : $"Showing {filtered.Count} of {allCrews.Count} crew";
+            if (pnlForm.Visible)
+            {
+                // The form is open (new or edit): leave what is being typed alone.
+            }
+            else if (filtered.Count > 0)
             {
                 gridCrew.ClearSelection();
                 gridCrew.Rows[0].Selected = true;
@@ -707,12 +836,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 txtLastName.Text = selectedCrew.LastName ?? "";
                 txtFirstName.Text = selectedCrew.FirstName ?? "";
                 txtMiddleName.Text = selectedCrew.MiddleName ?? "";
-                cbRole.Text = selectedCrew.Role;
                 txtContact.Text = selectedCrew.ContactNumber;
-                txtLicense.Text = selectedCrew.LicenseNumber;
-
+                txtLicense.Text = "";
                 chkAvailable.Checked = selectedCrew.IsAvailable;
-                chkIsSeasonal.Checked = selectedCrew.IsSeasonal;
+                BindClassification(selectedCrew);
+                if (numDailyWage != null) numDailyWage.Value = ClampMoney(numDailyWage, selectedCrew.DailyWage);
+                if (numFoodAllowance != null) numFoodAllowance.Value = ClampMoney(numFoodAllowance, selectedCrew.FoodAllowance);
                 currentPhotoPath = selectedCrew.PhotoPath ?? "";
                 DisplayPhotoPreview(currentPhotoPath);
                 lblFormHeader.Text = "Personnel Master Form";
@@ -766,75 +895,170 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtLicense.Text = "";
 
             chkAvailable.Checked = true;
-            chkIsSeasonal.Checked = false;
+            ClearClassification();
+            if (numDailyWage != null) numDailyWage.Value = 0;
+            if (numFoodAllowance != null) numFoodAllowance.Value = 0;
             currentPhotoPath = string.Empty;
             DisplayPhotoPreview(string.Empty);
-            if (cbRole.Items.Count > 0) cbRole.SelectedIndex = 0;
+            lblFormHeader.Text = "Personnel Master Form";
+            SetButtonStates(false);
+            gridCrew.ClearSelection();
         }
 
         private void SetupContextMenu()
         {
-            var menu = new ContextMenuStrip();
-            menu.Font = new Font("Segoe UI Semibold", 9F);
+            RowMenu.Attach(gridCrew, (m, rows) =>
+            {
+                if (rows[0].DataBoundItem is not Crew c) return;
+                selectedCrew = c;
+                bool onTrip = false;
+                try { onTrip = c.Role.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0 && MJdatabase.IsDriverOnActiveTrip(c.Id); } catch { }
+                m.Items.AddRange(RowMenu.Header($"👤  {c.FullName}", $"{c.CrewCode} · {c.Role}{(c.IsSeasonal ? " (seasonal)" : "")} · {c.AvailabilityStatus} · license: {c.LicenseDisplay}"));
+                m.Items.Add(RowMenu.Item("Open crew profile", () => OpenCrewProfile(c), "Enter"));
+                m.Items.Add(RowMenu.Item("Quick details", () => RecordDetailsDialog.ShowDetails(this, c)));
+                m.Items.Add(RowMenu.Item("Edit crew member", () => { SetFormVisibility(true); txtLastName.Focus(); }));
+                m.Items.Add(RowMenu.Item("Trip & schedule history", () => OnViewCrewHistoryRequested?.Invoke(c.Id)));
+                m.Items.Add(RowMenu.Sep());
+                m.Items.Add(RowMenu.Sub("Set status",
+                    RowMenu.Item("🟢  Active (ready for duty)", () => SetCrewStatus(c, true), "", !(c.IsActive && c.IsAvailable)),
+                    RowMenu.Item("⚪  Inactive", () => SetCrewStatus(c, false), "", c.IsActive)));
+                var today = DateTime.Today;
+                var thisMonth = new DateTime(today.Year, today.Month, 1);
+                m.Items.Add(RowMenu.Sub("🖨️  Print",
+                    RowMenu.Item($"Pay slip — {thisMonth:MMMM yyyy}", () => PrintPaySlip(c, thisMonth, today)),
+                    RowMenu.Item($"Pay slip — {thisMonth.AddMonths(-1):MMMM yyyy}", () => PrintPaySlip(c, thisMonth.AddMonths(-1), thisMonth.AddDays(-1))),
+                    RowMenu.Item("Crew dossier & trip history", () => PrintHelper.PrintCrewDossierAndHistory(c, MJdatabase.GetCrewHistory(c.Id))),
+                    RowMenu.Sep(),
+                    RowMenu.Item("Personnel register (whole table)", () => BtnPrint_Click(this, EventArgs.Empty))));
+                m.Items.Add(RowMenu.CopySub(this, ("Full name", c.FullName), ("Crew code", c.CrewCode), ("Contact number", c.ContactNumber), ("Driver's license", c.LicenseDisplay),
+                    ("Contact card", $"{c.FullName} ({c.Role}){(string.IsNullOrWhiteSpace(c.ContactNumber) ? "" : " — " + c.ContactNumber)}")));
+                m.Items.Add(RowMenu.Item($"Find other {c.Role}s", () => RowMenu.Search(txtGridSearch, c.Role)));
+                m.Items.Add(RowMenu.ExportSub(gridCrew, "Crew_Personnel", "Registered Drivers and Aides", () => BtnPrint_Click(this, EventArgs.Empty)));
+                m.Items.Add(RowMenu.Sep());
+                m.Items.Add(RowMenu.Danger("Delete crew member…", () => { selectedCrew = c; BtnDelete_Click(this, EventArgs.Empty); }, !onTrip));
+            });
+        }
+        private void SetCrewStatus(Crew c, bool active)
+        {
+            if (!active && c.Role.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0 && MJdatabase.IsDriverOnActiveTrip(c.Id))
+            {
+                MessageBox.Show($"{c.FullName} is assigned to an open dispatch. Complete or reassign that trip before setting them to inactive.", "Crew on a trip", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            bool wasActive = c.IsActive, wasAvail = c.IsAvailable;
+            c.IsActive = active;
+            c.IsAvailable = active;
+            try
+            {
+                MJdatabase.SaveCrew(c);
+                ToastHelper.ShowToast(this, $"{c.FullName} is now {(active ? "active" : "inactive")}", ToastType.Success);
+            }
+            catch (Exception ex)
+            {
+                c.IsActive = wasActive; c.IsAvailable = wasAvail;
+                MessageBox.Show($"Failed to update crew status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            LoadCrew();
+        }
+        /// <summary>Pay per trip must be set (it is what Trip Reports and payroll use), and the meal allowance can't exceed it.</summary>
+        private bool ValidateCrewPay()
+        {
+            if (numDailyWage == null) return true;
+            if (numDailyWage.Value <= 0)
+            {
+                var ans = MessageBox.Show("No pay per trip is set for this crew member, so their trip pay and pay slips will show ₱0.00.\n\nSave anyway?", "Pay per trip is ₱0", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+                if (ans != DialogResult.Yes) { numDailyWage.Focus(); return false; }
+            }
+            if (numFoodAllowance != null && numDailyWage.Value > 0 && numFoodAllowance.Value > numDailyWage.Value)
+            {
+                var ans = MessageBox.Show("The meal / food allowance is higher than the pay per trip. Is that correct?", "Check the allowance", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+                if (ans != DialogResult.Yes) { numFoodAllowance.Focus(); return false; }
+            }
+            return true;
+        }
+        private void PrintPaySlip(Crew c, DateTime from, DateTime to)
+        {
+            var trips = MJdatabase.GetDeliveries().Where(d =>
+                string.Equals(d.Status, "Completed", StringComparison.OrdinalIgnoreCase) &&
+                d.DispatchDate.Date >= from.Date && d.DispatchDate.Date <= to.Date &&
+                MJdatabase.GetDeliveryCrewIds(d).Any(x => x.CrewId == c.Id)).ToList();
+            if (trips.Count == 0)
+            {
+                MessageBox.Show($"{c.FullName} has no completed trips from {from:MMM d} to {to:MMM d, yyyy}.", "No trips to pay", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            PrintHelper.PrintCrewPaySlip(c, trips, from, to);
+        }
+    
+        private void SetupRoleFieldWithManageButton()
+        {
+            int roleIdx = pnlFormBody.Controls.IndexOf(cbRole);
+            if (roleIdx >= 0)
+            {
+                pnlFormBody.Controls.Remove(cbRole);
 
-            var itemDetails = new ToolStripMenuItem("🔍 View Full Details & History", null, (s, e) => {
-                if (selectedCrew != null) RecordDetailsDialog.ShowDetails(this, selectedCrew);
-            });
-            var itemCopyName = new ToolStripMenuItem("📋 Copy Crew Full Name", null, (s, e) => {
-                if (selectedCrew != null) { Clipboard.SetText(selectedCrew.FullName); ToastHelper.ShowToast(this, "Crew name copied ✓"); }
-            });
-            var itemEdit = new ToolStripMenuItem("✏️ Edit Crew Details", null, (s, e) => {
-                SetFormVisibility(true);
-                txtLastName.Focus();
-            });
-            var itemAvail = new ToolStripMenuItem("🟢 Set Status: Active (Duty Ready)", null, (s, e) => {
-                try
+                TableLayoutPanel tblRoleWrap = new TableLayoutPanel
                 {
-                    if (selectedCrew != null) {
-                        selectedCrew.IsAvailable = true;
-                        selectedCrew.IsActive = true;
-                        MJdatabase.SaveCrew(selectedCrew);
-                        LoadCrew();
+                    Dock = DockStyle.Top,
+                    Height = 32,
+                    ColumnCount = 2,
+                    RowCount = 1,
+                    Margin = new Padding(0, 0, 0, 8),
+                    Padding = new Padding(0)
+                };
+                tblRoleWrap.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+                tblRoleWrap.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96F));
+                tblRoleWrap.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+                btnManageRoles = new Button
+                {
+                    Dock = DockStyle.Fill,
+                    Text = "⚙️ Roles",
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = Pal.C(241, 245, 249),
+                    ForeColor = Pal.C(30, 41, 59),
+                    Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                    Cursor = Cursors.Hand,
+                    Margin = new Padding(0)
+                };
+                btnManageRoles.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
+                btnManageRoles.FlatAppearance.BorderSize = 1;
+                btnManageRoles.Click += BtnManageRoles_Click;
+
+                cbRole.Dock = DockStyle.Fill;
+                cbRole.Margin = new Padding(0, 0, 6, 0);
+
+                tblRoleWrap.Controls.Add(cbRole, 0, 0);
+                tblRoleWrap.Controls.Add(btnManageRoles, 1, 0);
+
+                pnlFormBody.Controls.Add(tblRoleWrap);
+                pnlFormBody.Controls.SetChildIndex(tblRoleWrap, roleIdx);
+            }
+        }
+
+        private void BtnManageRoles_Click(object? sender, EventArgs e)
+        {
+            string currentRole = cbRole.Text;
+            using (var dlg = new Forms.CrewRoleManageDialog(currentRole))
+            {
+                if (dlg.ShowDialog(this) == DialogResult.OK || !string.IsNullOrWhiteSpace(dlg.SelectedRoleName))
+                {
+                    LoadCrew();
+                    if (!string.IsNullOrWhiteSpace(dlg.SelectedRoleName))
+                    {
+                        var match = cbRole.Items.Cast<string>().FirstOrDefault(i => i.Equals(dlg.SelectedRoleName.Trim(), StringComparison.OrdinalIgnoreCase));
+                        if (match != null)
+                        {
+                            cbRole.SelectedItem = match;
+                        }
+                        else
+                        {
+                            cbRole.Items.Add(dlg.SelectedRoleName.Trim());
+                            cbRole.SelectedItem = dlg.SelectedRoleName.Trim();
+                        }
                     }
                 }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Failed to update crew availability: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            });
-            var itemInactive = new ToolStripMenuItem("⚪ Set Status: Inactive", null, (s, e) => {
-                try
-                {
-                    if (selectedCrew != null) {
-                        selectedCrew.IsActive = false;
-                        selectedCrew.IsAvailable = false;
-                        MJdatabase.SaveCrew(selectedCrew);
-                        LoadCrew();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Failed to update crew status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            });
-            var itemPrint = new ToolStripMenuItem("📄 Print Personnel Register", null, BtnPrint_Click);
-            var itemDelete = new ToolStripMenuItem("🗑️ Delete Personnel Record", null, BtnDelete_Click);
-            var itemExportCsv = new ToolStripMenuItem("📊 Export Table to CSV...", null, (s, e) => {
-                DataExportHelper.ExportToCsv(gridCrew, "Crew_Personnel", "Registered Drivers and Aides");
-            });
-            var itemExportExcel = new ToolStripMenuItem("📑 Export Table to Excel (.xml)...", null, (s, e) => {
-                DataExportHelper.ExportToExcelXml(gridCrew, "Crew_Personnel", "Registered Drivers and Aides");
-            });
-
-            menu.Items.AddRange(new ToolStripItem[] { itemDetails, itemCopyName, new ToolStripSeparator(), itemEdit, itemAvail, itemInactive, itemPrint, new ToolStripSeparator(), itemExportCsv, itemExportExcel, new ToolStripSeparator(), itemDelete });
-
-            gridCrew.CellMouseDown += (s, e) => {
-                if (e.Button == MouseButtons.Right && e.RowIndex >= 0) {
-                    gridCrew.ClearSelection();
-                    gridCrew.Rows[e.RowIndex].Selected = true;
-                    menu.Show(gridCrew, gridCrew.PointToClient(Cursor.Position));
-                }
-            };
+            }
         }
     }
 }

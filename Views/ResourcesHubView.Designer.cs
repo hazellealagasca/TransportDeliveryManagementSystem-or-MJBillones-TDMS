@@ -43,8 +43,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlContentHost.Size = new System.Drawing.Size(1200, 702);
             this.pnlContentHost.TabIndex = 1;
 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.pnlContentHost);
             this.Controls.Add(this.pnlTopNav);
             this.Name = "ResourcesHubView";

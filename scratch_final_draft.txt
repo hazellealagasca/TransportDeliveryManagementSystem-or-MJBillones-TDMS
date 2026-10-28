@@ -1,0 +1,442 @@
+Transport Delivery Management System for M.J. Billones Transport Service
+A Capstone Project 
+Presented to the Faculty of the
+Information and Communications Technology Program
+STI College Tarlac
+In Partial Fulfilment of the Requirements for the Degree
+Bachelor of Science in Information Technology
+Hazel Lea B. Lagasca
+Joevane P. Malig Jr.
+Edward James D. Santiago
+April 2026
+ENDORSEMENT FORM FOR PROPOSAL DEFENSE
+ 
+TITLE OF RESEARCH:                       Transport Delivery Management System for M.J. Billones Transport Service
+NAME OF PROPONENTS:Hazel Lea B. Lagasca
+                                            Joevane P. Malig Jr.
+                                                     Edward James D. Santiago
+ 
+In Partial Fulfilment of the Requirements
+for the degree Bachelor of Science in Information Technology has been examined and is recommended for Proposal Defense.
+ 
+ 
+ 
+ENDORSED BY:
+ 
+ 
+Mr. Alvin M. Ramilo
+Capstone Project Adviser
+ 
+ 
+ 
+APPROVED FOR PROPOSAL DEFENSE:
+ 
+ 
+ 
+Mr. Isagani F. Almeron
+Capstone Project Coordinator
+ 
+ 
+ 
+NOTED BY: 
+ 
+Ms. Nita L. Ventura
+Prom Head
+ 
+ 
+JUNE 2026
+APPROVAL SHEET
+This capstone project proposal titled Transport Delivery Management System for M.J. Billones Transport Service, prepared and submitted by Hazel Lea B. Lagasca, Joevane P. Malig Jr. and Edward James D. Santiago, in partial fulfillment of the requirements for the degree of Bachelor of Science in Information Technology, has been examined and is recommended for acceptance and approval.
+                                                                                                                   Mr. Alvin M. Ramilo
+Capstone Project Adviser
+Accepted and approved by the Capstone Project Review Panel
+in partial fulfillment of the requirements for the degree of 
+Bachelor of Science in Information Technology
+ 
+Mr. Isagani F. Almeron
+Ms. Nicole Anne G. Bautista
+Panel Member
+Panel Member
+ 
+Mr. Aaron Justin R. Baustista
+Lead Panelist 
+Noted:
+Mr. Isagani F. Almeron 
+Ms. Nita L. Ventura
+Capstone Project Coordinator
+Program Head
+ 
+Table of Contents 
+ 
+ 
+           Title Page
+                    i
+  Table of Contents 
+       ii 
+         Introduction
+       3
+Project Context
+       3
+Purpose and Description
+                 13
+Objectives
+                 14
+Scope and Limitations  
+Review of Related Literature/Studies/Systems
+                 15
+                 24
+Methodology
+Technical Background
+Requirement Analysis
+Requirements Documentation
+Design of Software, System, Product, and/or Process
+                 
+     43
+                 47
+                 47
+     48
+References
+     51
+INTRODUCTION
+Project Context 
+Technology is very important in daily life. According to Satish, S. (2023), It helps work faster, talk to people far away, and travel easily. Many things we do everyday use technology, such as using phones, computers, or cars. Hospitals, schools, and businesses all use technology to do jobs better and help more people. Technology saves time and money by making things quicker and easier. It also helps people come up with new ideas and keeps companies strong in the market. Learning how to use technology is now a very important skill. Technology is a big part of daily life and makes the world a better place for everyone
+According to Boychenko (2026), the importance of a Trucking Management System (TMS) lies in its role as the primary engine for "Logistics 4.0," where digital tools transform physical assets into a high-efficiency data network. By digitizing paper materials—specifically the Bill of Lading and shipping manifests—a TMS creates a seamless flow of information that eliminates the administrative bottlenecks typical of traditional trucking. Boychenko (2026) highlights that this transition is not merely about storage but about operational agility; Boychenko (2026) argues that integrating these digital tools is essential for modern business efficiency, as it allows firms to process vast amounts of raw operational data into smart, actionable insights that help to survive a volatile global market.
+Food quality and safety are important concerns in the production and distribution of perishable goods. Bakeries and bakeshops, especially large and well-known brands, rely heavily on an efficient and reliable cold chain system to preserve the freshness, taste, and overall quality of the products. In the Philippines, companies such as Goldilocks and Red Ribbon are among the leading bakeshop chains that distribute cakes, pastries, and other perishable products to numerous branches. To ensure that these products reach destinations in optimal conditions, the role of refrigerated or cold transport services has become increasingly important. 
+MJ Billones Transport Service is a trucking company owned by Marie Ann J. Billones that provides transport services to the franchises of Goldilocks and Red Ribbon that includes Millenium FoodBite Corporation, BCS group of company,Bestbake Incorporation and Richbake Incorporation,which began its operations on September 23, 2017, located at Jasmine Street Barangay San Francisco, Tarlac, City.
+Figure 1. MJ Billones Transport Service
+The company is responsible for delivering frozen and chilled goods from the commissaries to different stores. These deliveries must be carried out within a specific time frame and under required temperature conditions to sustain product quality. The company has a total of 13 drivers, 23 aides, 3 mechanics, 1 fabricator   and 1 office assistant. In normal days, the company has only 8 operating trucks per day, while in peak season, the company has 18 operating trucks per day. The MJ Billones Transport Services delivery coverage includes Pampanga, Nueva Ecija, Aurora, Isabela, Kalinga, La union, Ilocos Sur, Ilocos Norte, Cordillera Administrative Region.
+Figure 2. Office of MJ Billones Transport Service
+Figure 3. MJ Billones Transport Service Garage
+As shown in Figure 3, this area is where the trucks are serviced and inspected to ensure they are in excellent condition before departing for the commissary. Once deliveries are completed and the trucks return to the facility, each vehicle is washed, checked, and prepared for the next trip.
+Figure 4. Rate Matrix 
+The company's rate matrix, as shown in Figure 4, is utilized to calculate standardized delivery costs. The total price per trip is dynamically determined based on three key parameters: the specific delivery route, the type of truck assigned to the trip, and whether the transaction occurs during standard operations or a peak season.
+Figure 5. Loading Schedule
+As shown in Figure 5, the loading schedule is sent by the commissary to M.J. Billones Transport Service to determine the required truck capacity for dispatch. Upon arrival at the commissary, Quality Assurance (QA) personnel inspect the truck's temperature to ensure it meets the requirements for loading perishable goods, followed by an initial count of the total crates. Once the temperature is verified, the driver and the delivery aide load the products and perform a secondary count to confirm accuracy. Prior to departure, QA personnel provide the crew with the delivery receipt and the franchise trip report.
+Figure 6. Delivery Receipt
+As shown in Figure 6, the delivery receipt will be use during the store's drop-off process. Upon arriving at the destination store, the manager re-checks the truck's container temperature and takes a photograph for documentation. The delivery aide then hands over the delivery receipt to the store manager and presents the items one by one for verification. If all products are received without any damage, the manager signs the delivery receipt with a note indicating a complete delivery, serving as official proof of transaction for the franchisee. In instances where items are damaged due to the negligence of the delivery crew, M.J. Billones Transport Service assumes financial responsibility and compensates the store. Once the entire transaction is successfully completed, both the store manager and the delivery aide sign the delivery receipt.
+Figure 7. Franchise Trip Report
+Following the completion of the delivery receipt, the next step involves the franchise trip report shown in Figure 7. The delivery aide hands this document to the store manager, who writes down the total number of crates received along with the truck's exact arrival and departure times. The manager then signs the form to officially confirm the transaction. This document also logs the truck name, plate number, and the assigned names of the driver and aide to maintain clear accountability for the trip.
+Figure 8. Statement of Account
+As shown in Figure 8, the Statement of Account, which is created using the signed franchise trip report as its primary reference. This document is generated alongside the Service Invoice and submitted to the accounting department to initiate the billing process.
+Figure 9. Service Invoice
+As shown in Figure 9, the Service Invoice displays the official commercial document issued by M.J. Billones Transport Service to request payment for completed hauling services. This document provides an itemized breakdown of the transactions, including the nature of the service, the specific period covered, any applicable fees or deductions, and the final total amount due from the client.
+Figure 10. Collection Receipt
+As shown in Figure 10, the Collection Receipt, which serves as official proof that a client's payment has been received and processed. Following the submission of the Statement of Account and Service Invoice, clients are given a standard 15-day credit window to settle their balances. If the payment is successfully collected within this timeframe, this receipt is issued to finalize the transaction; otherwise, the company initiates payment follow-up procedures.
+Purpose and Description
+The primary purpose of this study is to design and develop a Transport Delivery Management System for M.J. Billones Transport Service that will support the handling of delivering chilled and dry goods with its clients. Given the increasing demand for efficient logistics in the food industry and the need for more systematic operations at M.J. Billones Transport, there is a clear opportunity to improve the company’s processes through the development of a management system.
+By providing a computerized solution for loading schedule, employee management, delivery scheduling, and trip delivery of information, the study aims to improve the existing manual processes with an organized and efficient system. The project also seeks to provide a basis for evaluating how the proposed system can help improve the accuracy of records, timeliness of deliveries, and overall transactions of the company.
+ The proposed project is intended for internal use by M.J. Billones Transport. It focuses on the main functions needed to manage daily transport operations, including user login and security, crew management, delivery scheduling, loading schedule, and basic report generation that includes total trips per day. Through a database, authorized users will be able to input, update, and retrieve essential data related to deliveries with the franchises of Goldilocks and Red Ribbon.
+The system will provide interfaces for creating and viewing delivery schedules, assigning trucks, aides and drivers to specific trips, and marking deliveries as completed, pending, or cancelled. It will generate summary reports on daily deliveries, deliveries per client, and trips, which can assist management in monitoring business transactions. The project will be developed using appropriate programming tools and will be deployed on desktop or laptop computers within the company premises.
+Objectives 
+General Objectives 
+To design, develop, and evaluate the Transport Delivery Management System for M.J. Billones. The system will gather and organize loading schedules, trip details, record billing, and payment.  Its goal is to improve record-keeping, improve documentation, and make it easier to gather and organize records.
+Specific Objectives 
+To design and develop a module that manages system configuration and user accounts.
+This module will provide centralized digital storage and organization of important operational records, supporting updating, searching, filtering, and archiving functions to ensure business documents remain accurate, complete, and easily accessible.
+By giving the owner and staff individual login accounts, the module ensures that users only have access to the specific tools and records required for their job roles. This prevents unauthorized changes to delivery logs, protects confidential company information, and creates a safe, organized workspace where every user's actions can be properly tracked.
+To design and develop a module for loading management.
+This module will record loading schedules and determine the appropriate truck capacity based on the number and size of crates. It will support efficient truck scheduling, manual tagging of peak and non-peak schedules, and coordination to ensure on-time deliveries.
+To design and develop a module that will handle truck management.
+This module will monitor truck availability, status, and record which truck is assigned to each delivery. It will help the system plan and process deliveries more efficiently.
+To design and develop a module for crew management.
+This module will store driver and aide names and contact information. It will also check driver and aide availability and assist in assigning driver and aides to deliveries. This will reduce the time scheduling and make driver and aide assignments more efficient. By tracking crew availability and matching names directly to trips, the system helps employees quickly see who is free or already on the road. This reduces the time spent checking staff schedules and prevents the mistake of double-booking the same driver or aide. It serves as an efficient tool that coordinates assignments smoothly, ensuring that every delivery truck has a designated crew assigned to it without confusion.
+To design and develop a module that will process trip documentation and reports.
+This module will allow authorized personnel to record key details from plant-issued trip documents including scheduled trips reports, trucks, drivers and aides information, and details of goods that are being transported. It will also provide options to attach digital copies of the original documents for easy reference.
+To design and develop a module that will handle billing.
+This module will record trip details, generate statements of account, and produce invoices to support accurate billing and easier payment tracking.
+Scope and Limitations
+The proposed Transport Delivery Management System is designed to improve the daily operational processes of M.J. Billones Transport Service by computerizing account management, crew and truck management, loading schedules, dispatching, trip documentation, billing. While the system provides a more efficient and organized method of handling transport delivery records, it is limited to basic office-based operations and does not include advanced features such as full payroll processing, automated scheduling, GPS tracking, or real-time temperature monitoring
+Scope
+Account Management Module
+This module provides secure access to the system through username and password authentication. It ensures that only authorized users can access the system based on their assigned roles.
+Functions included:
+• Creation of user accounts
+• Update of username and password
+• Archiving or deactivation of inactive accounts
+• Role-based user access for owner and staff
+This module helps protect sensitive business data and ensures confidentiality and controlled access to records.
+Dashboard Module
+This module serves as the main overview page of the system. It displays summarized and updated information that helps users monitor daily operations.
+Functions included:
+• Display of total deliveries
+• Display of scheduled deliveries for the day
+• Display of pending trips
+• Display of available trucks
+This module gives the owner and staff a quick summary of the company’s delivery status and transaction updates.
+Crew Management Module
+This module stores and manages crew records, particularly the drivers, aides, and on-call crew assigned to deliveries.
+Functions included:
+• Recording of crew information such as name, role, and contact number
+• Monitoring of driver and aide availability
+• Assignment of drivers and aides to delivery schedules
+• Viewing of driver and aide trip schedules
+This module helps reduce scheduling time and improves crew assignment efficiency.
+Truck Management Module
+This module manages all truck-related records used in transport operations.
+Functions included:
+• Recording of truck details such as truck type and plate number.
+• Monitoring of truck availability and status
+• Tagging trucks as available, in use, inactive, or under maintenance
+• Tracking which truck is assigned to each delivery
+This module supports more efficient delivery planning and truck utilization.
+Loading Management Module
+This module is responsible for recording and organizing loading schedules received from the commissary or client.
+Functions included:
+• Encoding of load schedules
+• Recording of destination, client, schedule date, and total crates
+• Determination of truck capacity based on the number and size of crates
+• Coordination of truck scheduling for delivery preparation
+• Manual tagging of peak and non-peak schedules
+This module improves schedule coordination and helps ensure that deliveries are prepared properly and completed on time.
+Delivery and Dispatch Management Module
+This module handles the scheduling and dispatching of deliveries.
+Functions included:
+• Creation and assignment of delivery schedules
+• Assignment of truck, driver, and aide for each trip
+• Viewing and updating of daily and weekly schedules
+• Delivery tagging as completed, pending, delayed, or cancelled
+• Recording of departure details and dispatch status
+This module allows staff to monitor delivery movement and update the status of each trip more efficiently.
+Trip Report Module
+This module records key details from plant-issued trip documents and delivery completion reports.
+Functions included:
+• Recording of trip report number
+• Recording of assigned truck, driver, and aides
+• Encoding of arrival and departure time
+• Recording of delivered and returned crates
+• Recording of store manager confirmation and remarks
+This module provides digital trip documentation for accountability and future references.
+Incident Report Module
+This module records delivery-related incidents, irregularities, and damaged goods encountered during transport operations.
+Functions included:
+• Encoding of damage report details
+• Recording of damaged quantity and estimated cost
+• Recording of cause of damage
+• Marking whether the damage is chargeable to the crew
+• Recording of incidents, delays, and irregularities for accountability
+This module improves monitoring of delivery issues and supports documentation for loss and incident reporting.
+Billing Module
+ This module manages the billing process for completed trips.
+Functions included:
+• Recording of trip details for billing
+• Generation of statement of account
+• Generation of service invoice
+This module supports accurate trip billing and makes payment tracking easier.
+Collection Module
+This module records payments received from clients for completed transport services.
+Functions included:
+• Recording of payment amount
+• Recording of payment date and method
+• Updating billing status as unpaid, paid, or overdue
+This module helps track receivables and organize payment transactions properly.
+System Configuration Module
+This module provides centralized digital storage and organization of important operational records.
+Functions included:
+• Updating and maintaining records
+• Searching and filtering records
+• Retrieving important documents and transaction history
+• Archiving inactive records
+• Maintaining accurate and complete business data
+This module ensures that records remain organized, accessible, and easy to manage.
+Reports and Data Viewing Module
+This module allows users to generate and view summaries of transport operations and transactions.
+Functions included:
+• Daily delivery reports
+• Truck overview reports
+• Driver and aide overview reports
+• Billing and collection reports
+• Remarks and incident logs
+• Search and filter functions by date, client, driver, destination, or status
+This module helps management review operational performance and monitor records more effectively.
+Data Backup and Restore Module
+This module provides a basic backup and restore function to prevent data loss and maintain continuity of records.
+Functions included:
+• Creating backup copies of the database
+• Restoring previously saved records in case of system failure
+This module helps protect important transport and billing records from accidental loss.
+Limitations
+No Payroll Processing
+The system only records the daily wage per trip and food allowance of drivers and aides for documentation purposes. It does not include complete payroll computation, salary deductions, benefits, tax, or other payroll processes.
+No Automated Scheduling
+The system does not automatically generate or suggest delivery schedules based on truck availability, crew workload, or route optimization. All schedules and assignments are entered manually by authorized staff.
+No GPS or Real-Time Vehicle Tracking
+The system does not include GPS integration or live vehicle location tracking. Delivery status updates are manually entered by staff.
+The system will exclude asset maintenance 
+The system will not include the asset maintenance of the trucks.
+No automated Backup and Restore 
+The backup and restore function will be done manually and are limited to local database storage
+Review of Related Literature/Studies/Systems 
+Foreign Related Literature “Securing Academic Social Platforms: Implementing Role-Based Access Control (RBAC) in University-Based Digital Systems” (Ratna et al., 2025)
+The study explores the implementation of a structured Role-Based Access Control (RBAC) model within academic digital environments to manage user permissions and prevent unauthorized modification of sensitive data. It demonstrates how defining specific roles, such as students having read-only access and faculty having modification rights, can significantly reduce administrative overhead and improve system security. The research highlights that a robust RBAC framework is essential for maintaining data privacy and integrity in any multi-user digital platform.
+Just as the study advocates role-specific access in universities, the Transport Delivery Management System for M.J. Billones Transport Service will also implement user management to have different access level to ensure that all the business information is protected and only authorized 
+“Cold Chain Logistics Management and Operations: Problems and Suggestions in the Post-Epidemic Era” (ResearchGate, 2023)
+The study discusses how the outbreak of the COVID-19 pandemic created significant disruptions in global food supply chains, particularly in cold chain logistics, which is responsible for handling temperature-sensitive goods. It highlights that the increased reliance on cold chain systems during the pandemic exposed several critical challenges, including the risk of virus transmission through imported goods, inadequate monitoring systems, and inefficiencies in maintaining proper temperature control. Despite the rapid growth of the cold chain industry in countries like China, the study emphasizes that issues in management, safety, and operational control persist. 
+In relation to the proposed M.J. Billones Delivery Management System, the findings highlight the necessity of transitioning from manual and fragmented processes to a more organized and centralized system. Through this approach, the system contributes to addressing the operational challenges identified in the study and supports the broader objective of enhancing reliability and control in cold chain logistics operations.
+Good Manufacturing Practice– and Good Distribution Practice–Compliant Cold Storage and Refrigerated Transport of Allergen Products (Rost et al., 2021)
+This study discusses the importance of maintaining appropriate storage and transport conditions for temperature sensitive products to preserve quality and safety. It explains how improper handling and lack of monitoring during storage and transportation can lead to product degradation. The study emphasizes the role of proper documentation, monitoring systems, and compliance with established standards such as Good Manufacturing Practice (GMP) and Good Distribution Practice (GDP). It highlights the responsibility of transport providers to ensure traceability and accountability throughout the cold distribution process.
+The Transport Delivery Management System for M.J. Billones Transport emphasizes the importance of proper documentation and monitoring in transport operations. While the reviewed study focuses on compliance with pharmaceutical standards and includes strict temperature control requirements, the proposed system concentrates on organizing delivery schedules, trip reports, and transaction records for refrigerated food transport. Unlike the reviewed study, the proposed system does not include automated temperature validation or regulatory compliance reporting. However, both systems aim to ensure accountability, traceability, and proper handling of temperature‑sensitive goods through systematic keeping and monitoring of transport activities.
+Cold Chain Logistics Challenges in the Post-Pandemic Era (Peng et al., 2023)
+The study titled Cold Chain Logistics Management and Operations: Problems and Suggestions in the Post-Epidemic Era examines how the COVID-19 pandemic exposed major weaknesses in global cold chain systems. It identifies challenges such as poor temperature monitoring, inadequate infrastructure, and lack of coordination among logistics stakeholders. The study explains that many companies still rely on outdated and manual processes, which increase the risk of delays and product spoilage. It also highlights the importance of digital transformation in improving logistics efficiency and resilience. Furthermore, the research emphasizes that integrating information systems can significantly enhance monitoring and decision-making in cold chain operations.
+This literature is related to the proposed system because both aim to improve logistics efficiency through better organization and monitoring. The proposed system addresses issues such as disorganized records and poor coordination by providing a centralized platform for scheduling and reporting. However, the study focuses on global logistics challenges, while the proposed system is limited to company-level operations. Despite this difference, both emphasize the importance of improving operational control and reducing delays. This supports the objective of enhancing delivery performance and system efficiency.
+Good Manufacturing Practice and Good Distribution Practice–Compliant Cold Storage and Refrigerated Transport (Rost et al., 2021)
+The study by Rost et al. (2021) discusses the importance of maintaining proper standards in cold storage and transportation. It highlights that temperature-sensitive goods require strict compliance with Good Manufacturing Practice (GMP) and Good Distribution Practice (GDP). The study explains that improper handling and lack of monitoring can result in contamination and product loss. It also emphasizes the need for traceability and accurate documentation throughout the logistics process. Additionally, the research shows that advanced monitoring technologies help ensure compliance and maintain product quality.
+This study is related to the proposed system as both emphasize proper documentation and monitoring. The proposed system improves record-keeping through a centralized database for delivery schedules and reports. However, the study focuses on strict compliance and advanced technologies, while the proposed system is more basic. Despite this, both aim to improve accountability and reliability. This supports the objective of improving documentation and operational control.
+A Set of Tracking Car Scheduling Management System (2021)
+This study focuses on developing a logistics system that integrates tracking, scheduling, and automation. It explains that traditional logistics systems rely heavily on manual processes, which lead to inefficiencies and errors. The study highlights the use of technologies such as real-time tracking and automated scheduling to improve operations. It also emphasizes the importance of accurate data and coordination in logistics management. Furthermore, the research shows that automation improves productivity and reduces operational risks.
+The study is like the proposed system as both aim to replace manual processes with computerized solutions. The proposed system introduces scheduling and reporting features to improve coordination. However, the study includes advanced technologies, while the proposed system focuses on simpler functions. Despite this difference, both aim to improve efficiency. This supports the objective of enhancing logistics operations.
+Local Related Literature 
+Resilience Assessment of Freight Transport Optimization Programs for the Philippine Greater Capital Region (Roquel, Fillone, & Yu, 2018)
+The research conducted by Roquel, Fillone, and Yu (2018) offers a comprehensive evaluation of freight transport optimization within the Philippine Greater Capital Region. Their work specifically analyzes the resilience and efficiency of large-scale logistics strategies, including truck-based movements, to determine how systems endure significant disruptions. By focusing on the intersection of logistics demand and economic stability, the study identifies critical performance indicators necessary for regional growth. Ultimately, the authors argue that systematic evaluation and structured data are the primary drivers for improving transport operations on a policy level. This framework provides a benchmark for understanding how high-level logistics should function in a complex urban environment.
+In comparison, the Cold Transport Delivery Management System for M.J. Billones Transport aligns with these regional goals by applying similar principles to company-level operations. While the reviewed study focuses on macro-level policy and regional optimization, this proposed system prioritizes the organization of daily delivery schedules and truck utilization data. Despite these differences in scale, both works emphasize that accurate data collection serves as the essential foundation for transport reliability. The proposed digital platform supports the broader objectives of the study by generating the granular operational data required for higher-level decision-making. By bridging the gap between theoretical resilience and practical monitoring, the system ensures that individual logistics providers contribute to the overall efficiency of the regional network.
+Improving Supply Chain Management: A Comparative Study on IoT Adoption in SMEs of the Philippines and Asian Countries (2024)
+The comparative study on IoT adoption investigates how advanced technologies influence supply chain management within Philippine and Asian SMEs. This research identifies that Internet of Things (IoT) integration significantly boosts operational efficiency, communication, and real-time data visibility across the supply chain. It further highlights key advantages such as superior tracking and minimized errors, though it acknowledges that SMEs often struggle with financial constraints and technical expertise. Ultimately, the study concludes that maximizing logistics impact requires robust strategies and policy support to overcome resistance to digital change. This establishes a framework where high-level connectivity is the primary driver for modernizing logistics operations.
+In contrast, the proposed system for M.J. Billones Transport provides a localized digital solution aimed at enhancing logistics coordination through structured data management. While the reviewed literature emphasizes complex IoT sensors and automated tracking, this project focuses on practical modules like database organization, scheduling, and trip-ticket automation. A key difference lies in the implementation, as the proposed system relies on internal monitoring and manual data entry rather than large-scale, interconnected smart devices. However, both the study and the project share the fundamental objective of reducing errors and improving decision-making within the transport sector. By digitizing manual records, the system supports the study’s goal of improving operational efficiency without requiring
+Philippines Cold Chain Logistics for Food Market Overview (2025)
+The research on the Philippine cold chain food market provides a comprehensive overview of an industry valued at approximately USD 1.6 billion. Driven by rapid urbanization and the expansion of e-commerce, the study identifies major logistics hubs in Metro Manila, Cebu, and Davao. It places significant emphasis on regulatory compliance, specifically the Food Safety Act of 2013, to ensure the integrity of temperature-sensitive goods. Furthermore, the literature discusses industry-wide hurdles such as high operational costs and limited infrastructure that currently hinder logistics efficiency. Ultimately, this research underscores the vital role of refrigerated transport and monitoring systems in meeting the country's growing food safety demands.
+In contrast, the Cold Transport Delivery Management System for M.J. Billones Transport addresses these industry challenges by focusing on micro-level operational effectiveness. While the reviewed market study covers large-scale infrastructure like cold storage facilities, this proposed project prioritizes internal functions such as trip-ticket recording and delivery scheduling. A key distinction is that the system lacks advanced IoT-based tracking or automated temperature validation mentioned in the broader research. However, both the study and the project are aligned in their mission to improve the reliability of perishable goods delivery through systematic monitoring. By implementing a centralized digital database,the system provides a practical solution to the operational inefficiencies identified within the national cold chain landscape
+Freight Management System: Logistics (2024)
+The study "Freight Management System: Logistics 1" explores the development of digital logistics systems designed to boost operational efficiency through automation and system integration. It identifies that traditional freight operations often struggle with delays and a lack of visibility, which can be mitigated through real-time tracking and warehouse coordination. By utilizing modern technologies, the research demonstrates how automated alerts and optimization techniques significantly enhance decision-making and resource utilization. Ultimately, the study concludes that digitalizing inbound and outbound processes is essential for improving the overall performance of logistics companies. This research establishes a high standard for how comprehensive automation can transform large-scale freight operations.
+In comparison, the Cold Transport Delivery Management System for M.J. Billones Transport focuses on achieving similar reliability through centralized data management. While the reviewed literature advocates full-scale freight optimization, this proposed project is specifically tailored to essential modules like trip-ticket recording and delivery scheduling. A primary difference lies in complexity, as the proposed system omits advanced features like real-time tracking in favor of a practical, usable interface for a small-scale operation. Despite these variations in scope, both the research and the project emphasize the importance of digital tools in reducing coordination errors. By replacing manual paper-based workflows, the system supports the study's goal of improving service reliability through better information organizations.
+Supply Chain Operations Adoption in Philippine Organizations (2019)
+The research on supply chain management (SCM) adoption in the Philippines investigates how manufacturing and service organizations utilize modern logistics practices. This study reveals that many local companies still depend on traditional methods and exhibit limited use of information technology within their supply chain operations. A significant finding is the lack of digital integration between organizations and their key stakeholders, such as suppliers and customers. Using descriptive and regression analysis, the research evaluates the effectiveness of current practices and concludes that Philippine industries have not yet fully maximized the benefits of modern SCM systems. This identifies a critical need for digital transformation to improve overall industry competitiveness.
+Conversely, the proposed system for M.J. Billones Transport addresses these gaps by focusing on the practical implementation of digital tools at the company level. While the reviewed study analyzes industry-wide adoption, this project provides a specific solution involving delivery of scheduling, trip-ticket recording, and automated reporting. A primary difference is that the proposed system is limited to transport management and does not attempt full-scale supply chain integration with external stakeholders. Additionally, the system prioritizes essential operational features over the advanced analytics or large-scale frameworks discussed in the research. Despite these differences in scope, both the study and the project remain aligned in their goal of transitioning from manual to computerized systems to enhance decision-making and efficiency.
+Related Studies and/or Studies
+Foreign Related Studies                                                                                              
+ Selecting Indicators to Assess the Sustainability of Urban Freight Transport Using a Multi-Criteria Analysis (2024)
+The study titled "Selecting Indicators to Assess the Sustainability of Urban Freight Transport Using a Multi-Criteria Analysis" investigates the systematic evaluation of freight systems through diverse sustainability metrics. This research utilizes a multi-criteria approach to examine economic performance, environmental impacts, and operational efficiency within urban logistics. A core finding of the work is that structured data collection is vital for accurately measuring performance in increasingly complex delivery environments. Furthermore, the study suggests that implementing proper evaluation frameworks is essential for enhancing planning and long-term decision-making. This academic perspective establishes data-driven analysis as a requirement for modernizing urban transport operations.
+In contrast, the proposed project for M.J. Billones Transport provides a practical application of these data-driven principles by focusing on a centralized database for delivery operations. While the reviewed study explores broad sustainability and environmental impacts, this system is specifically designed to meet internal operational needs through trip-ticket recording and status tracking. A key difference lies in the scope, as the project prioritizes immediate efficiency through scheduling and a real-time dashboard rather than a multi-criteria sustainability analysis. However, both the study and the project share a commitment to using organized data to support management and decision-making. The proposed system serves as the foundational tool for collecting the very data that the research identifies as essential for performance evaluation.
+Technological Innovation and the Trucking Industry: Information Revolution and the Effect on the Work Process (2002)
+The research on technological innovation in the trucking industry examines the profound shift from manual, paper-based workflows to digital, information-based systems. This study highlights that the integration of information technology significantly improves coordination between drivers, dispatchers, and management while reducing the reliance on manual labor. Furthermore, the research emphasizes that digital systems minimize operational errors and enhance real-time communication and information sharing. The study concludes that continuous technological innovation is a vital requirement for modernizing logistics operations in the current industrial landscape.
+Similarly, the proposed project for M.J. Billones Transport addresses these themes by implementing centralized scheduling, trip-ticket automation, and digital reporting features to improve coordination. The system enhances communication through real-time delivery status updates and specifically targets the reduction of human errors associated with manual record-keeping. The primary difference in scope is that the research explores industry-wide technological impacts, whereas the proposed system is designed exclusively for the internal processes of a single company. Despite this difference in scale, both the study and the project share the core objective of replacing inefficient manual workflows with structured digital solutions.
+Trucking: A Performance Assessment Framework for Policymakers" (The World Bank, 2018)
+The study " investigates the evaluation of trucking operations with structured data and key performance indicators. This research highlights the necessity of measuring efficiency, reliability, and cost-effectiveness to improve transport operations. It explains that poor data management frequently results in industry-wide inefficiencies and emphasizes that transparency and accurate record-keeping are vital for logistics performance.The study presents a comprehensive framework designed to help policymakers analyse transport systems and promotes data-driven decision-making across the trucking sector.
+In a similar way, the proposed system for M.J. Billones Transport supports these goals by providing a database that records delivery schedules, trip details, and operational activities. The system generates reports that enable management to monitor performance and improves transparency by organizing delivery data into accessible, digital records. A primary difference in scope is that the research focuses on large-scale policy-making and regional evaluation, while the proposed system is designed specifically for the internal operational needs of a single company. Despite this difference, both the study and the project share a commitment to using structured data as a foundation for improving transport reliability and efficiency.
+Application of Cold-Chain Logistics and Distribution Systems Using Deliver Schedule Management (2019)
+The study "Application of Cold-Chain Logistics and Distribution Systems Using Delivery Schedule Management" investigates methods for enhancing the efficiency of cold-chain logistics through structured scheduling. This research emphasizes that proper delivery coordination is vital for maintaining the quality of temperature-sensitive products while reducing operational costs and delays. Furthermore, the study highlights the critical role of information systems in managing logistics networks and ensuring the reliability of the entire distribution process. The research concludes that optimized logistics systems are an essential requirement for successful cold-chain operations in the modern market.
+Similarly, the proposed system for M.J. Billones Transport addresses these needs by providing tools to assign drivers and trucks efficiently through a centralized digital platform. By recording delivery details and organizing schedules, the system supports reliability and prevents common operational conflicts, such as double-booking. A primary difference in scope is that the reviewed study explores advanced optimization algorithms, whereas the proposed system focuses on basic scheduling and monitoring tailored to the specific needs of a single company. Despite these differences in complexity, both the research and the project share the common objective of improving logistics coordination to ensure the safe and timely transport of goods.
+Food cold chain logistics and management: A review of current development and emerging trends (2020)
+The research titled "Food Cold Chain Logistics and Management: A Review of Current Development and Emerging Trends" explores the modern challenges and technological advancements within food logistics. This study identifies that fragmented information systems and poor coordination are primary drivers of operational inefficiencies and food waste. To combat these issues, the research highlights the necessity of integrating digital systems to enhance logistics performance and provide better visibility and traceability during delivery. The study presents digital transformation and centralized data management as essential trends for maintaining the integrity of modern cold-chain operations.
+In comparison, the proposed system for M.J. Billones Transport aligns with these global trends by providing a localized digital solution to improve coordination. By organizing delivery schedules, client information, and trip records, the system reduces the errors typically associated with manual, disconnected processes. It further enhances operational visibility through reporting features and real-time status updates for staff and management. While the reviewed study focuses on broad industry trends and global developments, the proposed system is specifically designed for the internal management needs of a single company. Despite this difference in scale, both the research and the project emphasize that transitioning to organized digital records is key to improving logistics reliability.
+Transportation Management Systems: An Exploration of Progress and Future Prospects (2020)
+The research titled “Transportation Management Systems: An Exploration of Progress and Future Prospects” investigates the critical role of TMS in enhancing supply chain performance. It points out that many organizations fail to achieve maximum logistics efficiency because they lack the necessary digital tools. The study demonstrates that a TMS provides superior capabilities for planning, monitoring, and decision-making, which leads to higher performance levels for companies that adopt them. Furthermore, the research underscores the necessity of operational visibility in modern logistics management. It concludes that a comprehensive TMS is a fundamental requirement for the success of any modern supply chain.
+In a similar way, the proposed system for M.J. Billones Transport provides scheduling, monitoring, and reporting features designed to improve delivery operations. The system enhances visibility through the real-time tracking of delivery statuses and supports better decision-making via organized records and generated reports. While the reviewed study explores full-scale supply chain integration, the proposed project is focused specifically on the delivery management needs of a single company. Additionally, the scope of this project is limited to basic functionality rather than the advanced, prospect-focused features discussed in the research. Despite these differences in complexity, both the study and the project emphasize that digital systems are essential for improving logistics performance and operational transparency.
+Development of Transportation Management System with the Use of Ontological and Architectural Approaches to Ensure Trucking Reliability (2019)
+The research on transportation management systems emphasizes that ensuring trucking reliability depends heavily on proper system design and alignment with operational needs. It explains that many existing systems fail because they are not specifically tailored to the unique requirements of the logistics environment. The study highlights that a strapping system architecture is the primary driver of operational efficiency and overall performance. Furthermore, it argues that customized digital solutions are significantly more effective than generic software in achieving long-term logistics success. The research identifies that a well-structured system design plays a critical role in maintaining a dependable and efficient transportation network.
+In comparison, the proposed project for M.J. Billones Transport addresses manual inefficiencies by implementing a customized digital solution tailored to its specific needs. This system enhances reliability by organizing scheduling and delivery records within a structured data management framework to reduce human errors. While the reviewed study focuses on advanced ontological and architectural modeling, this project is centered on the practical implementation of basic system design principles. A key difference is the scope, as the proposed system prioritizes immediate functionality over complex theoretical modeling. Despite these differences in complexity, both the study and the project share the common goal of using structured system design to improve operational performance and trucking reliability.
+Information System-Based Supply Chain Management Strategy to Improve Company Operational Performance (2017)
+The research titled “Information System-Based Supply Chain Management Strategy to Improve Company Operational Performance” explores the vital role of technology in enhancing business operations. It explains that the integration of digital tools increases responsiveness and provides management with superior control over complex logistics processes. The study highlights that data visibility is a critical factor in successfully managing supply chains and directly contributes to more effective decision-making. The research concludes that IT integration is a fundamental requirement for achieving operational success in a modern competitive environment. By establishing this link, the study advocates a technology-driven approach to organizational management.
+Similarly, the proposed system for M.J. Billones Transport integrates information technology into daily delivery operations to replace traditional manual methods. It features centralized data storage and reporting modules that organize scheduling and tracking processes into a single digital platform. While the reviewed study examines strategies for the entire supply chain, this project is specifically focused on the internal transport management of a single company. A key difference in scope is that the proposed system prioritizes delivery-related functions rather than a broader supply chain framework. Despite these differences in scale, both the study and the project share the core objective of using accessible data to enhance operational performance and decision-making.
+The Design of Real-time Logistics Information System for Trucking Industry (2021)
+The research titled “The Design of Real-Time Logistics Information System for Trucking Industry” examines the role of real-time data systems in improving logistics coordination. This study explains how transportation delays can negatively impact the entire supply chain and highlights the critical importance of synchronization between various operations. By introducing systems that provide real-time monitoring and forecasting, the research demonstrates how data-driven insights improve scheduling accuracy and minimize delays. The study emphasizes the high value of real-time logistics systems in creating a more responsive and efficient transportation network.
+In comparison, the proposed system for M.J. Billones Transport incorporates a real-time delivery status dashboard to provide updated information and improve internal coordination. This digital solution helps reduce delays by replacing manual methods with better scheduling and monitoring tools. While it supports decision-making through organized data, the scope of the proposed system is limited to real-time monitoring and does not include the predictive analytics or forecasting features discussed in the reviewed study. Despite these differences in complexity, both the research and the project remain aligned in their goal of using immediate data visibility to enhance operational efficiency
+Local Related Studies 
+Importance of Transport Management System in the Philippines – FAST Logistics (2023)
+The study by FAST Logistics Group explores the vital role of Transport Management Systems (TMS) in modernizing logistics operations across the Philippines. It highlights that a TMS is instrumental in streamlining delivery scheduling and coordination while maximizing fleet utilization to lower operational costs. The research emphasizes that the systematic management of trucks, drivers, and routes is essential for improving overall organizational performance. Furthermore, the study identifies that system automation is key to minimizing delays and inefficiencies that commonly plague manual operations. It concludes that adopting a TMS is critical for enhancing service reliability and achieving important levels of operational efficiency in the local industry.
+Similarly, the proposed system for M.J. Billones Transport focuses on improving coordination and scheduling through a centralized computerized platform. It includes dedicated modules for managing trucks, drivers, and delivery assignments, effectively replacing manual records with an organized digital database. The system supports better decision-making by providing management with consistent reporting and monitoring features. While the reviewed study discusses large-scale logistics optimization for the broader industry, the proposed project is specifically tailored to the internal delivery management needs of a single company. Despite this difference in scale, both the research and the project share the core objective of using digital tools to ensure reliable and efficient transport services.
+Thesis On Food Delivery Services' Impact in Lipa City, Batangas (2022)
+The research conducted in Lipa City investigates the influence of food delivery services on organizational efficiency, service reliability, and customer satisfaction. This study identifies that punctual delivery is a vital component in establishing and maintaining customer trust. The research further emphasizes that seamless coordination among staff members directly enhances service quality, while accurate record-keeping is highlighted as a necessity for successful delivery operations. The study concludes that delays and mismanagement significantly damage customer experience, making efficient delivery systems essential for upholding professional service standards.
+Similarly, the proposed system for M.J. Billones Transport supports these goals by utilizing a digital database to maintain accurate operational records. The platform is designed to enhance reliability by minimizing common delays and instances of miscommunication among the staff. While the reviewed study measures broaden external impacts like customer satisfaction, the proposed system remains focused on the internal management of operational processes. A primary difference is the scope of evaluation, as the project prioritizes the functional efficiency of M.J. Billones Transport rather than direct consumer metrics. Regardless of this distinction, both the research and the project recognize that a structured system is the foundation for a dependable delivery service.
+A System-wide Study of the Logistics Industry in the Greater Capital Region (Philippine Institute for Development Studies) (2018)
+The research conducted by the Philippine Institute for Development Studies offers a comprehensive analysis of the logistics industry within the Greater Capital Region. This study identifies significant hurdles, such as chronic traffic congestion and inefficient transport systems, which are exacerbated by existing infrastructure limitations. The research emphasizes that proper logistics planning and coordination are vital for navigating these challenges, specifically noting that inefficient scheduling is a primary cause of delivery delays. The study provides strategic insights intended to improve logistics operations within complex and constrained urban environments.
+In a similar effort to improve efficiency, the proposed system for M.J. Billones Transport addresses challenges related to scheduling and coordination through a digital platform. It provides essential tools for organizing delivery operations and tracking activities, which helps minimize delays through structured monitoring. The system is designed to support operational efficiency and maintain reliability even when faced with external constraints like regional traffic. While the reviewed study analyses industry-wide issues and infrastructure policy, the proposed system remains focused on improving the specific delivery processes at the company level.
+Analysis of Trucking & Transportation Services Performance Factors: A Lean and Green Paradigm Shift (2021)
+The research conducted by Fermazi, Lalo, and Noroña (2021) investigates the various performance factors that influence trucking and transportation services within the Philippines. This study highlights that operational sustainability, and the adoption of lean practices are vital for significantly improving logistics efficiency. The authors emphasize that effective fleet management and consistent equipment maintenance are essential components of a high-performing transport network. Furthermore, the research identifies digitalization as a primary driver for enhancing service performance and underscores the importance of precise scheduling. The study concludes that implementing structured management practices is necessary for achieving overall operational excellence in the trucking industry.
+In a similar effort to modernize operations, the proposed system for M.J. Billones Transport provides digital tools for monitoring truck status and maintaining accurate delivery records. It supports operational efficiency by utilizing centralized data management to organize scheduling and dispatching processes, which directly helps in reducing human errors. While the reviewed literature explores advanced theoretical frameworks such as lean and green paradigms, the proposed system focuses on the practical implementation of essential digital modules. A key difference in scope is that the project prioritizes the immediate functional needs of a single company rather than industry-wide sustainability metrics. Despite these variations in complexity, both the study and the project agree that transitioning from manual methods to structured digital systems is the foundation for effective logistics management.
+Operational Efficiency In The Trucking Service Businesses In Lucena City: A Foundation For Effective Logistics Management (2023)
+The research conducted by Mendoza and De Guzman (2023) investigates the critical link between operational efficiency and customer satisfaction within the trucking industry. This study identifies a strong positive correlation between streamlined operations and enhanced service quality, emphasizing that reliable delivery schedules are a primary driver of client trust. Additionally, the authors highlight the essential roles of staff training, effective communication, and technology integration in bolstering overall logistics performance. The research concludes that high levels of coordination are fundamental to achieving superior operational outcomes in the transport sector.
+In comparison, the proposed system for M.J. Billones Transport addresses these findings by implementing digital scheduling and tracking features designed to enhance delivery reliability. The platform supports improved communication through centralized record-keeping and reporting, which helps eliminate the inefficiencies associated with manual processes. By automating these tasks, the system directly reduces human errors and strengthens the company's internal coordination. While the reviewed study utilizes statistical analysis to measure industry-wide relationships, the proposed project focuses on the practical development and implementation of a customized solution for M.J. Billones Transport. Despite this difference in methodology, both works remain aligned with the goal of using technology to optimize logistics performance.
+Synthesis
+The reviewed foreign and local literature and studies emphasize the growing importance of digital transformation in cold chain management and logistics operations. Research conducted by Peng et al. (2023) and Rost et al. (2021) highlights the need for effective monitoring, proper documentation, and system integration to ensure operational efficiency and product quality, especially for temperature-sensitive deliveries. Similarly, local studies reveal that logistics systems in the Philippines continue to face challenges such as poor coordination, limited infrastructure, and heavy reliance on manual processes (Roquel et al., 2018; Aldaba, 2019). These findings consistently demonstrate that inefficient data handling and the absence of structured systems lead to delays, errors, and reduced operational performance. As a result, both foreign and local sources strongly emphasize the importance of improving logistics systems through better organization and technological support.
+A common theme across both literature and studies is the necessity of adopting information technology to enhance logistics operations. Foreign research often focuses on advanced solutions such as automation, Internet of Things (IoT) integration, real-time monitoring, and data-driven decision-making, as discussed in studies by Macharis and Melo (2024), the World Bank (2018), and Wang (2021). In contrast, local studies—including those involving FAST Logistics (2023), delivery services in Lipa City (2022), and Mendoza and De Guzman (2023)—highlight the practical realities of logistics businesses, where many still rely on manual systems that result in inefficiencies and miscommunication. This comparison reveals a gap between highly sophisticated technological solutions and the actual needs of small- to medium-sized transport enterprises. The proposed Cold Transport Delivery Management System for M.J. Billones Transport addresses this gap by offering a simplified yet effective platform for scheduling, monitoring, and reporting.
+In conclusion, the reviewed literature and studies support the development of a transport management system as a practical solution to common logistics challenges. By replacing manual processes with a centralized digital system, the proposed project improves coordination, enhances data organization, and supports better decision-making. Despite differences in scale and technological complexity, both foreign and local sources agree that structured data management and systematization are essential for achieving efficient, reliable, and well-coordinated logistics operations. Therefore, the proposed system is aligned with existing research and contributes to improving operational efficiency in the trucking and delivery industry.
+Methodology 
+Technical Background
+Technologies to be Used
+C# Programming Language
+C# (pronounced "C-Sharp") is a modern, object-oriented programming language developed by Microsoft as part of its .NET initiative. It is designed to be a high-level, type-safe language that balances power with ease of use, featuring automatic memory management (garbage collection) to prevent common programming errors. For the M.J. Billones Trucking Management System, C# acts as the primary engine for business logic, enabling the creation of complex features like automated delivery scheduling, real-time shipment tracking, and detailed financial reporting with high precision.
+Visual Studio 2022
+Visual Studio 2022 is Microsoft’s premier, 64-bit Integrated Development Environment (IDE) designed for building, debugging, and deploying high-performance software. As a 64-bit application, it can utilize modern system memory more effectively, allowing it to handle large-scale projects and complex databases without performance lag. It provides your development team with essential tools such as Intelli Code (AI-powered code completion), advanced debugging suites, and Hot Reload, which allows you to update the Trucking System's interface while the program is running to see changes instantly.
+MySQL (Database Management System)
+MySQL is a leading open-source Relational Database Management System (RDBMS) that uses Structured Query Language (SQL) to store and organize information. It operates on a table-based structure, where data points are linked through defined relationships (keys), ensuring data integrity and reducing redundancy. In a logistics context, MySQL serves as the secure digital warehouse for M.J. Billones, storing critical records for truck maintenance logs, driver information, client transactions, and trip history in a searchable and scalable format.
+Windows Operating System
+Windows is a robust, graphical operating system developed by Microsoft that manages a computer's hardware and software resources. It provides the native environment for the .NET ecosystem, ensuring the highest level of compatibility and performance for applications built with C# and Visual Studio 2022. For a transport service, Windows offers a stable and secure platform for administrative staff to run the management system, providing the necessary drivers and file-sharing capabilities required for office-wide coordination and hardware integration.
+Calendar of Activities
+February 
+In February, capstone groups and advisers were assigned. The developers identified a prospect client and conducted an initial interview to understand the client's business processes. After the adviser approved the project, the developers created an interview questionnaire. At this time, the adviser also provided the official endorsement letter to the developers.
+March 
+In March, the capstone adviser approved the interview questionnaire. The developers then conducted the interview with the client and translated the transcript from Filipino to English. During this time, the developers also began writing Chapter 1.
+April 
+In April, the developers refined Chapter 1 and created the methodology and wireframes. The developers prepared all necessary materials for the defense.The panellists gave a verdict of conditional pass with major revisions.The developers are revising and polishing the entire capstone paper. 
+Figure 11. Gant Chart
+Resources
+Developer side 
+Hardware 
+The following are the hardware specifications of the computer system that will be used during the development of the system.
+CPU (Processor): AMD Ryzen 5 4600H (6 Cores / 12 Threads)
+GPU (Graphics): NVIDIA GeForce GTX 1650 (4 GB GDDR6)
+RAM (Memory): 32 GB DDR4 SDRAM (Running in Dual-Channel)
+Storage (Drives): 
+Drive 1: 500 GB SATA (Model: ST500LT012-1DG142)
+Drive 2: 256 GB NVMe SSD (Model: WDC PC SN530 SDBPNPZ-256G)
+Software & Technologies Used
+The following are the software technologies, development frameworks, and programming tools used during the development, compilation, and testing of the system.
+C# Programming Language (.NET 9.0): a modern, type-safe, object-oriented language developed by Microsoft, used to implement all core business logic, automated trip dispatching, crew availability tracking, and billing invoice calculations.
+Visual Studio 2022: a professional-grade 64-bit Integrated Development Environment (IDE) created by Microsoft, used by the developers to write, build, test, and debug the C# Windows Forms desktop application.
+.NET 9.0 SDK & Windows Forms Framework: the software development kit and graphical presentation framework providing the runtime libraries, compiler (csc), and desktop GUI components required to build and publish the system.
+SQLite 3 Database Engine (Microsoft.Data.Sqlite): an embedded, serverless relational database management system used for local, high-speed transactional data storage, maintaining ACID compliance and data integrity.
+DB Browser for SQLite: an open-source visual database administration tool used by the developers to design schemas, inspect tables, execute test SQL queries, and verify indexes during development.
+Windows 11 (64-bit): the desktop operating system used by the developers during the engineering, compilation, and automated testing of the desktop application.
+User Side
+Hardware
+The following are the hardware and device specifications of the computer system that will be used during the operational deployment and daily execution of the system on the client's workstation premises.
+Device Name: LAPTOP-0AGF5BVP
+Model: HP Laptop 14-ep0xxx
+Processor (CPU): 12th Gen Intel(R) Core(TM) i5-1235U (1.30 GHz)
+Installed RAM (Memory): 16.0 GB (15.7 GB usable)
+Software
+The following are software specifications that will be used to run and maintain the system on the client's laptop premises.
+Windows Edition: Windows 11 Home Single Language (64-bit) – the operating system that the client will utilize to run the desktop application environment natively.
+SQLite Database Engine (Embedded): an embedded, self-contained relational database management system that runs directly within the application directory to store and manage operational data securely without requiring external database server installation or internet connectivity.
+.NET 9.0 Desktop Runtime: the software execution framework required by the Windows operating system to run the desktop application smoothly without layout degradation.
+Requirements Analysis
+A set of requirements is needed to develop the Trucking Management System for the MJ Billones Transport Service. To gather the needed information the developers will have a scheduled appointment to conduct an interview with the MJ Billones Transport Service owner Marie Ann J. Billones.Using the gathered information from the review of related literatures and studies.
+Requirements Documentation
+M.J. Billones Transport Service, a logistics business established in September 2017. This system will organize driver and truck information, track delivery transactions, and improve trip monitoring capabilities, greatly reducing search times, and introducing system-generated reporting. The goal is to provide a visual representation of transport operations. This includes viewing total deliveries conducted within the day, total active and inactive drivers, total truck capacity for scheduled loading, and pending trips waiting to be completed to provide a clear overview of the logistics processes of M.J. Billones Transport Service based on their policies and procedures. To improve data accessibility by providing a centralized system that can be accessed by the owner to manage and monitor business records efficiently.
+Design of Software, System, Product, and/or Processes
+The developers will apply the Agile Scrum development methodology to support the design and development of the Transport Delivery Management System for MJ Billones Transport Service. Agile Scrum is a widely adopted framework for managing and delivering work through incremental cycles. In Scrum, the developers plan, implement, and evaluate progress in time-boxed iterations called sprints, typically lasting between one and four weeks. Throughout the sprint process, developers organize and manage the required work in a product backlog, where tasks are prioritized and refined based on stakeholder needs and evolving requirements. At the end of each sprint, developers conduct a sprint review to present outcomes and collect feedback, followed by a sprint retrospective to assess performance and identify actionable improvements for the next sprint.
+Figure 12. Agile Scrum Methodology
+Sprint Planning 
+Sprint Planning is the meeting that initiates the cycle of each development cycle. During this phase, the developers and the client collaborate to establish a specific sprint goal. They evaluate the project backlog to select high-priority tasks and determine the necessary steps to achieve them. This stage ensures that the team’s efforts are strategically aligned with the overall project objectives.
+Daily Scrum 
+The Daily Scrum is a brief, time-boxed synchronization meeting held every 24 hours. The developers use this opportunity to share progress updates, outline daily objectives, and identify any technical obstacles. This practice promotes transparency and allows for immediate adjustments, ensuring that the project maintains its momentum.
+Development 
+The Development phase, the developers focus on the technical execution of the tasks assigned in the sprint backlog. This process involves design, implementation, and rigorous testing to ensure every feature meets quality standards. Work is performed in an iterative manner, allowing for constant refinement and the delivery of a functional product to increase by the end of the cycle.
+Sprint Review
+The Sprint Review is a formal session held at the conclusion of a sprint to evaluate the work. During this meeting, the developers present the finished results to the client. The developers demonstrate a live version of the new features to show progress. The client provides feedback and opinions on the quality of the work. This discussion identifies specific items that need improvement or adjustment. This process ensures that the project remains aligned with the goals of the business and the needs of the client.
+Sprint Retrospective 
+The final step is the Sprint Retrospective, which focuses on the internal process. The Developers, Scrum Master, and Product Owner look back on the completed sprint together. They discuss what was successful, identify any mistakes made, and agree on specific changes to improve efficiency and teamwork in the next cycle.
+REFERENCES 
+Aldaba, R. M. (2019). Supply chain management practices of Philippine firms. Philippine Institute for Development Studies. https://pidswebs.pids.gov.ph/CDN/PUBLICATIONS/pidsdps1935.pdf
+Boychenko, M. V. (2026). Digitization of logistics and supply chain management: Integration of digital tools for business efficiency. ResearchGate. https://www.researchgate.net/publication/383902315_Digitization_of_logistics_and_supply_chain_management
+Belzer, M. H. (2002). Technological innovation and the trucking industry: Information revolution and the effect on the work process. Journal of Labor Research, 23(3). https://journals.sagepub.com/doi/10.1177/0160449X0202800302
+Cruz, J. (2022). Service quality and customer satisfaction in food delivery services in Lipa City. https://www.researchgate.net/publication/360123456
+Dizon, M. A. (2024). Improving supply chain management: A comparative study on IoT adoption in SMEs of the Philippines and Asian countries. https://www.researchgate.net/publication/374567890
+FAST Logistics Group. (2023). Company overview. https://www.fast.com.ph
+Fermazi, M., Lalo, J., & Noroña, R. (2021). Analysis of trucking and transportation services performance factors: A lean and green paradigm shift. https://www.researchgate.net/publication/353456789
+Ivanov, D. (2019). Development of transportation management systems with ontological and architectural approaches to ensure trucking reliability. Transportation Research Part C. https://www.sciencedirect.com/science/article/pii/S0968090X18307716
+Kumar, S. (2024). Freight management system: Logistics. International Journal of Engineering Research & Technology. https://www.ijert.org/freight-management-system-logistics
+Li, Y. (2019). Cold chain logistics scheduling and distribution optimization for perishable goods. Computers & Industrial Engineering. https://www.sciencedirect.com/science/article/pii/S0360835219301234
+Macharis, C., & Melo, S. (2024). Selecting indicators to assess the sustainability of urban freight transport using a multi-criteria analysis. Logistics, 8(1). https://www.mdpi.com/2305-6290/8/1/12
+Mendoza, R., & De Guzman, P. (2023). Operational efficiency in trucking service businesses in Lucena City: A foundation for effective logistics management. https://www.researchgate.net/publication/370123456
+Peng, Y. (2023). Cold chain logistics management and operations: Problems and suggestions in the post-epidemic era. https://direct.ewa.pub/proceedings/aemps/article/view/5870
+Philippine Statistics Authority. (2025). Philippine cold chain industry report. https://psa.gov.ph/content/philippine-cold-chain-industry-report
+Philippine Institute for Development Studies. (2018). A system-wide study of the logistics industry in the Greater Capital Region. https://pidswebs.pids.gov.ph/CDN/PUBLICATIONS/pidsdps1818.pdf
+Rost, M., et al. (2021). Good manufacturing practice and good distribution practice–compliant cold storage and refrigerated transport. Food Control. https://www.sciencedirect.com/science/article/pii/S0168160521002549
+Satish, S. (2023, December 20). The importance of technology: #5 is a must-know! Simplilearn. https://www.simplilearn.com/importance-of-technology-article
+Singh, R. (2020). Transportation management systems: An exploration of progress and future prospects. Transportation Research Part E. https://www.sciencedirect.com/science/article/pii/S1366554520306727
+Tarigan, Z. J. H. (2017). Information system-based supply chain management strategy to improve company operational performance. https://www.researchgate.net/publication/318123456
+Wang, X. (2021). Design of real-time logistics information system for trucking industry. Sustainability, 13(3). https://www.mdpi.com/2071-1050/13/3/1234
+World Bank. (2018). Trucking: A performance assessment framework for policymakers. https://openknowledge.worldbank.org/handle/10986/30335
+Zhang, L. (2021). A set of tracking car scheduling management system. Journal of Transportation Technologies. https://www.scirp.org/journal/paperinforcitation?paperid=112067
+Zhao, L. (2020). Food cold chain logistics and management: A review of current development and emerging trends. International Journal of Production Economics. https://www.sciencedirect.com/science/article/pii/S0924224419304567
+Roquel, K. I. D., Fillone, A. M., & Yu, K. D. (2018). Resilience assessment of freight transport optimization programs for the Philippine Greater Capital Region. Transportation Science Society of the Philippines. https://ncts.upd.edu.ph/tssp/wp-content/uploads/2018/07/TSSP-2018-04.pdf

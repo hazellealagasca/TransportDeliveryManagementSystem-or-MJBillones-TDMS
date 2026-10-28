@@ -12,6 +12,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public BackupRestoreView()
         {
             InitializeComponent();
+            Pal.RemapTree(this);
             lblDbStatus.Text = $"Database Path: {MJdatabase.DbFilePath}\nStatus: Online & Connected (SQLite Embedded)";
         }
 
@@ -35,11 +36,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     if (MJdatabase.BackupDatabase(sfd.FileName))
                     {
-                        MessageBox.Show("Database backup created successfully!", "Backup Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("Backup created and checked. It can be restored on this or another copy of the app.", "Backup Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     else
                     {
-                        MessageBox.Show("Failed to create database backup.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show("The backup wasn't created.\n\n" + MJdatabase.LastBackupError, "Backup failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
@@ -71,11 +72,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     if (MJdatabase.RestoreDatabase(ofd.FileName))
                     {
-                        MessageBox.Show("System database restored successfully! Please restart the application.", "Restore Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("Database restored. A safety copy of the previous data was saved in the Backups folder.\n\nPlease restart the application so every screen reloads the restored data.", "Restore Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     else
                     {
-                        MessageBox.Show("Failed to restore database from selected file.", "Restore Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show("The database wasn't restored.\n\n" + MJdatabase.LastRestoreError, "Restore failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }

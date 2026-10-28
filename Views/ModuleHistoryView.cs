@@ -23,6 +23,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Button btnRefresh = new Button();
         private Button btnExport = new Button();
         private Label lblCount = new Label();
+        private TileStrip tiles = null!;
+        private StatTile tAll = null!, tAdd = null!, tUpd = null!, tDel = null!, tOther = null!;
+        private int D(int v) => PageKit.D(this, v);
+        private static readonly Dictionary<string, string> FriendlyTable = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Trucks"] = "trucks", ["Crews"] = "crew", ["Invoices"] = "invoices", ["CollectionReceipts"] = "receipts",
+            ["StatementsOfAccount"] = "statements of account", ["LookupCategories"] = "categories", ["Clients"] = "clients",
+            ["DeliveryRoutes"] = "delivery routes", ["LoadingSchedules"] = "loading orders", ["Deliveries"] = "dispatches"
+        };
+        private string Scope() => targetTables == null || targetTables.Length == 0 ? "every module"
+            : string.Join(", ", targetTables.Select(t => FriendlyTable.TryGetValue(t, out var f) ? f : t));
         private List<AuditTrailEntry> rawLogs = new List<AuditTrailEntry>();
 
         public ModuleHistoryView(string moduleTitle, string[]? targetTables = null, bool isAdminOnly = false)
@@ -31,9 +42,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.targetTables = targetTables;
             this.isAdminOnly = isAdminOnly;
 
-            bool isAdmin = SessionContext.ActiveUser != null && 
-                (SessionContext.ActiveUser.Role == "Admin" || SessionContext.ActiveUser.Role == "Owner/Admin");
-
+            bool isAdmin = SessionContext.IsAdmin;
             if (isAdminOnly && !isAdmin)
             {
                 RenderRestrictedView();
@@ -42,7 +51,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 InitializeComponent();
                 SetupGridColumns();
-                DataExportHelper.AttachExportContextMenu(gridHistory, $"{moduleTitle.Replace(" ", "_")}_History", $"{moduleTitle} Audit History");
+                RowMenu.AttachBasic(gridHistory, $"{moduleTitle.Replace(" ", "_")}_History", $"{moduleTitle} Audit History");
                 LoadLogs();
             }
 
@@ -51,9 +60,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public void RefreshData()
         {
-            bool isAdmin = SessionContext.ActiveUser != null && 
-                (SessionContext.ActiveUser.Role == "Admin" || SessionContext.ActiveUser.Role == "Owner/Admin");
-
+            bool isAdmin = SessionContext.IsAdmin;
             if (!isAdminOnly || isAdmin)
             {
                 LoadLogs();
@@ -63,64 +70,60 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void RenderRestrictedView()
         {
             this.Dock = DockStyle.Fill;
-            this.BackColor = Color.FromArgb(248, 250, 252);
-
-            TableLayoutPanel layout = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 3,
-                RowCount = 3,
-                BackColor = Color.Transparent
-            };
+            this.BackColor = AppTheme.Canvas;
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 3, BackColor = Color.Transparent };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 540F));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 40F));
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-
-            Panel card = new Panel
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 60F));
+            var card = new TableLayoutPanel
             {
-                Size = new Size(540, 260),
-                BackColor = Color.White,
-                Padding = new Padding(32),
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 1,
+                BackColor = AppTheme.Surface,
+                Padding = new Padding(D(36), D(32), D(36), D(30)),
                 Margin = new Padding(0)
             };
             card.Paint += (s, e) =>
             {
-                using var p = new Pen(Color.FromArgb(226, 232, 240), 1.5f);
-                e.Graphics.DrawRectangle(p, 0, 0, card.Width - 1, card.Height - 1);
-                using var b = new SolidBrush(Color.FromArgb(190, 18, 60));
-                e.Graphics.FillRectangle(b, 0, 0, 6, card.Height);
+                Gfx.HighQuality(e.Graphics);
+                using var path = Gfx.RoundedRect(new Rectangle(0, 0, card.Width - 1, card.Height - 1), D(14));
+                using var pen = new Pen(AppTheme.Border);
+                e.Graphics.DrawPath(pen, path);
             };
 
-            Label lblIcon = new Label
+            var icon = new Label { Text = "🔒", Font = new Font("Segoe UI Emoji", 26F), AutoSize = true, Margin = new Padding(0, 0, 0, D(10)), Anchor = AnchorStyles.None };
+            var title = new Label { Text = "Only administrators can see this history", Font = new Font("Segoe UI Semibold", 15F), ForeColor = AppTheme.TextPrimary, AutoSize = true, Anchor = AnchorStyles.None, Margin = new Padding(0, 0, 0, D(8)), UseMnemonic = false };
+            var body = new Label
             {
-                Text = "🔒",
-                Font = new Font("Segoe UI", 32F),
+                Text = $"{moduleTitle} lists every add, change and delete made to {Scope()}, with who did it and when.\nAsk an administrator if you need to check a change.",
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = AppTheme.TextSecondary,
                 AutoSize = true,
-                Location = new Point(32, 28)
+                MaximumSize = new Size(D(520), 0),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Anchor = AnchorStyles.None,
+                UseMnemonic = false
             };
 
-            Label lblTitle = new Label
+            var who = new Label
             {
-                Text = "Administrator Access Required",
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(15, 23, 42),
-                Location = new Point(32, 88),
-                AutoSize = true
+                Text = $"Signed in as {SessionContext.ActiveUser?.Username} · {SessionContext.ActiveUser?.Role}",
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = AppTheme.TextMuted,
+                AutoSize = true,
+                Anchor = AnchorStyles.None,
+                Margin = new Padding(0, D(16), 0, 0),
+                UseMnemonic = false
             };
 
-            Label lblDesc = new Label
-            {
-                Text = $"The change tracking and audit history for {moduleTitle} is restricted to system administrators only.\n\nOnly administrative accounts have permission to review complete update, add, and delete records for this module.",
-                Font = new Font("Segoe UI", 9.5F),
-                ForeColor = Color.FromArgb(71, 85, 105),
-                Location = new Point(32, 126),
-                Size = new Size(470, 80)
-            };
-
-            card.Controls.AddRange(new Control[] { lblIcon, lblTitle, lblDesc });
+            card.Controls.Add(icon);
+            card.Controls.Add(title);
+            card.Controls.Add(body);
+            card.Controls.Add(who);
             layout.Controls.Add(card, 1, 1);
             this.Controls.Add(layout);
         }
@@ -128,168 +131,82 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void InitializeComponent()
         {
             this.Dock = DockStyle.Fill;
-            this.BackColor = Color.FromArgb(248, 250, 252);
+            this.BackColor = AppTheme.Canvas;
             this.Font = new Font("Segoe UI", 9.5F);
 
-            Panel pnlHeader = new Panel
+            this.Padding = new Padding(D(4), D(8), D(4), D(4));
+            var header = PageKit.Header(moduleTitle, $"Every add, change and delete made to {Scope()} — who did it, when, and what changed. Double-click a row to open the record.");
+            btnExport = PageKit.Action("⬇  Export CSV", "secondary", (s, e) => DataExportHelper.ExportToCsv(gridHistory, $"{moduleTitle.Replace(" ", "_")}_History", $"{moduleTitle} Audit History"));
+            btnRefresh = PageKit.Action("↻  Refresh", "secondary", (s, e) => LoadLogs());
+            header.AddActions(btnExport, btnRefresh);
+            tiles = new TileStrip();
+            tAll = tiles.Add(new StatTile("All changes", AppTheme.Accent, "in the period") { Clickable = true, Key = "All Actions" });
+            tAdd = tiles.Add(new StatTile("Added", AppTheme.Success, "new records") { Clickable = true, Key = "ADD" });
+            tUpd = tiles.Add(new StatTile("Updated", AppTheme.Info, "edits and status changes") { Clickable = true, Key = "UPDATE" });
+            tDel = tiles.Add(new StatTile("Deleted", AppTheme.Danger, "removed records") { Clickable = true, Key = "DELETE" });
+            tOther = tiles.Add(new StatTile("Last change", AppTheme.TextMuted, ""));
+            tiles.FilterChanged += t =>
             {
-                Dock = DockStyle.Top,
-                Height = 65,
-                BackColor = Color.White,
-                Padding = new Padding(20, 12, 20, 10)
+                string key = t?.Key as string ?? "All Actions";
+                if (cbActionFilter.Items.Contains(key)) cbActionFilter.SelectedItem = key; else cbActionFilter.SelectedIndex = 0;
             };
-            pnlHeader.Paint += (s, e) =>
-            {
-                using var p = new Pen(Color.FromArgb(226, 232, 240), 1f);
-                e.Graphics.DrawLine(p, 0, pnlHeader.Height - 1, pnlHeader.Width, pnlHeader.Height - 1);
-            };
-
-            Label lblModuleTitle = new Label
-            {
-                Text = $"📜 {moduleTitle}",
-                Font = new Font("Segoe UI", 12.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(15, 23, 42),
-                AutoSize = true,
-                Location = new Point(20, 12)
-            };
-
-            Label lblModuleSubtitle = new Label
-            {
-                Text = targetTables != null && targetTables.Length > 0
-                    ? $"Tracked Modules: {string.Join(", ", targetTables)} • Complete Add, Update, and Delete audit log"
-                    : "Master System Audit Log • Complete Add, Update, and Delete tracking across all modules",
-                Font = new Font("Segoe UI", 8.5F),
-                ForeColor = Color.FromArgb(100, 116, 139),
-                AutoSize = true,
-                Location = new Point(20, 38)
-            };
-
-            pnlHeader.Controls.AddRange(new Control[] { lblModuleTitle, lblModuleSubtitle });
-
-            FlowLayoutPanel pnlFilterBar = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = true,
-                Padding = new Padding(16, 10, 16, 10),
-                BackColor = Color.FromArgb(248, 250, 252)
-            };
-
-            Label lblSearch = new Label
-            {
-                Text = "🔍 Search:",
-                AutoSize = true,
-                Margin = new Padding(0, 7, 4, 0),
-                Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(51, 65, 85)
-            };
-
-            txtSearch.Size = new Size(200, 26);
-            txtSearch.Margin = new Padding(0, 4, 16, 0);
-            txtSearch.PlaceholderText = "Search user, ref #, field...";
-            txtSearch.MaxLength = 100;
-            txtSearch.TextChanged += (s, e) => ApplyFilter();
-
-            Label lblAction = new Label
-            {
-                Text = "Action:",
-                AutoSize = true,
-                Margin = new Padding(0, 7, 4, 0),
-                Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(51, 65, 85)
-            };
-
-            cbActionFilter.Size = new Size(140, 26);
-            cbActionFilter.Margin = new Padding(0, 4, 16, 0);
             cbActionFilter.DropDownStyle = ComboBoxStyle.DropDownList;
-            cbActionFilter.Items.AddRange(new object[]
-            {
-                "All Actions",
-                "ADD",
-                "UPDATE",
-                "DELETE",
-                "CANCEL",
-                "RESCHEDULE"
-            });
+            cbActionFilter.Items.AddRange(new object[] { "All Actions", "ADD", "UPDATE", "DELETE", "CANCEL", "RESCHEDULE" });
             cbActionFilter.SelectedIndex = 0;
             cbActionFilter.SelectedIndexChanged += (s, e) => ApplyFilter();
-
-            Label lblDate = new Label
+            var filterCard = new TableLayoutPanel
             {
-                Text = "Date Range:",
-                AutoSize = true,
-                Margin = new Padding(0, 7, 4, 0),
-                Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(51, 65, 85)
+                Dock = DockStyle.Top,
+                ColumnCount = 3,
+                RowCount = 1,
+                BackColor = AppTheme.Surface,
+                Padding = new Padding(D(12), D(10), D(12), D(10)),
+                Height = D(58)
             };
+            filterCard.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            filterCard.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, D(170)));
+            filterCard.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, D(170)));
+            filterCard.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawRectangle(pen, 0, 0, filterCard.Width - 1, filterCard.Height - 1); };
+            txtSearch.Dock = DockStyle.Fill;
+            txtSearch.Margin = new Padding(0, D(1), D(8), 0);
+            txtSearch.MaxLength = 100;
+            PageKit.StyleSearch(txtSearch, "Search by user, reference #, field or details…");
+            txtSearch.TextChanged += (s, e) => ApplyFilter();
 
-            cbDateFilter.Size = new Size(130, 26);
-            cbDateFilter.Margin = new Padding(0, 4, 16, 0);
+            cbActionFilter.Dock = DockStyle.Fill;
+            cbActionFilter.Margin = new Padding(0, 0, D(8), 0);
+            cbDateFilter.Dock = DockStyle.Fill;
+            cbDateFilter.Margin = new Padding(0);
             cbDateFilter.DropDownStyle = ComboBoxStyle.DropDownList;
-            cbDateFilter.Items.AddRange(new object[]
-            {
-                "All Time",
-                "Today",
-                "Last 7 Days",
-                "Last 30 Days"
-            });
+            cbDateFilter.Items.AddRange(new object[] { "All Time", "Today", "Last 7 Days", "Last 30 Days" });
             cbDateFilter.SelectedIndex = 0;
             cbDateFilter.SelectedIndexChanged += (s, e) => ApplyFilter();
 
-            btnRefresh.Text = "🔄 Refresh";
-            btnRefresh.Size = new Size(95, 28);
-            btnRefresh.Margin = new Padding(0, 3, 8, 0);
-            btnRefresh.BackColor = Color.FromArgb(241, 245, 249);
-            btnRefresh.ForeColor = Color.FromArgb(51, 65, 85);
-            btnRefresh.FlatStyle = FlatStyle.Flat;
-            btnRefresh.FlatAppearance.BorderSize = 0;
-            btnRefresh.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
-            btnRefresh.Cursor = Cursors.Hand;
-            btnRefresh.Click += (s, e) => LoadLogs();
-
-            btnExport.Text = "📊 Export CSV";
-            btnExport.Size = new Size(110, 28);
-            btnExport.Margin = new Padding(0, 3, 16, 0);
-            btnExport.BackColor = Color.FromArgb(15, 23, 42);
-            btnExport.ForeColor = Color.White;
-            btnExport.FlatStyle = FlatStyle.Flat;
-            btnExport.FlatAppearance.BorderSize = 0;
-            btnExport.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
-            btnExport.Cursor = Cursors.Hand;
-            btnExport.Click += (s, e) =>
-            {
-                DataExportHelper.ExportToCsv(gridHistory, $"{moduleTitle.Replace(" ", "_")}_History", $"{moduleTitle} Audit History");
-            };
-
-            lblCount.AutoSize = true;
-            lblCount.Margin = new Padding(0, 7, 0, 0);
-            lblCount.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
-            lblCount.ForeColor = Color.FromArgb(71, 85, 105);
-            lblCount.Text = "Records: 0";
-
-            pnlFilterBar.Controls.AddRange(new Control[]
-            {
-                lblSearch, txtSearch,
-                lblAction, cbActionFilter,
-                lblDate, cbDateFilter,
-                btnRefresh, btnExport,
-                lblCount
-            });
-
-            Panel pnlGridCard = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(16, 0, 16, 16),
-                BackColor = Color.Transparent
-            };
-
+            PageKit.StyleCombo(cbActionFilter);
+            PageKit.StyleCombo(cbDateFilter);
+            filterCard.Controls.Add(txtSearch, 0, 0);
+            filterCard.Controls.Add(cbActionFilter, 1, 0);
+            filterCard.Controls.Add(cbDateFilter, 2, 0);
+            var pnlGridCard = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Surface, Padding = new Padding(D(12), D(8), D(12), D(4)) };
+            pnlGridCard.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawRectangle(pen, 0, 0, pnlGridCard.Width - 1, pnlGridCard.Height - 1); };
             gridHistory.Dock = DockStyle.Fill;
+            lblCount.Dock = DockStyle.Bottom;
+            lblCount.AutoSize = false;
+            lblCount.Height = D(30);
+            lblCount.TextAlign = ContentAlignment.MiddleLeft;
+            lblCount.Font = new Font("Segoe UI", 9F);
+            lblCount.ForeColor = AppTheme.TextMuted;
             pnlGridCard.Controls.Add(gridHistory);
 
+            pnlGridCard.Controls.Add(lblCount);
             this.Controls.Add(pnlGridCard);
-            this.Controls.Add(pnlFilterBar);
-            this.Controls.Add(pnlHeader);
+            this.Controls.Add(PageKit.Gap(this, 12));
+            this.Controls.Add(filterCard);
+            this.Controls.Add(PageKit.Gap(this, 12));
+            this.Controls.Add(tiles);
+            this.Controls.Add(PageKit.Gap(this, 14));
+            this.Controls.Add(header);
+            this.HandleCreated += (s, e) => { tiles.Height = D(96); filterCard.Height = D(58); };
         }
 
         private void SetupGridColumns()
@@ -300,7 +217,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridHistory.AllowUserToDeleteRows = false;
             gridHistory.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             gridHistory.MultiSelect = false;
-            gridHistory.BackgroundColor = Color.White;
+            gridHistory.BackgroundColor = Pal.White;
             gridHistory.BorderStyle = BorderStyle.None;
             gridHistory.RowHeadersVisible = false;
             gridHistory.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
@@ -428,28 +345,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string act = e.Value.ToString() ?? "";
                 if (act.Equals("ADD", StringComparison.OrdinalIgnoreCase) || act.Contains("CREATE"))
                 {
-                    e.CellStyle.ForeColor = Color.FromArgb(22, 101, 52);
-                    e.CellStyle.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
+                    e.CellStyle.ForeColor = Pal.C(22, 101, 52);
+                    e.CellStyle.Font = FontCache.Get("Segoe UI Semibold", 9F, FontStyle.Bold);
                 }
                 else if (act.Equals("DELETE", StringComparison.OrdinalIgnoreCase))
                 {
-                    e.CellStyle.ForeColor = Color.FromArgb(185, 28, 28);
-                    e.CellStyle.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
+                    e.CellStyle.ForeColor = Pal.C(185, 28, 28);
+                    e.CellStyle.Font = FontCache.Get("Segoe UI Semibold", 9F, FontStyle.Bold);
                 }
                 else if (act.Equals("CANCEL", StringComparison.OrdinalIgnoreCase))
                 {
-                    e.CellStyle.ForeColor = Color.FromArgb(220, 38, 38);
-                    e.CellStyle.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
+                    e.CellStyle.ForeColor = Pal.C(220, 38, 38);
+                    e.CellStyle.Font = FontCache.Get("Segoe UI Semibold", 9F, FontStyle.Bold);
                 }
                 else if (act.Equals("RESCHEDULE", StringComparison.OrdinalIgnoreCase))
                 {
-                    e.CellStyle.ForeColor = Color.FromArgb(124, 58, 237);
-                    e.CellStyle.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
+                    e.CellStyle.ForeColor = Pal.C(124, 58, 237);
+                    e.CellStyle.Font = FontCache.Get("Segoe UI Semibold", 9F, FontStyle.Bold);
                 }
                 else if (act.Equals("UPDATE", StringComparison.OrdinalIgnoreCase))
                 {
-                    e.CellStyle.ForeColor = Color.FromArgb(30, 64, 175);
-                    e.CellStyle.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
+                    e.CellStyle.ForeColor = Pal.C(30, 64, 175);
+                    e.CellStyle.Font = FontCache.Get("Segoe UI Semibold", 9F, FontStyle.Bold);
                 }
             }
         }
@@ -469,6 +386,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+        private static string Ago(DateTime t)
+        {
+            var d = DateTime.Now - t;
+            if (d.TotalMinutes < 1) return "just now";
+            if (d.TotalHours < 1) return $"{(int)d.TotalMinutes} min ago";
+            if (d.TotalDays < 1) return $"{(int)d.TotalHours} h ago";
+            if (d.TotalDays < 30) return $"{(int)d.TotalDays} d ago";
+            return t.ToString("MMM d, yyyy");
+        }
         private void ApplyFilter()
         {
             string q = (txtSearch.Text ?? "").Trim().ToLowerInvariant();
@@ -518,7 +444,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             gridHistory.DataSource = null;
             gridHistory.DataSource = filtered;
-            lblCount.Text = $"Records: {filtered.Count} / {rawLogs.Count}";
+            lblCount.Text = $"Showing {filtered.Count:N0} of {rawLogs.Count:N0} changes  ·  right-click a row to copy or export";
+            if (tiles != null)
+            {
+                var inPeriod = rawLogs.Where(l => !cutoff.HasValue || l.Timestamp >= cutoff.Value).ToList();
+                tAll.Value = inPeriod.Count.ToString("N0");
+                tAll.Note = selectedDate == "All Time" ? "latest 1,000 kept here" : selectedDate.ToLowerInvariant();
+                tAdd.Value = inPeriod.Count(l => l.ActionType.Equals("ADD", StringComparison.OrdinalIgnoreCase) || l.ActionType.Contains("CREATE") || l.ActionType.Equals("INSERT", StringComparison.OrdinalIgnoreCase)).ToString("N0");
+                tUpd.Value = inPeriod.Count(l => l.ActionType.Contains("UPDATE", StringComparison.OrdinalIgnoreCase)).ToString("N0");
+                tDel.Value = inPeriod.Count(l => l.ActionType.Equals("DELETE", StringComparison.OrdinalIgnoreCase)).ToString("N0");
+                var last = rawLogs.OrderByDescending(l => l.Timestamp).FirstOrDefault();
+                tOther.Value = last == null ? "—" : Ago(last.Timestamp);
+                tOther.Note = last == null ? "no changes yet" : $"{last.Username} · {last.ActionType.ToLowerInvariant()} · {last.RecordIdentifier}";
+            }
         }
     }
 }

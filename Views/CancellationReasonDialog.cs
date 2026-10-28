@@ -39,7 +39,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Dock = DockStyle.Top,
                 Height = 65,
-                BackColor = Color.FromArgb(254, 242, 242),
+                BackColor = Pal.C(254, 242, 242),
                 Padding = new Padding(18, 12, 18, 12)
             };
 
@@ -47,7 +47,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = $"Cancel {itemType} {(string.IsNullOrEmpty(identifier) ? "" : $"#{identifier}")}",
                 Font = new Font("Segoe UI Semibold", 12F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(185, 28, 28),
+                ForeColor = Pal.C(185, 28, 28),
                 Dock = DockStyle.Top,
                 Height = 24
             };
@@ -56,7 +56,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Please provide the official reason for cancelling this record.",
                 Font = new Font("Segoe UI", 9.5F),
-                ForeColor = Color.FromArgb(127, 29, 29),
+                ForeColor = Pal.C(127, 29, 29),
                 Dock = DockStyle.Bottom,
                 Height = 20
             };
@@ -150,7 +150,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Width = 160,
                 Height = 35,
                 Dock = DockStyle.Right,
-                BackColor = Color.White,
+                BackColor = Pal.White,
                 ForeColor = UITheme.TextPrimary
             };
 
@@ -163,8 +163,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Width = 170,
                 Height = 35,
                 Dock = DockStyle.Right,
-                BackColor = Color.FromArgb(220, 38, 38),
-                ForeColor = Color.White
+                BackColor = Pal.C(220, 38, 38),
+                ForeColor = Pal.White
             };
             btnConfirm.Click += BtnConfirm_Click;
 

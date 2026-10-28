@@ -15,8 +15,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     {
         public static MainForm? Instance { get; private set; }
 
-        private const int SidebarExpandedWidth = 220;
-        private const int SidebarCollapsedWidth = 55;
+        /// <summary>True when the window is closing because the user chose Logout (the login screen is shown again instead of exiting).</summary>
+        public bool IsLoggingOut { get; private set; }
+        private Action? categoriesChangedHandler;
+        private Action? notificationsChangedHandler;
+        private const int SidebarExpandedWidth = 236;
+        private const int SidebarCollapsedWidth = 68;
         private bool isSidebarCollapsed = false;
         private bool autoCollapsedForDrawer = false;
 
@@ -29,39 +33,40 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Dictionary<string, UserControl> viewCache = new Dictionary<string, UserControl>();
 
         private FlowLayoutPanel? pnlKpiFlow;
-        private Button? btnKpiTransit;
-        private Button? btnKpiPending;
-        private Button? btnKpiUnpaid;
-        private Button? btnKpiShortcuts;
+        private Button btnKpiScheduled = null!;
+        private Button btnKpiInTransit = null!;
+        private Button btnKpiUnpaid = null!;
 
         private Panel? pnlNotificationMenu;
-        private Panel? pnlNotificationList;
-        private ComboBox? cmbNotificationFilter;
-        private string activeNotificationFilter = "All";
         private System.Windows.Forms.Timer? tmrRollingSnapshot;
         private System.Windows.Forms.Timer? tmrOperationalAlerts;
         private System.Windows.Forms.Timer? tmrAutoTransitCheck;
+        private Panel? pnlNavFlyout;
+        private System.Windows.Forms.Timer? tmrNavFlyoutGrace;
+        private Button? currentHoveredNavBtn;
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern bool DestroyIcon(IntPtr handle);
 
-        public MainForm(User user)
+        public MainForm(User user) : this(user, false)
+        {
+        }
+        public MainForm(User user, bool isThemeReload)
         {
             Instance = this;
             InitializeComponent();
+            DarkModeKit.Install();
             UIThemeHelper.EnableDoubleBuffering(this);
             currentUser = user;
             SessionContext.ActiveUser = user;
             this.Resize += (s, e) => ApplyAdaptiveHeader();
 
             string cleanName = (currentUser.FullName ?? "").Replace(" (Owner)", "").Replace(" (Admin)", "").Trim();
-            lblUserInfo.Text = $"👤 {cleanName} • {currentUser.Role}";
-            lblUserInfo.Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold);
-            lblUserInfo.ForeColor = Color.FromArgb(148, 163, 184);
+            string roleBadge = currentUser.Role?.ToUpperInvariant() ?? "STAFF";
+            string roleLabel = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase((currentUser.Role ?? "Staff").ToLowerInvariant());
+            lblUserInfo.Text = $"{cleanName}  ·  {roleLabel}";
             lblUserInfo.AutoSize = true;
             lblUserInfo.Cursor = Cursors.Hand;
-            lblUserInfo.MouseEnter += (s, e) => { lblUserInfo.ForeColor = Color.White; };
-            lblUserInfo.MouseLeave += (s, e) => { lblUserInfo.ForeColor = Color.FromArgb(148, 163, 184); };
             lblUserInfo.Click += (s, e) => ShowUserProfileDialog();
 
             pnlSearchCenter.Visible = false;
@@ -94,7 +99,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         using (var stream = new System.IO.FileStream(path, System.IO.FileMode.Open, System.IO.FileAccess.Read))
                         {
-                            picLogo.Image = Image.FromStream(stream);
+                                picLogo.Image = new Bitmap(Image.FromStream(stream));
                         }
                         lblLogoTitle.Visible = false;
                         lblLogoSubtitle.Visible = false;
@@ -116,23 +121,57 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 System.Diagnostics.Debug.WriteLine($"[MainForm] LoadLogo: {ex.Message}");
             }
 
-            MJdatabase.PerformStartupSanityCheck();
-            MJdatabase.OnCategoriesChanged += () => { RefreshCurrentActiveView(); };
-            this.FormClosing += (s, e) => { MJdatabase.PerformAutoBackup(); tmrRollingSnapshot?.Stop(); tmrOperationalAlerts?.Stop(); tmrAutoTransitCheck?.Stop(); };
-            this.FormClosed += (s, e) => { Application.Exit(); };
+            if (!isThemeReload) MJdatabase.PerformStartupSanityCheck();
+            categoriesChangedHandler = () =>
+            {
+                if (this.IsDisposed || !this.IsHandleCreated) return;
+                if (this.InvokeRequired) this.BeginInvoke(new Action(RefreshCurrentActiveView));
+                else RefreshCurrentActiveView();
+            };
+            MJdatabase.OnCategoriesChanged += categoriesChangedHandler;
+            this.FormClosing += (s, e) => { if (!IsReloading) MJdatabase.PerformAutoBackup(); tmrRollingSnapshot?.Stop(); tmrOperationalAlerts?.Stop(); tmrAutoTransitCheck?.Stop(); };
+            this.FormClosed += (s, e) =>
+            {
+                if (categoriesChangedHandler != null) MJdatabase.OnCategoriesChanged -= categoriesChangedHandler;
+                if (notificationsChangedHandler != null) EventNotificationService.OnNotificationsChanged -= notificationsChangedHandler;
+                tmrRollingSnapshot?.Dispose();
+                tmrOperationalAlerts?.Dispose();
+                tmrAutoTransitCheck?.Dispose();
+                foreach (var cached in viewCache.Values)
+                {
+                    try { if (!cached.IsDisposed) cached.Dispose(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[MainForm] Dispose view: {ex.Message}"); }
+                }
+                viewCache.Clear();
+                if (Instance == this) Instance = null;
+                if (!IsLoggingOut && !IsReloading)
+                {
+                    Application.Exit();
+                }
+            };
             SetupRollingSnapshotTimer();
             SetupOperationalAlertsTimer();
             SetupAutoTransitCheckTimer();
 
             SetupAccessibilityAndKpis();
             SetupSidebarHover();
+            SetupNavFlyoutMenus();
             SetupCollapsibleSidebar();
             SetupNotifications();
-            panelMainContent.MouseDown += (s, e) => { if (pnlNotificationMenu != null) pnlNotificationMenu.Visible = false; if (lstSearchDropdown != null) lstSearchDropdown.Visible = false; };
+            InstallPopoverGuards();
+            ApplyShellTheme();
+            StyleHeaderChips();
+            UpdateNotificationUI();
+            UpdateSidebarDisplay(isSidebarCollapsed);
+            SetupAutoHideSidebar();
+            ApplyUserRolePermissions();
+            InitHeaderRedesign();
+            panelMainContent.MouseDown += (s, e) => { if (pnlNotificationMenu != null) pnlNotificationMenu.Visible = false; if (lstSearchDropdown != null) lstSearchDropdown.Visible = false; HideNavFlyout(); };
+            panelHeader.MouseDown += (s, e) => { HideNavFlyout(); };
             OpenDashboard();
-            EventNotificationService.Publish("Session Active", $"Authenticated as @{currentUser.Username} ({currentUser.Role})", ToastType.Info, this);
+            if (!isThemeReload) EventNotificationService.Publish("Session Active", $"Authenticated as @{currentUser.Username} ({currentUser.Role})", ToastType.Info, this);
             this.Shown += (s, e) =>
             {
+                if (isThemeReload) return;
                 CheckMandatorySecurityQuestion();
                 Task.Run(() => EventNotificationService.ScanOperationalAlerts());
             };
@@ -177,6 +216,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             var dlg = new UserProfileDialog(currentUser);
             dlg.OnNavigateToUserManagement = () => btnNavUsers_Click(this, EventArgs.Empty);
+            dlg.OnLogout = () => btnLogout_Click(this, EventArgs.Empty);
             dlg.ShowDialog(this);
         }
 
@@ -184,14 +224,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             tmrSidebarAnimation.Interval = 10;
             tmrSidebarAnimation.Tick += TmrSidebarAnimation_Tick;
-            isSidebarCollapsed = true;
-            panelSidebar.Width = SidebarCollapsedWidth;
-            UpdateSidebarDisplay(true);
+            // The menu starts open; once the mouse leaves it, it tucks away to a slim icon rail (see MainForm.Sidebar.cs).
+            isSidebarCollapsed = false;
+            panelSidebar.Width = S(SidebarExpandedWidth);
+            UpdateSidebarDisplay(false);
         }
 
         private void btnToggleSidebar_Click(object? sender, EventArgs e)
         {
-            ToggleSidebar();
+            TogglePinSidebar();
         }
 
         public void ToggleSidebar()
@@ -226,9 +267,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void TmrSidebarAnimation_Tick(object? sender, EventArgs e)
         {
-            int target = isSidebarCollapsed ? SidebarCollapsedWidth : SidebarExpandedWidth;
-            int step = 25;
-
+            HideNavFlyout();
+            int target = isSidebarCollapsed ? S(SidebarCollapsedWidth) : S(SidebarExpandedWidth);
+            int step = S(28);
             if (panelSidebar.Width < target)
             {
                 panelSidebar.Width = Math.Min(panelSidebar.Width + step, target);
@@ -242,6 +283,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 tmrSidebarAnimation.Stop();
                 UpdateSidebarDisplay(isSidebarCollapsed);
+                SyncSidebarSpacer();
             }
         }
 
@@ -268,11 +310,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblLogoTitle.Visible = false;
                 lblLogoSubtitle.Visible = false;
 
+                UpdateThemeToggleText(true);
+                UpdateSidebarBrand(true);
                 ttSidebar.SetToolTip(btnNavDashboard, "Dashboard");
-                ttSidebar.SetToolTip(btnNavOperations, "Dispatch & Delivery Operations");
-                ttSidebar.SetToolTip(btnNavResources, "Trucks & Personnel Resources");
-                ttSidebar.SetToolTip(btnNavFinance, "Billing, Invoices & Payment Collections");
-                ttSidebar.SetToolTip(btnNavMasterData, "Rate & Business Master Data");
+                ttSidebar.SetToolTip(btnNavOperations, null);
+                ttSidebar.SetToolTip(btnNavResources, null);
+                ttSidebar.SetToolTip(btnNavFinance, null);
+                ttSidebar.SetToolTip(btnNavMasterData, null);
                 ttSidebar.SetToolTip(btnNavSettings, "System Administration & Settings");
             }
             else
@@ -304,37 +348,233 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     lblLogoSubtitle.Visible = false;
                 }
 
-                ttSidebar.RemoveAll();
+                UpdateThemeToggleText(false);
+                UpdateSidebarBrand(false);
+                ttSidebar.SetToolTip(btnNavDashboard, null);
+                ttSidebar.SetToolTip(btnNavSettings, null);
             }
         }
 
         private void SetupSidebarHover()
         {
-            foreach (Control c in panelSidebar.Controls)
+            // Hover and active states are painted by the shell (see MainForm.Shell.cs).
+        }
+
+        private void SetupNavFlyoutMenus()
+        {
+            pnlNavFlyout = new Panel
             {
-                if (c is Button navBtn)
+                Size = new Size(240, 200),
+                BackColor = AppTheme.Surface,
+                BorderStyle = BorderStyle.None,
+                Padding = new Padding(1),
+                Visible = false
+            };
+            pnlNavFlyout.Paint += (s, e) => PaintPopoverBorder(pnlNavFlyout, e);
+            this.Controls.Add(pnlNavFlyout);
+            pnlNavFlyout.BringToFront();
+
+            tmrNavFlyoutGrace = new System.Windows.Forms.Timer { Interval = 250 };
+            tmrNavFlyoutGrace.Tick += (s, e) =>
+            {
+                Point cursorClient = this.PointToClient(Cursor.Position);
+                bool insideFlyout = pnlNavFlyout != null && pnlNavFlyout.Visible && pnlNavFlyout.Bounds.Contains(cursorClient);
+                bool insideBtn = currentHoveredNavBtn != null && currentHoveredNavBtn.RectangleToScreen(currentHoveredNavBtn.ClientRectangle).Contains(Cursor.Position);
+                if (!insideFlyout && !insideBtn)
                 {
-                    navBtn.BackColor = Color.FromArgb(15, 23, 42);
-                    navBtn.ForeColor = Color.FromArgb(148, 163, 184);
-                    navBtn.Cursor = Cursors.Hand;
-                    navBtn.MouseEnter += (s, e) =>
-                    {
-                        if (navBtn != activeButton)
-                        {
-                            navBtn.BackColor = Color.FromArgb(30, 41, 59);
-                            navBtn.ForeColor = Color.White;
-                        }
-                    };
-                    navBtn.MouseLeave += (s, e) =>
-                    {
-                        if (navBtn != activeButton)
-                        {
-                            navBtn.BackColor = Color.FromArgb(15, 23, 42);
-                            navBtn.ForeColor = Color.FromArgb(148, 163, 184);
-                        }
-                    };
+                    HideNavFlyout();
                 }
+            };
+
+            pnlNavFlyout.MouseEnter += (s, e) => tmrNavFlyoutGrace.Stop();
+            pnlNavFlyout.MouseLeave += (s, e) => StartFlyoutGrace();
+
+            var hubFlyoutConfigs = new (Button Button, string Title, (string Label, Action Action)[] Items)[]
+            {
+                (
+                    btnNavOperations,
+                    "🚚  OPERATIONS",
+                    new (string, Action)[]
+                    {
+                        ("🚚  Loading Schedule & Dispatch", () => NavigateToOperations("Dispatch")),
+                        ("✅  Completed Dispatches", () => NavigateToOperations("Completed")),
+                        ("🌟  Special Trip History", () => NavigateToOperations("SpecialTrips")),
+                        ("⚠️  Incident & Damage Logs", () => NavigateToOperations("Incidents")),
+                        ("📝  Trip Reports", () => NavigateToOperations("TripReports")),
+                        ("📜  Order History", () => NavigateToOperations("History"))
+                    }
+                ),
+                (
+                    btnNavResources,
+                    "👥  RESOURCES",
+                    new (string, Action)[]
+                    {
+                        ("🚛  Trucks", () => NavigateToResources("Trucks")),
+                        ("👨‍✈️  Crew Management", () => NavigateToResources("Crew")),
+                        ("📋  Crew Trip History", () => NavigateToResources("CrewHistory")),
+                        ("📜  Resource History", () => NavigateToResources("History"))
+                    }
+                ),
+                (
+                    btnNavFinance,
+                    "💰  PAYMENTS",
+                    new (string, Action)[]
+                    {
+                        ("📑  Statement of Account", () => NavigateToFinance("StatementOfAccount")),
+                        ("🧾  Billing Invoices", () => NavigateToFinance("Billing")),
+                        ("💵  Collections & Receipts", () => NavigateToFinance("Collections")),
+                        ("📜  Finance History", () => NavigateToFinance("History"))
+                    }
+                ),
+                (
+                    btnNavMasterData,
+                    "🏷️  MASTER DATA",
+                    new (string, Action)[]
+                    {
+                        ("🏢  Clients", () => NavigateToMasterData("Clients")),
+                        ("🗺️  Delivery Routes", () => NavigateToMasterData("Routes")),
+                        ("📜  Master Data History", () => NavigateToMasterData("History"))
+                    }
+                )
+            };
+
+            foreach (var cfg in hubFlyoutConfigs)
+            {
+                var targetBtn = cfg.Button;
+                var targetTitle = cfg.Title;
+                var targetItems = cfg.Items;
+
+                targetBtn.MouseEnter += (s, e) =>
+                {
+                    currentHoveredNavBtn = targetBtn;
+                    tmrNavFlyoutGrace.Stop();
+                    ShowNavFlyout(targetBtn, targetTitle, targetItems);
+                };
+
+                targetBtn.MouseLeave += (s, e) =>
+                {
+                    StartFlyoutGrace();
+                };
+
+                targetBtn.Click += (s, e) =>
+                {
+                    HideNavFlyout();
+                };
             }
+        }
+
+        private void StartFlyoutGrace()
+        {
+            tmrNavFlyoutGrace?.Stop();
+            tmrNavFlyoutGrace?.Start();
+        }
+
+        private void HideNavFlyout()
+        {
+            tmrNavFlyoutGrace?.Stop();
+            if (pnlNavFlyout != null)
+            {
+                pnlNavFlyout.Visible = false;
+            }
+            currentHoveredNavBtn = null;
+        }
+
+        private void ShowNavFlyout(Button navBtn, string title, (string Label, Action Action)[] items)
+        {
+            if (pnlNavFlyout == null) return;
+
+            pnlNavFlyout.SuspendLayout();
+            pnlNavFlyout.Controls.Clear();
+
+            int itemHeight = 38;
+            int headerHeight = 36;
+            int totalHeight = headerHeight + (items.Length * itemHeight) + 10;
+            int flyoutWidth = 260;
+            Panel pnlHeader = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = headerHeight,
+                BackColor = AppTheme.Surface,
+                Padding = new Padding(16, 10, 8, 2)
+            };
+
+            string cleanTitle = title.Contains("  ") ? title.Substring(title.IndexOf("  ", StringComparison.Ordinal)).Trim() : title;
+            Label lblHeader = new Label
+            {
+                Text = cleanTitle,
+                Font = new Font("Segoe UI Semibold", 8F, FontStyle.Regular),
+                ForeColor = AppTheme.TextMuted,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            pnlHeader.Controls.Add(lblHeader);
+            pnlHeader.MouseEnter += (s, e) => tmrNavFlyoutGrace?.Stop();
+            pnlHeader.MouseLeave += (s, e) => StartFlyoutGrace();
+
+            Panel pnlItemsContainer = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = AppTheme.Surface,
+                Padding = new Padding(6, 2, 6, 6)
+            };
+            pnlItemsContainer.MouseEnter += (s, e) => tmrNavFlyoutGrace?.Stop();
+            pnlItemsContainer.MouseLeave += (s, e) => StartFlyoutGrace();
+
+            for (int i = items.Length - 1; i >= 0; i--)
+            {
+                var itm = items[i];
+                Button btnItm = new Button
+                {
+                    Text = itm.Label,
+                    Dock = DockStyle.Top,
+                    Height = itemHeight,
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = AppTheme.Surface,
+                    ForeColor = AppTheme.TextPrimary,
+                    Font = new Font("Segoe UI", 9.5F, FontStyle.Regular),
+                    TextAlign = ContentAlignment.MiddleLeft,
+                    Padding = new Padding(4, 0, 8, 0),
+                    Cursor = Cursors.Hand,
+                    Margin = Padding.Empty
+                };
+                btnItm.FlatAppearance.BorderSize = 0;
+                btnItm.FlatAppearance.MouseOverBackColor = AppTheme.SurfaceHover;
+                btnItm.FlatAppearance.MouseDownBackColor = AppTheme.Border;
+                UIThemeHelper.StyleButtonChrome(btnItm);
+                btnItm.MouseEnter += (s, e) =>
+                {
+                    tmrNavFlyoutGrace?.Stop();
+                };
+                btnItm.MouseLeave += (s, e) =>
+                {
+                    StartFlyoutGrace();
+                };
+                btnItm.Click += (s, e) =>
+                {
+                    HideNavFlyout();
+                    itm.Action();
+                };
+                pnlItemsContainer.Controls.Add(btnItm);
+            }
+
+            pnlNavFlyout.Controls.Add(pnlItemsContainer);
+            pnlNavFlyout.Controls.Add(pnlHeader);
+
+            Point btnScreenPt = navBtn.PointToScreen(Point.Empty);
+            Point clientPt = this.PointToClient(btnScreenPt);
+            int targetX = panelSidebar.Width + 6;
+            int targetY = clientPt.Y;
+
+            if (targetY + totalHeight > this.ClientSize.Height - 10)
+            {
+                targetY = Math.Max(panelHeader.Bottom + 4, this.ClientSize.Height - totalHeight - 10);
+            }
+
+            pnlNavFlyout.Location = new Point(targetX, targetY);
+            pnlNavFlyout.Size = new Size(flyoutWidth, totalHeight);
+            pnlNavFlyout.ResumeLayout(true);
+            pnlNavFlyout.BringToFront();
+            pnlNavFlyout.Visible = true;
         }
 
         private void SetupAccessibilityAndKpis()
@@ -353,39 +593,122 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 WrapContents = false,
                 AutoSize = true,
                 Dock = DockStyle.Right,
-                Padding = new Padding(0, 9, 12, 0),
-                BackColor = Color.Transparent
+                Padding = new Padding(0, 15, 20, 0),
+                BackColor = AppTheme.Surface
             };
 
-            btnKpiTransit = CreateKpiBadge("🚚 0 In Transit", Color.FromArgb(254, 243, 199), Color.FromArgb(180, 83, 9), (s, e) => btnNavDispatch_Click(this, EventArgs.Empty));
-            btnKpiPending = CreateKpiBadge("⏳ 0 Pending", Color.FromArgb(241, 245, 249), Color.FromArgb(51, 65, 85), (s, e) => btnNavDispatch_Click(this, EventArgs.Empty));
-            btnKpiUnpaid = CreateKpiBadge("💰 0 Unpaid", Color.FromArgb(254, 226, 226), Color.FromArgb(185, 28, 28), (s, e) => btnNavBilling_Click(this, EventArgs.Empty));
-            btnKpiShortcuts = CreateKpiBadge("⌨️ ShortKeys", Color.FromArgb(238, 242, 255), Color.FromArgb(67, 56, 202), (s, e) => ShowShortcutsHelpDialog());
+            btnKpiScheduled = new Button
+            {
+                Text = "⏳ 0 Scheduled",
+                AutoSize = true,
+                Height = 30,
+                Margin = new Padding(0, 0, 6, 0),
+                BackColor = Pal.C(30, 41, 59),
+                ForeColor = Pal.C(147, 197, 253),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnKpiScheduled.FlatAppearance.BorderSize = 0;
+            btnKpiScheduled.Click += (s, e) =>
+            {
+                if (!SessionContext.CanAccessOperations)
+                {
+                    ToastHelper.ShowToast(this, "Access restricted to Operations staff and Admin.", ToastType.Warning);
+                    return;
+                }
+                btnNavOperations_Click(this, EventArgs.Empty);
+                if (viewCache.TryGetValue("OperationsHubView", out var ov) && ov is OperationsHubView ohv)
+                {
+                    ohv.SelectTab("Dispatch");
+                }
+            };
 
-            btnNotificationBell.Text = "🔔 Alerts";
+            btnKpiInTransit = new Button
+            {
+                Text = "\U0001f69a 0 In Transit",
+                AutoSize = true,
+                Height = 30,
+                Margin = new Padding(0, 0, 6, 0),
+                BackColor = Pal.C(30, 41, 59),
+                ForeColor = Pal.C(253, 224, 71),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnKpiInTransit.FlatAppearance.BorderSize = 0;
+            btnKpiInTransit.Click += (s, e) =>
+            {
+                if (!SessionContext.CanAccessOperations)
+                {
+                    ToastHelper.ShowToast(this, "Access restricted to Operations staff and Admin.", ToastType.Warning);
+                    return;
+                }
+                btnNavOperations_Click(this, EventArgs.Empty);
+                if (viewCache.TryGetValue("OperationsHubView", out var ov) && ov is OperationsHubView ohv)
+                {
+                    ohv.SelectTab("Dispatch");
+                }
+            };
+
+            btnKpiUnpaid = new Button
+            {
+                Text = "\U0001f4b3 0 Unpaid",
+                AutoSize = true,
+                Height = 30,
+                Margin = new Padding(0, 0, 8, 0),
+                BackColor = Pal.C(30, 41, 59),
+                ForeColor = Pal.C(252, 165, 165),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnKpiUnpaid.FlatAppearance.BorderSize = 0;
+            btnKpiUnpaid.Click += (s, e) =>
+            {
+                if (!SessionContext.CanAccessFinance)
+                {
+                    ToastHelper.ShowToast(this, "Access restricted to Finance staff and Admin.", ToastType.Warning);
+                    return;
+                }
+                btnNavFinance_Click(this, EventArgs.Empty);
+                if (viewCache.TryGetValue("FinanceHubView", out var fv) && fv is FinanceHubView fhv)
+                {
+                    fhv.SelectTab("Billing");
+                }
+            };
+
+            btnNotificationBell.Text = "\U0001f514 Alerts";
             btnNotificationBell.AutoSize = true;
-            btnNotificationBell.Height = 26;
+            btnNotificationBell.Height = 30;
             btnNotificationBell.Margin = new Padding(0, 0, 6, 0);
-            btnNotificationBell.BackColor = Color.FromArgb(30, 41, 59);
-            btnNotificationBell.ForeColor = Color.FromArgb(226, 232, 240);
+            btnNotificationBell.BackColor = Pal.C(30, 41, 59);
+            btnNotificationBell.ForeColor = Pal.C(226, 232, 240);
             btnNotificationBell.FlatStyle = FlatStyle.Flat;
             btnNotificationBell.Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold);
             btnNotificationBell.Cursor = Cursors.Hand;
             btnNotificationBell.FlatAppearance.BorderSize = 0;
             btnNotificationBell.Click += (s, e) => ToggleNotificationMenu();
 
-            btnHeaderSettings.Size = new Size(100, 26);
+            btnHeaderSettings.Size = new Size(110, 30);
             btnHeaderSettings.Margin = new Padding(4, 0, 6, 0);
             btnHeaderSettings.Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold);
+            btnHeaderSettings.Visible = SessionContext.IsAdmin;
 
-            btnLogout.Size = new Size(72, 26);
-            btnLogout.Margin = new Padding(0, 0, 0, 0);
+            btnLogout.Text = "\U0001f6aa LOGOUT";
+            btnLogout.Size = new Size(95, 30);
+            btnLogout.Margin = new Padding(4, 0, 0, 0);
+            btnLogout.BackColor = Pal.C(185, 28, 28);
+            btnLogout.ForeColor = Pal.White;
+            btnLogout.FlatStyle = FlatStyle.Flat;
             btnLogout.Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold);
+            btnLogout.Cursor = Cursors.Hand;
+            btnLogout.FlatAppearance.BorderSize = 0;
+            btnLogout.Visible = true;
 
-            pnlKpiFlow.Controls.Add(btnKpiTransit);
-            pnlKpiFlow.Controls.Add(btnKpiPending);
+            pnlKpiFlow.Controls.Add(btnKpiScheduled);
+            pnlKpiFlow.Controls.Add(btnKpiInTransit);
             pnlKpiFlow.Controls.Add(btnKpiUnpaid);
-            pnlKpiFlow.Controls.Add(btnKpiShortcuts);
             pnlKpiFlow.Controls.Add(btnNotificationBell);
             pnlKpiFlow.Controls.Add(btnHeaderSettings);
             pnlKpiFlow.Controls.Add(btnLogout);
@@ -400,145 +723,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void SetupNotifications()
         {
-            pnlNotificationMenu = new Panel
-            {
-                Size = new Size(420, 500),
-                BackColor = Color.White,
-                BorderStyle = BorderStyle.FixedSingle,
-                Visible = false
-            };
-
-            Panel pnlHeader = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 44,
-                BackColor = Color.FromArgb(15, 23, 42),
-                Padding = new Padding(12, 8, 12, 8)
-            };
-
-            Label lblTitle = new Label
-            {
-                Text = "🔔 Notifications & Alerts",
-                Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.White,
-                Dock = DockStyle.Left,
-                TextAlign = ContentAlignment.MiddleLeft,
-                AutoSize = true
-            };
-
-            FlowLayoutPanel pnlHeaderActions = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Right,
-                AutoSize = true,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                Padding = new Padding(0)
-            };
-
-            Button btnMarkAllRead = new Button
-            {
-                Text = "✓ Read All",
-                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(148, 163, 184),
-                BackColor = Color.Transparent,
-                FlatStyle = FlatStyle.Flat,
-                AutoSize = true,
-                Height = 28,
-                Cursor = Cursors.Hand
-            };
-            btnMarkAllRead.FlatAppearance.BorderSize = 0;
-            btnMarkAllRead.Click += (s, e) =>
-            {
-                EventNotificationService.MarkAllAsRead(SessionContext.IsAdmin);
-                RenderNotificationList();
-            };
-
-            Button btnClear = new Button
-            {
-                Text = "Clear",
-                Font = new Font("Segoe UI", 8F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(244, 63, 94),
-                BackColor = Color.Transparent,
-                FlatStyle = FlatStyle.Flat,
-                AutoSize = true,
-                Height = 28,
-                Cursor = Cursors.Hand
-            };
-            btnClear.FlatAppearance.BorderSize = 0;
-            btnClear.Click += (s, e) =>
-            {
-                EventNotificationService.ClearAll(SessionContext.IsAdmin);
-                RenderNotificationList();
-            };
-
-            pnlHeaderActions.Controls.Add(btnMarkAllRead);
-            pnlHeaderActions.Controls.Add(btnClear);
-
-            pnlHeader.Controls.Add(pnlHeaderActions);
-            pnlHeader.Controls.Add(lblTitle);
-
-            Panel pnlFilterRow = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 38,
-                BackColor = Color.FromArgb(241, 245, 249),
-                Padding = new Padding(10, 5, 10, 5)
-            };
-
-            Label lblFilterLabel = new Label
-            {
-                Text = "Filter:",
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(71, 85, 105),
-                AutoSize = true,
-                Location = new Point(10, 10)
-            };
-
-            List<string> filterList = new List<string> { "All", "Unread", "Alerts", "Operations", "Payments", "Trucks" };
-            if (SessionContext.IsAdmin)
-            {
-                filterList.Add("Security");
-            }
-
-            cmbNotificationFilter = new ComboBox
-            {
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Segoe UI", 8.5F),
-                ForeColor = Color.FromArgb(15, 23, 42),
-                BackColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Location = new Point(54, 7),
-                Width = 340,
-                Height = 26,
-                Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top
-            };
-            cmbNotificationFilter.Items.AddRange(filterList.ToArray<object>());
-            cmbNotificationFilter.SelectedIndex = 0;
-            cmbNotificationFilter.SelectedIndexChanged += (s, e) =>
-            {
-                activeNotificationFilter = cmbNotificationFilter.SelectedItem?.ToString() ?? "All";
-                RenderNotificationList();
-            };
-
-            pnlFilterRow.Controls.Add(cmbNotificationFilter);
-            pnlFilterRow.Controls.Add(lblFilterLabel);
-
-            pnlNotificationList = new Panel
-            {
-                Dock = DockStyle.Fill,
-                AutoScroll = true,
-                Padding = new Padding(8, 8, 8, 8),
-                BackColor = Color.FromArgb(248, 250, 252)
-            };
-
-            pnlNotificationMenu.Controls.Add(pnlNotificationList);
-            pnlNotificationMenu.Controls.Add(pnlFilterRow);
-            pnlNotificationMenu.Controls.Add(pnlHeader);
-
+            var flyout = new NotificationFlyout(n => OpenNotificationTarget(n));
+            pnlNotificationMenu = flyout;
             this.Controls.Add(pnlNotificationMenu);
             pnlNotificationMenu.BringToFront();
 
-            EventNotificationService.OnNotificationsChanged += () =>
+            notificationsChangedHandler = () =>
             {
                 if (!this.IsDisposed && this.IsHandleCreated)
                 {
@@ -546,6 +736,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             };
 
+            EventNotificationService.OnNotificationsChanged += notificationsChangedHandler;
             UpdateNotificationUI();
         }
 
@@ -589,11 +780,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try
                 {
                     var result = MJdatabase.RunOperationalLifecycleAutomation();
-                    bool anyChanged = result.transitStarted > 0 || result.invoicesOverdue > 0 || result.schedulesPastDue > 0 || result.deliveriesDelayed > 0;
+                    bool anyChanged = result.transitStarted > 0 || result.invoicesOverdue > 0 || result.schedulesPastDue > 0;
                     if (anyChanged)
                     {
                         UpdateHeaderKpiBadges();
                         RefreshCurrentActiveView();
+                    }
+                    if (result.transitStarted > 0)
+                    {
+                        EventNotificationService.Publish("Dispatches on the road", $"{result.transitStarted} dispatch(es) reached their departure time and are now In Transit.", ToastType.Info, this, "Operations", "Dispatch");
                     }
 
                     if (result.invoicesOverdue > 0)
@@ -604,9 +799,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         EventNotificationService.Publish("Past Due Schedules", $"{result.schedulesPastDue} pending loading order(s) passed scheduled dates without dispatch.", ToastType.Warning, this, "Operations", "LoadingManagement");
                     }
-                    if (result.deliveriesDelayed > 0)
+
                     {
-                        EventNotificationService.Publish("Delayed Deliveries Alert", $"{result.deliveriesDelayed} active delivery(ies) exceeded transit thresholds without completion.", ToastType.Warning, this, "Operations", "DispatchManagement");
+
                     }
                 }
                 catch (Exception ex)
@@ -630,7 +825,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (lstSearchDropdown != null) lstSearchDropdown.Visible = false;
 
             RenderNotificationList();
-            Point pt = btnNotificationBell.PointToScreen(new Point(btnNotificationBell.Width - 420, btnNotificationBell.Height + 6));
+            Point pt = btnNotificationBell.PointToScreen(new Point(btnNotificationBell.Width - pnlNotificationMenu.Width, btnNotificationBell.Height + 8));
             Point clientPt = this.PointToClient(pt);
             clientPt.X = Math.Max(4, clientPt.X);
             pnlNotificationMenu.Location = clientPt;
@@ -641,10 +836,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void UpdateNotificationUI()
         {
             int unread = EventNotificationService.GetBusinessProcessUnreadCount();
-            btnNotificationBell.Text = unread > 0 ? $"🔔 {unread} New" : "🔔 Alerts";
-            btnNotificationBell.BackColor = unread > 0 ? Color.FromArgb(254, 243, 199) : Color.FromArgb(30, 41, 59);
-            btnNotificationBell.ForeColor = unread > 0 ? Color.FromArgb(180, 83, 9) : Color.FromArgb(226, 232, 240);
-
+            btnNotificationBell.Text = unread > 0 ? $"🔔  {unread} new" : "🔔";
+            UpdateBellChip(unread);
             if (pnlNotificationMenu != null && pnlNotificationMenu.Visible)
             {
                 RenderNotificationList();
@@ -653,239 +846,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void RenderNotificationList()
         {
-            if (pnlNotificationList == null) return;
-
-            pnlNotificationList.SuspendLayout();
-            pnlNotificationList.Controls.Clear();
-
-            bool unreadOnly = activeNotificationFilter.Equals("Unread", StringComparison.OrdinalIgnoreCase);
-            string? catFilter = unreadOnly ? null : activeNotificationFilter;
-
-            var notifs = EventNotificationService.GetRecentNotifications(60, catFilter, unreadOnly, SessionContext.IsAdmin);
-            if (!activeNotificationFilter.Equals("Security", StringComparison.OrdinalIgnoreCase))
-            {
-                notifs = notifs.Where(n => n.IsBusinessProcess).ToList();
-            }
-            if (notifs.Count == 0)
-            {
-                Label lblEmpty = new Label
-                {
-                    Text = "No notifications in this filter ✓\nAll system operations normal",
-                    Font = new Font("Segoe UI", 9F),
-                    ForeColor = Color.FromArgb(148, 163, 184),
-                    TextAlign = ContentAlignment.MiddleCenter,
-                    Dock = DockStyle.Fill
-                };
-                pnlNotificationList.Controls.Add(lblEmpty);
-            }
-            else
-            {
-                TableLayoutPanel tblStack = new TableLayoutPanel
-                {
-                    Dock = DockStyle.Top,
-                    AutoSize = true,
-                    AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                    ColumnCount = 1,
-                    Padding = new Padding(0),
-                    Margin = new Padding(0)
-                };
-                tblStack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-
-                foreach (var n in notifs)
-                {
-                    Panel card = new Panel
-                    {
-                        Dock = DockStyle.Top,
-                        Height = 84,
-                        BackColor = n.IsRead ? Color.White : Color.FromArgb(254, 252, 232),
-                        Padding = new Padding(12, 8, 12, 8),
-                        Margin = new Padding(0, 0, 0, 6),
-                        BorderStyle = BorderStyle.None,
-                        Cursor = Cursors.Hand
-                    };
-
-                    Color accentColor;
-                    switch (n.Type)
-                    {
-                        case ToastType.Success: accentColor = Color.FromArgb(16, 185, 129); break;
-                        case ToastType.Warning: accentColor = Color.FromArgb(245, 158, 11); break;
-                        case ToastType.Error: accentColor = Color.FromArgb(239, 68, 68); break;
-                        default: accentColor = Color.FromArgb(59, 130, 246); break;
-                    }
-
-                    card.Paint += (s, e) =>
-                    {
-                        var g = e.Graphics;
-                        using (var pen = new Pen(Color.FromArgb(226, 232, 240), 1))
-                        {
-                            g.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1);
-                        }
-                        using (var brush = new SolidBrush(accentColor))
-                        {
-                            g.FillRectangle(brush, 0, 0, 4, card.Height);
-                        }
-                    };
-
-                    card.MouseEnter += (s, e) =>
-                    {
-                        if (card.BackColor == Color.White) card.BackColor = Color.FromArgb(241, 245, 249);
-                    };
-                    card.MouseLeave += (s, e) =>
-                    {
-                        if (card.BackColor == Color.FromArgb(241, 245, 249)) card.BackColor = Color.White;
-                    };
-
-                    Label lblHeader = new Label
-                    {
-                        Text = $"{n.IconSymbol}  {n.Title}",
-                        Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                        ForeColor = Color.FromArgb(15, 23, 42),
-                        Location = new Point(12, 6),
-                        AutoSize = true,
-                        Cursor = Cursors.Hand
-                    };
-
-                    Label lblTime = new Label
-                    {
-                        Text = n.RelativeTime,
-                        Font = new Font("Segoe UI", 7.5F),
-                        ForeColor = Color.FromArgb(148, 163, 184),
-                        Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                        TextAlign = ContentAlignment.TopRight,
-                        Size = new Size(80, 16),
-                        Location = new Point(card.Width - 110, 6)
-                    };
-
-                    Button btnDismiss = new Button
-                    {
-                        Text = "✕",
-                        Font = new Font("Segoe UI", 7.5F, FontStyle.Bold),
-                        ForeColor = Color.FromArgb(156, 163, 175),
-                        BackColor = Color.Transparent,
-                        FlatStyle = FlatStyle.Flat,
-                        Size = new Size(20, 20),
-                        Location = new Point(card.Width - 26, 4),
-                        Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                        Cursor = Cursors.Hand
-                    };
-                    btnDismiss.FlatAppearance.BorderSize = 0;
-                    btnDismiss.Click += (s, e) =>
-                    {
-                        EventNotificationService.DeleteNotification(n.Id);
-                        RenderNotificationList();
-                    };
-
-                    Label lblDesc = new Label
-                    {
-                        Text = n.Message,
-                        Font = new Font("Segoe UI", 8.5F),
-                        ForeColor = Color.FromArgb(71, 85, 105),
-                        Location = new Point(12, 26),
-                        Size = new Size(Math.Max(100, card.Width - 30), 34),
-                        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                        Cursor = Cursors.Hand
-                    };
-
-                    Label lblAction = new Label
-                    {
-                        Text = string.IsNullOrEmpty(n.ActionHint) ? "" : n.ActionHint,
-                        Font = new Font("Segoe UI Semibold", 7.5F, FontStyle.Bold),
-                        ForeColor = Color.FromArgb(37, 99, 235),
-                        Location = new Point(12, 62),
-                        Size = new Size(Math.Max(100, card.Width - 30), 16),
-                        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                        Cursor = Cursors.Hand
-                    };
-
-                    card.Resize += (s, e) =>
-                    {
-                        lblTime.Location = new Point(card.Width - 110, 6);
-                        btnDismiss.Location = new Point(card.Width - 26, 4);
-                        lblDesc.Size = new Size(Math.Max(100, card.Width - 30), 34);
-                        lblAction.Size = new Size(Math.Max(100, card.Width - 30), 16);
-                    };
-
-                    void OnCardClicked(object? sender, EventArgs e)
-                    {
-                        EventNotificationService.MarkAsRead(n.Id);
-                        if (pnlNotificationMenu != null) pnlNotificationMenu.Visible = false;
-
-                        if (!string.IsNullOrEmpty(n.TargetModule))
-                        {
-                            switch (n.TargetModule.ToLowerInvariant())
-                            {
-                                case "dispatch":
-                                    btnNavDispatch_Click(this, EventArgs.Empty);
-                                    break;
-                                case "loading":
-                                    btnNavLoading_Click(this, EventArgs.Empty);
-                                    break;
-                                case "tripreports":
-                                    btnNavTripReports_Click(this, EventArgs.Empty);
-                                    break;
-                                case "invoices":
-                                case "billing":
-                                    btnNavBilling_Click(this, EventArgs.Empty);
-                                    break;
-                                case "collections":
-                                    btnNavCollections_Click(this, EventArgs.Empty);
-                                    break;
-                                case "incidents":
-                                    btnNavIncidents_Click(this, EventArgs.Empty);
-                                    break;
-                                case "trucks":
-                                    btnNavTrucks_Click(this, EventArgs.Empty);
-                                    break;
-                                case "crew":
-                                    btnNavCrew_Click(this, EventArgs.Empty);
-                                    break;
-                                case "settings":
-                                    if (SessionContext.IsAdmin)
-                                    {
-                                        btnNavSettings_Click(this, EventArgs.Empty);
-                                    }
-                                    break;
-                            }
-                        }
-                    }
-
-                    card.Click += OnCardClicked;
-                    lblHeader.Click += OnCardClicked;
-                    lblDesc.Click += OnCardClicked;
-                    lblAction.Click += OnCardClicked;
-
-                    card.Controls.Add(btnDismiss);
-                    card.Controls.Add(lblTime);
-                    card.Controls.Add(lblHeader);
-                    card.Controls.Add(lblDesc);
-                    card.Controls.Add(lblAction);
-
-                    tblStack.Controls.Add(card);
-                }
-
-                pnlNotificationList.Controls.Add(tblStack);
-            }
-
-            pnlNotificationList.ResumeLayout(true);
-        }
-
-        private Button CreateKpiBadge(string text, Color bg, Color fg, EventHandler onClick)
-        {
-            Button btn = new Button
-            {
-                Text = text,
-                AutoSize = true,
-                Height = 26,
-                Margin = new Padding(0, 0, 6, 0),
-                BackColor = bg,
-                ForeColor = fg,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            btn.FlatAppearance.BorderSize = 0;
-            btn.Click += onClick;
-            return btn;
+            (pnlNotificationMenu as NotificationFlyout)?.Render();
         }
 
         public void UpdateHeaderKpiBadges()
@@ -894,10 +855,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 var deliveries = MJdatabase.GetDeliveries();
                 lastInTransitCount = deliveries.Count(d => d.Status == "In Transit");
-                lastPendingCount = deliveries.Count(d => d.Status == "Pending");
+                lastPendingCount = deliveries.Count(d => d.Status == "Pending" || d.Status == "Scheduled");
 
                 var invoices = MJdatabase.GetInvoices();
                 lastUnpaidCount = invoices.Count(i => i.Status == "Unpaid" || i.Status == "Partial");
+
+                if (btnKpiScheduled != null)
+                {
+                    btnKpiScheduled.Text = $"⏳ {lastPendingCount} Scheduled";
+                }
+                if (btnKpiInTransit != null)
+                {
+                    btnKpiInTransit.Text = $"\U0001f69a {lastInTransitCount} In Transit";
+                }
+                if (btnKpiUnpaid != null)
+                {
+                    btnKpiUnpaid.Text = $"\U0001f4b3 {lastUnpaidCount} Unpaid";
+                }
 
                 ApplyAdaptiveHeader();
             }
@@ -913,46 +887,30 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 bool isCompact = this.ClientSize.Width <= 1300;
 
-                if (lblHeaderTitle != null)
-                {
-                    lblHeaderTitle.Text = isCompact ? "M.J. Billones TDMS" : "M.J. Billones Transport Delivery System";
-                }
-
-                if (btnKpiTransit != null)
-                {
-                    btnKpiTransit.Text = isCompact ? $"🚚 {lastInTransitCount}" : $"🚚 {lastInTransitCount} Transit";
-                    ttSidebar.SetToolTip(btnKpiTransit, $"Active In Transit Deliveries: {lastInTransitCount}");
-                }
-
-                if (btnKpiPending != null)
-                {
-                    btnKpiPending.Text = isCompact ? $"⏳ {lastPendingCount}" : $"⏳ {lastPendingCount} Pending";
-                    ttSidebar.SetToolTip(btnKpiPending, $"Pending Dispatch Orders: {lastPendingCount}");
-                }
-
-                if (btnKpiUnpaid != null)
-                {
-                    btnKpiUnpaid.Text = isCompact ? $"💰 {lastUnpaidCount}" : $"💰 {lastUnpaidCount} Unpaid";
-                    ttSidebar.SetToolTip(btnKpiUnpaid, $"Unpaid Customer Invoices: {lastUnpaidCount}");
-                }
-
-                if (btnKpiShortcuts != null)
-                {
-                    btnKpiShortcuts.Visible = !isCompact;
-                }
-
                 if (btnHeaderSettings != null)
                 {
-                    btnHeaderSettings.Text = isCompact ? "⚙️" : "⚙️ SETTINGS";
-                    btnHeaderSettings.Size = isCompact ? new Size(34, 26) : new Size(100, 26);
+                    btnHeaderSettings.Text = isCompact ? "\u2699\ufe0f" : "\u2699\ufe0f  Settings";
                     ttSidebar.SetToolTip(btnHeaderSettings, "System Administration & Settings");
+                    btnHeaderSettings.Visible = SessionContext.IsAdmin;
                 }
 
                 if (btnLogout != null)
                 {
-                    btnLogout.Text = isCompact ? "🚪" : "LOGOUT";
-                    btnLogout.Size = isCompact ? new Size(34, 26) : new Size(72, 26);
-                    ttSidebar.SetToolTip(btnLogout, "Sign Out / Lock Session");
+                    btnLogout.Text = isCompact ? "\u238B" : "Log out";
+                    btnLogout.Visible = true;
+                }
+
+                if (btnKpiScheduled != null)
+                {
+                    btnKpiScheduled.Text = isCompact ? $"⏳  {lastPendingCount}" : $"⏳  {lastPendingCount} scheduled";
+                }
+                if (btnKpiInTransit != null)
+                {
+                    btnKpiInTransit.Text = isCompact ? $"\U0001f69a  {lastInTransitCount}" : $"\U0001f69a  {lastInTransitCount} in transit";
+                }
+                if (btnKpiUnpaid != null)
+                {
+                    btnKpiUnpaid.Text = isCompact ? $"\U0001f4b3  {lastUnpaidCount}" : $"\U0001f4b3  {lastUnpaidCount} unpaid";
                 }
             }
             catch (Exception ex)
@@ -1026,14 +984,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
                 MinimizeBox = false,
-                BackColor = Color.White
+                BackColor = Pal.White
             };
 
             Label lblTitle = new Label
             {
                 Text = "M.J. Billones Transport Service - Keyboard Shortcuts",
                 Font = new Font("Segoe UI", 12F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(15, 23, 42),
+                ForeColor = Pal.C(15, 23, 42),
                 Location = new Point(20, 15),
                 AutoSize = true
             };
@@ -1058,7 +1016,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = helpText,
                 Font = new Font("Segoe UI", 9.5F),
-                ForeColor = Color.FromArgb(51, 65, 85),
+                ForeColor = Pal.C(51, 65, 85),
                 Location = new Point(20, 50),
                 Size = new Size(465, 280)
             };
@@ -1068,8 +1026,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "GOT IT",
                 Location = new Point(370, 335),
                 Size = new Size(115, 32),
-                BackColor = Color.FromArgb(37, 99, 235),
-                ForeColor = Color.White,
+                BackColor = Pal.C(37, 99, 235),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -1118,10 +1076,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             });
         }
 
+        private bool skipNextViewRefresh;
         private void NavigateToView<T>(string cacheKey, Button btn, Func<T> factory) where T : UserControl, IRefreshable
         {
+            bool skipRefresh = skipNextViewRefresh;
+            skipNextViewRefresh = false;
             if (pnlNotificationMenu != null) pnlNotificationMenu.Visible = false;
             if (lstSearchDropdown != null) lstSearchDropdown.Visible = false;
+            HideNavFlyout();
+
+            if (panelMainContent.Controls.Count > 0 && panelMainContent.Controls[0] is OperationsHubView oph)
+            {
+                if (!oph.CheckAndPromptUnsavedBeforeLeaving()) return;
+            }
 
             if (!viewCache.TryGetValue(cacheKey, out UserControl? view))
             {
@@ -1139,22 +1106,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 panelMainContent.ResumeLayout(true);
             }
 
-            ((IRefreshable)view).RefreshData();
-
-            if (activeButton != null)
-            {
-                activeButton.BackColor = Color.FromArgb(15, 23, 42);
-                activeButton.ForeColor = Color.FromArgb(148, 163, 184);
-                activeButton.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Regular);
-            }
-
-            activeButton = btn;
-            activeButton.BackColor = Color.FromArgb(30, 41, 59);
-            activeButton.ForeColor = Color.White;
-            activeButton.Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold);
-
-            string rawText = btn.Text.Trim();
-            lblHeaderTitle.Text = rawText.Length > 2 ? rawText.Substring(2).Trim().ToUpper() : rawText.ToUpper();
+            if (!skipRefresh) ((IRefreshable)view).RefreshData();
+            SetActiveNav(btn);
             UpdateHeaderKpiBadges();
         }
 
@@ -1163,26 +1116,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (pnlNotificationMenu != null) pnlNotificationMenu.Visible = false;
             if (lstSearchDropdown != null) lstSearchDropdown.Visible = false;
 
+            if (panelMainContent.Controls.Count > 0 && panelMainContent.Controls[0] is OperationsHubView oph)
+            {
+                if (!oph.CheckAndPromptUnsavedBeforeLeaving()) return;
+            }
+
             panelMainContent.SuspendLayout();
             panelMainContent.Controls.Clear();
             viewControl.Dock = DockStyle.Fill;
             panelMainContent.Controls.Add(viewControl);
             panelMainContent.ResumeLayout(true);
 
-            if (activeButton != null)
-            {
-                activeButton.BackColor = Color.FromArgb(15, 23, 42);
-                activeButton.ForeColor = Color.FromArgb(148, 163, 184);
-                activeButton.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Regular);
-            }
-
-            activeButton = btn;
-            activeButton.BackColor = Color.FromArgb(30, 41, 59);
-            activeButton.ForeColor = Color.White;
-            activeButton.Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold);
-
-            string rawText = btn.Text.Trim();
-            lblHeaderTitle.Text = rawText.Length > 2 ? rawText.Substring(2).Trim().ToUpper() : rawText.ToUpper();
+            SetActiveNav(btn);
             UpdateHeaderKpiBadges();
         }
 
@@ -1190,36 +1135,40 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void btnNavOperations_Click(object? sender, EventArgs e)
         {
-            NavigateToView("OperationsHubView", btnNavOperations, () =>
+            NavigateToView("OperationsHubView", btnNavOperations, CreateOperationsHub);
+        }
+        private OperationsHubView CreateOperationsHub()
+        {
+            var ops = new OperationsHubView();
+            ops.OnLogIncidentForward = (delId, dispNum, missing, date) =>
             {
-                var ops = new OperationsHubView();
-                ops.OnLogIncidentForward = (delId, dispNum, missing, date) =>
-                {
-                    ops.PrefillIncidentFromTrip(delId, dispNum, missing, date);
-                };
-                ops.OnCreateInvoiceForward = (del) =>
-                {
-                    NavigateToView("FinanceHubView", btnNavFinance, () => new FinanceHubView("Billing"));
-                };
-                return ops;
-            });
+                ops.PrefillIncidentFromTrip(delId, dispNum, missing, date);
+            };
+            ops.OnCreateInvoiceForward = (del) =>
+            {
+                del = DispatchGate.Fresh(del);
+                if (!DispatchGate.RequireCompleted(this, del, "bill it")) return;
+                NavigateToView("FinanceHubView", btnNavFinance, () => new FinanceHubView("Billing", del));
+            };
+            return ops;
         }
 
         private void btnNavResources_Click(object? sender, EventArgs e)
         {
-            NavigateToView("ResourcesHubView", btnNavResources, () =>
+            NavigateToView("ResourcesHubView", btnNavResources, CreateResourcesHub);
+        }
+        private ResourcesHubView CreateResourcesHub()
+        {
+            var res = new ResourcesHubView();
+            res.OnDispatchTruckForward = (truck) =>
             {
-                var res = new ResourcesHubView();
-                res.OnDispatchTruckForward = (truck) =>
+                btnNavOperations_Click(this, EventArgs.Empty);
+                if (viewCache.TryGetValue("OperationsHubView", out var ov) && ov is OperationsHubView ohv)
                 {
-                    btnNavOperations_Click(this, EventArgs.Empty);
-                    if (viewCache.TryGetValue("OperationsHubView", out var ov) && ov is OperationsHubView ohv)
-                    {
-                        ohv.SelectTab("Dispatch");
-                    }
-                };
-                return res;
-            });
+                    ohv.SelectTab("Dispatch");
+                }
+            };
+            return res;
         }
 
         private void btnNavFinance_Click(object? sender, EventArgs e)
@@ -1230,6 +1179,130 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void btnNavMasterData_Click(object? sender, EventArgs e)
         {
             NavigateToView("MasterDataHubView", btnNavMasterData, () => new MasterDataHubView());
+        }
+
+        public void NavigateToDeliveryRoutes(string? routeCode = null, bool isNewRoute = false, string returnTarget = "Dispatch", Action? backAction = null)
+        {
+            try
+            {
+                OperationsHubView.SuppressUnsavedPrompt = true;
+                btnNavMasterData_Click(this, EventArgs.Empty);
+                if (viewCache.TryGetValue("MasterDataHubView", out var mv) && mv is MasterDataHubView mdv)
+                {
+                    mdv.SelectTab("Routes");
+                    mdv.GetDeliveryRoutesView()?.OpenForShortcut(routeCode, isNewRoute, returnTarget, backAction);
+                }
+            }
+            finally
+            {
+                OperationsHubView.SuppressUnsavedPrompt = false;
+            }
+        }
+
+        public void EditDeliveryOrderInDispatch(Delivery delivery)
+        {
+            NavigateToOperations("Dispatch");
+            if (viewCache.TryGetValue("OperationsHubView", out var ov) && ov is OperationsHubView ohv)
+            {
+                ohv.EditDeliveryInDispatch(delivery);
+            }
+        }
+
+        private OperationsHubView? GetOperationsHub(string tab)
+        {
+            NavigateToOperations(tab);
+            return viewCache.TryGetValue("OperationsHubView", out var ov) ? ov as OperationsHubView : null;
+        }
+        /// <summary>Opens the trip report for a dispatch: the existing one for editing, or a new one with the dispatch picked.</summary>
+        public void OpenTripReportForDispatch(Delivery delivery)
+        {
+            delivery = DispatchGate.Fresh(delivery);
+            if (!DispatchGate.RequireCompleted(this, delivery, "file its trip report")) return;
+            GetOperationsHub("TripReports")?.OpenTripReportForDispatch(delivery);
+        }
+        public void ShowTripReportsForDispatch(string dispatchNumber)
+        {
+            GetOperationsHub("TripReports")?.FilterTripReportsByDispatch(dispatchNumber);
+        }
+        public void ShowIncidentsForDispatch(string dispatchNumber)
+        {
+            GetOperationsHub("Incidents")?.FilterIncidentsByDispatch(dispatchNumber);
+        }
+        public void LogIncidentForDispatch(Delivery delivery)
+        {
+            delivery = DispatchGate.Fresh(delivery);
+            if (!DispatchGate.AllowIncident(this, delivery)) return;
+            GetOperationsHub("Incidents")?.PrefillIncidentFromTrip(delivery.Id, delivery.DispatchNumber, 0, delivery.DispatchDate);
+        }
+        public void CreateInvoiceForDelivery(Delivery delivery)
+        {
+            delivery = DispatchGate.Fresh(delivery);
+            if (!DispatchGate.RequireCompleted(this, delivery, "bill it")) return;
+            NavigateToView("FinanceHubView", btnNavFinance, () => new FinanceHubView("Billing", delivery));
+        }
+        /// <summary>Opens a client's profile in Master Data → Clients.</summary>
+        public void OpenClientProfile(string companyName)
+        {
+            NavigateToMasterData("Clients");
+            if (viewCache.TryGetValue("MasterDataHubView", out var mv) && mv is MasterDataHubView mdv) mdv.OpenClient(companyName);
+        }
+        public T? GetOperationsView<T>(string tab) where T : UserControl
+            => viewCache.TryGetValue("OperationsHubView", out var ov) && ov is OperationsHubView ohv ? ohv.GetView<T>(tab) : null;
+        public void NavigateToOperations(string tab = "Dispatch")
+        {
+            try
+            {
+                OperationsHubView.SuppressUnsavedPrompt = true;
+                skipNextViewRefresh = true; // the tab selection below refreshes the visible page once
+                btnNavOperations_Click(this, EventArgs.Empty);
+                if (viewCache.TryGetValue("OperationsHubView", out var ov) && ov is OperationsHubView ohv)
+                {
+                    ohv.SelectTab(tab);
+                }
+            }
+            finally
+            {
+                OperationsHubView.SuppressUnsavedPrompt = false;
+            }
+        }
+
+        public void NavigateToResources(string tab = "Trucks")
+        {
+            skipNextViewRefresh = true; // the tab selection below refreshes the visible page once
+                btnNavResources_Click(this, EventArgs.Empty);
+            if (viewCache.TryGetValue("ResourcesHubView", out var rv) && rv is ResourcesHubView rhv)
+            {
+                rhv.SelectTab(tab);
+            }
+        }
+
+        /// <summary>Opens a finance tab with its search box filled in (e.g. one invoice number).</summary>
+        public void ShowFinanceRecords(string tab, string search)
+        {
+            NavigateToFinance(tab);
+            if (!viewCache.TryGetValue("FinanceHubView", out var fv) || fv is not FinanceHubView fhv) return;
+            if (tab == "Billing") fhv.ShowInvoices(search);
+            else if (tab == "Collections") fhv.ShowCollections(search);
+            else fhv.ShowStatements(search);
+        }
+        public void NavigateToFinance(string tab = "StatementOfAccount")
+        {
+            skipNextViewRefresh = true; // the tab selection below refreshes the visible page once
+                btnNavFinance_Click(this, EventArgs.Empty);
+            if (viewCache.TryGetValue("FinanceHubView", out var fv) && fv is FinanceHubView fhv)
+            {
+                fhv.SelectTab(tab);
+            }
+        }
+
+        public void NavigateToMasterData(string tab = "Clients")
+        {
+            skipNextViewRefresh = true; // the tab selection below refreshes the visible page once
+                btnNavMasterData_Click(this, EventArgs.Empty);
+            if (viewCache.TryGetValue("MasterDataHubView", out var mv) && mv is MasterDataHubView mdv)
+            {
+                mdv.SelectTab(tab);
+            }
         }
 
         private void btnNavSettings_Click(object? sender, EventArgs e)
@@ -1366,7 +1439,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
                 MinimizeBox = false,
-                BackColor = Color.White
+                BackColor = Pal.White
             };
 
             Label lblInfo = new Label
@@ -1392,8 +1465,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Button btnOpen = new Button
             {
                 Text = "OPEN RECORD",
-                BackColor = Color.FromArgb(37, 99, 235),
-                ForeColor = Color.White,
+                BackColor = Pal.C(37, 99, 235),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Location = new Point(450, 335),
@@ -1546,15 +1619,40 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+        private void ApplyUserRolePermissions()
+        {
+            btnNavSettings.Visible = SessionContext.CanAccessSettings;
+            if (btnHeaderSettings != null)
+            {
+                btnHeaderSettings.Visible = SessionContext.CanAccessSettings;
+            }
+
+            if (SessionContext.IsDispatcher)
+            {
+                btnNavFinance.Visible = false;
+                btnNavMasterData.Visible = false;
+            }
+            else if (SessionContext.IsBillingClerk)
+            {
+                btnNavOperations.Visible = false;
+                btnNavResources.Visible = false;
+                btnNavMasterData.Visible = false;
+            }
+            else if (!SessionContext.IsAdmin)
+            {
+                btnNavSettings.Visible = false;
+            }
+        }
+
         private void btnLogout_Click(object sender, EventArgs e)
         {
             var confirm = MessageBox.Show("Are you sure you want to log out of the system?", "Confirm Logout", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (confirm == DialogResult.Yes)
             {
-                this.Hide();
-                LoginForm login = new LoginForm();
-                login.FormClosed += (s, args) => this.Close();
-                login.Show();
+                MJdatabase.LogSecurityEvent(currentUser?.Username ?? "", "LOGOUT", "User logged out");
+                IsLoggingOut = true;
+                SessionContext.ActiveUser = null;
+                this.Close();
             }
         }
     }

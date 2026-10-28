@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
@@ -22,14 +23,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Panel? pnlDraftBanner;
         private Button btnToggleForm = null!;
         private Button btnCloseForm = null!;
+        public Action<int, string>? OnNavigateToTripReportRequested;
 
         public IncidentReportView()
         {
             InitializeComponent();
+            Pal.RemapTree(this);
             gridIncidents.BringToFront();
+            try { ProfileKit.Suggest(txtCause, "incident"); ProfileKit.Suggest(txtDescription, "incident-notes"); } catch { }
             SetupGridColumns();
             SetupContextMenu();
-            gridIncidents.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && gridIncidents.Rows[e.RowIndex].DataBoundItem is IncidentReport item) RecordDetailsDialog.ShowDetails(this, item); };
             gridIncidents.ColumnHeaderMouseClick += (s, e) => {
                 if (e.ColumnIndex < 0 || e.ColumnIndex >= gridIncidents.Columns.Count) return;
                 string col = gridIncidents.Columns[e.ColumnIndex].DataPropertyName;
@@ -74,10 +77,40 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             menuActions.Items.Add("📊 Export Incident Logs to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridIncidents, "Incident_Reports", "Goods Damage and Incident Reports"));
             menuActions.Items.Add("🖨️ Print Incident Investigation Report", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
+            menuActions.Items.Add("🖨️ Print End-to-End Delivery Dossier", null, (s, e) => PrintSelectedDeliveryDossier());
             pnlGridActionsFlow.Controls.Add(btnActions);
 
+            var btnProceedTrip = new Button
+            {
+                Text = "Proceed to Trip Reports ➔",
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                Size = new Size(190, 28),
+                BackColor = Pal.C(15, 23, 42),
+                ForeColor = Pal.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Margin = new Padding(6, 4, 0, 0)
+            };
+            btnProceedTrip.FlatAppearance.BorderSize = 0;
+            btnProceedTrip.Click += (s, e) => ProceedToTripReports();
+            pnlGridActionsFlow.Controls.Add(btnProceedTrip);
+
+            currentFormWidth = UIThemeHelper.GetAdaptiveDrawerWidth(this, 400F, 460F);
             InitializeFormToggle();
             UIThemeHelper.ApplyTheme(this);
+            pnlFormHeaderBar.Controls.SetChildIndex(lblFormHeader, 0);
+            pnlFormHeaderBar.Controls.SetChildIndex(btnCloseForm, 1);
+            UIThemeHelper.SyncFormBodyControlsWidth(pnlFormBody);
+            SetButtonStates(false);
+                    InitFullPageForm();
+        }
+
+        private float currentFormWidth = 400F;
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            UIThemeHelper.SyncFormBodyControlsWidth(pnlFormBody);
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -96,15 +129,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "📝 + New / Form ▾",
                 Size = new Size(150, 30),
-                BackColor = Color.FromArgb(30, 41, 59),
-                ForeColor = Color.White,
+                BackColor = Pal.C(30, 41, 59),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
                 Margin = new Padding(0, 4, 8, 4)
             };
             btnToggleForm.FlatAppearance.BorderSize = 0;
-            btnToggleForm.Click += (s, e) => SetFormVisibility(!pnlForm.Visible);
+            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) SetFormVisibility(false); else OpenNewRecordForm(); };
             pnlGridActionsFlow.Controls.Add(btnToggleForm);
             pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
 
@@ -112,10 +145,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Name = "btnCloseForm",
                 Text = "✕ Close",
-                Size = new Size(80, 28),
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(68, 26),
+                Padding = new Padding(6, 0, 6, 0),
                 Dock = DockStyle.Right,
-                BackColor = Color.FromArgb(241, 245, 249),
-                ForeColor = Color.FromArgb(71, 85, 105),
+                BackColor = Pal.C(241, 245, 249),
+                ForeColor = Pal.C(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -127,25 +163,43 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetFormVisibility(false);
         }
 
-        private void SetFormVisibility(bool visible)
+
+        // ------------------------------------------------------------------ Full-page form (same tab, back button, section cards)
+        private FullPageFormKit? formKit;
+        private void InitFullPageForm()
         {
-            pnlForm.Visible = visible;
-            if (tblMasterContent.ColumnStyles.Count > 0)
+            formKit = new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to incidents");
+            formKit.Build(new[]
             {
-                tblMasterContent.ColumnStyles[0].Width = visible ? 480F : 0F;
-                tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
-            }
-            if (tblMasterContent.ColumnStyles.Count > 1)
-            {
-                tblMasterContent.ColumnStyles[1].Width = 100F;
-                tblMasterContent.ColumnStyles[1].SizeType = SizeType.Percent;
-            }
+                new FullPageFormKit.Section("Dispatch & damage", "Which trip it happened on, how many crates and the estimated cost.", lblDel, cbDelivery, tblQtyCost),
+                new FullPageFormKit.Section("What happened", "Cause, who is charged and a description.", lblCause, txtCause, chkChargeable, lblDesc, txtDescription),
+                new FullPageFormKit.Section("Photo evidence", "Pictures of the damage.", lblPhoto, tblPhotoModule)
+            });
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = visible ? "✕ Hide Form ▴" : "📝 + New / Form ▾";
-                btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
-                btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
+                btnToggleForm.Text = "＋ New incident";
+                UIThemeHelper.SetButtonRole(btnToggleForm, "primary");
             }
+            gridIncidents.CellDoubleClick += (s, e) =>
+            {
+                if (e.RowIndex < 0 || gridIncidents.Rows[e.RowIndex].DataBoundItem is not IncidentReport) return;
+                gridIncidents.ClearSelection();
+                gridIncidents.Rows[e.RowIndex].Selected = true;
+                SetFormVisibility(true);
+            };
+            SetFormVisibility(false);
+        }
+        private void OpenNewRecordForm()
+        {
+            ClearForm();
+            lblFormHeader.Text = "New incident report";
+            SetFormVisibility(true);
+        }
+        private void SetFormVisibility(bool visible)
+        {
+            if (formKit != null) formKit.Show(visible);
+            else pnlForm.Visible = visible;
+            if (btnToggleForm != null) btnToggleForm.Visible = !visible;
             MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
@@ -154,8 +208,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             LoadData();
         }
 
+        /// <summary>A dispatch the user already confirmed for an in-transit incident (so saving doesn't ask again).</summary>
+        private int preApprovedIncidentDeliveryId;
         public void PrefillFromTripVariance(int deliveryId, string dispatchNumber, int missingCrates, DateTime tripDate)
         {
+            preApprovedIncidentDeliveryId = deliveryId;
             for (int i = 0; i < deliveries.Count; i++)
             {
                 if (deliveries[i].Id == deliveryId || deliveries[i].DispatchNumber == dispatchNumber)
@@ -179,7 +236,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridIncidents.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             gridIncidents.ScrollBars = ScrollBars.Both;
             gridIncidents.AllowUserToResizeColumns = true;
-            gridIncidents.ShowCellToolTips = true;
+            gridIncidents.ShowCellToolTips = false;
             gridIncidents.Columns.Clear();
             gridIncidents.Columns.Add(new DataGridViewCheckBoxColumn { DataPropertyName = "ChargeableToCrew", HeaderText = "Charge Crew", FillWeight = 10, MinimumWidth = 90, ReadOnly = false });
             gridIncidents.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DispatchNumber", HeaderText = "Dispatch #", FillWeight = 12, MinimumWidth = 100, ReadOnly = true });
@@ -192,8 +249,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridIncidents.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 8, MinimumWidth = 75, ReadOnly = true });
         }
 
+        private static void ApplyButtonVisualState(Button btn, bool isEnabled, Color activeBgColor, Color activeFgColor)
+        {
+            btn.Enabled = isEnabled;
+            if (isEnabled)
+            {
+                btn.BackColor = activeBgColor;
+                btn.ForeColor = activeFgColor;
+                btn.Cursor = Cursors.Hand;
+            }
+            else
+            {
+                btn.BackColor = Pal.C(226, 232, 240);
+                btn.ForeColor = Pal.C(148, 163, 184);
+                btn.Cursor = Cursors.Default;
+            }
+        }
+
+        private void SetButtonStates(bool isEditing)
+        {
+            ApplyButtonVisualState(btnSave, !isEditing, Pal.C(13, 110, 253), Pal.White);
+            ApplyButtonVisualState(btnUpdate, isEditing, Pal.C(25, 135, 84), Pal.White);
+        }
+
         private void GridIncidents_SelectionChanged(object? sender, EventArgs e)
         {
+            if (pnlForm.Visible) return; // the list is hidden while the form is open; keep what is being typed
             if (gridIncidents.SelectedRows.Count > 0 && gridIncidents.SelectedRows[0].DataBoundItem is IncidentReport inc)
             {
                 isBindingForm = true;
@@ -210,7 +291,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 currentPhotoPath = selectedIncident.PhotoPath ?? "";
                 DisplayPhotoPreview(currentPhotoPath);
-                lblFormHeader.Text = "Incident Details Form";
+                lblFormHeader.Text = $"Incident Details: {selectedIncident.DispatchNumber}";
+                SetButtonStates(true);
                 isBindingForm = false;
             }
         }
@@ -245,15 +327,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
-                deliveries = MJdatabase.GetDeliveries();
+                allIncidents = MJdatabase.GetIncidentReports();
+                var withIncidents = new HashSet<int>(allIncidents.Select(i => i.DeliveryId));
+                // A dispatch can get an incident once it has left (on the road) or is completed — not while it's still being prepared, and never once cancelled.
+                deliveries = MJdatabase.GetDeliveries()
+                    .Where(d => DispatchGate.IsCompleted(d.Status) || DispatchGate.HasDeparted(d.Status) || withIncidents.Contains(d.Id))
+                    .ToList();
                 cbDelivery.Items.Clear();
                 foreach (var d in deliveries)
                 {
-                    cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo}");
+                    cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo} [{d.Status}]");
                 }
                 if (cbDelivery.Items.Count > 0) cbDelivery.SelectedIndex = 0;
 
-                allIncidents = MJdatabase.GetIncidentReports();
                 FilterGridData();
 
                 int totalDamaged = allIncidents.Sum(i => i.DamagedQuantity);
@@ -322,14 +408,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
+                var valErrors = new List<string>();
+                Control? firstInvalid = null;
+                ValidationHelper.ClearErrors(pnlForm);
+
+                if (cbDelivery.SelectedIndex < 0)
+                {
+                    ValidationHelper.ApplyValidationState(cbDelivery, false, "Trip / Delivery selection is required.");
+                    valErrors.Add("Trip / Delivery selection is required.");
+                    firstInvalid ??= cbDelivery;
+                }
+                if (!ValidationHelper.ValidateRequiredText(txtCause, "Incident Cause", valErrors)) firstInvalid ??= txtCause;
+                if (!ValidationHelper.ValidateRequiredText(txtDescription, "Incident Description / Details", valErrors)) firstInvalid ??= txtDescription;
+
+                if (!ValidationHelper.ShowValidationSummaryIfAny(this, valErrors, firstInvalid))
+                {
+                    return;
+                }
+
                 if (cbDelivery.SelectedIndex < 0)
                 {
                     MessageBox.Show("Please select a trip order.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
-                var selDel = deliveries[cbDelivery.SelectedIndex];
-
+                var selDel = DispatchGate.Fresh(deliveries[cbDelivery.SelectedIndex]);
+                if (selDel.Id != preApprovedIncidentDeliveryId && !DispatchGate.AllowIncident(this, selDel)) return;
                 if (string.IsNullOrWhiteSpace(txtCause.Text))
                 {
                     MessageBox.Show("Please enter or select the primary cause of the incident.", "Incident Cause Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -337,6 +441,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                if (!ValidateIncidentAmounts(selDel)) return;
                 IncidentReport ir = new IncidentReport
                 {
                     DeliveryId = selDel.Id,
@@ -381,6 +486,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                if (string.IsNullOrWhiteSpace(txtDescription.Text))
+                {
+                    MessageBox.Show("Please describe what happened.", "Description Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtDescription.Focus();
+                    return;
+                }
+                if (!ValidateIncidentAmounts(RowMenu.FindDelivery(selectedIncident.DeliveryId, selectedIncident.DispatchNumber))) return;
                 selectedIncident.DamagedQuantity = (int)numDamagedQty.Value;
                 selectedIncident.EstimatedCost = numEstimatedCost.Value;
                 selectedIncident.Cause = txtCause.Text.Trim();
@@ -409,13 +521,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
-                var res = MessageBox.Show($"Are you sure you want to delete incident log for Dispatch '{selectedIncident.DispatchNumber}'?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                var res = MessageBox.Show($"Are you sure you want to delete incident log for Dispatch '{selectedIncident.DispatchNumber}'?\n\n" + MJdatabase.DeletePolicyNote("IncidentReports"), "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
                 if (res == DialogResult.Yes)
                 {
                     bool deleted = MJdatabase.DeleteRecord("IncidentReports", selectedIncident.Id);
                     if (deleted)
                     {
-                        MessageBox.Show("Incident report deleted successfully.", "Deleted", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         LoadData();
                     }
                     else
@@ -446,6 +558,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtDescription.Text = "";
             currentPhotoPath = string.Empty;
             DisplayPhotoPreview(currentPhotoPath);
+            lblFormHeader.Text = "Incident Details Form";
+            SetButtonStates(false);
+            gridIncidents.ClearSelection();
         }
 
         private void FilterGridData()
@@ -498,7 +613,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ? $"Active Incident & Damage Logs ({allIncidents.Count})"
                 : $"Active Incident & Damage Logs ({filtered.Count} of {allIncidents.Count})";
 
-            if (filtered.Count > 0)
+            if (pnlForm.Visible)
+            {
+                // The form is open (new or edit): leave what is being typed alone.
+            }
+            else if (filtered.Count > 0)
             {
                 gridIncidents.ClearSelection();
                 gridIncidents.Rows[0].Selected = true;
@@ -541,6 +660,47 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtGridSearch.Focus();
         }
 
+        public void FilterByDispatch(string dispatchNumber)
+        {
+            if (txtGridSearch != null)
+            {
+                txtGridSearch.Text = dispatchNumber ?? "";
+                txtGridSearch.Focus();
+            }
+        }
+
+        private void PrintSelectedDeliveryDossier()
+        {
+            var inc = selectedIncident;
+            if (inc == null && gridIncidents.CurrentRow != null && gridIncidents.CurrentRow.DataBoundItem is IncidentReport rowInc)
+            {
+                inc = rowInc;
+            }
+            if (inc == null)
+            {
+                MessageBox.Show("Please select an incident record first.", "Select Incident", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            PrintHelper.PrintEndToEndDeliveryDossier(inc.DeliveryId, inc.DispatchNumber);
+        }
+
+        private void ProceedToTripReports()
+        {
+            var inc = selectedIncident;
+            if (inc == null && gridIncidents.CurrentRow != null && gridIncidents.CurrentRow.DataBoundItem is IncidentReport rowInc)
+            {
+                inc = rowInc;
+            }
+            if (inc != null)
+            {
+                OnNavigateToTripReportRequested?.Invoke(inc.DeliveryId, inc.DispatchNumber);
+            }
+            else
+            {
+                OnNavigateToTripReportRequested?.Invoke(0, "");
+            }
+        }
+
         private void BtnPrint_Click(object? sender, EventArgs e)
         {
             try
@@ -555,31 +715,80 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void SetupContextMenu()
         {
-            var menu = new ContextMenuStrip();
-            menu.Font = new Font("Segoe UI Semibold", 9F);
-
-            var itemDetails = new ToolStripMenuItem("🔍 View Full Details & History", null, (s, e) => {
-                if (selectedIncident != null) RecordDetailsDialog.ShowDetails(this, selectedIncident);
+            RowMenu.Attach(gridIncidents, (m, rows) =>
+            {
+                if (rows[0].DataBoundItem is not IncidentReport inc) return;
+                selectedIncident = inc;
+                bool resolved = RowMenu.Is(inc.Status, "Resolved", "Closed");
+                m.Items.AddRange(RowMenu.Header($"⚠️  Incident on {inc.DispatchNumber}",
+                    $"{inc.IncidentDate:MMM d, yyyy} · {RowMenu.Short(inc.Cause, 30)} · {inc.DamagedQuantity} crates · {RowMenu.Money(inc.EstimatedCost)} · {inc.Status}"));
+                m.Items.Add(RowMenu.Item("Open details", () => RecordDetailsDialog.ShowDetails(this, inc)));
+                m.Items.Add(RowMenu.Item("Edit incident", () => { SetFormVisibility(true); txtCause.Focus(); }));
+                m.Items.Add(RowMenu.Item($"Open dispatch {inc.DispatchNumber}", () => RowMenu.OpenDispatch(this, inc.DeliveryId, inc.DispatchNumber)));
+                m.Items.Add(RowMenu.Item("Go to the trip report", () => ProceedToTripReports()));
+                m.Items.Add(RowMenu.Sep());
+                if (!resolved) m.Items.Add(RowMenu.Good("Mark as resolved", () => SetIncidentStatus(inc, "Resolved")));
+                else m.Items.Add(RowMenu.Item("Reopen incident", () => SetIncidentStatus(inc, "Logged")));
+                m.Items.Add(RowMenu.Item(inc.ChargeableToCrew ? "Don't charge to crew" : "Charge to crew", () => ToggleChargeable(inc)));
+                if (!string.IsNullOrWhiteSpace(inc.PhotoPath) && File.Exists(inc.PhotoPath))
+                    m.Items.Add(RowMenu.Item("View photo", () => { using var v = new PhotoViewerDialog(inc.PhotoPath); v.ShowDialog(this); }));
+                m.Items.Add(RowMenu.Sep());
+                m.Items.Add(RowMenu.Sub("🖨️  Print",
+                    RowMenu.Item("End-to-end delivery dossier", () => PrintSelectedDeliveryDossier()),
+                    RowMenu.Item("Incident log (table)", () => BtnPrint_Click(this, EventArgs.Empty))));
+                m.Items.Add(RowMenu.CopySub(this, ("Dispatch number", inc.DispatchNumber), ("Cause", inc.Cause), ("Description", inc.Description),
+                    ("Summary", $"Incident on {inc.DispatchNumber} ({inc.IncidentDate:MMM d, yyyy}): {inc.Cause}. {inc.DamagedQuantity} crates, est. {RowMenu.Money(inc.EstimatedCost)}{(inc.ChargeableToCrew ? ", chargeable to crew" : "")}. Status: {inc.Status}.")));
+                m.Items.Add(RowMenu.Item("Other incidents on this dispatch", () => RowMenu.Search(txtGridSearch, inc.DispatchNumber)));
+                m.Items.Add(RowMenu.ExportSub(gridIncidents, "Incident_Reports", "Incident and Cargo Damage Logs", () => BtnPrint_Click(this, EventArgs.Empty)));
+                m.Items.Add(RowMenu.Sep());
+                m.Items.Add(RowMenu.Danger("Delete incident…", () => { selectedIncident = inc; BtnDelete_Click(this, EventArgs.Empty); }));
             });
-            var itemCopyInc = new ToolStripMenuItem("📋 Copy Dispatch Reference", null, (s, e) => {
-                if (selectedIncident != null) { Clipboard.SetText(selectedIncident.DispatchNumber); ToastHelper.ShowToast(this, "Dispatch ref copied ✓"); }
-            });
-            var itemEdit = new ToolStripMenuItem("✏️ Edit Incident Details", null, (s, e) => {
-                SetFormVisibility(true);
-                cbDelivery.Focus();
-            });
-            var itemPrint = new ToolStripMenuItem("📄 Print Incident Investigation Report", null, BtnPrint_Click);
-            var itemDelete = new ToolStripMenuItem("🗑️ Delete Incident Record", null, BtnDelete_Click);
-
-            menu.Items.AddRange(new ToolStripItem[] { itemDetails, itemCopyInc, new ToolStripSeparator(), itemEdit, itemPrint, new ToolStripSeparator(), itemDelete });
-
-            gridIncidents.CellMouseDown += (s, e) => {
-                if (e.Button == MouseButtons.Right && e.RowIndex >= 0) {
-                    gridIncidents.ClearSelection();
-                    gridIncidents.Rows[e.RowIndex].Selected = true;
-                    menu.Show(gridIncidents, gridIncidents.PointToClient(Cursor.Position));
-                }
-            };
+        }
+        private void SetIncidentStatus(IncidentReport inc, string status)
+        {
+            string old = inc.Status;
+            inc.Status = status;
+            try
+            {
+                MJdatabase.SaveIncidentReport(inc);
+                ToastHelper.ShowToast(this, $"Incident on {inc.DispatchNumber} is now {status.ToLowerInvariant()}", ToastType.Success);
+            }
+            catch (Exception ex)
+            {
+                inc.Status = old;
+                MessageBox.Show($"Failed to update the incident: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            LoadData();
+        }
+        private void ToggleChargeable(IncidentReport inc)
+        {
+            bool next = !inc.ChargeableToCrew;
+            if (next && inc.EstimatedCost <= 0)
+            {
+                MessageBox.Show("Enter an estimated cost first (Edit incident) — there is nothing to charge to the crew yet.", "No cost to charge", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            MJdatabase.ToggleIncidentChargeable(inc.Id, next);
+            inc.ChargeableToCrew = next;
+            LoadData();
+        }
+        /// <summary>Checks shared by saving a new incident and saving changes.</summary>
+        private bool ValidateIncidentAmounts(Delivery? trip)
+        {
+            int qty = (int)numDamagedQty.Value;
+            if (trip != null && trip.TotalCrates > 0 && qty > trip.TotalCrates)
+            {
+                MessageBox.Show($"Damaged / missing crates ({qty}) can't be more than the {trip.TotalCrates} crates loaded on dispatch {trip.DispatchNumber}.", "Check the crate count", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                numDamagedQty.Focus();
+                return false;
+            }
+            if (chkChargeable.Checked && numEstimatedCost.Value <= 0)
+            {
+                MessageBox.Show("This incident is marked chargeable to the crew, but the estimated cost is ₱0.00. Enter the cost to charge, or untick 'chargeable'.", "Cost Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                numEstimatedCost.Focus();
+                return false;
+            }
+            return true;
         }
 
         private void SetupDraftAutoSave()

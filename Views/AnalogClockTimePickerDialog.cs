@@ -79,11 +79,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int cy = h / 2;
             int radius = Math.Min(cx, cy) - 15;
 
-            using (SolidBrush faceBrush = new SolidBrush(Color.FromArgb(248, 250, 252)))
+            using (SolidBrush faceBrush = new SolidBrush(Pal.C(248, 250, 252)))
             {
                 g.FillEllipse(faceBrush, cx - radius, cy - radius, radius * 2, radius * 2);
             }
-            using (Pen borderPen = new Pen(Color.FromArgb(203, 213, 225), 2))
+            using (Pen borderPen = new Pen(Pal.C(203, 213, 225), 2))
             {
                 g.DrawEllipse(borderPen, cx - radius, cy - radius, radius * 2, radius * 2);
             }
@@ -122,7 +122,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         SizeF strSize = g.MeasureString(numStr, numFont);
                         PointF strPos = new PointF(nx - strSize.Width / 2f, ny - strSize.Height / 2f);
 
-                        Color textColor = (i == selectedHour) ? Color.White : UITheme.TextPrimary;
+                        Color textColor = (i == selectedHour) ? Pal.White : UITheme.TextPrimary;
                         using (SolidBrush textBrush = new SolidBrush(textColor))
                         {
                             g.DrawString(numStr, numFont, textBrush, strPos);
@@ -160,7 +160,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         SizeF strSize = g.MeasureString(numStr, numFont);
                         PointF strPos = new PointF(nx - strSize.Width / 2f, ny - strSize.Height / 2f);
 
-                        Color textColor = (m == selectedMinute || (selectedMinute == 0 && m == 0)) ? Color.White : UITheme.TextPrimary;
+                        Color textColor = (m == selectedMinute || (selectedMinute == 0 && m == 0)) ? Pal.White : UITheme.TextPrimary;
                         using (SolidBrush textBrush = new SolidBrush(textColor))
                         {
                             g.DrawString(numStr, numFont, textBrush, strPos);
@@ -168,7 +168,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
 
-                using (SolidBrush dotBrush = new SolidBrush(Color.FromArgb(148, 163, 184)))
+                using (SolidBrush dotBrush = new SolidBrush(Pal.C(148, 163, 184)))
                 {
                     for (int m = 0; m < 60; m++)
                     {
@@ -187,7 +187,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 g.FillEllipse(centerBrush, cx - 6, cy - 6, 12, 12);
             }
-            using (SolidBrush hubInner = new SolidBrush(Color.White))
+            using (SolidBrush hubInner = new SolidBrush(Pal.White))
             {
                 g.FillEllipse(hubInner, cx - 2, cy - 2, 4, 4);
             }
@@ -317,8 +317,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.ShowInTaskbar = false;
-            this.BackColor = Color.FromArgb(248, 250, 252);
-
+            this.BackColor = Pal.C(248, 250, 252);
             Panel pnlHeader = new Panel
             {
                 Dock = DockStyle.Top,
@@ -331,7 +330,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "08",
                 Font = new Font("Segoe UI", 32F, FontStyle.Bold),
-                ForeColor = Color.White,
+                ForeColor = Pal.White,
                 AutoSize = true,
                 Location = new Point(35, 12),
                 Cursor = Cursors.Hand
@@ -342,7 +341,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = ":",
                 Font = new Font("Segoe UI", 32F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(219, 234, 254),
+                ForeColor = Pal.C(219, 234, 254),
                 AutoSize = true,
                 Location = new Point(100, 10)
             };
@@ -351,7 +350,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "00",
                 Font = new Font("Segoe UI", 32F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(191, 219, 254),
+                ForeColor = Pal.C(191, 219, 254),
                 AutoSize = true,
                 Location = new Point(125, 12),
                 Cursor = Cursors.Hand
@@ -417,13 +416,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     Text = pr,
                     Size = new Size(68, 26),
                     FlatStyle = FlatStyle.Flat,
-                    BackColor = Color.FromArgb(241, 245, 249),
+                    BackColor = Pal.C(241, 245, 249),
                     ForeColor = UITheme.TextPrimary,
                     Font = new Font("Segoe UI Semibold", 8F, FontStyle.Bold),
                     Margin = new Padding(2),
                     Cursor = Cursors.Hand
                 };
-                btnPreset.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+                btnPreset.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
                 {
                     ParseTimeString(pr);
                     UpdateDisplayHeader();
@@ -438,7 +437,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Location = new Point(85, 405),
                 Size = new Size(105, 36),
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(241, 245, 249),
+                BackColor = Pal.C(241, 245, 249),
                 ForeColor = UITheme.TextSecondary,
                 Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -453,7 +452,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Size = new Size(110, 36),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = UITheme.PrimaryAccent,
-                ForeColor = Color.White,
+                ForeColor = Pal.White,
                 Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
@@ -474,13 +473,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             clockControl.Mode = mode;
             if (mode == AnalogClockControl.ClockMode.Hours)
             {
-                lblHourDisplay.ForeColor = Color.White;
-                lblMinuteDisplay.ForeColor = Color.FromArgb(191, 219, 254);
+                lblHourDisplay.ForeColor = Pal.White;
+                lblMinuteDisplay.ForeColor = Pal.C(191, 219, 254);
             }
             else
             {
-                lblHourDisplay.ForeColor = Color.FromArgb(191, 219, 254);
-                lblMinuteDisplay.ForeColor = Color.White;
+                lblHourDisplay.ForeColor = Pal.C(191, 219, 254);
+                lblMinuteDisplay.ForeColor = Pal.White;
             }
         }
 
@@ -495,17 +494,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (isAm)
             {
-                btnAm.BackColor = Color.White;
+                btnAm.BackColor = Pal.White;
                 btnAm.ForeColor = UITheme.PrimaryAccent;
-                btnPm.BackColor = Color.FromArgb(30, 64, 175);
-                btnPm.ForeColor = Color.FromArgb(224, 231, 255);
+                btnPm.BackColor = Pal.C(30, 64, 175);
+                btnPm.ForeColor = Pal.C(224, 231, 255);
             }
             else
             {
-                btnPm.BackColor = Color.White;
+                btnPm.BackColor = Pal.White;
                 btnPm.ForeColor = UITheme.PrimaryAccent;
-                btnAm.BackColor = Color.FromArgb(30, 64, 175);
-                btnAm.ForeColor = Color.FromArgb(224, 231, 255);
+                btnAm.BackColor = Pal.C(30, 64, 175);
+                btnAm.ForeColor = Pal.C(224, 231, 255);
             }
         }
 

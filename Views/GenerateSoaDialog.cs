@@ -40,14 +40,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.MaximizeBox = true;
             this.MinimizeBox = false;
-            this.BackColor = Color.FromArgb(248, 250, 252);
+            this.BackColor = Pal.C(248, 250, 252);
             this.Font = new Font("Segoe UI", 9F);
 
             Panel pnlHeader = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 62,
-                BackColor = Color.FromArgb(153, 27, 27),
+                BackColor = Pal.C(153, 27, 27),
                 Padding = new Padding(20, 10, 20, 10)
             };
 
@@ -55,7 +55,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "STATEMENT OF ACCOUNT (SOA) BATCHING & BILLING",
                 Font = new Font("Segoe UI", 12F, FontStyle.Bold),
-                ForeColor = Color.White,
+                ForeColor = Pal.White,
                 Dock = DockStyle.Top,
                 AutoSize = true
             };
@@ -64,7 +64,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Consolidate and issue itemized monthly or weekly statements of account per client company.",
                 Font = new Font("Segoe UI", 8.5F),
-                ForeColor = Color.FromArgb(254, 205, 211),
+                ForeColor = Pal.C(254, 205, 211),
                 Dock = DockStyle.Bottom,
                 AutoSize = true
             };
@@ -76,7 +76,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Dock = DockStyle.Fill,
                 Padding = new Padding(20, 14, 20, 14),
-                BackColor = Color.FromArgb(248, 250, 252)
+                BackColor = Pal.C(248, 250, 252)
             };
 
             Panel pnlFilter = new Panel
@@ -84,7 +84,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                BackColor = Color.White,
+                BackColor = Pal.White,
                 BorderStyle = BorderStyle.FixedSingle,
                 Padding = new Padding(14, 10, 14, 10),
                 Margin = new Padding(0, 0, 0, 12)
@@ -126,12 +126,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "☑ Select All",
                 Size = new Size(110, 28),
                 Margin = new Padding(0, 0, 8, 0),
-                BackColor = Color.FromArgb(241, 245, 249),
+                BackColor = Pal.C(241, 245, 249),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
-            btnSelectAll.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
+            btnSelectAll.FlatAppearance.BorderColor = Pal.C(226, 232, 240);
             btnSelectAll.Click += (s, e) => SetAllChecked(true);
 
             Button btnUnselectAll = new Button
@@ -139,12 +139,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "☐ Unselect All",
                 Size = new Size(110, 28),
                 Location = new Point(118, 0),
-                BackColor = Color.FromArgb(241, 245, 249),
+                BackColor = Pal.C(241, 245, 249),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
-            btnUnselectAll.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
+            btnUnselectAll.FlatAppearance.BorderColor = Pal.C(226, 232, 240);
             btnUnselectAll.Click += (s, e) => SetAllChecked(false);
 
             pnlBtnBlock.Controls.Add(btnSelectAll);
@@ -159,7 +159,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Panel pnlGridCard = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.White,
+                BackColor = Pal.White,
                 BorderStyle = BorderStyle.FixedSingle,
                 Padding = new Padding(8),
                 Margin = new Padding(0, 12, 0, 12)
@@ -168,7 +168,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridInvoices = new DataGridView
             {
                 Dock = DockStyle.Fill,
-                BackgroundColor = Color.White,
+                BackgroundColor = Pal.White,
                 BorderStyle = BorderStyle.None,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
@@ -201,7 +201,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Dock = DockStyle.Bottom,
                 Height = 105,
-                BackColor = Color.White,
+                BackColor = Pal.White,
                 BorderStyle = BorderStyle.FixedSingle,
                 Padding = new Padding(16, 10, 16, 10),
                 Margin = new Padding(0, 12, 0, 0)
@@ -220,9 +220,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Panel pnlTotals = new Panel { Dock = DockStyle.Fill };
             lblSelectedCount = new Label { Text = "Selected Invoices: 0", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold) };
             lblTotalGross = new Label { Text = "Gross Hauling: PHP 0.00", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI", 8.5F) };
-            lblTotalDeductions = new Label { Text = "Total Deductions: - PHP 0.00", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI", 8.5F), ForeColor = Color.FromArgb(220, 38, 38) };
-            lblNetPayable = new Label { Text = "TOTAL NET PAYABLE: PHP 0.00", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Color.FromArgb(153, 27, 27), Margin = new Padding(0, 4, 0, 0) };
-
+            lblTotalDeductions = new Label { Text = "Total Deductions: - PHP 0.00", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI", 8.5F), ForeColor = Pal.C(220, 38, 38) };
+            lblNetPayable = new Label { Text = "TOTAL NET PAYABLE: PHP 0.00", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Pal.C(153, 27, 27), Margin = new Padding(0, 4, 0, 0) };
             pnlTotals.Controls.Add(lblNetPayable);
             pnlTotals.Controls.Add(lblTotalDeductions);
             pnlTotals.Controls.Add(lblTotalGross);
@@ -240,8 +239,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "💾 SAVE & PRINT OFFICIAL SOA",
                 Size = new Size(240, 36),
                 Margin = new Padding(0, 0, 0, 6),
-                BackColor = Color.FromArgb(153, 27, 27),
-                ForeColor = Color.White,
+                BackColor = Pal.C(153, 27, 27),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -254,8 +253,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "🖨️ PREVIEW STATEMENT",
                 Size = new Size(160, 32),
                 Margin = new Padding(8, 0, 0, 0),
-                BackColor = Color.FromArgb(71, 85, 105),
-                ForeColor = Color.White,
+                BackColor = Pal.C(71, 85, 105),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -268,8 +267,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "CLOSE",
                 Size = new Size(90, 32),
                 Margin = new Padding(0),
-                BackColor = Color.FromArgb(203, 213, 225),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                BackColor = Pal.C(203, 213, 225),
+                ForeColor = Pal.C(30, 41, 59),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand

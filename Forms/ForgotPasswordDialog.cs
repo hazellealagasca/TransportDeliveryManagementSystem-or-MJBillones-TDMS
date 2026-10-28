@@ -27,14 +27,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
-            this.BackColor = Color.FromArgb(248, 250, 252);
+            this.BackColor = Pal.C(248, 250, 252);
             this.Font = new Font("Segoe UI", 9F);
 
             Panel pnlHeader = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 80,
-                BackColor = Color.FromArgb(15, 23, 42),
+                BackColor = Pal.C(15, 23, 42),
                 Padding = new Padding(24, 16, 24, 16)
             };
 
@@ -42,7 +42,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "🔑 Forgot Password Recovery",
                 Font = new Font("Segoe UI", 12F, FontStyle.Bold),
-                ForeColor = Color.White,
+                ForeColor = Pal.White,
                 Location = new Point(20, 14),
                 AutoSize = true
             };
@@ -51,7 +51,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Answer your secret security question to verify identity",
                 Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.FromArgb(148, 163, 184),
+                ForeColor = Pal.C(148, 163, 184),
                 Location = new Point(20, 42),
                 AutoSize = true
             };
@@ -63,7 +63,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Dock = DockStyle.Fill,
                 Padding = new Padding(24, 16, 24, 16),
-                BackColor = Color.White,
+                BackColor = Pal.White,
                 AutoScroll = true
             };
 
@@ -71,7 +71,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Enter Your Username *",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 Dock = DockStyle.Top,
                 Padding = new Padding(0, 0, 0, 4),
                 AutoSize = true
@@ -100,8 +100,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Verify User",
                 Dock = DockStyle.Fill,
-                BackColor = Color.FromArgb(37, 99, 235),
-                ForeColor = Color.White,
+                BackColor = Pal.C(37, 99, 235),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
@@ -125,7 +125,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Security Question:",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 Dock = DockStyle.Top,
                 Padding = new Padding(0, 4, 0, 2),
                 AutoSize = true
@@ -135,8 +135,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "",
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Italic),
-                ForeColor = Color.FromArgb(30, 58, 138),
-                BackColor = Color.FromArgb(239, 246, 255),
+                ForeColor = Pal.C(30, 58, 138),
+                BackColor = Pal.C(239, 246, 255),
                 Dock = DockStyle.Top,
                 Padding = new Padding(8, 8, 8, 8),
                 Margin = new Padding(0, 0, 0, 8),
@@ -147,7 +147,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Your Secret Security Answer *",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 Dock = DockStyle.Top,
                 Padding = new Padding(0, 8, 0, 4),
                 AutoSize = true
@@ -166,7 +166,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "New Password *",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 Dock = DockStyle.Top,
                 Padding = new Padding(0, 8, 0, 4),
                 AutoSize = true
@@ -186,7 +186,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "Confirm New Password *",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
+                ForeColor = Pal.C(30, 41, 59),
                 Dock = DockStyle.Top,
                 Padding = new Padding(0, 6, 0, 4),
                 AutoSize = true
@@ -207,8 +207,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "RESET PASSWORD",
                 Dock = DockStyle.Top,
                 Height = 38,
-                BackColor = Color.FromArgb(185, 28, 28),
-                ForeColor = Color.White,
+                BackColor = Pal.C(185, 28, 28),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
@@ -231,7 +231,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Dock = DockStyle.Top,
                 Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.FromArgb(220, 38, 38),
+                ForeColor = Pal.C(220, 38, 38),
                 Padding = new Padding(0, 8, 0, 4),
                 AutoSize = true,
                 Text = ""
@@ -241,7 +241,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Dock = DockStyle.Bottom,
                 Height = 55,
-                BackColor = Color.FromArgb(241, 245, 249),
+                BackColor = Pal.C(241, 245, 249),
                 Padding = new Padding(16, 10, 16, 10)
             };
 
@@ -250,8 +250,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = "Close",
                 Dock = DockStyle.Right,
                 Width = 90,
-                BackColor = Color.FromArgb(226, 232, 240),
-                ForeColor = Color.FromArgb(51, 65, 85),
+                BackColor = Pal.C(226, 232, 240),
+                ForeColor = Pal.C(51, 65, 85),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -291,7 +291,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string username = txtUsername.Text.Trim();
             if (string.IsNullOrWhiteSpace(username))
             {
-                lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
+                lblStatus.ForeColor = Pal.C(220, 38, 38);
                 lblStatus.Text = "Please enter your username to look up your account.";
                 pnlResetFields.Visible = false;
                 return;
@@ -300,7 +300,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string? question = MJdatabase.GetUserSecurityQuestion(username);
             if (question == null)
             {
-                lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
+                lblStatus.ForeColor = Pal.C(220, 38, 38);
                 lblStatus.Text = $"No account found matching username '{username}'.";
                 pnlResetFields.Visible = false;
                 return;
@@ -308,7 +308,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             lblQuestionText.Text = question;
             pnlResetFields.Visible = true;
-            lblStatus.ForeColor = Color.FromArgb(22, 101, 52);
+            lblStatus.ForeColor = Pal.C(22, 101, 52);
             lblStatus.Text = "Account verified. Please answer your security question below.";
             txtAnswer.Focus();
         }
@@ -322,21 +322,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (string.IsNullOrWhiteSpace(answer))
             {
-                lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
+                lblStatus.ForeColor = Pal.C(220, 38, 38);
                 lblStatus.Text = "Please enter the answer to your security question.";
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(newPass) || newPass.Length < 6 || !newPass.Any(char.IsLetter) || !newPass.Any(char.IsDigit))
             {
-                lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
+                lblStatus.ForeColor = Pal.C(220, 38, 38);
                 lblStatus.Text = "New password must be at least 6 characters and contain letters and numbers.";
                 return;
             }
 
             if (newPass != confirmPass)
             {
-                lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
+                lblStatus.ForeColor = Pal.C(220, 38, 38);
                 lblStatus.Text = "Password confirmation does not match.";
                 return;
             }
@@ -350,7 +350,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else
             {
-                lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
+                lblStatus.ForeColor = Pal.C(220, 38, 38);
                 lblStatus.Text = result.Message;
             }
         }

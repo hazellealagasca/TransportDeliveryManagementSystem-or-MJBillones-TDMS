@@ -11,11 +11,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     {
         private Button? activeTabBtn = null;
         private readonly Dictionary<string, Button> tabButtons = new Dictionary<string, Button>();
+        /// <summary>Key of the tab that is showing now (used to come back to the same screen after a theme change).</summary>
+        public string? CurrentTabKey => System.Linq.Enumerable.FirstOrDefault(tabButtons, k => k.Value == activeTabBtn).Key;
         private readonly Dictionary<string, UserControl> cachedViews = new Dictionary<string, UserControl>();
 
-        public MasterDataHubView(string defaultTab = "Rates")
+        public MasterDataHubView(string defaultTab = "Clients")
         {
             InitializeComponent();
+            Pal.RemapTree(this);
             SetupTabs();
             SelectTab(defaultTab);
             UIThemeHelper.ApplyTheme(this);
@@ -23,9 +26,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void SetupTabs()
         {
-            AddTab("Rates", "📈  Rate Matrix", () => new RateMatrixView());
-            AddTab("Categories", "🏢  Categories & Clients", () => new CategoryManagementView());
-            AddTab("History", "📜  Master Data History", () => new ModuleHistoryView("Master Data & Rates History", new[] { "RateMatrix", "LookupCategories", "Clients" }, isAdminOnly: true));
+            AddTab("Clients", "🏢  Clients", () => new ClientManagementView());
+            AddTab("Routes", "🗺️  Delivery Routes", () => new DeliveryRoutesView());
+            AddTab("History", "📜  Master Data History", () => new ModuleHistoryView("Master Data History", new[] { "Clients", "DeliveryRoutes", "ClientStores" }, isAdminOnly: true));
         }
 
         private void AddTab(string key, string title, Func<UserControl> viewFactory)
@@ -41,13 +44,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 0, 8, 0),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                BackColor = Color.White,
-                ForeColor = Color.FromArgb(71, 85, 105),
+                BackColor = Pal.White,
+                ForeColor = Pal.C(71, 85, 105),
                 Cursor = Cursors.Hand
             };
             btn.FlatAppearance.BorderSize = 1;
-            btn.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
-
+            btn.FlatAppearance.BorderColor = Pal.C(226, 232, 240);
             btn.Click += (s, e) =>
             {
                 SelectTab(key);
@@ -64,6 +66,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+        /// <summary>Opens the Clients tab on one client's profile.</summary>
+        public void OpenClient(string companyName)
+        {
+            SelectTab("Clients");
+            if (cachedViews.TryGetValue("Clients", out var v) && v is ClientManagementView cv) cv.OpenClientByName(companyName);
+        }
         public void SelectTab(string key)
         {
             if (!tabButtons.ContainsKey(key) || !cachedViews.ContainsKey(key))
@@ -75,16 +83,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var btn = kvp.Value;
                 if (isSelected)
                 {
-                    btn.BackColor = Color.FromArgb(15, 23, 42);
-                    btn.ForeColor = Color.White;
-                    btn.FlatAppearance.BorderColor = Color.FromArgb(15, 23, 42);
+                    btn.BackColor = Pal.C(15, 23, 42);
+                    btn.ForeColor = Pal.White;
+                    btn.FlatAppearance.BorderColor = Pal.C(15, 23, 42);
                     activeTabBtn = btn;
                 }
                 else
                 {
-                    btn.BackColor = Color.White;
-                    btn.ForeColor = Color.FromArgb(71, 85, 105);
-                    btn.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
+                    btn.BackColor = Pal.White;
+                    btn.ForeColor = Pal.C(71, 85, 105);
+                    btn.FlatAppearance.BorderColor = Pal.C(226, 232, 240);
                 }
             }
 
@@ -110,6 +118,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     refreshable.RefreshData();
                 }
             }
+        }
+
+        public DeliveryRoutesView? GetDeliveryRoutesView()
+        {
+            if (cachedViews.TryGetValue("Routes", out var v) && v is DeliveryRoutesView drv)
+            {
+                return drv;
+            }
+            return null;
         }
     }
 }

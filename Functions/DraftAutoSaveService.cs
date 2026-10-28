@@ -40,7 +40,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Dock = DockStyle.Top,
                 Height = 44,
-                BackColor = Color.FromArgb(254, 243, 199),
+                BackColor = Pal.C(254, 243, 199),
                 Padding = new Padding(14, 6, 14, 6),
                 Margin = new Padding(0, 0, 0, 8),
                 BorderStyle = BorderStyle.FixedSingle
@@ -48,18 +48,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lbl = new Label
             {
-                Text = $"📝 Unsaved draft found for {moduleName} from {draftTime:MMM dd, hh:mm tt}. Would you like to restore your work?",
-                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(146, 64, 14),
-                Dock = DockStyle.Left,
+                Text = $"📝 Unsaved draft ({draftTime:MMM dd, hh:mm tt})",
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                ForeColor = Pal.C(146, 64, 14),
+                Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
-                AutoSize = true
+                AutoSize = false,
+                AutoEllipsis = true
             };
 
             FlowLayoutPanel flowBtns = new FlowLayoutPanel
             {
                 Dock = DockStyle.Right,
                 AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
                 Margin = new Padding(0)
@@ -67,14 +69,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Button btnRestore = new Button
             {
-                Text = "Restore Draft",
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                ForeColor = Color.White,
-                BackColor = Color.FromArgb(217, 119, 6),
+                Text = "Restore",
+                Font = new Font("Segoe UI Semibold", 8.25F, FontStyle.Bold),
+                ForeColor = Pal.White,
+                BackColor = Pal.C(217, 119, 6),
                 FlatStyle = FlatStyle.Flat,
-                Size = new Size(110, 30),
+                Size = new Size(72, 28),
                 Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 8, 0)
+                Margin = new Padding(0, 0, 6, 0)
             };
             btnRestore.FlatAppearance.BorderSize = 0;
             btnRestore.Click += (s, e) =>
@@ -86,11 +88,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Button btnDiscard = new Button
             {
                 Text = "Discard",
-                Font = new Font("Segoe UI", 8.5F),
-                ForeColor = Color.FromArgb(180, 83, 9),
+                Font = new Font("Segoe UI", 8.25F),
+                ForeColor = Pal.C(180, 83, 9),
                 BackColor = Color.Transparent,
                 FlatStyle = FlatStyle.Flat,
-                Size = new Size(80, 30),
+                Size = new Size(64, 28),
                 Cursor = Cursors.Hand,
                 Margin = new Padding(0)
             };
@@ -104,8 +106,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             flowBtns.Controls.Add(btnRestore);
             flowBtns.Controls.Add(btnDiscard);
 
-            banner.Controls.Add(flowBtns);
             banner.Controls.Add(lbl);
+            banner.Controls.Add(flowBtns);
+            banner.Controls.SetChildIndex(lbl, 0);
+            banner.Controls.SetChildIndex(flowBtns, 1);
 
             return banner;
         }

@@ -10,6 +10,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 {
     public partial class TruckManagementView : UserControl, IRefreshable
     {
+        private Button btnSubTabFleet = null!;
+        private Button btnSubTabCategories = null!;
+        private Panel pnlSubNavTabs = null!;
+        private Panel pnlCategoriesContainer = null!;
+        private DataGridView gridTruckCategories = null!;
+        private TextBox txtCatName = null!;
+        private NumericUpDown numCatCapacity = null!;
+        private Button btnAddCat = null!;
+        private Button btnUpdateCat = null!;
+        private Button btnDeleteCat = null!;
+        private Button btnClearCat = null!;
+        private TextBox txtCatSearch = null!;
+        private Label lblCatSummary = null!;
+        private List<TruckCategoryItem> allTruckCategories = new List<TruckCategoryItem>();
+        private TruckCategoryItem? selectedTruckCategory = null;
+
         private Truck? selectedTruck = null;
         private bool isBindingForm = false;
         private List<Truck> allTrucks = new List<Truck>();
@@ -40,6 +56,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public TruckManagementView()
         {
             InitializeComponent();
+            Pal.RemapTree(this);
+            InitializeSubNavAndCategories();
             gridTrucks.BringToFront();
             SetupGridColumns();
             SetupContextMenu();
@@ -51,22 +69,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else { currentSortColumn = col; isSortAscending = true; }
                 FilterGridData();
             };
-            gridTrucks.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && gridTrucks.Rows[e.RowIndex].DataBoundItem is Truck item) RecordDetailsDialog.ShowDetails(this, item); };
             SetupEvents();
             LoadTrucks();
-            _categoriesHandler = () => { if (!this.IsDisposed && this.IsHandleCreated) this.Invoke(new Action(LoadTrucks)); };
+            _categoriesHandler = () => { if (!this.IsDisposed && this.IsHandleCreated) this.BeginInvoke(new Action(LoadTrucks)); };
             MJdatabase.OnCategoriesChanged += _categoriesHandler;
 
-            UIThemeHelper.ApplyTheme(this);
+            currentFormWidth = UIThemeHelper.GetAdaptiveDrawerWidth(this, 400F, 460F);
             InitializeFormToggle();
+            UIThemeHelper.ApplyTheme(this);
+            pnlFormHeaderBar.Controls.SetChildIndex(lblFormHeader, 0);
+            pnlFormHeaderBar.Controls.SetChildIndex(btnCloseForm, 1);
             txtPlate.Leave += (s, e) => txtPlate.Text = txtPlate.Text.Trim().ToUpper();
-
-            if (!SessionContext.IsAdmin)
-            {
-                btnDelete.Visible = false;
-                tblUpdateDelete.ColumnStyles[0].Width = 100F;
-                tblUpdateDelete.ColumnStyles[1].Width = 0F;
-            }
+            txtPlate.TextChanged += (s, e) => { if (!isBindingForm) HandlePlateInput(); };
+            SetButtonStates(false);
 
             btnPrint.Visible = false;
             var menuActions = new ContextMenuStrip();
@@ -77,7 +92,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             menuActions.Items.Add("🖨 Print Truck Report", null, BtnPrint_Click);
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
+                    InitInlineCategories();
+                    InitFullPageForm();
+            InitListPage();
         }
+
+        private float currentFormWidth = 400F;
 
         protected override void OnHandleDestroyed(EventArgs e)
         {
@@ -104,28 +124,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = "📝 + New / Form ▾",
                 Size = new Size(150, 30),
-                BackColor = Color.FromArgb(30, 41, 59),
-                ForeColor = Color.White,
+                BackColor = Pal.C(30, 41, 59),
+                ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
                 Margin = new Padding(0, 4, 8, 4)
             };
             btnToggleForm.FlatAppearance.BorderSize = 0;
-            btnToggleForm.Click += (s, e) => SetFormVisibility(!pnlForm.Visible);
+            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) SetFormVisibility(false); else OpenNewRecordForm(); };
             pnlGridActionsFlow.Controls.Add(btnToggleForm);
             pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
 
             btnCloseForm = new Button
             {
+                Name = "btnCloseForm",
                 Text = "✕ Close",
                 Dock = DockStyle.Right,
-                Width = 72,
-                Height = 30,
-                BackColor = Color.FromArgb(241, 245, 249),
-                ForeColor = Color.FromArgb(71, 85, 105),
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(68, 26),
+                Padding = new Padding(6, 0, 6, 0),
+                BackColor = Pal.C(241, 245, 249),
+                ForeColor = Pal.C(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             btnCloseForm.FlatAppearance.BorderSize = 0;
@@ -135,31 +158,64 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetFormVisibility(false);
         }
 
-        private void SetFormVisibility(bool visible)
+
+        // ------------------------------------------------------------------ Full-page form (same tab, back button, section cards)
+        private FullPageFormKit? formKit;
+        private void InitFullPageForm()
         {
-            pnlForm.Visible = visible;
-            if (tblMasterContent.ColumnStyles.Count > 0)
+            formKit = new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to trucks");
+            formKit.Build(new[]
             {
-                tblMasterContent.ColumnStyles[0].Width = visible ? 480F : 0F;
-                tblMasterContent.ColumnStyles[0].SizeType = SizeType.Absolute;
-            }
-            if (tblMasterContent.ColumnStyles.Count > 1)
-            {
-                tblMasterContent.ColumnStyles[1].Width = 100F;
-                tblMasterContent.ColumnStyles[1].SizeType = SizeType.Percent;
-            }
+                new FullPageFormKit.Section("Vehicle", "Plate number, type, cargo zone and status.", tblPlateType, tblCargoStatus),
+                new FullPageFormKit.Section("Capacity", "Fills in from the truck category above; change it for this truck if needed. A new category typed above is added when you save.", lblCap, numCapacity, lblCatHint, chkSaveCatDefault, lnkManageCats),
+                new FullPageFormKit.Section("Remarks", "Anything to note about this truck.", lblRemarks, txtRemarks, pnlRemarksSpacer)
+            });
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = visible ? "✕ Hide Form ▴" : "📝 + New / Form ▾";
-                btnToggleForm.BackColor = visible ? Color.FromArgb(226, 232, 240) : Color.FromArgb(30, 41, 59);
-                btnToggleForm.ForeColor = visible ? Color.FromArgb(15, 23, 42) : Color.White;
+                btnToggleForm.Text = "＋ New truck";
+                UIThemeHelper.SetButtonRole(btnToggleForm, "primary");
             }
+            gridTrucks.CellDoubleClick += (s, e) =>
+            {
+                if (e.RowIndex < 0 || gridTrucks.Rows[e.RowIndex].DataBoundItem is not Truck t) return;
+                gridTrucks.ClearSelection();
+                gridTrucks.Rows[e.RowIndex].Selected = true;
+                OpenTruckProfile(t);
+            };
+            SetFormVisibility(false);
+            ProfileKit.Suggest(txtRemarks, "truck-remarks");
+        }
+        /// <summary>Specs, dispatch history, maintenance log and incidents for one truck.</summary>
+        private void OpenTruckProfile(Truck t)
+        {
+            Truck? toEdit = null;
+            Forms.TruckProfileDialog.ShowFor(FindForm(), t, SessionContext.IsAdmin ? (Action<Truck>)(tr => toEdit = tr) : null);
+            if (toEdit != null)
+            {
+                BindTruckToForm(toEdit);
+                SetFormVisibility(true);
+                txtPlate.Focus();
+            }
+        }
+        private void OpenNewRecordForm()
+        {
+            ClearFields();
+            lblFormHeader.Text = "New truck";
+            SetFormVisibility(true);
+        }
+        private void SetFormVisibility(bool visible)
+        {
+            if (formKit != null) formKit.Show(visible);
+            else pnlForm.Visible = visible;
+            if (btnToggleForm != null) btnToggleForm.Visible = !visible;
+            ShowListChrome(!visible);
             MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
         public void RefreshData()
         {
             LoadTrucks();
+            LoadTruckCategories();
         }
 
         private void SetupGridColumns()
@@ -168,7 +224,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridTrucks.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             gridTrucks.ScrollBars = ScrollBars.Both;
             gridTrucks.AllowUserToResizeColumns = true;
-            gridTrucks.ShowCellToolTips = true;
+            gridTrucks.ShowCellToolTips = false;
             gridTrucks.Columns.Clear();
             gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "PlateNumber", HeaderText = "Plate Number", FillWeight = 14F, MinimumWidth = 110, ReadOnly = true });
             gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TruckType", HeaderText = "Truck Category", FillWeight = 18F, MinimumWidth = 125, ReadOnly = true });
@@ -178,29 +234,122 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Remarks", HeaderText = "Condition Remarks", FillWeight = 28F, MinimumWidth = 135, ReadOnly = true });
         }
 
+        private static void ApplyButtonVisualState(Button btn, bool isEnabled, Color activeBgColor, Color activeFgColor)
+        {
+            btn.Enabled = isEnabled;
+            if (isEnabled)
+            {
+                btn.BackColor = activeBgColor;
+                btn.ForeColor = activeFgColor;
+                btn.Cursor = Cursors.Hand;
+            }
+            else
+            {
+                btn.BackColor = Pal.C(226, 232, 240);
+                btn.ForeColor = Pal.C(148, 163, 184);
+                btn.Cursor = Cursors.Default;
+            }
+        }
+
+        private void SetButtonStates(bool isEditing)
+        {
+            string plate = txtPlate.Text.Trim();
+            var matched = !string.IsNullOrWhiteSpace(plate)
+                ? allTrucks.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.PlateNumber) && t.PlateNumber.Equals(plate, StringComparison.OrdinalIgnoreCase))
+                : null;
+            bool exists = (selectedTruck != null || matched != null) && !string.IsNullOrWhiteSpace(plate);
+
+            btnAdd.Enabled = !exists;
+            btnAdd.Visible = !exists;
+            btnUpdate.Enabled = exists;
+            btnUpdate.Visible = exists;
+            ApplyButtonVisualState(btnAdd, !exists, Pal.C(13, 110, 253), Pal.White);
+            ApplyButtonVisualState(btnUpdate, exists, Pal.C(25, 135, 84), Pal.White);
+        }
+
         private void GridTrucks_SelectionChanged(object? sender, EventArgs e)
         {
+            if (pnlForm.Visible) return; // the list is hidden while the form is open; keep what is being typed
             if (gridTrucks.SelectedRows.Count > 0 && gridTrucks.SelectedRows[0].DataBoundItem is Truck t)
             {
-                isBindingForm = true;
+                BindTruckToForm(t);
+            }
+        }
+
+        private void HandlePlateInput()
+        {
+            string plate = txtPlate.Text.Trim();
+            if (string.IsNullOrWhiteSpace(plate))
+            {
+                selectedTruck = null;
+                lblFormHeader.Text = "Truck Vehicle Details";
+                SetButtonStates(false);
+                return;
+            }
+
+            var matched = allTrucks.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.PlateNumber) && t.PlateNumber.Equals(plate, StringComparison.OrdinalIgnoreCase));
+            if (matched != null)
+            {
+                BindTruckToForm(matched);
+                for (int i = 0; i < gridTrucks.Rows.Count; i++)
+                {
+                    if (gridTrucks.Rows[i].DataBoundItem is Truck rowT && rowT.Id == matched.Id)
+                    {
+                        gridTrucks.ClearSelection();
+                        gridTrucks.Rows[i].Selected = true;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                selectedTruck = null;
+                lblFormHeader.Text = $"Truck: {plate} (New)";
+                SetButtonStates(false);
+            }
+        }
+
+        private void BindTruckToForm(Truck t)
+        {
+            isBindingForm = true;
+            try
+            {
                 selectedTruck = t;
                 txtPlate.Text = selectedTruck.PlateNumber;
-                cbType.SelectedItem = selectedTruck.TruckType;
+                cbType.Text = selectedTruck.TruckType;
                 cbCargoType.SelectedItem = string.IsNullOrEmpty(selectedTruck.CargoType) ? "Cold / Chilled" : selectedTruck.CargoType;
                 numCapacity.Value = selectedTruck.CapacityCrates;
                 string curStatus = selectedTruck.Status;
                 if (curStatus.Equals("Available", StringComparison.OrdinalIgnoreCase)) curStatus = "Active";
                 cbStatus.SelectedItem = curStatus;
                 txtRemarks.Text = selectedTruck.Remarks;
-                lblFormHeader.Text = "Truck Vehicle Details";
+                lblFormHeader.Text = $"Truck: {selectedTruck.PlateNumber}";
+            }
+            finally
+            {
                 isBindingForm = false;
             }
+            SetButtonStates(true);
+            ResetCategoryHint();
         }
 
         private void BtnSave_Click(object? sender, EventArgs e)
         {
             try
             {
+                var valErrors = new List<string>();
+                Control? firstInvalid = null;
+                ValidationHelper.ClearErrors(pnlForm);
+
+                if (!ValidationHelper.ValidateRequiredText(txtPlate, "Plate Number", valErrors)) firstInvalid ??= txtPlate;
+                if (string.IsNullOrWhiteSpace(cbType.Text)) { valErrors.Add("Truck category is required (pick one or type a new one)."); firstInvalid ??= cbType; }
+                if (!ValidationHelper.ValidatePositiveNumber(numCapacity, "Crate Capacity", valErrors)) firstInvalid ??= numCapacity;
+
+                if (!ValidationHelper.ShowValidationSummaryIfAny(this, valErrors, firstInvalid))
+                {
+                    return;
+                }
+
                 if (!SessionContext.IsAdmin)
                 {
                     MessageBox.Show("Administrator privileges are required to add new vehicles.", "Access Denied", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -237,15 +386,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
-                string truckType = cbType.Text.Trim();
-                if (string.IsNullOrWhiteSpace(truckType))
+                if (string.IsNullOrWhiteSpace(cbType.Text))
                 {
-                    MessageBox.Show("Please select a Truck Category from the dropdown. (You can add or edit Truck Categories and their Capacities via the Categories menu on the top bar).", "Truck Type Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Choose a truck category, or type a new one.", "Truck category required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     cbType.Focus();
                     return;
                 }
-                MJdatabase.SaveLookupItem("Truck Type / Category", truckType);
-
+                string? truckType = CommitCategoryFromForm(capacity);
+                if (truckType == null) return;
                 Truck truck = new Truck
                 {
                     CargoType = cbCargoType.SelectedItem?.ToString() ?? "Cold / Chilled",
@@ -314,15 +462,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
-                string truckType = cbType.Text.Trim();
-                if (string.IsNullOrWhiteSpace(truckType))
+                if (string.IsNullOrWhiteSpace(cbType.Text))
                 {
-                    MessageBox.Show("Please select a Truck Category from the dropdown. (You can add or edit Truck Categories and their Capacities via the Categories menu on the top bar).", "Truck Type Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Choose a truck category, or type a new one.", "Truck category required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     cbType.Focus();
                     return;
                 }
-                MJdatabase.SaveLookupItem("Truck Type / Category", truckType);
-
+                string newStatus = cbStatus.SelectedItem?.ToString() ?? "Active";
+                if (MJdatabase.IsTruckBlockedStatus(newStatus) && !MJdatabase.IsTruckBlockedStatus(selectedTruck.Status) && MJdatabase.IsTruckOnActiveTrip(selectedTruck.Id))
+                {
+                    MessageBox.Show($"Truck {selectedTruck.PlateNumber} is assigned to an open dispatch. Complete or reassign that trip before setting it to '{newStatus}'.", "Truck on a trip", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    cbStatus.Focus();
+                    return;
+                }
+                string? truckType = CommitCategoryFromForm(capacity);
+                if (truckType == null) return;
                 selectedTruck.PlateNumber = plateNumber;
                 selectedTruck.TruckType = truckType;
                 selectedTruck.CapacityCrates = capacity;
@@ -365,13 +519,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
-                var res = MessageBox.Show($"Are you sure you want to delete truck {selectedTruck.PlateNumber}?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                var res = MessageBox.Show($"Are you sure you want to delete truck {selectedTruck.PlateNumber}?\n\n" + MJdatabase.DeletePolicyNote("Trucks"), "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
                 if (res == DialogResult.Yes)
                 {
                     bool deleted = MJdatabase.DeleteRecord("Trucks", selectedTruck.Id);
                     if (deleted)
                     {
-                        MessageBox.Show("Truck record deleted successfully!", "Deleted", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         ClearFields();
                         LoadTrucks();
                     }
@@ -405,6 +559,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     (!string.IsNullOrEmpty(t.Remarks) && t.Remarks.ToLower().Contains(q))
                 ).ToList();
 
+            filtered = filtered.Where(TruckPassesTile).ToList();
+            UpdateTruckTiles();
             switch (currentSortColumn)
             {
                 case "PlateNumber":
@@ -436,10 +592,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridTrucks.SelectionChanged -= GridTrucks_SelectionChanged;
             gridTrucks.DataSource = null;
             gridTrucks.DataSource = filtered;
-            lblGridHeader.Text = string.IsNullOrEmpty(q)
-                ? $"Registered Trucks ({allTrucks.Count})"
-                : $"Registered Trucks - Showing {filtered.Count} of {allTrucks.Count}";
-
+            lblGridHeader.Text = string.IsNullOrEmpty(q) && truckTileFilter == null
+                ? $"All trucks · {allTrucks.Count}"
+                : $"Showing {filtered.Count} of {allTrucks.Count} trucks";
             if (filtered.Count > 0)
             {
                 gridTrucks.ClearSelection();
@@ -449,7 +604,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     isBindingForm = true;
                     selectedTruck = filtered[0];
                     txtPlate.Text = selectedTruck.PlateNumber;
-                    cbType.SelectedItem = selectedTruck.TruckType;
+                    cbType.Text = selectedTruck.TruckType;
                     cbCargoType.SelectedItem = string.IsNullOrEmpty(selectedTruck.CargoType) ? "Cold / Chilled" : selectedTruck.CargoType;
                     numCapacity.Value = selectedTruck.CapacityCrates;
                     cbStatus.SelectedItem = selectedTruck.Status;
@@ -506,17 +661,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbStatus.SelectedIndex = 0;
             cbCargoType.SelectedIndex = 0;
             txtRemarks.Text = "";
+            lblFormHeader.Text = "Truck Vehicle Details";
+            SetButtonStates(false);
+            gridTrucks.ClearSelection();
+            ResetCategoryHint();
         }
 
         private async void LoadTrucks()
         {
             try
             {
-                var types = MJdatabase.GetLookupItems("Truck Type / Category");
+                var categories = MJdatabase.GetTruckCategories();
+                allTruckCategories = categories;
                 string currentType = cbType.Text;
                 cbType.Items.Clear();
-                foreach (var t in types) cbType.Items.Add(t);
-                if (cbType.Items.Count > 0)
+                foreach (var c in categories) cbType.Items.Add(c.CategoryName);
+                if (!string.IsNullOrWhiteSpace(currentType) && !cbType.Items.Contains(currentType))
+                {
+                    cbType.Text = currentType;   // a new category typed in the form stays until it is saved
+                }
+                else if (cbType.Items.Count > 0)
                 {
                     if (!string.IsNullOrEmpty(currentType) && cbType.Items.Contains(currentType))
                         cbType.SelectedItem = currentType;
@@ -537,6 +701,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (cbStatus.SelectedIndex < 0) cbStatus.SelectedIndex = 0;
 
                 allTrucks = await MJdatabase.GetTrucksAsync();
+                RefreshBusyTrucks();
                 if (!this.IsDisposed)
                 {
                     FilterGridData();
@@ -571,95 +736,519 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void SetupContextMenu()
         {
-            var menu = new ContextMenuStrip();
-            menu.Font = new Font("Segoe UI Semibold", 9F);
-
-            var itemDetails = new ToolStripMenuItem("🔍 View Full Details & History", null, (s, e) => {
-                if (selectedTruck != null) RecordDetailsDialog.ShowDetails(this, selectedTruck);
-            });
-            var itemCopyPlate = new ToolStripMenuItem("📋 Copy Plate Number", null, (s, e) => {
-                if (selectedTruck != null) { Clipboard.SetText(selectedTruck.PlateNumber); ToastHelper.ShowToast(this, "Plate number copied ✓"); }
-            });
-            var itemDispatch = new ToolStripMenuItem("🚚 Dispatch This Vehicle", null, (s, e) => {
-                if (selectedTruck != null)
-                {
-                    if (selectedTruck.Status.Equals("Under Maintenance", StringComparison.OrdinalIgnoreCase) ||
-                        selectedTruck.Status.Equals("Inactive", StringComparison.OrdinalIgnoreCase))
-                    {
-                        MessageBox.Show($"Cannot dispatch vehicle '{selectedTruck.PlateNumber}' because its current status is '{selectedTruck.Status}'.", "Vehicle Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return;
-                    }
-                    OnDispatchTruckRequested?.Invoke(selectedTruck);
-                }
-            });
-            var itemEdit = new ToolStripMenuItem("✏️ Edit Vehicle Details", null, (s, e) => {
-                SetFormVisibility(true);
-                txtPlate.Focus();
-            });
-            var itemAvail = new ToolStripMenuItem("🟢 Set Status: Active", null, (s, e) => {
-                try
-                {
-                    if (selectedTruck != null) {
-                        selectedTruck.Status = "Active";
-                        MJdatabase.SaveTruck(selectedTruck);
-                        LoadTrucks();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Failed to update truck status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            });
-            var itemInactive = new ToolStripMenuItem("⚪ Set Status: Inactive", null, (s, e) => {
-                try
-                {
-                    if (selectedTruck != null) {
-                        selectedTruck.Status = "Inactive";
-                        MJdatabase.SaveTruck(selectedTruck);
-                        LoadTrucks();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Failed to update truck status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            });
-            var itemMaint = new ToolStripMenuItem("🔧 Set Status: Under Maintenance", null, (s, e) => {
-                try
-                {
-                    if (selectedTruck != null) {
-                        selectedTruck.Status = "Under Maintenance";
-                        MJdatabase.SaveTruck(selectedTruck);
-                        LoadTrucks();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Failed to update truck status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            });
-            var itemDelete = new ToolStripMenuItem("🗑️ Delete Vehicle Record", null, BtnDelete_Click)
+            RowMenu.Attach(gridTrucks, (m, rows) =>
             {
-                Visible = SessionContext.IsAdmin
-            };
-            var itemExportCsv = new ToolStripMenuItem("📊 Export Table to CSV...", null, (s, e) => {
-                try { DataExportHelper.ExportToCsv(gridTrucks, "Truck_Vehicles", "Registered Trucks"); }
-                catch (Exception ex) { MessageBox.Show($"Export error: {ex.Message}", "Export Failed", MessageBoxButtons.OK, MessageBoxIcon.Error); }
-            });
-            var itemExportExcel = new ToolStripMenuItem("📑 Export Table to Excel (.xml)...", null, (s, e) => {
-                try { DataExportHelper.ExportToExcelXml(gridTrucks, "Truck_Vehicles", "Registered Trucks"); }
-                catch (Exception ex) { MessageBox.Show($"Export error: {ex.Message}", "Export Failed", MessageBoxButtons.OK, MessageBoxIcon.Error); }
-            });
-
-            menu.Items.AddRange(new ToolStripItem[] { itemDetails, itemCopyPlate, new ToolStripSeparator(), itemDispatch, new ToolStripSeparator(), itemEdit, itemAvail, itemInactive, itemMaint, new ToolStripSeparator(), itemExportCsv, itemExportExcel, new ToolStripSeparator(), itemDelete });
-
-            gridTrucks.CellMouseDown += (s, e) => {
-                if (e.Button == MouseButtons.Right && e.RowIndex >= 0) {
-                    gridTrucks.ClearSelection();
-                    gridTrucks.Rows[e.RowIndex].Selected = true;
-                    menu.Show(gridTrucks, gridTrucks.PointToClient(Cursor.Position));
+                if (rows[0].DataBoundItem is not Truck t) return;
+                selectedTruck = t;
+                string status = string.IsNullOrWhiteSpace(t.Status) ? "Active" : t.Status;
+                bool blocked = MJdatabase.IsTruckBlockedStatus(status);
+                bool onTrip = false;
+                try { onTrip = MJdatabase.IsTruckOnActiveTrip(t.Id); } catch { }
+                m.Items.AddRange(RowMenu.Header($"🚚  {t.PlateNumber}", $"{t.TruckType} · {t.CapacityCrates} crates · {status}{(onTrip ? " · assigned to a dispatch" : "")}"));
+                m.Items.Add(RowMenu.Item("Open truck profile", () => OpenTruckProfile(t), "Enter"));
+                m.Items.Add(RowMenu.Item("Quick details", () => RecordDetailsDialog.ShowDetails(this, t)));
+                m.Items.Add(RowMenu.Item("Edit truck", () => { SetFormVisibility(true); txtPlate.Focus(); }, "", SessionContext.IsAdmin));
+                m.Items.Add(RowMenu.Sep());
+                m.Items.Add(RowMenu.Good("Dispatch this truck", () => BtnDispatchTruck_Click(this, EventArgs.Empty), !blocked && !onTrip));
+                m.Items.Add(RowMenu.Sub("Set status",
+                    RowMenu.Item("🟢  Active", () => SetTruckStatus(t, "Active"), "", !status.Equals("Active", StringComparison.OrdinalIgnoreCase)),
+                    RowMenu.Item("🔧  Under maintenance", () => SetTruckStatus(t, "Under Maintenance"), "", !status.Equals("Under Maintenance", StringComparison.OrdinalIgnoreCase)),
+                    RowMenu.Item("⚪  Inactive", () => SetTruckStatus(t, "Inactive"), "", !status.Equals("Inactive", StringComparison.OrdinalIgnoreCase))));
+                m.Items.Add(RowMenu.Sep());
+                m.Items.Add(RowMenu.CopySub(this, ("Plate number", t.PlateNumber), ("Truck type", t.TruckType),
+                    ("Summary", $"{t.PlateNumber} — {t.TruckType}, {t.CapacityCrates} crates, {t.CargoType}, {status}")));
+                m.Items.Add(RowMenu.Item("Find trucks of this type", () => RowMenu.Search(txtGridSearch, t.TruckType)));
+                m.Items.Add(RowMenu.ExportSub(gridTrucks, "Truck_Vehicles", "Registered Trucks", () => BtnPrint_Click(this, EventArgs.Empty)));
+                if (SessionContext.IsAdmin)
+                {
+                    m.Items.Add(RowMenu.Sep());
+                    m.Items.Add(RowMenu.Danger("Delete truck…", () => { selectedTruck = t; BtnDelete_Click(this, EventArgs.Empty); }, !onTrip));
                 }
-            };
+            });
         }
-    }
+        /// <summary>Changes a truck's status from the list, with the same rules as the form.</summary>
+        private void SetTruckStatus(Truck t, string status)
+        {
+            if (!SessionContext.IsAdmin)
+            {
+                MessageBox.Show("Administrator privileges are required to change a vehicle's status.", "Access Denied", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (MJdatabase.IsTruckBlockedStatus(status) && MJdatabase.IsTruckOnActiveTrip(t.Id))
+            {
+                MessageBox.Show($"Truck {t.PlateNumber} is assigned to an open dispatch. Complete or reassign that trip before setting it to '{status}'.", "Truck on a trip", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            string old = t.Status;
+            t.Status = status;
+            try
+            {
+                MJdatabase.SaveTruck(t);
+                ToastHelper.ShowToast(this, $"{t.PlateNumber} is now {status}", ToastType.Success);
+            }
+            catch (Exception ex)
+            {
+                t.Status = old;
+                MessageBox.Show($"Failed to update truck status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            LoadTrucks();
+        }
+    
+        private void InitializeSubNavAndCategories()
+        {
+            pnlSubNavTabs = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 44,
+                BackColor = Pal.C(248, 250, 252),
+                Padding = new Padding(16, 6, 16, 6)
+            };
+
+            FlowLayoutPanel flowTabs = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false
+            };
+
+            btnSubTabFleet = new Button
+            {
+                Text = "🚚  Registered Trucks",
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowOnly,
+                MinimumSize = new Size(160, 32),
+                Padding = new Padding(14, 0, 14, 0),
+                Margin = new Padding(0, 0, 8, 0),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                BackColor = Pal.C(15, 23, 42),
+                ForeColor = Pal.White,
+                Cursor = Cursors.Hand
+            };
+            btnSubTabFleet.FlatAppearance.BorderSize = 1;
+            btnSubTabFleet.FlatAppearance.BorderColor = Pal.C(15, 23, 42);
+            btnSubTabFleet.Click += (s, e) => SwitchSubTab("Fleet");
+
+            btnSubTabCategories = new Button
+            {
+                Text = "🏷️  Truck Categories & Capacities",
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowOnly,
+                MinimumSize = new Size(190, 32),
+                Padding = new Padding(14, 0, 14, 0),
+                Margin = new Padding(0, 0, 8, 0),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                BackColor = Pal.White,
+                ForeColor = Pal.C(71, 85, 105),
+                Cursor = Cursors.Hand
+            };
+            btnSubTabCategories.FlatAppearance.BorderSize = 1;
+            btnSubTabCategories.FlatAppearance.BorderColor = Pal.C(226, 232, 240);
+            btnSubTabCategories.Click += (s, e) => SwitchSubTab("Categories");
+
+            flowTabs.Controls.Add(btnSubTabFleet);
+            flowTabs.Controls.Add(btnSubTabCategories);
+            pnlSubNavTabs.Controls.Add(flowTabs);
+
+            pnlCategoriesContainer = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Visible = false,
+                BackColor = Pal.C(241, 245, 249),
+                Padding = new Padding(16)
+            };
+
+            TableLayoutPanel tblCatLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                BackColor = Pal.C(241, 245, 249)
+            };
+            tblCatLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 380F));
+            tblCatLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tblCatLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            Panel pnlCatForm = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Pal.White,
+                Margin = new Padding(0, 0, 12, 0),
+                Padding = new Padding(16)
+            };
+
+            Label lblCatHeader = new Label
+            {
+                Text = "Truck Category & Capacity Details",
+                Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold),
+                ForeColor = Pal.C(15, 23, 42),
+                Dock = DockStyle.Top,
+                Height = 30
+            };
+
+            Label lblCatName = new Label
+            {
+                Text = "Truck Category / Classification Name:",
+                Font = new Font("Segoe UI Semibold", 8.5F),
+                Dock = DockStyle.Top,
+                Height = 22
+            };
+
+            txtCatName = new TextBox
+            {
+                Dock = DockStyle.Top,
+                Font = new Font("Segoe UI", 9F),
+                MaxLength = 100
+            };
+
+            Panel pnlSpacer1 = new Panel { Dock = DockStyle.Top, Height = 10 };
+
+            Label lblCatCap = new Label
+            {
+                Text = "Default Crate Capacity (crates):",
+                Font = new Font("Segoe UI Semibold", 8.5F),
+                Dock = DockStyle.Top,
+                Height = 22
+            };
+
+            numCatCapacity = new NumericUpDown
+            {
+                Dock = DockStyle.Top,
+                Font = new Font("Segoe UI", 9F),
+                Minimum = 1,
+                Maximum = 1000000,
+                Value = 300
+            };
+
+            Panel pnlSpacer2 = new Panel { Dock = DockStyle.Top, Height = 16 };
+
+            FlowLayoutPanel flowCatBtns = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true
+            };
+
+            btnAddCat = new Button
+            {
+                Text = "+ Add Category",
+                Size = new Size(110, 32),
+                Margin = new Padding(0, 0, 6, 6),
+                BackColor = Pal.C(37, 99, 235),
+                ForeColor = Pal.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnAddCat.FlatAppearance.BorderSize = 0;
+            btnAddCat.Click += BtnAddCat_Click;
+
+            btnUpdateCat = new Button
+            {
+                Text = "Update",
+                Size = new Size(80, 32),
+                Margin = new Padding(0, 0, 6, 6),
+                BackColor = Pal.C(22, 163, 74),
+                ForeColor = Pal.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnUpdateCat.FlatAppearance.BorderSize = 0;
+            btnUpdateCat.Click += BtnUpdateCat_Click;
+
+            btnDeleteCat = new Button
+            {
+                Text = "Delete",
+                Size = new Size(80, 32),
+                Margin = new Padding(0, 0, 6, 6),
+                BackColor = Pal.C(220, 38, 38),
+                ForeColor = Pal.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnDeleteCat.FlatAppearance.BorderSize = 0;
+            btnDeleteCat.Click += BtnDeleteCat_Click;
+
+            btnClearCat = new Button
+            {
+                Text = "Clear",
+                Size = new Size(70, 32),
+                Margin = new Padding(0, 0, 0, 6),
+                BackColor = Pal.C(241, 245, 249),
+                ForeColor = Pal.C(71, 85, 105),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnClearCat.FlatAppearance.BorderSize = 1;
+            btnClearCat.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
+            btnClearCat.Click += (s, e) => ClearCatInputs();
+
+            flowCatBtns.Controls.Add(btnAddCat);
+            flowCatBtns.Controls.Add(btnUpdateCat);
+            flowCatBtns.Controls.Add(btnDeleteCat);
+            flowCatBtns.Controls.Add(btnClearCat);
+
+            pnlCatForm.Controls.Add(flowCatBtns);
+            pnlCatForm.Controls.Add(pnlSpacer2);
+            pnlCatForm.Controls.Add(numCatCapacity);
+            pnlCatForm.Controls.Add(lblCatCap);
+            pnlCatForm.Controls.Add(pnlSpacer1);
+            pnlCatForm.Controls.Add(txtCatName);
+            pnlCatForm.Controls.Add(lblCatName);
+            pnlCatForm.Controls.Add(lblCatHeader);
+
+            Panel pnlCatGridCard = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Pal.White,
+                Padding = new Padding(0)
+            };
+
+            Panel pnlCatToolbar = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 44,
+                Padding = new Padding(12, 6, 12, 6),
+                BackColor = Pal.White
+            };
+
+            lblCatSummary = new Label
+            {
+                Text = "📊 Total Truck Classifications: 0",
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                ForeColor = Pal.C(30, 41, 59),
+                Dock = DockStyle.Left,
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoSize = true
+            };
+
+            Panel pnlSearchWrap = new Panel { Dock = DockStyle.Right, Width = 220 };
+            txtCatSearch = new TextBox
+            {
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F),
+                PlaceholderText = "Search categories..."
+            };
+            txtCatSearch.TextChanged += (s, e) => FilterTruckCategories();
+            pnlSearchWrap.Controls.Add(txtCatSearch);
+
+            pnlCatToolbar.Controls.Add(pnlSearchWrap);
+            pnlCatToolbar.Controls.Add(lblCatSummary);
+
+            gridTruckCategories = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                BackgroundColor = Pal.White,
+                BorderStyle = BorderStyle.None,
+                ColumnHeadersHeight = 36,
+                EnableHeadersVisualStyles = false,
+                RowHeadersVisible = false,
+                RowTemplate = { Height = 32 },
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                ReadOnly = true,
+                ShowCellToolTips = false,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+            };
+            gridTruckCategories.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Category / Model Classification", FillWeight = 50, MinimumWidth = 160 });
+            gridTruckCategories.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Default Crate Capacity", FillWeight = 25, MinimumWidth = 120 });
+            gridTruckCategories.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Active Fleet Assigned", FillWeight = 25, MinimumWidth = 120 });
+            gridTruckCategories.SelectionChanged += GridTruckCategories_SelectionChanged;
+
+            pnlCatGridCard.Controls.Add(gridTruckCategories);
+            pnlCatGridCard.Controls.Add(pnlCatToolbar);
+
+            tblCatLayout.Controls.Add(pnlCatForm, 0, 0);
+            tblCatLayout.Controls.Add(pnlCatGridCard, 1, 0);
+            pnlCategoriesContainer.Controls.Add(tblCatLayout);
+
+            this.Controls.Add(pnlCategoriesContainer);
+            this.Controls.Add(pnlSubNavTabs);
+
+            pnlSubNavTabs.BringToFront();
+            tblMasterContent.BringToFront();
+        }
+
+        private void SwitchSubTab(string tab)
+        {
+            if (tab == "Fleet")
+            {
+                btnSubTabFleet.BackColor = Pal.C(15, 23, 42);
+                btnSubTabFleet.ForeColor = Pal.White;
+                btnSubTabFleet.FlatAppearance.BorderColor = Pal.C(15, 23, 42);
+                btnSubTabCategories.BackColor = Pal.White;
+                btnSubTabCategories.ForeColor = Pal.C(71, 85, 105);
+                btnSubTabCategories.FlatAppearance.BorderColor = Pal.C(226, 232, 240);
+                pnlCategoriesContainer.Visible = false;
+                tblMasterContent.Visible = true;
+                tblMasterContent.BringToFront();
+            }
+            else
+            {
+                btnSubTabCategories.BackColor = Pal.C(15, 23, 42);
+                btnSubTabCategories.ForeColor = Pal.White;
+                btnSubTabCategories.FlatAppearance.BorderColor = Pal.C(15, 23, 42);
+                btnSubTabFleet.BackColor = Pal.White;
+                btnSubTabFleet.ForeColor = Pal.C(71, 85, 105);
+                btnSubTabFleet.FlatAppearance.BorderColor = Pal.C(226, 232, 240);
+                tblMasterContent.Visible = false;
+                pnlCategoriesContainer.Visible = true;
+                pnlCategoriesContainer.BringToFront();
+                LoadTruckCategories();
+            }
+        }
+
+        private void LoadTruckCategories()
+        {
+            try
+            {
+                allTruckCategories = MJdatabase.GetTruckCategories();
+                FilterTruckCategories();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to load truck categories: {ex.Message}");
+            }
+        }
+
+        private void FilterTruckCategories()
+        {
+            gridTruckCategories.SelectionChanged -= GridTruckCategories_SelectionChanged;
+            gridTruckCategories.Rows.Clear();
+
+            string q = txtCatSearch.Text.Trim().ToLowerInvariant();
+            var list = string.IsNullOrEmpty(q)
+                ? allTruckCategories
+                : allTruckCategories.Where(c => c.CategoryName.ToLower().Contains(q)).ToList();
+
+            foreach (var c in list)
+            {
+                gridTruckCategories.Rows.Add(c.CategoryName, $"{c.CrateCapacity} crates", $"{c.AssignedTrucksCount} trucks");
+            }
+            lblCatSummary.Text = $"📊 Total Truck Classifications: {list.Count} of {allTruckCategories.Count}";
+
+            if (gridTruckCategories.Rows.Count > 0)
+            {
+                gridTruckCategories.ClearSelection();
+                gridTruckCategories.Rows[0].Selected = true;
+                PopulateCategoryFromRow(gridTruckCategories.Rows[0]);
+            }
+            else
+            {
+                ClearCatInputs();
+            }
+
+            gridTruckCategories.SelectionChanged += GridTruckCategories_SelectionChanged;
+        }
+
+        private void GridTruckCategories_SelectionChanged(object? sender, EventArgs e)
+        {
+            if (gridTruckCategories.SelectedRows.Count > 0)
+            {
+                PopulateCategoryFromRow(gridTruckCategories.SelectedRows[0]);
+            }
+        }
+
+        private void PopulateCategoryFromRow(DataGridViewRow row)
+        {
+            string catName = row.Cells[0].Value?.ToString() ?? "";
+            selectedTruckCategory = allTruckCategories.FirstOrDefault(c => string.Equals(c.CategoryName, catName, StringComparison.OrdinalIgnoreCase));
+            if (selectedTruckCategory != null)
+            {
+                txtCatName.Text = selectedTruckCategory.CategoryName;
+                numCatCapacity.Value = selectedTruckCategory.CrateCapacity;
+            }
+        }
+
+        private void BtnAddCat_Click(object? sender, EventArgs e)
+        {
+            string name = txtCatName.Text.Trim();
+            if (string.IsNullOrEmpty(name))
+            {
+                MessageBox.Show("Please enter a category name.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtCatName.Focus();
+                return;
+            }
+
+            int cap = (int)numCatCapacity.Value;
+            bool success = MJdatabase.SaveTruckCategory(name, cap);
+            if (success)
+            {
+                MJdatabase.NotifyCategoriesChanged();
+                LoadTruckCategories();
+                LoadTrucks();
+                MessageBox.Show($"Truck category '{name}' with {cap} crate capacity saved successfully!", "Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show("Failed to save truck category.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void BtnUpdateCat_Click(object? sender, EventArgs e)
+        {
+            if (selectedTruckCategory == null)
+            {
+                MessageBox.Show("Please select a category to update.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            string name = txtCatName.Text.Trim();
+            if (string.IsNullOrEmpty(name))
+            {
+                MessageBox.Show("Please enter a category name.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtCatName.Focus();
+                return;
+            }
+
+            int cap = (int)numCatCapacity.Value;
+            string oldName = selectedTruckCategory.CategoryName;
+            bool success = MJdatabase.SaveTruckCategory(name, cap, oldName);
+            if (success)
+            {
+                MJdatabase.NotifyCategoriesChanged();
+                LoadTruckCategories();
+                LoadTrucks();
+                MessageBox.Show($"Truck category updated successfully!", "Updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show("Failed to update truck category.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void BtnDeleteCat_Click(object? sender, EventArgs e)
+        {
+            if (selectedTruckCategory == null)
+            {
+                MessageBox.Show("Please select a category to delete.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            string name = selectedTruckCategory.CategoryName;
+            var confirm = MessageBox.Show($"Are you sure you want to delete category '{name}'?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (confirm == DialogResult.Yes)
+            {
+                MJdatabase.DeleteTruckCategory(name);
+                MJdatabase.NotifyCategoriesChanged();
+                LoadTruckCategories();
+                LoadTrucks();
+                ClearCatInputs();
+                MessageBox.Show($"Category '{name}' deleted.", "Deleted", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private void ClearCatInputs()
+        {
+            selectedTruckCategory = null;
+            txtCatName.Clear();
+            numCatCapacity.Value = 300;
+        }
+}
 }

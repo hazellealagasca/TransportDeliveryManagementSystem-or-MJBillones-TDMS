@@ -45,8 +45,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                     try
                     {
-                        if (!mutex.WaitOne(1500, false))
+                        if (!mutex.WaitOne(5000, false))
                         {
+                            MessageBox.Show("The Transport Delivery Management System is already running (it may still be starting up or closing).\n\nPlease wait a moment and try again.", "Already Running", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             return;
                         }
                     }
@@ -61,6 +62,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 ApplicationConfiguration.Initialize();
 
+                Functions.ThemeManager.Load();
+                ToolStripManager.Renderer = new Functions.ThemedMenuRenderer();
                 Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
                 Application.ThreadException += (s, e) => HandleException(e.Exception, "UI Thread");
                 AppDomain.CurrentDomain.UnhandledException += (s, e) => HandleException(e.ExceptionObject as Exception, "AppDomain");
@@ -126,17 +129,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             SetForegroundWindow(targetWnd);
                             return true;
                         }
-                        else
-                        {
-                            try
-                            {
-                                p.Kill();
-                            }
-                            catch (Exception ex)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"[Program] Kill process error: {ex.Message}");
-                            }
-                        }
+                        // Never kill the other instance: it may be starting up or writing to the database.
                     }
                 }
             }

@@ -11,25 +11,37 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     {
         private Button? activeTabBtn = null;
         private readonly Dictionary<string, Button> tabButtons = new Dictionary<string, Button>();
+        /// <summary>Key of the tab that is showing now (used to come back to the same screen after a theme change).</summary>
+        public string? CurrentTabKey => System.Linq.Enumerable.FirstOrDefault(tabButtons, k => k.Value == activeTabBtn).Key;
         private readonly Dictionary<string, UserControl> cachedViews = new Dictionary<string, UserControl>();
+        private readonly Models.Delivery? prefillDelivery;
 
-        public FinanceHubView(string defaultTab = "Billing")
+        public FinanceHubView(string defaultTab = "StatementOfAccount", Models.Delivery? prefillDelivery = null)
         {
+            this.prefillDelivery = prefillDelivery;
             InitializeComponent();
+            Pal.RemapTree(this);
             SetupTabs();
-            SelectTab(defaultTab);
+            SelectTab(prefillDelivery != null ? "Billing" : defaultTab);
+            if (prefillDelivery != null && cachedViews.TryGetValue("Billing", out var cached) && cached is BillingView bv)
+            {
+                bv.PrefillForDelivery(prefillDelivery);
+            }
             UIThemeHelper.ApplyTheme(this);
         }
 
         private void SetupTabs()
         {
+            AddTab("StatementOfAccount", "📑  Statement of Account", () => new StatementOfAccountView());
+
             AddTab("Billing", "🧾  Billing Invoices", () =>
             {
                 var bv = new BillingView();
-                bv.OnRecordPaymentRequested = (inv) =>
+                bv.OnRecordPaymentRequested = (inv) => RecordPaymentFor(inv);
+                if (prefillDelivery != null)
                 {
-                    SelectTab("Collections");
-                };
+                    bv.PrefillForDelivery(prefillDelivery);
+                }
                 return bv;
             });
 
@@ -50,13 +62,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 0, 8, 0),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                BackColor = Color.White,
-                ForeColor = Color.FromArgb(71, 85, 105),
+                BackColor = Pal.White,
+                ForeColor = Pal.C(71, 85, 105),
                 Cursor = Cursors.Hand
             };
             btn.FlatAppearance.BorderSize = 1;
-            btn.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
-
+            btn.FlatAppearance.BorderColor = Pal.C(226, 232, 240);
             btn.Click += (s, e) =>
             {
                 if (!cachedViews.TryGetValue(key, out var view))
@@ -72,6 +83,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tabButtons[key] = btn;
         }
 
+        /// <summary>The finance hub that contains a control, if any.</summary>
+        public static FinanceHubView? Of(Control c)
+        {
+            for (Control? p = c.Parent; p != null; p = p.Parent) if (p is FinanceHubView hub) return hub;
+            return null;
+        }
+        public T? OpenTab<T>(string key) where T : UserControl
+        {
+            SelectTab(key);
+            return cachedViews.TryGetValue(key, out var v) ? v as T : null;
+        }
+        public void RecordPaymentFor(Invoice inv) => OpenTab<CollectionView>("Collections")?.PrefillForInvoice(inv);
+        public void ShowInvoices(string search) => OpenTab<BillingView>("Billing")?.FilterByText(search);
+        public void ShowCollections(string search) => OpenTab<CollectionView>("Collections")?.FilterByText(search);
+        public void ShowStatements(string search) => OpenTab<StatementOfAccountView>("StatementOfAccount")?.FilterByText(search);
         public void SelectTab(string key)
         {
             if (tabButtons.TryGetValue(key, out var btn))
@@ -84,16 +110,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (activeTabBtn != null)
             {
-                activeTabBtn.BackColor = Color.White;
-                activeTabBtn.ForeColor = Color.FromArgb(71, 85, 105);
-                activeTabBtn.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
+                activeTabBtn.BackColor = Pal.White;
+                activeTabBtn.ForeColor = Pal.C(71, 85, 105);
+                activeTabBtn.FlatAppearance.BorderColor = Pal.C(226, 232, 240);
             }
 
             activeTabBtn = btn;
-            activeTabBtn.BackColor = Color.FromArgb(15, 23, 42);
-            activeTabBtn.ForeColor = Color.White;
-            activeTabBtn.FlatAppearance.BorderColor = Color.FromArgb(15, 23, 42);
-
+            activeTabBtn.BackColor = Pal.C(15, 23, 42);
+            activeTabBtn.ForeColor = Pal.White;
+            activeTabBtn.FlatAppearance.BorderColor = Pal.C(15, 23, 42);
             pnlContentHost.SuspendLayout();
             pnlContentHost.Controls.Clear();
             view.Dock = DockStyle.Fill;
