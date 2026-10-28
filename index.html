@@ -2,250 +2,283 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" id="app-viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    (function() {
+      var sw = Math.min(window.screen ? window.screen.width : 1280, window.innerWidth || 1280);
+      if (sw > 0 && sw < 1100) {
+        var scale = Math.max(0.25, (sw / 1280)).toFixed(3);
+        document.getElementById('app-viewport').setAttribute('content', 'width=1280, initial-scale=' + scale + ', minimum-scale=0.2, maximum-scale=3.0, user-scalable=yes');
+      }
+    })();
+  </script>
   <title>M.J. Billones Transport Service - Delivery Management System</title>
   <link rel="icon" type="image/x-icon" href="assets/app.ico">
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Custom Exact Replica Stylesheet -->
+  <!-- Offline-Ready Local Tailwind CSS Engine -->
+  <script src="js/tailwind.js"></script>
+  <!-- Exact WinForms Desktop Replica Stylesheet -->
   <link rel="stylesheet" href="css/app.css">
 </head>
-<body class="bg-[#F4F6F9] text-slate-800 antialiased min-h-screen flex flex-col select-none">
+<body class="bg-[#F3F4F6] text-[#1E293B] antialiased min-h-screen flex flex-col select-none">
 
-  <!-- ================= AUTH CONTAINER (EXACT DESKTOP LOGIN REPLICA) ================= -->
+  <!-- ================= AUTH CONTAINER (EXACT LoginForm.cs REPLICA) ================= -->
   <div id="auth-container" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0F172A] overflow-hidden select-none">
     
-    <!-- Top-Right Window Controls -->
-    <div class="absolute top-3 right-4 flex items-center space-x-2 text-slate-400 text-xs z-20">
-      <span class="hover:text-white cursor-pointer px-2 py-1 font-bold">─</span>
-      <span class="hover:text-white cursor-pointer px-2 py-1">□</span>
-      <span class="hover:text-red-500 cursor-pointer px-2 py-1 font-bold">✕</span>
+    <!-- Full-Screen Background Image (assets/login_bg.jpg) -->
+    <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('assets/login_bg.jpg');"></div>
+    <div class="absolute inset-0 bg-gradient-to-b from-[#0D1526]/45 via-[#0F172A]/55 to-[#0A0F1C]/75"></div>
+
+    <!-- Top-Right Frosted Window Control Buttons (42x34, radius 10) -->
+    <div class="absolute top-3.5 right-4 flex items-center space-x-1.5 z-20">
+      <button type="button" class="w-[42px] h-[34px] rounded-[10px] bg-[#141E32]/75 hover:bg-[#23304A]/90 border border-white/25 text-white flex items-center justify-center transition" title="Minimize">
+        <span class="w-3.5 h-0.5 bg-white rounded-full"></span>
+      </button>
+      <button type="button" class="w-[42px] h-[34px] rounded-[10px] bg-[#141E32]/75 hover:bg-[#DC2626] border border-white/25 text-white flex items-center justify-center transition font-bold text-sm" title="Close">
+        ✕
+      </button>
     </div>
 
-    <!-- Background Image with Ambient Glow and Dark Blue Overlay -->
-    <div class="absolute inset-0 bg-cover bg-center opacity-30 filter blur-[2px] scale-105" style="background-image: url('assets/login_bg.jpg');"></div>
-    <div class="absolute inset-0 bg-gradient-to-t from-[#0A0F1D] via-[#0F172A]/85 to-transparent"></div>
-
-    <!-- Frosted Glass Card with Crimson Neon Glow -->
-    <div class="relative z-10 w-full max-w-[500px] bg-[#0D1526]/90 backdrop-blur-md rounded-3xl p-8 border-2 border-[#E11D48] shadow-[0_0_40px_rgba(239,68,68,0.4),0_25px_50px_-12px_rgba(0,0,0,0.8)] text-center">
+    <!-- Frosted Glass Card (520px wide, radius 24px, Neon Crimson Border & Outer Glow) -->
+    <div class="relative z-10 w-full max-w-[520px] rounded-[24px] px-[50px] py-[22px] border-2 border-[#E11D48] shadow-[0_0_32px_rgba(239,68,68,0.45),0_25px_50px_-12px_rgba(0,0,0,0.85)] text-center backdrop-blur-md" style="background: linear-gradient(180deg, rgba(13,21,38,0.78) 0%, rgba(10,15,28,0.88) 100%);">
       
-      <!-- Top Frosted White Badge with Eagle Logo -->
-      <div class="w-full max-w-[340px] h-[115px] mx-auto mb-5 bg-white/95 rounded-2xl p-3 shadow-md flex items-center justify-center border border-white/40">
-        <img src="assets/logo_clean.png" onerror="this.onerror=null; this.src='assets/logo.png';" alt="M.J. Billones Logo" class="max-h-full max-w-full object-contain">
+      <!-- Top Specular Sheen -->
+      <div class="pointer-events-none absolute inset-x-0 top-0 h-[180px] rounded-t-[23px]" style="background: linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 100%);"></div>
+
+      <!-- Frosted White Badge with Eagle Logo (340x125, radius 28px) -->
+      <div class="relative w-full max-w-[340px] h-[125px] mx-auto mb-3 rounded-[28px] p-3 shadow-[0_4px_12px_rgba(0,0,0,0.35)] flex items-center justify-center border-[1.8px] border-white/90 backdrop-blur-md" style="background: linear-gradient(180deg, rgba(255,255,255,0.68) 0%, rgba(241,245,249,0.58) 100%);">
+        <img src="assets/logo_clean.png" onerror="this.onerror=null; this.src='assets/logo.png';" alt="M.J. Billones Logo" class="max-h-full max-w-full object-contain drop-shadow">
       </div>
 
       <!-- Title & Subtitle -->
-      <h1 class="text-2xl font-bold text-white tracking-tight mb-1">Login</h1>
-      <p class="text-xs text-[#C3D0E1] mb-5">Welcome back! Please login to your account</p>
+      <h1 class="text-[28px] font-bold text-white tracking-tight leading-tight mt-1">Login</h1>
+      <p class="text-[13px] text-[#C3D0E1] mt-1 mb-5">Welcome back! Please login to your account</p>
 
       <!-- Alert Box -->
-      <div id="login-error" class="hidden mb-4 p-2.5 bg-red-950/80 border border-red-500 text-red-200 text-xs font-semibold rounded-lg text-center"></div>
+      <div id="login-error" class="hidden mb-4 py-2 px-3 bg-[#581C1C]/85 border border-[#EF4444] text-[#FECACA] text-xs font-semibold rounded-[9px] text-center"></div>
 
       <!-- Login Form -->
       <form id="login-form" class="space-y-4 text-left">
         <div>
-          <label class="block text-xs font-semibold text-[#D7E1EE] mb-1.5 ml-1">Username</label>
+          <label class="block text-[12.5px] font-normal text-[#D7E1EE] mb-1.5 ml-0.5">Username</label>
           <div class="relative flex items-center">
-            <span class="absolute left-3.5 text-slate-400 text-sm">👤</span>
-            <input type="text" id="login-username" value="admin" required class="w-full pl-10 pr-4 py-2.5 rounded-full bg-[#161F30] border border-slate-700 focus:border-red-500 focus:outline-none text-white text-sm transition placeholder-slate-500" placeholder="Enter your username">
+            <!-- User Vector Icon -->
+            <span class="absolute left-3.5 text-[#9EAEC4] pointer-events-none">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <circle cx="12" cy="8" r="4"></circle>
+                <path stroke-linecap="round" d="M5 20c1.5-3.5 4.2-5 7-5s5.5 1.5 7 5"></path>
+              </svg>
+            </span>
+            <input type="text" id="login-username" value="admin" required class="w-full h-[48px] pl-11 pr-4 rounded-[12px] bg-[#161F30] border border-[#526278] focus:border-[#EF4444] focus:shadow-[0_0_0_3px_rgba(239,68,68,0.28)] focus:outline-none text-white text-[13.5px] transition placeholder-[#94A3B8]" placeholder="Enter your username">
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-[#D7E1EE] mb-1.5 ml-1">Password</label>
+          <label class="block text-[12.5px] font-normal text-[#D7E1EE] mb-1.5 ml-0.5">Password</label>
           <div class="relative flex items-center">
-            <span class="absolute left-3.5 text-slate-400 text-sm">🔒</span>
-            <input type="password" id="login-password" value="admin123" required class="w-full pl-10 pr-10 py-2.5 rounded-full bg-[#161F30] border border-slate-700 focus:border-red-500 focus:outline-none text-white text-sm transition placeholder-slate-500" placeholder="Enter password">
-            <button type="button" id="btn-toggle-login-pass" class="absolute right-3.5 text-slate-400 hover:text-white text-sm focus:outline-none">👁</button>
+            <!-- Lock Vector Icon -->
+            <span class="absolute left-3.5 text-[#9EAEC4] pointer-events-none">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <rect x="5" y="11" width="14" height="10" rx="2"></rect>
+                <path stroke-linecap="round" d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+              </svg>
+            </span>
+            <input type="password" id="login-password" value="admin123" required class="w-full h-[48px] pl-11 pr-11 rounded-[12px] bg-[#161F30] border border-[#526278] focus:border-[#EF4444] focus:shadow-[0_0_0_3px_rgba(239,68,68,0.28)] focus:outline-none text-white text-[13.5px] transition placeholder-[#94A3B8]" placeholder="Enter password">
+            <button type="button" id="btn-toggle-login-pass" class="absolute right-2.5 w-9 h-9 rounded-lg flex items-center justify-center text-[#AFBED2] hover:text-white hover:bg-white/10 transition focus:outline-none" title="Show/Hide Password">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
+                <circle cx="12" cy="12" r="2.5"></circle>
+              </svg>
+            </button>
           </div>
         </div>
 
         <!-- Remember Me & Forgot Password -->
-        <div class="flex items-center justify-between text-xs px-1 pt-1">
-          <label class="flex items-center text-[#D7E1EE] cursor-pointer space-x-2">
-            <input type="checkbox" id="remember-me" checked class="w-4 h-4 rounded text-red-600 focus:ring-0 bg-[#161F30] border-slate-600 cursor-pointer">
+        <div class="flex items-center justify-between text-[12.5px] pt-0.5">
+          <label class="flex items-center text-[#D7E1EE] cursor-pointer space-x-2.5">
+            <input type="checkbox" id="remember-me" checked class="w-[18px] h-[18px] rounded-[5px] accent-[#DC2626] bg-[#161F30] border-[#73849B] cursor-pointer">
             <span>Remember Me</span>
           </label>
-          <button type="button" id="forgot-password-link" class="text-[#FA7878] hover:text-white hover:underline font-medium">Forgot Password?</button>
+          <button type="button" id="forgot-password-link" class="text-[#FA7878] hover:text-white hover:underline">Forgot Password?</button>
         </div>
 
-        <!-- Gradient Crimson Login Button -->
-        <button type="submit" class="w-full py-3 px-4 rounded-xl font-bold text-sm text-white tracking-wider bg-gradient-to-b from-[#D72222] to-[#991B1B] hover:brightness-110 active:brightness-95 transition shadow-[0_4px_14px_rgba(185,28,28,0.4)] border border-white/20 mt-2">
+        <!-- Gradient Crimson Login Button (52px height, radius 14px) -->
+        <button type="submit" class="w-full h-[52px] rounded-[14px] font-bold text-[15px] text-white tracking-wide hover:brightness-110 active:brightness-95 transition shadow-[0_6px_16px_rgba(185,28,28,0.45)] border border-white/40 mt-2" style="background: linear-gradient(180deg, #D72222 0%, #991B1B 100%);">
           LOGIN
         </button>
       </form>
 
-      <!-- Demo Quick Sign-in Section -->
-      <div class="mt-4 pt-3 border-t border-slate-800">
-        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Demo Quick Sign-In</p>
-        <div class="grid grid-cols-2 gap-2">
-          <button id="demo-login-admin" class="py-1 px-2 text-xs font-semibold rounded-lg border border-red-900 bg-red-950/60 text-red-300 hover:bg-red-900/60 transition">
-            👑 Admin / Owner
-          </button>
-          <button id="demo-login-staff" class="py-1 px-2 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700 transition">
-            📋 Staff / Dispatcher
-          </button>
-        </div>
-      </div>
-
       <!-- Lock Notice -->
-      <div class="mt-4 flex items-center justify-center space-x-1.5 text-xs text-[#AFBED2]">
-        <span>🔒</span>
+      <div class="mt-5 flex items-center justify-center space-x-2 text-[12.5px] text-[#AFBED2]">
+        <svg class="w-3.5 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <rect x="4" y="10" width="16" height="11" rx="2"></rect>
+          <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+        </svg>
         <span>Authorized Personnel Only</span>
       </div>
 
       <!-- Copyright -->
-      <p class="text-[10px] text-slate-500 mt-2">© 2026 M.J. Billones Transport Service. All rights reserved.</p>
+      <p class="text-[11px] text-[#8796AC] mt-2">© M.J. Billones Transport Service • All rights reserved.</p>
     </div>
   </div>
 
-  <!-- ================= DESKTOP APPLICATION SHELL ================= -->
-  <div id="app-container" class="hidden flex-1 flex flex-col min-h-screen">
+  <!-- ================= DESKTOP APPLICATION SHELL (EXACT SCREENSHOTS 01-24) ================= -->
+  <div id="app-container" class="hidden flex-1 flex flex-col h-screen overflow-hidden">
     
-    <!-- 1. Exact Windows-Style Titlebar -->
+    <!-- 1. Exact Windows 10/11 Form Titlebar (30px height, pure white) -->
     <div class="window-titlebar flex-shrink-0 select-none">
       <div class="flex items-center space-x-2">
         <img src="assets/logo_clean.png" onerror="this.onerror=null; this.src='assets/logo.png';" alt="Eagle Icon" class="w-4 h-4 object-contain">
-        <span class="text-slate-700 dark:text-slate-200 font-medium text-xs">M.J. Billones Transport Service - Delivery Management System</span>
+        <span class="text-[#1E293B] font-normal text-[12px]">M.J. Billones Transport Service - Delivery Management System</span>
       </div>
-      <div class="flex items-center space-x-3 text-slate-400 text-xs">
-        <span class="hover:text-slate-700 dark:hover:text-white cursor-pointer px-1">─</span>
-        <span class="hover:text-slate-700 dark:hover:text-white cursor-pointer px-1">□</span>
-        <span class="hover:text-red-600 cursor-pointer px-1 font-bold">✕</span>
+      <div class="flex items-center space-x-5 text-[#64748B] text-[12px] pr-1">
+        <span class="hover:text-slate-900 cursor-pointer px-1.5">─</span>
+        <span class="hover:text-slate-900 cursor-pointer px-1.5">□</span>
+        <span class="hover:text-red-600 cursor-pointer px-1.5">✕</span>
       </div>
     </div>
 
-    <!-- 2. Dark Navy App Header (Matching MainForm.Header.cs) -->
-    <header class="h-[52px] bg-[#0F172A] border-b border-[#1E293B] px-4 flex items-center justify-between flex-shrink-0 z-30 select-none">
-      
-      <!-- Left: Menu Toggle + Title + User Badge -->
-      <div class="flex items-center space-x-3">
-        <button id="btn-toggle-pin" class="w-8 h-8 rounded bg-[#1E293B] hover:bg-[#334155] text-white flex items-center justify-center font-bold text-base transition" title="Toggle Sidebar Pin">
-          ≡
-        </button>
-
-        <div class="flex flex-col">
-          <div class="text-white text-xs font-bold leading-tight flex items-center space-x-2">
-            <span>M.J. Billones Transport Delivery System</span>
-            <span class="text-slate-600">·</span>
-            <span id="page-hub-title" class="text-red-400 font-bold uppercase tracking-wider text-[11px]">Operations</span>
-          </div>
-          <!-- User Profile Badge (Clickable) -->
-          <div id="header-user-badge" class="flex items-center space-x-1.5 cursor-pointer text-[#94A3B8] hover:text-white transition mt-0.5" title="View Profile & Credentials">
-            <span class="w-4 h-4 rounded-full bg-[#B4182C] text-white text-[9px] font-bold flex items-center justify-center">HL</span>
-            <span id="header-user-info" class="text-[11px] font-medium">Hazel Lagasca</span>
-            <span class="text-[10px] bg-slate-800 text-red-300 px-1 rounded border border-red-900/60 font-semibold">Admin</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Center: Global Search Box -->
-      <div class="hidden md:flex items-center flex-1 max-w-md mx-6 relative">
-        <div class="w-full flex items-center bg-white rounded overflow-hidden shadow-sm border border-slate-300">
-          <input type="text" id="global-search-input" placeholder="🔍 Search order #, employee, truck... (Press Enter)" class="w-full px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none">
-          <button id="btn-global-search" class="bg-[#B4182C] hover:bg-[#981323] text-white px-3 py-1.5 text-xs font-bold transition flex items-center justify-center">
-            SEARCH
-          </button>
-        </div>
-      </div>
-
-      <!-- Right: KPI Status Badges & Action Buttons -->
-      <div class="flex items-center space-x-2">
-        <div class="hidden lg:flex items-center space-x-1.5 mr-2">
-          <button class="kpi-pill kpi-pill-scheduled" id="kpi-pill-scheduled" title="View Scheduled Orders">
-            <span>⏳</span> <span id="kpi-scheduled-text">2 scheduled</span>
-          </button>
-          <button class="kpi-pill kpi-pill-transit" id="kpi-pill-transit" title="View Active In-Transit Orders">
-            <span>🚚</span> <span id="kpi-transit-text">2 in transit</span>
-          </button>
-          <button class="kpi-pill kpi-pill-unpaid" id="kpi-pill-unpaid" title="View Pending Unpaid Invoices">
-            <span>📄</span> <span id="kpi-unpaid-text">1 unpaid</span>
-          </button>
-          <button class="kpi-pill kpi-pill-alert" id="kpi-pill-alert" title="System Alerts & Notifications">
-            <span>🔔</span> <span id="kpi-alerts-text">19 new</span>
-          </button>
-        </div>
-
-        <button id="btn-header-settings" class="bg-[#1E293B] hover:bg-[#334155] text-white px-2.5 py-1 rounded text-xs font-semibold flex items-center space-x-1 transition">
-          <span>⚙️</span> <span>SETTINGS</span>
-        </button>
-
-        <button id="btn-header-logout" class="bg-[#DC2626] hover:bg-[#B91C1C] text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-sm">
-          LOGOUT
-        </button>
-      </div>
-    </header>
-
-    <!-- Main Workspace Container: Rail Sidebar + Stage Content -->
+    <!-- 2. Main Body Row: Left Dark Charcoal Rail (#1C1917) + Right Workspace Column -->
     <div class="flex-1 flex overflow-hidden">
       
-      <!-- 3. Left Rail Sidebar (Navy Charcoal) -->
-      <aside id="panel-sidebar" class="w-14 hover:w-56 transition-all duration-200 bg-[#0F172A] text-slate-300 flex-shrink-0 flex flex-col justify-between border-r border-[#1E293B] z-40 group select-none">
-        <div>
-          <!-- Eagle Logo Badge Header -->
-          <div class="h-14 flex items-center px-3.5 border-b border-[#1E293B] overflow-hidden bg-white/5">
-            <div class="w-7 h-7 rounded bg-[#B4182C] flex items-center justify-center flex-shrink-0 shadow">
-              <img src="assets/logo_clean.png" onerror="this.onerror=null; this.src='assets/logo.png';" class="w-5 h-5 object-contain" alt="Eagle">
-            </div>
-            <div class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap overflow-hidden">
-              <span class="text-white font-black text-xs tracking-wider">M.J. BILLONES</span>
-            </div>
+      <!-- Left Rail Sidebar (56px wide, #1C1917 warm dark charcoal, starts directly below titlebar) -->
+      <aside id="panel-sidebar" class="w-[56px] transition-all duration-200 bg-[#1C1917] text-[#A8A29E] flex-shrink-0 flex flex-col justify-between z-40 select-none">
+        <div class="flex flex-col items-center">
+          <!-- Eagle Logo Directly on Dark Charcoal Rail -->
+          <div class="w-full h-[78px] flex items-center justify-center border-b border-[#2E2B29] px-1.5">
+            <img src="assets/logo_clean.png" onerror="this.onerror=null; this.src='assets/logo.png';" class="w-11 h-11 object-contain" alt="M.J. Billones Eagle">
           </div>
 
-          <!-- Main Hub Navigation Buttons -->
-          <nav class="py-2 space-y-1">
-            <button class="nav-hub-btn w-full flex items-center px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1E293B] transition relative" data-hub="dashboard" title="Dashboard">
-              <span class="text-base flex-shrink-0">📊</span>
-              <span class="ml-3.5 text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Dashboard</span>
+          <!-- 6 Monochrome Outline SVG Hub Icons -->
+          <nav class="py-3 flex flex-col items-center space-y-2 w-full px-1.5">
+            <!-- 1. Dashboard -->
+            <button class="nav-hub-btn w-11 h-10 rounded-xl flex items-center justify-center text-[#A8A29E] hover:text-white hover:bg-[#2E2B29]/60 transition relative" data-hub="dashboard" title="Dashboard">
+              <span class="nav-indicator hidden absolute -left-1.5 top-2.5 bottom-2.5 w-[3px] bg-[#B4182C] rounded-r"></span>
+              <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                <path stroke-linecap="round" d="M8 16v-4M12 16V8M16 16v-6"></path>
+              </svg>
+              <span class="nav-label hidden ml-3 text-xs font-semibold whitespace-nowrap">Dashboard</span>
             </button>
 
-            <button class="nav-hub-btn active w-full flex items-center px-4 py-3 text-white bg-[#B4182C] transition relative" data-hub="operations" title="Operations">
-              <div class="absolute left-0 top-0 bottom-0 w-1 bg-white"></div>
-              <span class="text-base flex-shrink-0">🚚</span>
-              <span class="ml-3.5 text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Operations</span>
+            <!-- 2. Operations -->
+            <button class="nav-hub-btn active w-11 h-10 rounded-xl flex items-center justify-center text-white bg-[#2E2B29] transition relative" data-hub="operations" title="Operations">
+              <span class="nav-indicator absolute -left-1.5 top-2.5 bottom-2.5 w-[3px] bg-[#B4182C] rounded-r"></span>
+              <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M1 4h14v11H1zM15 8h4l3 3v4h-7V8z"></path>
+                <circle cx="5.5" cy="17.5" r="2"></circle>
+                <circle cx="18.5" cy="17.5" r="2"></circle>
+              </svg>
+              <span class="nav-label hidden ml-3 text-xs font-semibold whitespace-nowrap">Operations</span>
             </button>
 
-            <button class="nav-hub-btn w-full flex items-center px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1E293B] transition relative" data-hub="resources" title="Resources">
-              <span class="text-base flex-shrink-0">👥</span>
-              <span class="ml-3.5 text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Resources</span>
+            <!-- 3. Resources -->
+            <button class="nav-hub-btn w-11 h-10 rounded-xl flex items-center justify-center text-[#A8A29E] hover:text-white hover:bg-[#2E2B29]/60 transition relative" data-hub="resources" title="Resources">
+              <span class="nav-indicator hidden absolute -left-1.5 top-2.5 bottom-2.5 w-[3px] bg-[#B4182C] rounded-r"></span>
+              <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"></path>
+                <circle cx="10" cy="8.5" r="3"></circle>
+                <path stroke-linecap="round" d="M20 19v-1.5a3 3 0 0 0-2.2-2.9M15.5 5.8a3 3 0 0 1 0 5.4"></path>
+              </svg>
+              <span class="nav-label hidden ml-3 text-xs font-semibold whitespace-nowrap">Resources</span>
             </button>
 
-            <button class="nav-hub-btn w-full flex items-center px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1E293B] transition relative" data-hub="finance" title="Payments / Finance">
-              <span class="text-base flex-shrink-0">💰</span>
-              <span class="ml-3.5 text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Payments</span>
+            <!-- 4. Payments / Finance -->
+            <button class="nav-hub-btn w-11 h-10 rounded-xl flex items-center justify-center text-[#A8A29E] hover:text-white hover:bg-[#2E2B29]/60 transition relative" data-hub="finance" title="Payments">
+              <span class="nav-indicator hidden absolute -left-1.5 top-2.5 bottom-2.5 w-[3px] bg-[#B4182C] rounded-r"></span>
+              <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 3h6l-1 3.5H10L9 3zM6 9.5c0-1.7 1.3-3 3-3h6c1.7 0 3 1.3 3 3v7.5c0 2.2-1.8 4-4 4h-4c-2.2 0-4-1.8-4-4V9.5z"></path>
+                <path stroke-linecap="round" d="M12 10.5v6M10.2 12.2c0-.8.8-1.2 1.8-1.2s1.8.4 1.8 1.2-.8 1-1.8 1.3-1.8.5-1.8 1.3.8 1.2 1.8 1.2 1.8-.4 1.8-1.2"></path>
+              </svg>
+              <span class="nav-label hidden ml-3 text-xs font-semibold whitespace-nowrap">Payments</span>
             </button>
 
-            <button class="nav-hub-btn w-full flex items-center px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1E293B] transition relative" data-hub="masterdata" title="Master Data">
-              <span class="text-base flex-shrink-0">🏷️</span>
-              <span class="ml-3.5 text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Master Data</span>
+            <!-- 5. Master Data -->
+            <button class="nav-hub-btn w-11 h-10 rounded-xl flex items-center justify-center text-[#A8A29E] hover:text-white hover:bg-[#2E2B29]/60 transition relative" data-hub="masterdata" title="Master Data">
+              <span class="nav-indicator hidden absolute -left-1.5 top-2.5 bottom-2.5 w-[3px] bg-[#B4182C] rounded-r"></span>
+              <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L3 13V4h9l8.59 7.59a2 2 0 0 1 0 1.82z"></path>
+                <circle cx="7.5" cy="8.5" r="1.2"></circle>
+              </svg>
+              <span class="nav-label hidden ml-3 text-xs font-semibold whitespace-nowrap">Master Data</span>
             </button>
 
-            <button class="nav-hub-btn w-full flex items-center px-4 py-3 text-slate-400 hover:text-white hover:bg-[#1E293B] transition relative" data-hub="settings" title="Settings & Preferences">
-              <span class="text-base flex-shrink-0">⚙️</span>
-              <span class="ml-3.5 text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Settings</span>
+            <!-- 6. Settings -->
+            <button class="nav-hub-btn w-11 h-10 rounded-xl flex items-center justify-center text-[#A8A29E] hover:text-white hover:bg-[#2E2B29]/60 transition relative" data-hub="settings" title="Settings">
+              <span class="nav-indicator hidden absolute -left-1.5 top-2.5 bottom-2.5 w-[3px] bg-[#B4182C] rounded-r"></span>
+              <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+              <span class="nav-label hidden ml-3 text-xs font-semibold whitespace-nowrap">Settings</span>
             </button>
           </nav>
         </div>
 
-        <!-- Bottom Dark Mode Toggle -->
-        <div class="p-3 border-t border-[#1E293B]">
-          <button id="btn-toggle-darkmode" class="w-full flex items-center px-2 py-2 text-slate-400 hover:text-white hover:bg-[#1E293B] rounded transition" title="Toggle Dark Mode">
-            <span class="text-base flex-shrink-0">🌙</span>
-            <span class="ml-3 text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Dark Mode</span>
+        <!-- Bottom Crescent Moon Toggle -->
+        <div class="w-full py-3 border-t border-[#2E2B29] flex items-center justify-center">
+          <button id="btn-toggle-darkmode" class="w-10 h-10 rounded-xl flex items-center justify-center text-[#A8A29E] hover:text-white hover:bg-[#2E2B29] transition" title="Toggle Dark Mode">
+            <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
           </button>
         </div>
       </aside>
 
-      <!-- 4. Stage Content Area -->
-      <div class="flex-1 flex flex-col min-w-0 bg-[#F4F6F9] overflow-hidden">
+      <!-- Right Workspace Column: White Header + Sub-Nav Tabs Strip + Main Content -->
+      <div class="flex-1 flex flex-col min-w-0 bg-[#F3F4F6] overflow-hidden">
         
-        <!-- Sub-Nav Tabs Strip (Under Header - matching WinForms FlowNavTabs) -->
-        <div id="hub-subtabs-bar" class="px-6 py-2 flex items-center space-x-2 border-b border-[#E2E8F0] bg-white overflow-x-auto flex-shrink-0">
+        <!-- White App Header (Exact Screenshot 01, 12, 14, 19, 23) -->
+        <header class="h-[64px] bg-white border-b border-[#E5E7EB] px-5 flex items-center justify-between flex-shrink-0 z-30 select-none">
+          
+          <!-- Left: Hamburger + Hub Title + User Subtitle -->
+          <div class="flex items-center space-x-4">
+            <button id="btn-toggle-pin" class="w-8 h-8 rounded hover:bg-slate-100 text-[#334155] flex items-center justify-center text-lg transition" title="Toggle Sidebar">
+              ☰
+            </button>
+
+            <div id="header-user-badge" class="flex flex-col cursor-pointer" title="User Profile">
+              <h1 id="page-hub-title" class="text-[19px] font-semibold text-[#0F172A] leading-tight">Operations</h1>
+              <span id="header-user-info" class="text-[12px] text-[#64748B] leading-tight mt-0.5">Marie Ann J. Billones  ·  Owner/Admin</span>
+            </div>
+          </div>
+
+          <!-- Right: 4 Pastel KPI Pills + Settings + Log out -->
+          <div class="flex items-center space-x-2 overflow-x-auto">
+            <button class="kpi-pill kpi-pill-scheduled" id="kpi-pill-scheduled" title="View Scheduled Orders">
+              <span class="text-[#B45309]">⏳</span>
+              <span id="kpi-scheduled-text">2 scheduled</span>
+            </button>
+            <button class="kpi-pill kpi-pill-transit" id="kpi-pill-transit" title="View In-Transit Orders">
+              <span class="text-[#0284C7]">🚚</span>
+              <span id="kpi-transit-text">2 in transit</span>
+            </button>
+            <button class="kpi-pill kpi-pill-unpaid" id="kpi-pill-unpaid" title="View Unpaid Invoices">
+              <span class="text-[#DC2626]">💳</span>
+              <span id="kpi-unpaid-text">1 unpaid</span>
+            </button>
+            <button class="kpi-pill kpi-pill-alert" id="kpi-pill-alert" title="View System Alerts">
+              <span class="text-[#E11D48]">🔔</span>
+              <span id="kpi-alerts-text">19 new</span>
+            </button>
+
+            <button id="btn-header-settings" class="h-[36px] px-4 rounded-lg border border-[#E5E7EB] bg-white hover:bg-slate-50 text-[#1E293B] text-[12px] font-semibold inline-flex items-center gap-1.5 transition">
+              <span>⚙️</span>
+              <span>Settings</span>
+            </button>
+
+            <button id="btn-header-logout" class="h-[36px] px-4 rounded-lg border border-[#E5E7EB] bg-white hover:bg-slate-50 text-[#1E293B] text-[12px] font-semibold inline-flex items-center transition">
+              Log out
+            </button>
+          </div>
+        </header>
+
+        <!-- Sub-Nav Tabs Strip (White strip inside #F3F4F6 canvas, matching Screenshot 01) -->
+        <div id="hub-subtabs-bar" class="mx-4 mt-3 px-4 py-2 flex items-center space-x-3 bg-white rounded-md border border-[#E5E7EB]/80 overflow-x-auto flex-shrink-0">
           <!-- Injected dynamically per Hub -->
         </div>
 
         <!-- Dynamic Main Workspace View -->
-        <main id="main-content-view" class="flex-1 p-5 overflow-y-auto">
+        <main id="main-content-view" class="flex-1 p-4 overflow-y-auto">
           <!-- Active Screen View Injected Here -->
         </main>
       </div>

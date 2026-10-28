@@ -351,9 +351,17 @@ class DocumentPrinter {
     this.print(html);
   }
 
+  printOfficialTripReport(report, delivery) {
+    this.printTripReport(report, delivery);
+  }
+
   print(content) {
     this.printContainer.innerHTML = content;
-    window.print();
+    if (window.AndroidBridge && typeof window.AndroidBridge.printPage === 'function') {
+      window.AndroidBridge.printPage('MJ_Billones_Transport_Document');
+    } else {
+      window.print();
+    }
   }
 }
 
