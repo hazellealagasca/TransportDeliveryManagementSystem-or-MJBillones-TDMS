@@ -95,6 +95,15 @@ function startMJBillonesApp() {
     if (kpiTransitText) kpiTransitText.innerText = `${inTransit} in transit`;
     if (kpiUnpaidText) kpiUnpaidText.innerText = `${unpaid} unpaid`;
     if (kpiAlertsText) kpiAlertsText.innerText = `${alerts} new`;
+
+    const kpiSchedCount = document.getElementById('kpi-scheduled-count');
+    const kpiTransCount = document.getElementById('kpi-transit-count');
+    const kpiUnpaidCount = document.getElementById('kpi-unpaid-count');
+    const kpiAlertsCount = document.getElementById('kpi-alerts-count');
+    if (kpiSchedCount) kpiSchedCount.innerText = `${scheduled}`;
+    if (kpiTransCount) kpiTransCount.innerText = `${inTransit}`;
+    if (kpiUnpaidCount) kpiUnpaidCount.innerText = `${unpaid}`;
+    if (kpiAlertsCount) kpiAlertsCount.innerText = `${alerts}`;
   }
 
   function bindTableRowSelection() {
@@ -103,23 +112,16 @@ function startMJBillonesApp() {
       if (rows.length > 0 && !rows.some(r => r.classList.contains('selected')) && rows[0].cells.length > 1) {
         rows[0].classList.add('selected');
       }
-      rows.forEach(row => {
-        if (row.cells.length <= 1) return;
-        row.addEventListener('click', () => {
-          rows.forEach(r => r.classList.remove('selected'));
-          row.classList.add('selected');
-        });
-      });
     });
   }
 
   function bindAuth() {
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
-      loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const u = document.getElementById('login-username').value;
-        const p = document.getElementById('login-password').value;
+      async function handleLoginSubmit(e) {
+        if (e) e.preventDefault();
+        const u = (document.getElementById('login-username').value || '').trim();
+        const p = (document.getElementById('login-password').value || '').trim();
         const err = document.getElementById('login-error');
         try {
           if (err) err.classList.add('hidden');
@@ -132,7 +134,17 @@ function startMJBillonesApp() {
             err.classList.remove('hidden');
           }
         }
-      });
+      }
+
+      loginForm.addEventListener('submit', handleLoginSubmit);
+
+      const loginBtn = document.getElementById('btn-login-submit');
+      if (loginBtn) {
+        loginBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          handleLoginSubmit(e);
+        });
+      }
     }
 
     const logoutBtn = document.getElementById('btn-header-logout');
@@ -146,84 +158,149 @@ function startMJBillonesApp() {
     }
   }
 
-  function bindShellEvents() {
-    document.querySelectorAll('.nav-hub-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const hub = btn.getAttribute('data-hub');
-        switchHub(hub);
-      });
-    });
-
-    const pinBtn = document.getElementById('btn-toggle-pin');
+  function closeMobileDrawer() {
     const sidebar = document.getElementById('panel-sidebar');
     const backdrop = document.getElementById('mobile-sidebar-backdrop');
-    const closeMobileBtn = document.getElementById('btn-close-mobile-sidebar');
+    if (sidebar) sidebar.classList.add('-translate-x-full');
+    if (backdrop) backdrop.classList.add('hidden');
+  }
 
-    function closeMobileDrawer() {
-      if (sidebar) sidebar.classList.add('-translate-x-full');
-      if (backdrop) backdrop.classList.add('hidden');
+  function toggleSidebar() {
+    const sidebar = document.getElementById('panel-sidebar');
+    const backdrop = document.getElementById('mobile-sidebar-backdrop');
+    if (!sidebar) return;
+
+    if (window.innerWidth < 768) {
+      const isHidden = sidebar.classList.contains('-translate-x-full');
+      if (isHidden) {
+        sidebar.classList.remove('-translate-x-full');
+        if (backdrop) backdrop.classList.remove('hidden');
+      } else {
+        closeMobileDrawer();
+      }
+      return;
     }
 
-    if (backdrop) backdrop.addEventListener('click', closeMobileDrawer);
-    if (closeMobileBtn) closeMobileBtn.addEventListener('click', closeMobileDrawer);
-
-    if (pinBtn && sidebar) {
-      pinBtn.addEventListener('click', () => {
-        if (window.innerWidth < 768) {
-          const isHidden = sidebar.classList.contains('-translate-x-full');
-          if (isHidden) {
-            sidebar.classList.remove('-translate-x-full');
-            if (backdrop) backdrop.classList.remove('hidden');
-          } else {
-            closeMobileDrawer();
-          }
-          return;
-        }
-        const isExpanded = sidebar.classList.contains('md:w-[190px]');
-        if (isExpanded) {
-          sidebar.classList.remove('md:w-[190px]');
-          sidebar.classList.add('md:w-[56px]');
-          sidebar.querySelectorAll('.nav-label').forEach(el => el.classList.add('md:hidden'));
-          sidebar.querySelectorAll('.nav-hub-btn').forEach(el => {
-            el.classList.remove('md:w-full', 'md:justify-start', 'md:px-3');
-            el.classList.add('md:w-11', 'md:justify-center', 'md:px-0');
-          });
-        } else {
-          sidebar.classList.remove('md:w-[56px]');
-          sidebar.classList.add('md:w-[190px]');
-          sidebar.querySelectorAll('.nav-label').forEach(el => el.classList.remove('md:hidden'));
-          sidebar.querySelectorAll('.nav-hub-btn').forEach(el => {
-            el.classList.remove('md:w-11', 'md:justify-center', 'md:px-0');
-            el.classList.add('md:w-full', 'md:justify-start', 'md:px-3');
-          });
-        }
+    const isExpanded = sidebar.classList.contains('md:w-[190px]');
+    if (isExpanded) {
+      sidebar.classList.remove('md:w-[190px]');
+      sidebar.classList.add('md:w-[56px]');
+      sidebar.querySelectorAll('.nav-label').forEach(el => el.classList.add('md:hidden'));
+      sidebar.querySelectorAll('.nav-hub-btn').forEach(el => {
+        el.classList.remove('md:w-full', 'md:justify-start', 'md:px-3');
+        el.classList.add('md:w-11', 'md:justify-center', 'md:px-0');
+      });
+    } else {
+      sidebar.classList.remove('md:w-[56px]');
+      sidebar.classList.add('md:w-[190px]');
+      sidebar.querySelectorAll('.nav-label').forEach(el => el.classList.remove('md:hidden'));
+      sidebar.querySelectorAll('.nav-hub-btn').forEach(el => {
+        el.classList.remove('md:w-11', 'md:justify-center', 'md:px-0');
+        el.classList.add('md:w-full', 'md:justify-start', 'md:px-3');
       });
     }
+  }
 
-    const darkBtn = document.getElementById('btn-toggle-darkmode');
-    if (darkBtn) {
-      darkBtn.addEventListener('click', () => {
+  function bindShellEvents() {
+    // Unified Global Event Delegation for 100% Reliable Touch & Click Interaction
+    document.addEventListener('click', (e) => {
+      // 1. Navigation Hub Button
+      const hubBtn = e.target.closest('.nav-hub-btn');
+      if (hubBtn) {
+        e.preventDefault();
+        const hub = hubBtn.getAttribute('data-hub');
+        if (hub) switchHub(hub);
+        return;
+      }
+
+      // 2. Sub-tab Button
+      const tabBtn = e.target.closest('.hub-tab-btn');
+      if (tabBtn) {
+        e.preventDefault();
+        const tab = tabBtn.getAttribute('data-tab');
+        if (tab) {
+          currentTab = tab;
+          showOrderForm = false;
+          searchTerm = '';
+          renderSubTabs(currentHub, currentTab);
+        }
+        return;
+      }
+
+      // 3. Hamburger Button
+      if (e.target.closest('#btn-toggle-pin')) {
+        e.preventDefault();
+        toggleSidebar();
+        return;
+      }
+
+      // 4. Mobile Backdrop or Close Drawer
+      if (e.target.closest('#mobile-sidebar-backdrop') || e.target.closest('#btn-close-mobile-sidebar')) {
+        e.preventDefault();
+        closeMobileDrawer();
+        return;
+      }
+
+      // 5. Dark Mode Toggle
+      if (e.target.closest('#btn-toggle-darkmode')) {
+        e.preventDefault();
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
         toast.show(isDark ? 'Dark mode enabled' : 'Light mode enabled', 'info');
-      });
-    }
+        return;
+      }
 
-    const pillSched = document.getElementById('kpi-pill-scheduled');
-    if (pillSched) pillSched.addEventListener('click', () => switchHub('operations', 'dispatch'));
+      // 6. Header Settings & Logout
+      if (e.target.closest('#btn-header-settings')) {
+        e.preventDefault();
+        switchHub('settings', 'users');
+        return;
+      }
+      if (e.target.closest('#btn-header-logout')) {
+        e.preventDefault();
+        if (confirm('Are you sure you want to log out of M.J. Billones Delivery Management System?')) {
+          auth.logout();
+          checkSession();
+        }
+        return;
+      }
 
-    const pillTransit = document.getElementById('kpi-pill-transit');
-    if (pillTransit) pillTransit.addEventListener('click', () => switchHub('operations', 'dispatch'));
+      // 7. Header KPI Pills
+      if (e.target.closest('#kpi-pill-scheduled')) {
+        switchHub('operations', 'dispatch');
+        return;
+      }
+      if (e.target.closest('#kpi-pill-transit')) {
+        switchHub('operations', 'dispatch');
+        return;
+      }
+      if (e.target.closest('#kpi-pill-unpaid')) {
+        switchHub('finance', 'billing');
+        return;
+      }
+      if (e.target.closest('#kpi-pill-alert')) {
+        switchHub('settings', 'security');
+        return;
+      }
 
-    const pillUnpaid = document.getElementById('kpi-pill-unpaid');
-    if (pillUnpaid) pillUnpaid.addEventListener('click', () => switchHub('finance', 'billing'));
+      // 8. Password Toggle
+      if (e.target.closest('#btn-toggle-login-pass')) {
+        e.preventDefault();
+        const passInp = document.getElementById('login-password');
+        if (passInp) passInp.type = passInp.type === 'password' ? 'text' : 'password';
+        return;
+      }
 
-    const pillAlert = document.getElementById('kpi-pill-alert');
-    if (pillAlert) pillAlert.addEventListener('click', () => switchHub('settings', 'security'));
-
-    const setBtn = document.getElementById('btn-header-settings');
-    if (setBtn) setBtn.addEventListener('click', () => switchHub('settings', 'users'));
+      // 9. Table Row Selection
+      const tr = e.target.closest('.desktop-table tbody tr');
+      if (tr && !e.target.closest('button, a, input, select, textarea')) {
+        const tbody = tr.closest('tbody');
+        if (tbody) {
+          tbody.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+          tr.classList.add('selected');
+        }
+      }
+    });
   }
 
   function switchHub(hubKey, defaultTabKey = null) {
@@ -232,14 +309,10 @@ function startMJBillonesApp() {
     searchTerm = '';
 
     // Close mobile drawer when switching hub
-    const sidebar = document.getElementById('panel-sidebar');
-    const backdrop = document.getElementById('mobile-sidebar-backdrop');
-    if (sidebar && window.innerWidth < 768) {
-      sidebar.classList.add('-translate-x-full');
-      if (backdrop) backdrop.classList.add('hidden');
-    }
+    closeMobileDrawer();
 
     // Update active state on dark charcoal rail buttons (#1C1917 / #2E2B29 with crimson bar)
+    const sidebar = document.getElementById('panel-sidebar');
     const isExpanded = sidebar && sidebar.classList.contains('md:w-[190px]');
     const mdSizeClasses = isExpanded ? 'md:w-full md:justify-start md:px-3' : 'md:w-11 md:justify-center md:px-0';
 
@@ -247,24 +320,10 @@ function startMJBillonesApp() {
       sidebar.querySelectorAll('.nav-hub-btn').forEach(btn => {
         const ind = btn.querySelector('.nav-indicator');
         if (btn.getAttribute('data-hub') === hubKey) {
-          btn.className = `nav-hub-btn active w-full ${mdSizeClasses} h-11 md:h-10 px-3 rounded-xl flex items-center justify-start text-white bg-[#2E2B29] transition relative`;
+          btn.className = `nav-hub-btn active w-full ${mdSizeClasses} h-11 md:h-10 px-3 rounded-xl flex items-center justify-start text-white bg-[#2E2B29] transition relative cursor-pointer`;
           if (ind) ind.classList.remove('hidden');
         } else {
-          btn.className = `nav-hub-btn w-full ${mdSizeClasses} h-11 md:h-10 px-3 rounded-xl flex items-center justify-start text-[#A8A29E] hover:text-white hover:bg-[#2E2B29]/60 transition relative`;
-          if (ind) ind.classList.add('hidden');
-        }
-      });
-    }
-
-    const bottomNav = document.getElementById('mobile-bottom-nav');
-    if (bottomNav) {
-      bottomNav.querySelectorAll('.nav-hub-btn').forEach(btn => {
-        const ind = btn.querySelector('.nav-indicator');
-        if (btn.getAttribute('data-hub') === hubKey) {
-          btn.className = 'nav-hub-btn active flex-1 h-full flex flex-col items-center justify-center text-white relative';
-          if (ind) ind.classList.remove('hidden');
-        } else {
-          btn.className = 'nav-hub-btn flex-1 h-full flex flex-col items-center justify-center text-[#A8A29E] relative';
+          btn.className = `nav-hub-btn w-full ${mdSizeClasses} h-11 md:h-10 px-3 rounded-xl flex items-center justify-start text-[#A8A29E] hover:text-white hover:bg-[#2E2B29]/60 transition relative cursor-pointer`;
           if (ind) ind.classList.add('hidden');
         }
       });

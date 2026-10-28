@@ -3,6 +3,10 @@
    Matches Screenshots 01 through 24 100%
    ======================================================== */
 
+.hidden {
+  display: none !important;
+}
+
 :root {
   --mj-crimson: #B4182C;
   --mj-crimson-hover: #981323;
@@ -273,11 +277,59 @@ body.dark-mode .window-titlebar {
   .desktop-table th, .desktop-table td {
     padding: 9px 10px;
   }
-  /* Make modal dialogs mobile/tablet friendly */
-  .fixed.inset-0 > div {
-    max-height: 92vh;
-    overflow-y: auto;
-    margin: 8px;
+  /* Make modal dialogs mobile bottom-sheet friendly */
+  .fixed.inset-0:not(#auth-container) {
+    align-items: flex-end !important;
+  }
+  .fixed.inset-0:not(#auth-container) > div {
+    max-height: 90vh !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-top-left-radius: 16px !important;
+    border-top-right-radius: 16px !important;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* Touch & Button Fast Feedback */
+button, [role="button"], a, input, select, textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+button:active:not(:disabled), .btn-primary:active, .btn-secondary:active, .btn-teal:active, .btn-charcoal:active, .hub-tab-btn:active {
+  filter: brightness(0.92);
+  transform: scale(0.985);
+  transition: transform 0.05s ease, filter 0.05s ease;
+}
+
+/* Frozen / Sticky Action Column on Mobile & Tablet */
+@media (max-width: 1024px) {
+  .desktop-table th:last-child,
+  .desktop-table td:last-child {
+    position: sticky;
+    right: 0;
+    background-color: #FFFFFF;
+    box-shadow: -3px 0 6px rgba(0, 0, 0, 0.05);
+    z-index: 5;
+  }
+  .desktop-table th:last-child {
+    background-color: #F3F2F1;
+  }
+  body.dark-mode .desktop-table td:last-child {
+    background-color: #1E293B;
+  }
+  body.dark-mode .desktop-table th:last-child {
+    background-color: #0F172A;
+  }
+  .desktop-table tr.selected td:last-child {
+    background-color: #FCE8EC !important;
+  }
+  .desktop-table tr:hover td:last-child {
+    background-color: #FDF2F4;
   }
 }
 body.dark-mode .desktop-table-container {

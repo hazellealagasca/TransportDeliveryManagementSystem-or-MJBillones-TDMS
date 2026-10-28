@@ -1,0 +1,7 @@
+node_modules/
+package.json
+package-lock.json
+tailwind.config.js
+css/input.css
+css/scan_classes.js
+css/scanned_classes.json
