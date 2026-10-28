@@ -243,7 +243,42 @@ body.dark-mode .window-titlebar {
   background: #FFFFFF;
   border: 1px solid #E5E7EB;
   border-radius: 6px;
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (max-width: 768px) {
+  .kpi-pill {
+    height: 30px;
+    padding: 0 10px;
+    font-size: 11px;
+    gap: 5px;
+  }
+  .btn-primary, .btn-secondary, .btn-teal, .btn-charcoal {
+    min-height: 36px;
+    padding: 7px 12px;
+  }
+  .hub-tab-btn {
+    min-height: 34px;
+    padding: 6px 12px;
+  }
+  .desktop-table th, .desktop-table td {
+    padding: 9px 10px;
+  }
+  /* Make modal dialogs mobile/tablet friendly */
+  .fixed.inset-0 > div {
+    max-height: 92vh;
+    overflow-y: auto;
+    margin: 8px;
+  }
 }
 body.dark-mode .desktop-table-container {
   background: #1E293B;

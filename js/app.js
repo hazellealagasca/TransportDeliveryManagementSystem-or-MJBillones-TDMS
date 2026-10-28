@@ -157,24 +157,45 @@ function startMJBillonesApp() {
 
     const pinBtn = document.getElementById('btn-toggle-pin');
     const sidebar = document.getElementById('panel-sidebar');
+    const backdrop = document.getElementById('mobile-sidebar-backdrop');
+    const closeMobileBtn = document.getElementById('btn-close-mobile-sidebar');
+
+    function closeMobileDrawer() {
+      if (sidebar) sidebar.classList.add('-translate-x-full');
+      if (backdrop) backdrop.classList.add('hidden');
+    }
+
+    if (backdrop) backdrop.addEventListener('click', closeMobileDrawer);
+    if (closeMobileBtn) closeMobileBtn.addEventListener('click', closeMobileDrawer);
+
     if (pinBtn && sidebar) {
       pinBtn.addEventListener('click', () => {
-        const isExpanded = sidebar.classList.contains('w-[180px]');
+        if (window.innerWidth < 768) {
+          const isHidden = sidebar.classList.contains('-translate-x-full');
+          if (isHidden) {
+            sidebar.classList.remove('-translate-x-full');
+            if (backdrop) backdrop.classList.remove('hidden');
+          } else {
+            closeMobileDrawer();
+          }
+          return;
+        }
+        const isExpanded = sidebar.classList.contains('md:w-[190px]');
         if (isExpanded) {
-          sidebar.classList.remove('w-[180px]');
-          sidebar.classList.add('w-[56px]');
-          sidebar.querySelectorAll('.nav-label').forEach(el => el.classList.add('hidden'));
+          sidebar.classList.remove('md:w-[190px]');
+          sidebar.classList.add('md:w-[56px]');
+          sidebar.querySelectorAll('.nav-label').forEach(el => el.classList.add('md:hidden'));
           sidebar.querySelectorAll('.nav-hub-btn').forEach(el => {
-            el.classList.remove('w-full', 'justify-start', 'px-3');
-            el.classList.add('w-11', 'justify-center');
+            el.classList.remove('md:w-full', 'md:justify-start', 'md:px-3');
+            el.classList.add('md:w-11', 'md:justify-center', 'md:px-0');
           });
         } else {
-          sidebar.classList.remove('w-[56px]');
-          sidebar.classList.add('w-[180px]');
-          sidebar.querySelectorAll('.nav-label').forEach(el => el.classList.remove('hidden'));
+          sidebar.classList.remove('md:w-[56px]');
+          sidebar.classList.add('md:w-[190px]');
+          sidebar.querySelectorAll('.nav-label').forEach(el => el.classList.remove('md:hidden'));
           sidebar.querySelectorAll('.nav-hub-btn').forEach(el => {
-            el.classList.remove('w-11', 'justify-center');
-            el.classList.add('w-full', 'justify-start', 'px-3');
+            el.classList.remove('md:w-11', 'md:justify-center', 'md:px-0');
+            el.classList.add('md:w-full', 'md:justify-start', 'md:px-3');
           });
         }
       });
@@ -210,21 +231,44 @@ function startMJBillonesApp() {
     showOrderForm = false;
     searchTerm = '';
 
-    // Update active state on dark charcoal rail buttons (#1C1917 / #2E2B29 with crimson bar)
+    // Close mobile drawer when switching hub
     const sidebar = document.getElementById('panel-sidebar');
-    const isExpanded = sidebar && sidebar.classList.contains('w-[180px]');
-    const sizeClasses = isExpanded ? 'w-full justify-start px-3' : 'w-11 justify-center';
+    const backdrop = document.getElementById('mobile-sidebar-backdrop');
+    if (sidebar && window.innerWidth < 768) {
+      sidebar.classList.add('-translate-x-full');
+      if (backdrop) backdrop.classList.add('hidden');
+    }
 
-    document.querySelectorAll('.nav-hub-btn').forEach(btn => {
-      const ind = btn.querySelector('.nav-indicator');
-      if (btn.getAttribute('data-hub') === hubKey) {
-        btn.className = `nav-hub-btn active ${sizeClasses} h-10 rounded-xl flex items-center text-white bg-[#2E2B29] transition relative`;
-        if (ind) ind.classList.remove('hidden');
-      } else {
-        btn.className = `nav-hub-btn ${sizeClasses} h-10 rounded-xl flex items-center text-[#A8A29E] hover:text-white hover:bg-[#2E2B29]/60 transition relative`;
-        if (ind) ind.classList.add('hidden');
-      }
-    });
+    // Update active state on dark charcoal rail buttons (#1C1917 / #2E2B29 with crimson bar)
+    const isExpanded = sidebar && sidebar.classList.contains('md:w-[190px]');
+    const mdSizeClasses = isExpanded ? 'md:w-full md:justify-start md:px-3' : 'md:w-11 md:justify-center md:px-0';
+
+    if (sidebar) {
+      sidebar.querySelectorAll('.nav-hub-btn').forEach(btn => {
+        const ind = btn.querySelector('.nav-indicator');
+        if (btn.getAttribute('data-hub') === hubKey) {
+          btn.className = `nav-hub-btn active w-full ${mdSizeClasses} h-11 md:h-10 px-3 rounded-xl flex items-center justify-start text-white bg-[#2E2B29] transition relative`;
+          if (ind) ind.classList.remove('hidden');
+        } else {
+          btn.className = `nav-hub-btn w-full ${mdSizeClasses} h-11 md:h-10 px-3 rounded-xl flex items-center justify-start text-[#A8A29E] hover:text-white hover:bg-[#2E2B29]/60 transition relative`;
+          if (ind) ind.classList.add('hidden');
+        }
+      });
+    }
+
+    const bottomNav = document.getElementById('mobile-bottom-nav');
+    if (bottomNav) {
+      bottomNav.querySelectorAll('.nav-hub-btn').forEach(btn => {
+        const ind = btn.querySelector('.nav-indicator');
+        if (btn.getAttribute('data-hub') === hubKey) {
+          btn.className = 'nav-hub-btn active flex-1 h-full flex flex-col items-center justify-center text-white relative';
+          if (ind) ind.classList.remove('hidden');
+        } else {
+          btn.className = 'nav-hub-btn flex-1 h-full flex flex-col items-center justify-center text-[#A8A29E] relative';
+          if (ind) ind.classList.add('hidden');
+        }
+      });
+    }
 
     const hubTitles = {
       dashboard: 'Dashboard',
