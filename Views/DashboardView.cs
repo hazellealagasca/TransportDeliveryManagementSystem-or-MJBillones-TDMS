@@ -643,7 +643,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         "Make a backup and keep a copy on a USB drive or cloud storage (at least once a week)",
                         "Back up", () => MainForm.Instance?.OpenBackupRestore(), "Backups", 2, lastBackup));
             }
-            allAttention = items;
+            // Only the to-dos this account can act on (Settings → User Accounts → Access & permissions).
+            bool CanAct(ActionList.Item i) => i.Area switch
+            {
+                "Dispatches" or "Loading orders" => Permissions.Can("Operations", "Dispatch"),
+                "Trip reports" => Permissions.Can("Operations", "TripReports"),
+                "Incidents" => Permissions.Can("Operations", "Incidents"),
+                "Billing" => Permissions.Can("Payments", "Billing") || Permissions.Can("Payments", "StatementOfAccount"),
+                "Trucks" => Permissions.Can("Resources", "Trucks"),
+                _ => true
+            };
+            allAttention = items.Where(CanAct).ToList();
             ApplyAttention();
             // Fleet
             fleetBar.SetSegments(new List<(string, int, Color)>

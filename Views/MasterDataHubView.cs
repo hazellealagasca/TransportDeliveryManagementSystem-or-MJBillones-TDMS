@@ -33,9 +33,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Settings → Features & Pop-ups can hide the Rate Matrix; its rates stay saved for when it is turned back on.
             Features.Bind(this, () =>
             {
-                bool on = Features.On(Features.RateMatrix);
-                tabButtons["Rates"].Visible = on;
-                if (!on && Equals(activeTabBtn?.Tag, "Rates")) SelectTab("Clients");
+                ApplyAccess();
+                if (!Features.On(Features.RateMatrix) && Equals(activeTabBtn?.Tag, "Rates")) SelectTab("Clients");
             }, Features.RateMatrix);
         }
 
@@ -80,12 +79,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SelectTab("Clients");
             if (cachedViews.TryGetValue("Clients", out var v) && v is ClientManagementView cv) cv.OpenClientByName(companyName);
         }
+        /// <summary>Hides the tabs this account may not open (Settings → User Accounts → Access &amp; permissions).</summary>
+        private void ApplyAccess()
+        {
+            foreach (var kv in tabButtons) kv.Value.Visible = Permissions.Can("MasterData", kv.Key) && FeatureAllows(kv.Key);
+        }
+        /// <summary>When the asked-for tab is hidden, explains why and picks the first tab this account can open.</summary>
+        private string? AllowedTab(string key)
+        {
+            if (tabButtons.ContainsKey(key) && !Permissions.Can("MasterData", key)) { Permissions.TellDenied(this, "MasterData", key); key = ""; }
+            if (tabButtons.TryGetValue(key, out var b0) && b0.Visible) return key;
+            foreach (var kv in tabButtons) if (kv.Value.Visible) return kv.Key;
+            return null;
+        }
+        private static bool FeatureAllows(string key) => key != "Rates" || Features.On(Features.RateMatrix);
         public void SelectTab(string key)
         {
             if (!tabButtons.ContainsKey(key) || !cachedViews.ContainsKey(key))
                 return;
 
             if (key == "Rates" && !Features.On(Features.RateMatrix)) { Features.TellOff(this, "The Rate Matrix"); key = "Clients"; }
+            var allowed = AllowedTab(key);
+            if (allowed == null || !cachedViews.ContainsKey(allowed)) return;
+            key = allowed;
             foreach (var kvp in tabButtons)
             {
                 bool isSelected = kvp.Key == key;

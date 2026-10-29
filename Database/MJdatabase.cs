@@ -7068,7 +7068,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
-        public static (bool Success, string Message) RescheduleDelivery(int deliveryId, DateTime newDate, string newTime, string reason, string operatorUsername, int? newTruckId = null, string? newTruckInfo = null, int? newDriverId = null, string? newDriverName = null, int? newAideId = null, string? newAideName = null)
+        public static (bool Success, string Message) RescheduleDelivery(int deliveryId, DateTime newDate, string newTime, string reason, string operatorUsername, int? newTruckId = null, string? newTruckInfo = null, int? newDriverId = null, string? newDriverName = null, int? newAideId = null, string? newAideName = null, List<(int Id, string Name)>? newAides = null)
 
         {
 
@@ -7205,6 +7205,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                 aideNameList.Insert(0, newAideName ?? "");
 
                             }
+
+                        }
+
+                        if (newAides != null && newAides.Count > 0)
+
+                        {
+
+                            // Several aides chosen: they replace the whole aide list.
+
+                            aideIdList = newAides.Select(a => a.Id).Distinct().ToList();
+
+                            aideNameList = newAides.GroupBy(a => a.Id).Select(g => g.First().Name).ToList();
+
+                            newAideId = aideIdList[0];
+
+                            newAideName = aideNameList[0];
 
                         }
 
@@ -7347,7 +7363,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
-        public static (bool Success, string Message) RescheduleSpecialTrip(int tripId, DateTime newDate, string newTime, string reason, string operatorUsername, int? newTruckId = null, string? newTruckPlate = null, int? newDriverId = null, string? newDriverName = null, int? newAideId = null, string? newAideName = null)
+        public static (bool Success, string Message) RescheduleSpecialTrip(int tripId, DateTime newDate, string newTime, string reason, string operatorUsername, int? newTruckId = null, string? newTruckPlate = null, int? newDriverId = null, string? newDriverName = null, int? newAideId = null, string? newAideName = null, List<(int Id, string Name)>? newAides = null)
+
         {
             using (var conn = new SqliteConnection(connectionString))
             {
@@ -7367,7 +7384,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         int stDriver = newDriverId.HasValue && newDriverId.Value > 0 ? newDriverId.Value : trip.DriverId;
 
-                        var stAides = newAideId.HasValue && newAideId.Value > 0 ? new List<int> { newAideId.Value } : trip.AllAideIds;
+                        string stAideIdsText = newAideId.HasValue && newAideId.Value > 0 ? newAideId.Value.ToString() : "";
+
+                        if (newAides != null && newAides.Count > 0)
+
+                        {
+
+                            var ids = newAides.Select(a => a.Id).Distinct().ToList();
+
+                            newAideId = ids[0];
+
+                            newAideName = string.Join(", ", newAides.GroupBy(a => a.Id).Select(g => g.First().Name));
+
+                            stAideIdsText = string.Join(",", ids);
+
+                        }
+
+                        var stAides = newAideId.HasValue && newAideId.Value > 0 ? ParseIdList(stAideIdsText).ToList() : trip.AllAideIds;
 
                         string? stConflict = ValidateResourceConflict(0, tripId, stTruck, stDriver, stAides, newDate);
 
@@ -7418,7 +7451,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                 setClauses.Add("AideName = @aiName");
                                 setClauses.Add("AideIds = @aiIds");
 
-                                updateCmd.Parameters.AddWithValue("@aiIds", newAideId.Value.ToString());
+                                updateCmd.Parameters.AddWithValue("@aiIds", stAideIdsText);
 
                                 updateCmd.Parameters.AddWithValue("@aiId", newAideId.Value);
                                 updateCmd.Parameters.AddWithValue("@aiName", newAideName ?? "");

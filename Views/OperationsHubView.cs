@@ -82,8 +82,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Settings → Features & Pop-ups can hide Special trips and Incident logs; their records are kept.
             Features.Bind(this, () =>
             {
-                tabButtons["SpecialTrips"].Visible = Features.On(Features.SpecialTrips);
-                tabButtons["Incidents"].Visible = Features.On(Features.Incidents);
+                ApplyAccess();
                 string? cur = activeTabBtn?.Tag as string;
                 if ((cur == "SpecialTrips" && !Features.On(Features.SpecialTrips)) || (cur == "Incidents" && !Features.On(Features.Incidents))) SelectTab("Dispatch");
             }, Features.SpecialTrips, Features.Incidents);
@@ -161,6 +160,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return true;
         }
 
+        /// <summary>Hides the tabs this account may not open (Settings → User Accounts → Access &amp; permissions).</summary>
+        private void ApplyAccess()
+        {
+            foreach (var kv in tabButtons) kv.Value.Visible = Permissions.Can("Operations", kv.Key) && FeatureAllows(kv.Key);
+        }
+        /// <summary>When the asked-for tab is hidden, explains why and picks the first tab this account can open.</summary>
+        private string? AllowedTab(string key)
+        {
+            if (tabButtons.ContainsKey(key) && !Permissions.Can("Operations", key)) { Permissions.TellDenied(this, "Operations", key); key = ""; }
+            if (tabButtons.TryGetValue(key, out var b0) && b0.Visible) return key;
+            foreach (var kv in tabButtons) if (kv.Value.Visible) return kv.Key;
+            return null;
+        }
+        private static bool FeatureAllows(string key) => key switch
+        {
+            "SpecialTrips" => Features.On(Features.SpecialTrips),
+            "Incidents" => Features.On(Features.Incidents),
+            _ => true
+        };
         public void SelectTab(string key)
         {
             if (key == "Loading") key = "Dispatch";
@@ -168,6 +186,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (key == "Incidents" && !Features.On(Features.Incidents)) { Features.TellOff(this, "Incident & damage logs"); key = "Dispatch"; }
             bool completed = key == "Completed";
             if (completed) key = "History";
+            key = AllowedTab(key) ?? "";
+            if (key != "History") completed = false;
             if (tabButtons.TryGetValue(key, out var btn))
             {
                 btn.PerformClick();

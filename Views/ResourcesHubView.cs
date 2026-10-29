@@ -22,6 +22,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             InitializeComponent();
             Pal.RemapTree(this);
             SetupTabs();
+            ApplyAccess();
             UIThemeHelper.ApplyTheme(this);
             SelectTab(defaultTab);
         }
@@ -86,8 +87,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tabButtons[key] = btn;
         }
 
+        /// <summary>Hides the tabs this account may not open (Settings → User Accounts → Access &amp; permissions).</summary>
+        private void ApplyAccess()
+        {
+            foreach (var kv in tabButtons) kv.Value.Visible = Permissions.Can("Resources", kv.Key) && true;
+        }
+        /// <summary>When the asked-for tab is hidden, explains why and picks the first tab this account can open.</summary>
+        private string? AllowedTab(string key)
+        {
+            if (tabButtons.ContainsKey(key) && !Permissions.Can("Resources", key)) { Permissions.TellDenied(this, "Resources", key); key = ""; }
+            if (tabButtons.TryGetValue(key, out var b0) && b0.Visible) return key;
+            foreach (var kv in tabButtons) if (kv.Value.Visible) return kv.Key;
+            return null;
+        }
         public void SelectTab(string key)
         {
+            key = AllowedTab(key) ?? "";
             if (tabButtons.TryGetValue(key, out var btn))
             {
                 btn.PerformClick();

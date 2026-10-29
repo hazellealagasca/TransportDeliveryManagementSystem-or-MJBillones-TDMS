@@ -79,6 +79,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             pnlGridActionsFlow.Controls.Add(btnRegisterStaff);
             pnlGridActionsFlow.Controls.SetChildIndex(btnRegisterStaff, 1);
+            // Per-account access and sign-in help (the User Accounts tab is shown to administrators only).
+            Button Tool(string text, Action<User> act)
+            {
+                var b = new Button { Text = text, AutoSize = true, MinimumSize = new Size(150, 30), FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI Semibold", 9F), Cursor = Cursors.Hand, Margin = new Padding(0, 4, 8, 4), UseMnemonic = false };
+                UIThemeHelper.SetButtonRole(b, "secondary");
+                b.Click += (s, e) =>
+                {
+                    var u = gridUsers.CurrentRow?.DataBoundItem as User ?? selectedUser;
+                    if (u == null) { QuietBox.Show(this, "Select an account in the list first.", "User accounts", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+                    act(u);
+                };
+                return b;
+            }
+            var btnAccess = Tool("🔐 Access & permissions", OpenAccess);
+            var btnSignIn = Tool("🔑 Sign-in details", OpenSignInDetails);
+            pnlGridActionsFlow.Controls.Add(btnAccess);
+            pnlGridActionsFlow.Controls.Add(btnSignIn);
+            pnlGridActionsFlow.Controls.SetChildIndex(btnAccess, 2);
+            pnlGridActionsFlow.Controls.SetChildIndex(btnSignIn, 3);
                     InitFullPageForm();
         }
 
@@ -583,6 +602,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+        private void OpenAccess(User u)
+        {
+            if (!SessionContext.IsAdmin) { MessageBox.Show(this, "Only the Owner / Administrator can change what an account can use.", "Access & permissions", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            using var dlg = new UserAccessDialog(u);
+            if (dlg.ShowDialog(FindForm()) == DialogResult.OK) ToastHelper.ShowToast(this, $"Access for {u.Username} saved. It applies the next time they sign in.", ToastType.Success);
+        }
+        private void OpenSignInDetails(User u)
+        {
+            if (!SessionContext.IsAdmin) { MessageBox.Show(this, "Only the Owner / Administrator can see sign-in details.", "Sign-in details", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            using var dlg = new SignInDetailsDialog(u);
+            dlg.ShowDialog(FindForm());
+        }
         private void SetupContextMenu()
         {
             RowMenu.Attach(gridUsers, (m, rows) =>
@@ -601,6 +632,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     using var secDlg = new SecuritySettingsDialog(u);
                     if (secDlg.ShowDialog(this) == DialogResult.OK) LoadUsers();
                 }));
+                m.Items.Add(RowMenu.Item("Access & permissions…", () => OpenAccess(u)));
+                m.Items.Add(RowMenu.Item("Sign-in details (username / new password)…", () => OpenSignInDetails(u)));
                 if (u.IsActive) m.Items.Add(RowMenu.Item("Deactivate account", () => DeactivateUser(u), "", !isSelf && !isPrimary));
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.CopySub(this, ("Username", u.Username), ("Full name", u.FullName), ("Contact number", u.ContactNumber)));

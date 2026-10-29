@@ -32,6 +32,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private List<Crew> availableDrivers = new List<Crew>();
         private List<Crew> availableAides = new List<Crew>();
 
+        private Button btnAides = null!;
+        /// <summary>Aides ticked in the picker; empty = keep the current aides.</summary>
+        private readonly List<Crew> chosenAides = new List<Crew>();
+        private void ShowAidePicker()
+        {
+            var list = new CheckedListBox { CheckOnClick = true, BorderStyle = BorderStyle.None, IntegralHeight = false, Font = new Font("Segoe UI", 9.5F), BackColor = AppTheme.Surface, ForeColor = AppTheme.TextPrimary, Width = Math.Max(btnAides.Width, (int)(260 * DeviceDpi / 96f)), Height = (int)(Math.Min(10, Math.Max(3, availableAides.Count)) * 24 * DeviceDpi / 96f) };
+            var current = new HashSet<int>(chosenAides.Select(a => a.Id));
+            if (current.Count == 0)
+            {
+                if (isSpecialTrip) foreach (var id in specialTrip!.AllAideIds) current.Add(id);
+                else foreach (var c in MJdatabase.GetDeliveryCrewIds(delivery!)) if (c.CrewId != delivery!.DriverId) current.Add(c.CrewId);
+            }
+            foreach (var a in availableAides) list.Items.Add(a.FullName, current.Contains(a.Id));
+            var host = new ToolStripControlHost(list) { Margin = Padding.Empty, Padding = Padding.Empty, AutoSize = false, Size = list.Size };
+            var drop = new ToolStripDropDown { Padding = new Padding(1), AutoClose = true, BackColor = AppTheme.Border };
+            drop.Items.Add(host);
+            drop.Closed += (s, e) =>
+            {
+                chosenAides.Clear();
+                for (int i = 0; i < list.Items.Count; i++) if (list.GetItemChecked(i)) chosenAides.Add(availableAides[i]);
+                var keep = new HashSet<int>(isSpecialTrip ? specialTrip!.AllAideIds : MJdatabase.GetDeliveryCrewIds(delivery!).Where(c => c.CrewId != delivery!.DriverId).Select(c => c.CrewId));
+                if (chosenAides.Count == 0 || keep.SetEquals(chosenAides.Select(a => a.Id))) { chosenAides.Clear(); btnAides.Text = "Keep current aides  ▾"; }
+                else btnAides.Text = $"{chosenAides.Count} aide{(chosenAides.Count == 1 ? "" : "s")}: {string.Join(", ", chosenAides.Select(a => a.FullName))}  ▾";
+            };
+            drop.Show(btnAides, new Point(0, btnAides.Height));
+        }
         public DateTime RescheduledDate { get; private set; }
         public string RescheduledTime { get; private set; } = "";
         public string RescheduledStatus => "Rescheduled";
@@ -68,8 +94,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string clientName = isSpecialTrip ? (specialTrip!.Company ?? "") : (delivery!.ClientName ?? "");
 
             this.Text = isSpecialTrip ? $"Reschedule Special Trip: {orderRef}" : $"Reschedule Dispatch #{orderRef}";
+            // Laid out in 96-dpi pixels: let Windows scale the whole window on high-DPI screens so nothing is cut off.
+            this.AutoScaleMode = AutoScaleMode.None;
             this.Size = new Size(740, 800);
-            this.MinimumSize = new Size(720, 740);
+            this.MinimumSize = new Size(700, 520);
+            // Never taller than the screen; the body scrolls if needed.
+            this.Load += (s, e) =>
+            {
+                float k = DeviceDpi / 96f;
+                if (k > 1.01f) { MinimumSize = Size.Empty; Scale(new SizeF(k, k)); }
+                var wa = Screen.FromControl(this).WorkingArea;
+                if (Height > wa.Height - 16) Height = wa.Height - 16;
+                if (Width > wa.Width - 16) Width = wa.Width - 16;
+                Top = Math.Max(wa.Top + 8, Top);
+            };
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
@@ -326,12 +364,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AutoSize = true
             };
 
+            // Several aides can ride on one trip: a button opens a tick list instead of a single-choice box.
+            lblAid.Text = "Aides / Crew (one or more):";
+            cbAide.Visible = false;
+            btnAides = new Button { Location = cbAide.Location, Size = new Size(cbAide.Width, cbAide.Height + 2), Text = "Keep current aides  ▾", TextAlign = ContentAlignment.MiddleLeft, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 9F), Cursor = Cursors.Hand, UseMnemonic = false, AutoEllipsis = true };
+            btnAides.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
+            btnAides.Click += (s, e) => ShowAidePicker();
+            lblResHint.Text = "Note: Selecting a specific truck, driver or aides will update that assignment upon confirmation.";
             pnlResources.Controls.AddRange(new Control[]
             {
                 lblResTitle,
                 lblTrk, cbTruck,
                 lblDrv, cbDriver,
-                lblAid, cbAide,
+                lblAid, cbAide, btnAides,
                 lblResHint
             });
 
@@ -581,7 +626,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     newDriverId,
                     newDriverName,
                     newAideId,
-                    newAideName
+                    newAideName,
+                    chosenAides.Count > 0 ? chosenAides.Select(a => (a.Id, a.FullName)).ToList() : null
                 );
             }
             else
@@ -597,7 +643,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     newDriverId,
                     newDriverName,
                     newAideId,
-                    newAideName
+                    newAideName,
+                    chosenAides.Count > 0 ? chosenAides.Select(a => (a.Id, a.FullName)).ToList() : null
                 );
             }
 

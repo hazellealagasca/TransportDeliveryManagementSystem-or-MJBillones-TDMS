@@ -22,6 +22,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             InitializeComponent();
             Pal.RemapTree(this);
             SetupTabs();
+            ApplyAccess();
             SelectTab(prefillDelivery != null ? "Billing" : defaultTab);
             if (prefillDelivery != null && cachedViews.TryGetValue("Billing", out var cached) && cached is BillingView bv)
             {
@@ -91,6 +92,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         public T? OpenTab<T>(string key) where T : UserControl
         {
+            if (!Permissions.Can("Payments", key)) { Permissions.TellDenied(this, "Payments", key); return null; }
             SelectTab(key);
             return cachedViews.TryGetValue(key, out var v) ? v as T : null;
         }
@@ -98,8 +100,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public void ShowInvoices(string search) => OpenTab<BillingView>("Billing")?.FilterByText(search);
         public void ShowCollections(string search) => OpenTab<CollectionView>("Collections")?.FilterByText(search);
         public void ShowStatements(string search) => OpenTab<StatementOfAccountView>("StatementOfAccount")?.FilterByText(search);
+        /// <summary>Hides the tabs this account may not open (Settings → User Accounts → Access &amp; permissions).</summary>
+        private void ApplyAccess()
+        {
+            foreach (var kv in tabButtons) kv.Value.Visible = Permissions.Can("Payments", kv.Key) && true;
+        }
+        /// <summary>When the asked-for tab is hidden, explains why and picks the first tab this account can open.</summary>
+        private string? AllowedTab(string key)
+        {
+            if (tabButtons.ContainsKey(key) && !Permissions.Can("Payments", key)) { Permissions.TellDenied(this, "Payments", key); key = ""; }
+            if (tabButtons.TryGetValue(key, out var b0) && b0.Visible) return key;
+            foreach (var kv in tabButtons) if (kv.Value.Visible) return kv.Key;
+            return null;
+        }
         public void SelectTab(string key)
         {
+            key = AllowedTab(key) ?? "";
             if (tabButtons.TryGetValue(key, out var btn))
             {
                 btn.PerformClick();

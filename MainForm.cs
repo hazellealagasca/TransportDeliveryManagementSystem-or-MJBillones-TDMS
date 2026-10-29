@@ -1061,8 +1061,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         private bool skipNextViewRefresh;
+        /// <summary>Which access module a sidebar button opens (for per-account access).</summary>
+        private string? ModuleOf(Button btn) =>
+            btn == btnNavOperations ? "Operations" : btn == btnNavResources ? "Resources" : btn == btnNavFinance ? "Payments" : btn == btnNavMasterData ? "MasterData" : null;
         private void NavigateToView<T>(string cacheKey, Button btn, Func<T> factory) where T : UserControl, IRefreshable
         {
+            string? module = ModuleOf(btn);
+            if (module != null && !Permissions.CanAny(module))
+            {
+                ToastHelper.ShowToast(this, $"Your account can't open {module.Replace("MasterData", "Master Data")}. Ask the administrator if you need it.", ToastType.Info);
+                skipNextViewRefresh = false;
+                return;
+            }
             bool skipRefresh = skipNextViewRefresh;
             skipNextViewRefresh = false;
             if (pnlNotificationMenu != null) pnlNotificationMenu.Visible = false;
@@ -1625,6 +1635,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             else if (!SessionContext.IsAdmin)
             {
                 btnNavSettings.Visible = false;
+            }
+            // Per-account access chosen by the administrator: hide modules with no screen left to open.
+            if (!SessionContext.IsAdmin)
+            {
+                Permissions.Reload();
+                if (!Permissions.CanAny("Operations")) btnNavOperations.Visible = false;
+                if (!Permissions.CanAny("Resources")) btnNavResources.Visible = false;
+                if (!Permissions.CanAny("Payments")) btnNavFinance.Visible = false;
+                if (!Permissions.CanAny("MasterData")) btnNavMasterData.Visible = false;
             }
         }
 
