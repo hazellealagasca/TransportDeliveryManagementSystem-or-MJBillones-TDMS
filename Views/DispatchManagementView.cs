@@ -869,6 +869,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             pnlGridCard.Visible = !visible;
 
+            if (visible && selectedDelivery == null) BeginInvoke(new Action(ApplyDispatchNumberMode));
+
             if (tblMasterContent.ColumnStyles.Count > 0)
 
             {
@@ -1023,7 +1025,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 cbClient.Text = schedule.ClientName;
 
-                lastAutoDispatchNumber = MJdatabase.NextDispatchNumber(schedule.ClientName);
+                lastAutoDispatchNumber = AutoNumbers ? MJdatabase.NextDispatchNumber(schedule.ClientName) : "";
 
                 txtDispatchNumber.Text = lastAutoDispatchNumber;
 
@@ -1143,7 +1145,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             cbClient.TextChanged += (s, e) => { clientStrip?.ShowFor(cbClient.Text); AutoFillDispatchNumber(); };
 
-            txtDispatchNumber.PlaceholderText = "Auto-filled from the client, e.g. Red Ribbon → RR0001";
+            Features.Bind(txtDispatchNumber, ApplyDispatchNumberMode, Features.AutoDispatchNumber);
 
             cbDestination.SelectedIndexChanged += (s, e) =>
             {
@@ -1282,13 +1284,37 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private string lastAutoDispatchNumber = "";
 
+        /// <summary>Settings → Features &amp; Pop-ups → "Automatic dispatch numbers".</summary>
+
+        private static bool AutoNumbers => Features.On(Features.AutoDispatchNumber);
+
+        /// <summary>With automatic numbers the box is filled by the system (read-only for new orders); without, it is typed in.</summary>
+
+        private void ApplyDispatchNumberMode()
+
+        {
+
+            bool auto = AutoNumbers;
+
+            bool newOrder = selectedDelivery == null;
+
+            txtDispatchNumber.ReadOnly = auto && newOrder;
+
+            txtDispatchNumber.PlaceholderText = auto ? "Filled in automatically when you pick the client (e.g. Red Ribbon → RR0001)" : "Type the dispatch number, e.g. RR0001";
+
+            if (!auto && newOrder && txtDispatchNumber.Text.Trim().Equals(lastAutoDispatchNumber, StringComparison.OrdinalIgnoreCase)) { txtDispatchNumber.Text = ""; lastAutoDispatchNumber = ""; }
+
+            if (auto && newOrder) AutoFillDispatchNumber();
+
+        }
+
         /// <summary>Fills the dispatch # for a new order when the client is chosen, unless the user typed their own number.</summary>
 
         private void AutoFillDispatchNumber()
 
         {
 
-            if (isBindingForm || selectedDelivery != null || !pnlForm.Visible) return;
+            if (!AutoNumbers || isBindingForm || selectedDelivery != null || !pnlForm.Visible) return;
 
             string cur = txtDispatchNumber.Text.Trim();
 
@@ -3924,6 +3950,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 selectedDelivery = d;
+                txtDispatchNumber.ReadOnly = false;
+
                 txtDispatchNumber.Text = selectedDelivery.DispatchNumber;
                 cbClient.Text = selectedDelivery.ClientName;
                 var matchedDspRoute = MJdatabase.FindRouteByNameOrCode(selectedDelivery.Destination);
@@ -4056,7 +4084,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 string dspNum = txtDispatchNumber.Text.Trim();
 
-                if (string.IsNullOrWhiteSpace(dspNum) || dspNum.Equals(lastAutoDispatchNumber, StringComparison.OrdinalIgnoreCase))
+                if (AutoNumbers && (string.IsNullOrWhiteSpace(dspNum) || dspNum.Equals(lastAutoDispatchNumber, StringComparison.OrdinalIgnoreCase)))
 
                 {
 
@@ -5402,6 +5430,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnPickAnalogTime.Enabled = true;
 
 
+
+            ApplyDispatchNumberMode();
 
             lblFormHeader.Text = string.IsNullOrWhiteSpace(txtDispatchNumber.Text) ? "New Dispatch Order" : $"New Dispatch Order  ·  {txtDispatchNumber.Text}";
 

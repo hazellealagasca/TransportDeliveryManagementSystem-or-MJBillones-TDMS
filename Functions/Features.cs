@@ -14,6 +14,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     public static class Features
     {
         public const string RateMatrix = "Feature.RateMatrix";
+        public const string AutoDispatchNumber = "Feature.AutoDispatchNumber";
         public const string SpecialTrips = "Feature.SpecialTrips";
         public const string Incidents = "Feature.Incidents";
         public const string CrewPay = "Feature.CrewPay";
@@ -23,7 +24,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public const string Toasts = "EnableToastPopups";
         private static readonly Dictionary<string, bool> Defaults = new()
         {
-            [RateMatrix] = true, [SpecialTrips] = true, [Incidents] = true, [CrewPay] = true,
+            [RateMatrix] = true, [AutoDispatchNumber] = true, [SpecialTrips] = true, [Incidents] = true, [CrewPay] = true,
             [BackupReminder] = true, [ConfirmSaves] = true, [QuietNotices] = true, [Toasts] = true
         };
         private static readonly Dictionary<string, bool> cache = new();

@@ -286,9 +286,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 BindDeliveryToForm(full);
                 selectedDelivery = null;
                 isBindingForm = true;
-                lastAutoDispatchNumber = GenerateNextDispatchNumber();
+                lastAutoDispatchNumber = AutoNumbers ? GenerateNextDispatchNumber() : "";
                 txtDispatchNumber.Text = lastAutoDispatchNumber;
                 txtDispatchNumber.Enabled = true;
+                txtDispatchNumber.ReadOnly = AutoNumbers;
                 DateTime day = DateTime.Today;
                 if (day >= dtpDispatchDate.MinDate && day <= dtpDispatchDate.MaxDate) dtpDispatchDate.Value = day;
                 if (cbStatus.Items.Contains("Scheduled")) cbStatus.SelectedItem = "Scheduled"; else cbStatus.Text = "Scheduled";
