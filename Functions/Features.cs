@@ -22,10 +22,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public const string ConfirmSaves = "Feature.ConfirmSaves";
         public const string QuietNotices = "Feature.QuietNotices";
         public const string Toasts = "EnableToastPopups";
+        // Dispatch rules (were on the old Settings → Dispatch Rules tab; same saved settings, so nothing is lost)
+        public const string TruckSuggestion = "AutoTruckRecommendation";
+        public const string EmptyCrateCheck = "RequireCrateReturnTracking";
         private static readonly Dictionary<string, bool> Defaults = new()
         {
             [RateMatrix] = true, [AutoDispatchNumber] = true, [SpecialTrips] = true, [Incidents] = true, [CrewPay] = true,
-            [BackupReminder] = true, [ConfirmSaves] = true, [QuietNotices] = true, [Toasts] = true
+            [BackupReminder] = true, [ConfirmSaves] = true, [QuietNotices] = true, [Toasts] = true,
+            [TruckSuggestion] = true, [EmptyCrateCheck] = true
         };
         private static readonly Dictionary<string, bool> cache = new();
         private static readonly object gate = new();

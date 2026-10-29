@@ -17,6 +17,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             new(Features.Incidents, "Incident & damage logs", "Records of damaged or missing crates. When off, the Incident & Damage Logs tab, the “Log incident” buttons and the question after a short trip report are hidden."),
             new(Features.CrewPay, "Crew pay on trip reports", "The “Driver & aide pay” step (daily wage and meal allowance) in the trip report form. When off, that step is hidden; the usual rates are still recorded with each report."),
         };
+        private static readonly Option[] DispatchRules =
+        {
+            new(Features.TruckSuggestion, "Suggest the best truck", "When you enter the crates on a loading order or dispatch, the system suggests the free truck that fits them best and picks it for you. When off, no truck is suggested and you choose one yourself. Warnings about an overloaded truck or the wrong cargo type still show."),
+            new(Features.EmptyCrateCheck, "Check returned empty crates", "When a trip report is saved with no returned empty crates, the system asks first, so the empties the crew brought back are not forgotten. When off, trip reports save without asking."),
+        };
         private static readonly Option[] Popups =
         {
             new(Features.QuietNotices, "Quiet notices instead of pop-ups", "Simple confirmations such as “Saved successfully” appear as a small notice in the corner that fades away, instead of a window you have to click OK on. Questions, warnings and errors still use a window."),
@@ -32,22 +37,40 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             AutoScroll = true;
             BackColor = AppTheme.Canvas;
             Font = new Font("Segoe UI", 9.75F);
-            Padding = new Padding(24);
-            var stack = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 1, BackColor = Color.Transparent, Margin = new Padding(0) };
-            stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            stack.Controls.Add(Card("🧩  Parts of the system", "Turn off what M.J. Billones doesn't use. Turning a part off only hides it: no records are deleted or changed, and everything comes back exactly as it was when you turn it on again.", Parts));
-            stack.Controls.Add(Card("🔔  Pop-ups and reminders", "Choose which messages need your attention. Fewer pop-ups means fewer interruptions while you work.", Popups));
-            Controls.Add(stack);
-            // Docked content doesn't count toward AutoScroll on its own; tell the page how tall it is.
-            void Fit() { int h = stack.Height + Padding.Vertical; if (AutoScrollMinSize.Height != h) AutoScrollMinSize = new Size(0, h); }
-            stack.SizeChanged += (s, e) => Fit();
-            Resize += (s, e) => Fit();
+            Padding = new Padding(0);
+            // Each card is placed (not docked) on the page, one under the other, so the page's scroll bar is exactly
+            // as long as the cards: the wheel and the scroll bar reach the last card and stop there.
+            var blocks = new System.Collections.Generic.List<Control>();
             if (!SessionContext.IsAdmin)
+                blocks.Add(new Label { Text = "Only the Owner / Administrator can change these settings.", AutoSize = true, ForeColor = AppTheme.TextMuted });
+            blocks.Add(Card("🧩  Parts of the system", "Turn off what M.J. Billones doesn't use. Turning a part off only hides it: no records are deleted or changed, and everything comes back exactly as it was when you turn it on again.", Parts));
+            blocks.Add(Card("🚚  Dispatch rules", "How loading orders, dispatches and trip reports help you. These used to be on the Dispatch Rules tab.", DispatchRules));
+            blocks.Add(Card("🔔  Pop-ups and reminders", "Choose which messages need your attention. Fewer pop-ups means fewer interruptions while you work.", Popups));
+            foreach (var c in blocks) Controls.Add(c);
+            bool fitting = false;
+            void Fit()
             {
-                foreach (var sw in switches.Values) sw.Enabled = false;
-                var note = new Label { Text = "Only the Owner / Administrator can change these settings.", AutoSize = true, Dock = DockStyle.Top, ForeColor = AppTheme.TextMuted, Padding = new Padding(0, 0, 0, 12) };
-                Controls.Add(note);
+                if (fitting || ClientSize.Width <= 0) return;
+                fitting = true;
+                try
+                {
+                    int w = Math.Max(D(480), ClientSize.Width - D(48));
+                    int x = D(24) + AutoScrollPosition.X, y = D(24) + AutoScrollPosition.Y;
+                    foreach (var c in blocks)
+                    {
+                        if (c is Panel && c.MinimumSize.Width != w) { c.MinimumSize = new Size(w, 0); c.MaximumSize = new Size(w, 0); }
+                        if (c.Location != new Point(x, y)) c.Location = new Point(x, y);
+                        y += c.Height + D(16);
+                    }
+                    int total = y - AutoScrollPosition.Y + D(8);
+                    if (AutoScrollMinSize.Height != total) AutoScrollMinSize = new Size(0, total);
+                }
+                finally { fitting = false; }
             }
+            Resize += (s, e) => Fit();
+            HandleCreated += (s, e) => Fit();
+            foreach (var c in blocks) c.SizeChanged += (s, e) => { if (IsHandleCreated) BeginInvoke(new Action(Fit)); };
+            if (!SessionContext.IsAdmin) foreach (var sw in switches.Values) sw.Enabled = false;
             UIThemeHelper.ApplyTheme(this);
             BackColor = AppTheme.Canvas;
             HookWheel(this);
@@ -70,7 +93,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private Control Card(string title, string subtitle, Option[] options)
         {
-            var card = new Panel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = AppTheme.Surface, Padding = new Padding(D(22), D(18), D(22), D(10)), Margin = new Padding(0, 0, 0, D(16)) };
+            var card = new Panel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = AppTheme.Surface, Padding = new Padding(D(22), D(18), D(22), D(10)), Margin = new Padding(0, 0, 0, D(16)) };
             card.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;

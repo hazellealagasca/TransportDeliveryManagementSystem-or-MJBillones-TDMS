@@ -218,6 +218,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ApplyThemeCore(parent);
             try { ConfirmGate.Watch(parent); } catch (System.Exception swx5) { ErrLog.Swallowed(swx5); }
         }
+        /// <summary>
+        /// Keeps a window inside the visible part of the screen (above the taskbar), so its bottom buttons such as
+        /// Save, Close and Cancel can always be clicked, even on small screens or when the main window isn't maximized.
+        /// </summary>
+        public static void KeepOnScreen(Form form)
+        {
+            try
+            {
+                if (form.IsDisposed || !form.TopLevel || form.IsMdiChild || form.WindowState != FormWindowState.Normal) return;
+                var wa = Screen.FromControl(form).WorkingArea;
+                if (form.Height > wa.Height) form.Height = wa.Height;
+                if (form.Width > wa.Width) form.Width = wa.Width;
+                int left = Math.Min(Math.Max(form.Left, wa.Left), wa.Right - form.Width);
+                int top = Math.Min(Math.Max(form.Top, wa.Top), wa.Bottom - form.Height);
+                if (left != form.Left || top != form.Top) form.Location = new Point(left, top);
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+        }
         private static void ApplyThemeCore(Control parent)
         {
             bool first = MarkStyled(parent);
@@ -227,13 +245,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     form.BackColor = AppTheme.Canvas;
                     ThemeManager.StyleWindowChrome(form);
+                    form.Shown += (s, e) => KeepOnScreen(form);
                 }
             }
             else if (parent is UserControl uc)
             {
                 if (first) uc.BackColor = AppTheme.Canvas;
-                uc.AutoScroll = false;
-                uc.AutoScrollMinSize = Size.Empty;
+                // Scrolling is left as each screen set it. (Turning it off here stopped long pages such as
+                // Features & Pop-ups, Preferences and Backup & Restore from scrolling.)
             }
             if (first) WatchForNewChildren(parent);
             foreach (Control ctrl in parent.Controls)

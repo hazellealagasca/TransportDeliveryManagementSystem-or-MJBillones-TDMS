@@ -165,6 +165,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblOps.SetColumnSpan(chkRequireCrates, 2);
 
             cardOps.Controls.Add(chkAutoTruck);
+            // These switches moved to Settings → Features & Pop-ups (one place for every on/off option).
+            chkAllowMultiDest.Visible = false; chkRequireCrates.Visible = false; chkAutoTruck.Visible = false;
             cardOps.Controls.Add(tblOps);
 
             Panel cardDisplay = CreateCard("🎨 Display & Notification Preferences", "Configure localization formats, currency indicators, and application notification alerts.");
@@ -215,7 +217,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             chkEnableProactiveAlerts = new CheckBox
             {
-                Text = "Automated Proactive Overdue Invoices & Trip Alerts",
+                Text = "Automated Proactive Overdue Invoices && Trip Alerts",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
                 ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
@@ -242,6 +244,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblDisplay.Controls.Add(lblDate, 1, 0);
             tblDisplay.Controls.Add(cbDateFormat, 1, 1);
             tblDisplay.Controls.Add(chkEnableToasts, 0, 2);
+            chkEnableToasts.Visible = false; // set in Settings → Features & Pop-ups
             tblDisplay.Controls.Add(chkStartCollapsed, 1, 2);
             tblDisplay.Controls.Add(chkEnableProactiveAlerts, 0, 3);
             tblDisplay.Controls.Add(chkNotifyLowTrucks, 1, 3);
@@ -259,7 +262,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnAccountSecurity = new Button
             {
-                Text = "🔑 Configure Security Question & Password...",
+                Text = "🔑 Configure Security Question && Password...",
                 AutoSize = true,
                 Height = 36,
                 BackColor = Pal.C(15, 23, 42),
@@ -592,12 +595,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 MJdatabase.SetSystemSetting("DefaultDepartureTime", cbDefaultDeparture.SelectedItem?.ToString() ?? "08:00 AM", "Default dispatch departure time");
                 MJdatabase.SetSystemSetting("AutoRefreshRate", cbRefreshInterval.SelectedItem?.ToString() ?? "Manual Refresh Only", "Table grid refresh frequency");
-                MJdatabase.SetSystemSetting("AllowMultiDestDispatch", chkAllowMultiDest.Checked ? "True" : "False", "Multi-drop dispatch preference");
-                MJdatabase.SetSystemSetting("RequireCrateReturnTracking", chkRequireCrates.Checked ? "True" : "False", "Empty crate return tracking");
-                MJdatabase.SetSystemSetting("AutoTruckRecommendation", chkAutoTruck.Checked ? "True" : "False", "Truck recommendation helper");
+                // "AllowMultiDestDispatch" is set in Settings → Features & Pop-ups now.
+                // "RequireCrateReturnTracking" is set in Settings → Features & Pop-ups now.
+                // "AutoTruckRecommendation" is set in Settings → Features & Pop-ups now.
                 MJdatabase.SetSystemSetting("CurrencySymbol", cbCurrency.SelectedItem?.ToString() ?? "PHP (Philippine Peso)", "Default currency representation");
                 MJdatabase.SetSystemSetting("DateFormat", cbDateFormat.SelectedItem?.ToString() ?? "yyyy-MM-dd (ISO Standard)", "Standard date format");
-                MJdatabase.SetSystemSetting("EnableToastPopups", chkEnableToasts.Checked ? "True" : "False", "Enable notification toast popups");
+                // "EnableToastPopups" is set in Settings → Features & Pop-ups now.
                 Features.Reload();
                 MJdatabase.SetSystemSetting("StartMenuCollapsed", chkStartCollapsed.Checked ? "True" : "False", "Start sidebar menu in collapsed state");
                 MJdatabase.SetSystemSetting("EnableProactiveAlerts", chkEnableProactiveAlerts.Checked ? "True" : "False", "Automated truck & aging invoice alerts");

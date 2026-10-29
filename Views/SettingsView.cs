@@ -117,8 +117,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 btnCat.Visible = false;
             }
 
-            AddTabButton(flowTabs, "DispatchRules", "🚚  Dispatch Rules", (s, e) => LoadChildView(new DispatchRulesSettingsView(), (Button)s!));
-
+            // Dispatch Rules now live in Features & Pop-ups as on/off switches.
             bool isAdmin = (currentUser != null && (currentUser.Role == "Admin" || currentUser.Role == "Owner/Admin")) || SessionContext.IsAdmin;
             if (isAdmin)
             {
@@ -179,6 +178,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public void SelectTab(string tabKey)
         {
+            if (tabKey == "DispatchRules") tabKey = "Features";
             if (tabButtons.TryGetValue(tabKey, out var btn) && btn.Visible)
             {
                 btn.PerformClick();

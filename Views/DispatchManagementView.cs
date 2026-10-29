@@ -1077,9 +1077,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-                var rec = MJdatabase.GetTruckRecommendation(schedule.TotalCrates, schedule.ScheduleDate, schedule.CargoType);
+                var rec = Features.On(Features.TruckSuggestion) ? MJdatabase.GetTruckRecommendation(schedule.TotalCrates, schedule.ScheduleDate, schedule.CargoType) : null;
 
-                if (rec.RecommendedTruck != null)
+                if (rec?.RecommendedTruck != null)
 
                 {
 
@@ -1547,6 +1547,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     lblRec.Text = $"⚠️ Overload Warning: Selected truck {selTruck.PlateNumber} (max {selTruck.CapacityCrates} crates) is exceeded by {deficit} crates. Choose a larger vehicle.";
 
                 }
+
+            }
+
+            else if (!Features.On(Features.TruckSuggestion))
+
+            {
+
+                pnlRec.BackColor = Pal.C(241, 245, 249);
+
+                lblRec.ForeColor = Pal.C(71, 85, 105);
+
+                lblRec.Text = $"ℹ️ {total:N0} crates. Choose a truck that can carry them.";
 
             }
 

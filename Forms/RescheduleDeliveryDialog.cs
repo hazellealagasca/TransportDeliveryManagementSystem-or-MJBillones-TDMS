@@ -33,6 +33,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private List<Crew> availableAides = new List<Crew>();
 
         private Button btnAides = null!;
+        private readonly ToolTip aideTip = new ToolTip { InitialDelay = 300, ShowAlways = true };
         /// <summary>Aides ticked in the picker; empty = keep the current aides.</summary>
         private readonly List<Crew> chosenAides = new List<Crew>();
         private void ShowAidePicker()
@@ -54,7 +55,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 for (int i = 0; i < list.Items.Count; i++) if (list.GetItemChecked(i)) chosenAides.Add(availableAides[i]);
                 var keep = new HashSet<int>(isSpecialTrip ? specialTrip!.AllAideIds : MJdatabase.GetDeliveryCrewIds(delivery!).Where(c => c.CrewId != delivery!.DriverId).Select(c => c.CrewId));
                 if (chosenAides.Count == 0 || keep.SetEquals(chosenAides.Select(a => a.Id))) { chosenAides.Clear(); btnAides.Text = "Keep current aides  ▾"; }
-                else btnAides.Text = $"{chosenAides.Count} aide{(chosenAides.Count == 1 ? "" : "s")}: {string.Join(", ", chosenAides.Select(a => a.FullName))}  ▾";
+                else btnAides.Text = chosenAides.Count == 1 ? $"{chosenAides[0].FullName}  ▾" : $"{chosenAides.Count} aides selected  ▾";
+                aideTip.SetToolTip(btnAides, chosenAides.Count == 0 ? "Keeps the aides already on this order" : string.Join("\n", chosenAides.Select(a => a.FullName)));
             };
             drop.Show(btnAides, new Point(0, btnAides.Height));
         }
@@ -107,6 +109,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (Height > wa.Height - 16) Height = wa.Height - 16;
                 if (Width > wa.Width - 16) Width = wa.Width - 16;
                 Top = Math.Max(wa.Top + 8, Top);
+            };
+            // Centring happens after Load, so keep the whole window (and its buttons) above the taskbar once it is shown.
+            this.Shown += (s, e) =>
+            {
+                var wa = Screen.FromControl(this).WorkingArea;
+                if (Height > wa.Height - 16) Height = wa.Height - 16;
+                if (Bottom > wa.Bottom - 8) Top = Math.Max(wa.Top + 8, wa.Bottom - 8 - Height);
+                if (Top < wa.Top + 8) Top = wa.Top + 8;
+                if (Right > wa.Right - 8) Left = Math.Max(wa.Left + 8, wa.Right - 8 - Width);
             };
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -277,6 +288,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Cursor = Cursors.Hand
             };
             btnPickTime.FlatAppearance.BorderSize = 0;
+            try { UIThemeHelper.SetButtonRole(btnPickTime, "secondary"); } catch (Exception ex) { ErrLog.Swallowed(ex); }
             btnPickTime.Click += (s, e) =>
             {
                 string? picked = AnalogClockTimePickerDialog.ShowTimePicker(this, txtNewTime.Text);

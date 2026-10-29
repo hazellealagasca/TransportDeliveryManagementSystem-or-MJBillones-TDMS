@@ -807,7 +807,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var draft = MJdatabase.GetFormDraft("IncidentReport", SessionContext.CurrentUsername);
                 if (draft != null && !string.IsNullOrWhiteSpace(draft.Value.Data))
                 {
-                    if (pnlDraftBanner != null) pnlFormBody.Controls.Remove(pnlDraftBanner);
+                    if (pnlDraftBanner != null) { pnlDraftBanner.Parent?.Controls.Remove(pnlDraftBanner); pnlDraftBanner.Dispose(); pnlDraftBanner = null; }
                     pnlDraftBanner = DraftAutoSaveService.CreateDraftBanner("Incident Report", draft.Value.LastSaved, RestoreDraft, DiscardDraft);
                     pnlFormBody.Controls.Add(pnlDraftBanner);
                     pnlDraftBanner.BringToFront();

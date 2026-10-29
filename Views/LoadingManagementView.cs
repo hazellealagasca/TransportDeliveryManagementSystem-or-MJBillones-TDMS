@@ -682,7 +682,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int total = g + ec;
             txtTotalCrates.Text = $"{total} Crates ({g} G-Crates + {ec} E-Crates)";
 
-            var rec = MJdatabase.GetTruckRecommendation(total, dtpScheduleDate.Value, cbCargoType.Text);
+            var rec = Features.On(Features.TruckSuggestion) ? MJdatabase.GetTruckRecommendation(total, dtpScheduleDate.Value, cbCargoType.Text) : new TruckRecommendation();
             string dest = cbDestination.Text.Trim();
             var matchedRoute = MJdatabase.FindRouteByNameOrCode(dest);
             var matchedRate = MJdatabase.FindMatchingRate(dest, chkIsPeak.Checked);
@@ -691,6 +691,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
             string rateNotice = !Features.On(Features.RateMatrix) ? "" : matchedRate != null ? $"  |  🏷️ Rate: PHP {matchedRate.RateAmount:N2} ({(matchedRate.IsPeakSeason ? "Peak Season" : "Regular")})" : "  |  ⚠️ No rate configured for this destination (set it in Rate Matrix)";
+            if (!Features.On(Features.TruckSuggestion))
+            {
+                lblRec.Text = $"ℹ️ {total:N0} crates" + routeNotice + rateNotice;
+                pnlRec.BackColor = Pal.C(241, 245, 249);
+                lblRec.ForeColor = Pal.C(71, 85, 105);
+                return;
+            }
             lblRec.Text = rec.RecommendationMessage + routeNotice + rateNotice;
 
 
@@ -1512,7 +1519,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var draft = MJdatabase.GetFormDraft("LoadingSchedule", SessionContext.CurrentUsername);
                 if (draft != null && !string.IsNullOrWhiteSpace(draft.Value.Data))
                 {
-                    if (pnlDraftBanner != null) pnlForm.Controls.Remove(pnlDraftBanner);
+                    if (pnlDraftBanner != null) { pnlDraftBanner.Parent?.Controls.Remove(pnlDraftBanner); pnlDraftBanner.Dispose(); pnlDraftBanner = null; }
                     pnlDraftBanner = DraftAutoSaveService.CreateDraftBanner("Loading Schedule", draft.Value.LastSaved, RestoreDraft, DiscardDraft);
                     pnlForm.Controls.Add(pnlDraftBanner);
                     pnlDraftBanner.BringToFront();

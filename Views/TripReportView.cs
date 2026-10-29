@@ -683,6 +683,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetupDraftAutoSave();
         }
 
+        /// <summary>Settings → Features &amp; Pop-ups → "Check returned empty crates": asks before saving a report with no empties returned.</summary>
+        private bool EmptiesRecordedOrOk(int returned, int delivered)
+        {
+            if (!Features.On(Features.EmptyCrateCheck) || returned > 0 || delivered <= 0) return true;
+            return MessageBox.Show(this,
+                "No returned empty crates were entered for this trip.\n\nThe crew normally brings back the empty G- and E-crates. Enter how many came back, or click Yes if really none were returned.\n\nSave with 0 returned crates?",
+                "Returned empty crates", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
+        }
         private void CheckCrateVariance()
         {
             if (cbDelivery.SelectedIndex < 0)
@@ -1024,6 +1032,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int rgc = (int)numReturnedGCrates.Value;
                 int rec = (int)numReturnedECrates.Value;
 
+                if (!EmptiesRecordedOrOk(rgc + rec, (int)numDeliveredGCrates.Value + (int)numDeliveredECrates.Value)) { numReturnedGCrates.Focus(); return; }
                 int totalDispatched = selDel.TotalCrates > 0 ? selDel.TotalCrates : (selDel.GCrate + selDel.ECrate);
                 int totalDelivered = dgc + dec;
                 if (totalDispatched > 0 && totalDelivered != totalDispatched)
@@ -1218,6 +1227,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int rgc = (int)numReturnedGCrates.Value;
                 int rec = (int)numReturnedECrates.Value;
 
+                if (!EmptiesRecordedOrOk(rgc + rec, (int)numDeliveredGCrates.Value + (int)numDeliveredECrates.Value)) { numReturnedGCrates.Focus(); return; }
                 selectedTripReport.ArrivalTime = txtArrivalTime.Text.Trim();
                 selectedTripReport.DepartureTime = txtDepartureTime.Text.Trim();
                 selectedTripReport.DeliveredGCrates = dgc;
@@ -1508,7 +1518,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var draft = MJdatabase.GetFormDraft("TripReport", SessionContext.CurrentUsername);
                 if (draft != null && !string.IsNullOrWhiteSpace(draft.Value.Data))
                 {
-                    if (pnlDraftBanner != null) pnlFormBody.Controls.Remove(pnlDraftBanner);
+                    if (pnlDraftBanner != null) { pnlDraftBanner.Parent?.Controls.Remove(pnlDraftBanner); pnlDraftBanner.Dispose(); pnlDraftBanner = null; }
                     pnlDraftBanner = DraftAutoSaveService.CreateDraftBanner("Trip Report", draft.Value.LastSaved, RestoreDraft, DiscardDraft);
                     pnlFormBody.Controls.Add(pnlDraftBanner);
                     pnlFormBody.Controls.SetChildIndex(pnlDraftBanner, pnlFormBody.Controls.Count - 1);
