@@ -149,6 +149,73 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 FitPage();
             };
         }
+        // ---------- Needs attention: filter, sort, group ----------
+        private static readonly string[] AttnAreas = { "All areas", "Dispatches", "Loading orders", "Trip reports", "Incidents", "Billing", "Trucks", "Accounts" };
+        private static readonly string[] AttnSorts = { "Most urgent first", "Oldest first", "Newest first", "Most records first", "Group by area" };
+        private static int attnLevel, attnArea, attnSort;
+        private static bool attnExpanded;
+        private List<ActionList.Item> allAttention = new();
+        private AttentionBar attnBar = null!;
+        private ChoiceChip chipArea = null!, chipSort = null!;
+        private TableLayoutPanel attnTools = null!;
+        /// <summary>Shows the Needs attention items that match the chosen urgency and area, in the chosen order.</summary>
+        private void ApplyAttention()
+        {
+            if (attention == null) return;
+            string area = attnArea > 0 && attnArea < AttnAreas.Length ? AttnAreas[attnArea] : "";
+            var inArea = allAttention.Where(i => area.Length == 0 || i.Area == area).ToList();
+            attnBar.SetCounts(inArea.Count, inArea.Count(i => i.Level == 0), inArea.Count(i => i.Level == 1), inArea.Count(i => i.Level == 2));
+            var list = inArea.Where(i => attnLevel == 0 || i.Level == attnLevel - 1).ToList();
+            int AreaOrder(ActionList.Item i) { int k = Array.IndexOf(AttnAreas, i.Area); return k < 0 ? 99 : k; }
+            list = attnSort switch
+            {
+                1 => list.OrderBy(i => i.Since ?? DateTime.MaxValue).ThenBy(i => i.Level).ToList(),
+                2 => list.OrderByDescending(i => i.Since ?? DateTime.MinValue).ThenBy(i => i.Level).ToList(),
+                3 => list.OrderByDescending(i => i.Count).ThenBy(i => i.Level).ToList(),
+                4 => list.OrderBy(AreaOrder).ThenBy(i => i.Level).ThenBy(i => i.Since ?? DateTime.MaxValue).ToList(),
+                _ => list.OrderBy(i => i.Level).ThenBy(i => i.Since ?? DateTime.MaxValue).ToList()
+            };
+            bool filtered = attnLevel != 0 || attnArea != 0;
+            attention.SetItems(list, attnExpanded ? int.MaxValue : 6, attnSort == 4, showArea: attnSort != 4 && area.Length == 0,
+                emptyText: allAttention.Count == 0 ? "" : "Nothing matches these filters.", canClear: filtered);
+            attnTools.Visible = allAttention.Count > 0;
+            lblAttentionCount.Text = allAttention.Count == 0 ? "" : filtered ? $"{list.Count} of {allAttention.Count} items" : $"{allAttention.Count} item{(allAttention.Count == 1 ? "" : "s")}";
+            foreach (var f in fitters) f();
+            FitPage();
+        }
+        private bool attnTwoRows, attnToolsLaid;
+        /// <summary>One row when the urgency buttons and both chips fit; otherwise the chips move to a second row.</summary>
+        private void LayoutAttnTools()
+        {
+            if (attnTools == null || attnBar == null || attnTools.Width <= 0) return;
+            int need = attnBar.NeededWidth + D(8) + chipArea.Width + chipArea.Margin.Horizontal + chipSort.Width + chipSort.Margin.Horizontal;
+            bool two = need > attnTools.ClientSize.Width;
+            if (attnToolsLaid && two == attnTwoRows && attnTools.Height == D(36) + (two ? D(40) : 0)) return;
+            attnToolsLaid = true;
+            attnTwoRows = two;
+            attnTools.SuspendLayout();
+            attnTools.RowStyles[0].Height = D(36);
+            if (two)
+            {
+                attnTools.SetCellPosition(chipArea, new TableLayoutPanelCellPosition(1, 1));
+                attnTools.SetCellPosition(chipSort, new TableLayoutPanelCellPosition(2, 1));
+                attnTools.SetColumnSpan(attnBar, 3);
+                attnTools.RowStyles[1].Height = D(40);
+                chipArea.Margin = new Padding(0, D(6), D(6), 0);
+                chipSort.Margin = new Padding(0, D(6), 0, 0);
+            }
+            else
+            {
+                attnTools.SetColumnSpan(attnBar, 1);
+                attnTools.SetCellPosition(chipArea, new TableLayoutPanelCellPosition(1, 0));
+                attnTools.SetCellPosition(chipSort, new TableLayoutPanelCellPosition(2, 0));
+                attnTools.RowStyles[1].Height = 0;
+                chipArea.Margin = new Padding(0, 0, D(6), 0);
+                chipSort.Margin = new Padding(0);
+            }
+            attnTools.Height = D(36) + (two ? D(40) : 0);
+            attnTools.ResumeLayout(true);
+        }
         private Panel scroller = null!;
         private TableLayoutPanel pageRoot = null!;
         private Panel rightCol = null!;
@@ -181,7 +248,44 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var col = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent, Margin = new Padding(0), Padding = new Padding(0) };
             // Needs attention
             attention = new ActionList { Dock = DockStyle.Top };
-            attentionCard = Card("Needs attention", "What to do next, most urgent first. Click a row to go straight there.", attention, out var attnHead);
+            attention.ToggleExpand += (s, e) => { attnExpanded = !attnExpanded; ApplyAttention(); };
+            attention.ClearFilters += (s, e) => { attnLevel = 0; attnArea = 0; chipArea.SetQuietly(0); attnBar.Selected = 0; ApplyAttention(); };
+            attnBar = new AttentionBar { Dock = DockStyle.Fill, Margin = new Padding(0, 0, D(8), 0) };
+            attnBar.Selected = attnLevel;
+            attnBar.SelectedChanged += (s, e) => { attnLevel = attnBar.Selected; attnExpanded = false; ApplyAttention(); };
+            chipArea = new ChoiceChip("Area", AttnAreas, "🗂") { Margin = new Padding(0, 0, D(6), 0), Anchor = AnchorStyles.Right };
+            chipArea.SetQuietly(attnArea);
+            chipArea.SelectionChanged += (s, e) => { attnArea = chipArea.SelectedIndex; attnExpanded = false; ApplyAttention(); };
+            chipSort = new ChoiceChip("Sort", AttnSorts, "⇅") { Margin = new Padding(0), Anchor = AnchorStyles.Right };
+            chipSort.SetQuietly(attnSort);
+            chipSort.SelectionChanged += (s, e) => { attnSort = chipSort.SelectedIndex; ApplyAttention(); };
+            attnTools = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 3, RowCount = 2, Height = D(36), BackColor = Color.Transparent, Margin = new Padding(0) };
+            attnTools.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            attnTools.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            attnTools.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            attnTools.RowStyles.Add(new RowStyle(SizeType.Absolute, D(36)));
+            attnTools.RowStyles.Add(new RowStyle(SizeType.Absolute, 0));
+            attnTools.Controls.Add(attnBar, 0, 0);
+            attnTools.Controls.Add(chipArea, 1, 0);
+            attnTools.Controls.Add(chipSort, 2, 0);
+            attnTools.Resize += (s, e) => LayoutAttnTools();
+            attnBar.CountsChanged += (s, e) => LayoutAttnTools();
+            var attnGap = new Panel { Dock = DockStyle.Top, Height = D(8), BackColor = Color.Transparent };
+            var attnBody = new Panel { Dock = DockStyle.Top, BackColor = AppTheme.Surface, Margin = new Padding(0) };
+            attnBody.Controls.Add(attention);
+            attnBody.Controls.Add(attnGap);
+            attnBody.Controls.Add(attnTools);
+            void FitAttnBody()
+            {
+                int h = (attnTools.Visible ? attnTools.Height + attnGap.Height : 0) + attention.Height;
+                attnGap.Visible = attnTools.Visible;
+                if (attnBody.Height != h) attnBody.Height = h;
+            }
+            attention.SizeChanged += (s, e) => FitAttnBody();
+            attnTools.SizeChanged += (s, e) => FitAttnBody();
+            attnTools.VisibleChanged += (s, e) => FitAttnBody();
+            HandleCreated += (s, e) => { attnGap.Height = D(8); LayoutAttnTools(); FitAttnBody(); };
+            attentionCard = Card("Needs attention", "Things to do next. Filter by how urgent they are or by area, and click a row to go straight there.", attnBody, out var attnHead);
             attentionCard.Dock = DockStyle.Top;
             attentionCard.SizeChanged += (s, e) => FitPage();
             lblAttentionCount = new Label { AutoSize = true, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextMuted, Anchor = AnchorStyles.Right, UseMnemonic = false };
@@ -484,58 +588,56 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var now = DateTime.Now;
             if (CanOps)
             {
-                foreach (var d in dels.Where(d => RowMenu.Is(d.Status, "Scheduled", "Pending", "Rescheduled") && Departure(d.DispatchDate, d.DepartureTime) < now.AddMinutes(-30)).OrderBy(d => Departure(d.DispatchDate, d.DepartureTime)).Take(4))
+                foreach (var d in dels.Where(d => RowMenu.Is(d.Status, "Scheduled", "Pending", "Rescheduled") && Departure(d.DispatchDate, d.DepartureTime) < now.AddMinutes(-30)).OrderBy(d => Departure(d.DispatchDate, d.DepartureTime)).Take(10))
                 {
                     var dd = d;
                     var dep = Departure(d.DispatchDate, d.DepartureTime);
-                    items.Add(new ActionList.Item(AppTheme.Danger, $"{d.DispatchNumber} hasn't left yet", $"Was due {dep:MMM d, h:mm tt} · {d.ClientName} · {d.TruckInfo}", "Open", () => Forms.DispatchDetailsDialog.ShowFor(this, dd)));
+                    items.Add(new ActionList.Item(AppTheme.Danger, $"{d.DispatchNumber} hasn't left yet", $"Was due {dep:MMM d, h:mm tt} · {d.ClientName} · {d.TruckInfo}", "Open", () => Forms.DispatchDetailsDialog.ShowFor(this, dd), "Dispatches", 0, dep));
                 }
-                foreach (var d in dels.Where(d => RowMenu.Is(d.Status, "Delayed") || (RowMenu.Is(d.Status, "In Transit") && d.DispatchDate.Date < DateTime.Today)).Take(3))
+                foreach (var d in dels.Where(d => RowMenu.Is(d.Status, "Delayed") || (RowMenu.Is(d.Status, "In Transit") && d.DispatchDate.Date < DateTime.Today)).OrderBy(d => d.DispatchDate).Take(10))
                 {
                     var dd = d;
-                    items.Add(new ActionList.Item(AppTheme.Warning, $"{d.DispatchNumber} is still on the road", $"Left {d.DispatchDate:MMM d} · {d.ClientName} · mark it completed once delivered", "Open", () => Forms.DispatchDetailsDialog.ShowFor(this, dd)));
+                    items.Add(new ActionList.Item(AppTheme.Warning, $"{d.DispatchNumber} is still on the road", $"Left {d.DispatchDate:MMM d} · {d.ClientName} · mark it completed once delivered", "Open", () => Forms.DispatchDetailsDialog.ShowFor(this, dd), "Dispatches", 1, d.DispatchDate));
                 }
                 if (needReport.Count == 1)
                 {
                     var dd = needReport[0];
-                    items.Add(new ActionList.Item(AppTheme.Warning, $"{dd.DispatchNumber} needs its trip report", $"Delivered {dd.DispatchDate:MMM d} · {dd.ClientName}", "File report", () => MainForm.Instance?.OpenTripReportForDispatch(dd)));
+                    items.Add(new ActionList.Item(AppTheme.Warning, $"{dd.DispatchNumber} needs its trip report", $"Delivered {dd.DispatchDate:MMM d} · {dd.ClientName}", "File report", () => MainForm.Instance?.OpenTripReportForDispatch(dd), "Trip reports", 1, dd.DispatchDate));
                 }
                 else if (needReport.Count > 1)
-                    items.Add(new ActionList.Item(AppTheme.Warning, $"{needReport.Count} delivered trips need a trip report", $"Oldest: {needReport[0].DispatchNumber} from {needReport[0].DispatchDate:MMM d}", "File reports", () => GoOps("TripReports")));
+                    items.Add(new ActionList.Item(AppTheme.Warning, $"{needReport.Count} delivered trips need a trip report", $"Oldest: {needReport[0].DispatchNumber} from {needReport[0].DispatchDate:MMM d}", "File reports", () => GoOps("TripReports"), "Trip reports", 1, needReport.Min(x => x.DispatchDate), needReport.Count));
                 var dispatchedSched = new HashSet<int>(dels.Where(d => !DispatchGate.IsCancelled(d.Status)).Select(d => d.LoadingScheduleId));
                 var undispatched = data.Schedules.Where(s => RowMenu.Is(s.Status, "Pending", "Scheduled", "Rescheduled") && !dispatchedSched.Contains(s.Id) && s.ScheduleDate.Date <= DateTime.Today.AddDays(1)).OrderBy(s => s.ScheduleDate).ToList();
                 if (undispatched.Count == 1)
                 {
                     var ls = undispatched[0];
-                    items.Add(new ActionList.Item(AppTheme.Info, $"{ls.ScheduleNumber} has no dispatch yet", $"{ls.ClientName} · {ls.ScheduleDate:ddd, MMM d} {ls.DepartureTime} · {ls.TotalCrates} crates", "Dispatch", () => MainForm.Instance?.DispatchLoadingOrder(ls)));
+                    items.Add(new ActionList.Item(AppTheme.Info, $"{ls.ScheduleNumber} has no dispatch yet", $"{ls.ClientName} · {ls.ScheduleDate:ddd, MMM d} {ls.DepartureTime} · {ls.TotalCrates} crates", "Dispatch", () => MainForm.Instance?.DispatchLoadingOrder(ls), "Loading orders", 2, ls.ScheduleDate));
                 }
                 else if (undispatched.Count > 1)
-                    items.Add(new ActionList.Item(AppTheme.Info, $"{undispatched.Count} loading orders have no dispatch yet", $"For today and tomorrow · earliest {undispatched[0].ScheduleNumber} ({undispatched[0].ClientName})", "Dispatch", () => GoOps("Dispatch")));
+                    items.Add(new ActionList.Item(AppTheme.Info, $"{undispatched.Count} loading orders have no dispatch yet", $"For today and tomorrow · earliest {undispatched[0].ScheduleNumber} ({undispatched[0].ClientName})", "Dispatch", () => GoOps("Dispatch"), "Loading orders", 2, undispatched[0].ScheduleDate, undispatched.Count));
                 int openInc = data.Incidents.Count(i => !RowMenu.Is(i.Status, "Resolved", "Closed"));
                 if (openInc > 0)
-                    items.Add(new ActionList.Item(AppTheme.Info, $"{openInc} incident(s) still open", $"Damaged or missing crates: {data.Incidents.Where(i => !RowMenu.Is(i.Status, "Resolved", "Closed")).Sum(i => i.DamagedQuantity):N0} · est. {Peso(data.Incidents.Where(i => !RowMenu.Is(i.Status, "Resolved", "Closed")).Sum(i => i.EstimatedCost))}", "Review", () => GoOps("Incidents")));
+                    items.Add(new ActionList.Item(AppTheme.Info, $"{openInc} incident(s) still open", $"Damaged or missing crates: {data.Incidents.Where(i => !RowMenu.Is(i.Status, "Resolved", "Closed")).Sum(i => i.DamagedQuantity):N0} · est. {Peso(data.Incidents.Where(i => !RowMenu.Is(i.Status, "Resolved", "Closed")).Sum(i => i.EstimatedCost))}", "Review", () => GoOps("Incidents"), "Incidents", 2, data.Incidents.Where(i => !RowMenu.Is(i.Status, "Resolved", "Closed")).Min(i => (DateTime?)i.IncidentDate), openInc));
             }
             if (CanFin)
             {
                 if (overdue.Count > 0)
-                    items.Insert(Math.Min(items.Count, 2), new ActionList.Item(AppTheme.Danger, $"{overdue.Count} invoice(s) overdue", $"{Peso(overdue.Sum(Balance))} past due · oldest {overdue.Min(i => i.DueDate):MMM d} ({overdue.OrderBy(i => i.DueDate).First().ClientName})", "Collect", () => MainForm.Instance?.ShowFinanceRecords("Billing", "Overdue")));
+                    items.Add(new ActionList.Item(AppTheme.Danger, $"{overdue.Count} invoice(s) overdue", $"{Peso(overdue.Sum(Balance))} past due · oldest {overdue.Min(i => i.DueDate):MMM d} ({overdue.OrderBy(i => i.DueDate).First().ClientName})", "Collect", () => MainForm.Instance?.ShowFinanceRecords("Billing", "Overdue"), "Billing", 0, overdue.Min(i => i.DueDate), overdue.Count));
                 var unbilled = dels.Where(d => Done(d.Status) && !invoicedIds.Contains(d.Id)).ToList();
                 var billedOnSoa = SafeBilled();
                 unbilled = unbilled.Where(d => !billedOnSoa.ContainsKey(d.Id)).ToList();
                 if (unbilled.Count > 0)
-                    items.Add(new ActionList.Item(AppTheme.Warning, $"{unbilled.Count} delivered trip(s) not billed yet", $"{unbilled.Select(d => d.ClientName).Distinct().Count()} client(s) · put them on a statement of account", "Bill", () => MainForm.Instance?.NavigateToFinance("StatementOfAccount")));
+                    items.Add(new ActionList.Item(AppTheme.Warning, $"{unbilled.Count} delivered trip(s) not billed yet", $"{unbilled.Select(d => d.ClientName).Distinct().Count()} client(s) · put them on a statement of account", "Bill", () => MainForm.Instance?.NavigateToFinance("StatementOfAccount"), "Billing", 1, unbilled.Min(d => d.DispatchDate), unbilled.Count));
                 int drafts = data.Invoices.Count(i => RowMenu.Is(i.Status, "Draft"));
                 if (drafts > 0)
-                    items.Add(new ActionList.Item(AppTheme.Info, $"{drafts} draft invoice(s) to finish", "From completed special trips — add the amount to issue them", "Open", () => MainForm.Instance?.ShowFinanceRecords("Billing", "Draft")));
+                    items.Add(new ActionList.Item(AppTheme.Info, $"{drafts} draft invoice(s) to finish", "From completed special trips — add the amount to issue them", "Open", () => MainForm.Instance?.ShowFinanceRecords("Billing", "Draft"), "Billing", 2, null, drafts));
             }
             if (CanRes && maint > 0)
-                items.Add(new ActionList.Item(AppTheme.TextMuted, $"{maint} truck(s) under maintenance", string.Join(", ", data.Trucks.Where(t => MJdatabase.IsTruckBlockedStatus(t.Status) && !RowMenu.Is(t.Status, "Inactive")).Select(t => t.PlateNumber).Take(5)), "Trucks", () => MainForm.Instance?.NavigateToResources("Trucks")));
+                items.Add(new ActionList.Item(AppTheme.TextMuted, $"{maint} truck(s) under maintenance", string.Join(", ", data.Trucks.Where(t => MJdatabase.IsTruckBlockedStatus(t.Status) && !RowMenu.Is(t.Status, "Inactive")).Select(t => t.PlateNumber).Take(5)), "Trucks", () => MainForm.Instance?.NavigateToResources("Trucks"), "Trucks", 2, null, maint));
             if (SessionContext.IsAdmin && data.PendingUsers > 0)
-                items.Add(new ActionList.Item(AppTheme.Warning, $"{data.PendingUsers} account(s) waiting for approval", "New staff sign-ups need an administrator", "Review", () => MainForm.Instance?.OpenUserAccounts()));
-            attention.SetItems(items, 6);
-            foreach (var f in fitters) f();
-            FitPage();
-            lblAttentionCount.Text = items.Count == 0 ? "" : $"{items.Count} item{(items.Count == 1 ? "" : "s")}";
+                items.Add(new ActionList.Item(AppTheme.Warning, $"{data.PendingUsers} account(s) waiting for approval", "New staff sign-ups need an administrator", "Review", () => MainForm.Instance?.OpenUserAccounts(), "Accounts", 1, null, data.PendingUsers));
+            allAttention = items;
+            ApplyAttention();
             // Fleet
             fleetBar.SetSegments(new List<(string, int, Color)>
             {
@@ -696,33 +798,90 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     // =========================================================================================================
     // Small painted controls used by the dashboard
     // =========================================================================================================
-    /// <summary>Rows of "do this next" items: coloured dot, title, detail, and an action button-like label.</summary>
+    /// <summary>
+    /// The Needs attention rows: urgency dot, title, a small Urgent / Incoming / Notice tag with the area and details, and the action button.
+    /// Optional group headings (by area) and a "Show all / Show fewer" row at the bottom.
+    /// </summary>
     public sealed class ActionList : Control
     {
-        public sealed record Item(Color Tone, string Title, string Detail, string ActionText, Action Run);
+        /// <summary>Priority: 0 urgent, 1 incoming, 2 notice (-1 = work it out from the colour).</summary>
+        public sealed record Item(Color Tone, string Title, string Detail, string ActionText, Action Run, string Area = "", int Priority = -1, DateTime? Since = null, int Count = 1)
+        {
+            public int Level => Priority >= 0 ? Math.Min(2, Priority) : Tone.ToArgb() == AppTheme.Danger.ToArgb() ? 0 : Tone.ToArgb() == AppTheme.Warning.ToArgb() ? 1 : 2;
+        }
+        public static readonly string[] LevelNames = { "Urgent", "Incoming", "Notice" };
+        // Urgent orange, Incoming blue, Notice red.
+        public static Color LevelColor(int level) => level == 0 ? AppTheme.Warning : level == 1 ? AppTheme.Info : AppTheme.Danger;
+        private enum RowKind { Item, Header, More, Empty }
+        private sealed record Row(RowKind Kind, int Y, int H, int Index, string Text);
         private List<Item> items = new();
-        private int hover = -1, max = 6;
+        private readonly List<Row> rows = new();
+        private int hover = -1;
+        private bool grouped, showArea = true, canClear;
+        private string emptyText = "";
+        public event EventHandler? ToggleExpand;
+        public event EventHandler? ClearFilters;
         private int S(int v) => (int)Math.Round(v * DeviceDpi / 96f);
-        private int RowH => S(54);
+        private int RowH => S(56);
         public ActionList()
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             BackColor = AppTheme.Surface;
         }
-        public void SetItems(List<Item> list, int maxRows)
+        public void SetItems(List<Item> list, int maxRows, bool grouped = false, bool showArea = true, string emptyText = "", bool canClear = false)
         {
             items = list;
-            max = maxRows;
-            int rows = Math.Max(1, Math.Min(max, items.Count));
-            Height = rows * RowH + (items.Count > max ? S(26) : 0);
+            this.grouped = grouped;
+            this.showArea = showArea;
+            this.emptyText = emptyText;
+            this.canClear = canClear;
+            rows.Clear();
+            int y = 0;
+            if (items.Count == 0)
+            {
+                rows.Add(new Row(RowKind.Empty, 0, RowH, -1, ""));
+                y = RowH;
+            }
+            else
+            {
+                int n = Math.Min(maxRows, items.Count);
+                string lastArea = "\u0001";
+                for (int i = 0; i < n; i++)
+                {
+                    if (grouped && items[i].Area != lastArea)
+                    {
+                        lastArea = items[i].Area;
+                        int cnt = items.Count(x => x.Area == lastArea);
+                        string name = string.IsNullOrEmpty(lastArea) ? "Other" : lastArea;
+                        rows.Add(new Row(RowKind.Header, y, S(30), -1, $"{name.ToUpperInvariant()}  ·  {cnt}"));
+                        y += S(30);
+                    }
+                    rows.Add(new Row(RowKind.Item, y, RowH, i, ""));
+                    y += RowH;
+                }
+                if (items.Count > 6)
+                {
+                    string t = n < items.Count ? $"Show all {items.Count}  ▾" : "Show fewer  ▴";
+                    rows.Add(new Row(RowKind.More, y, S(34), -1, t));
+                    y += S(34);
+                }
+            }
             hover = -1;
+            if (Height != y) Height = y; else Invalidate();
             Invalidate();
         }
+        private int HitRow(Point p)
+        {
+            for (int i = 0; i < rows.Count; i++)
+                if (p.Y >= rows[i].Y && p.Y < rows[i].Y + rows[i].H) return i;
+            return -1;
+        }
+        private bool Clickable(int r) => r >= 0 && (rows[r].Kind == RowKind.Item || rows[r].Kind == RowKind.More || (rows[r].Kind == RowKind.Empty && canClear));
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
-            int i = e.Y / RowH;
-            int nh = i >= 0 && i < Math.Min(max, items.Count) ? i : -1;
+            int r = HitRow(e.Location);
+            int nh = Clickable(r) ? r : -1;
             if (nh != hover) { hover = nh; Invalidate(); }
             Cursor = hover >= 0 ? Cursors.Hand : Cursors.Default;
         }
@@ -730,11 +889,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         protected override void OnMouseClick(MouseEventArgs e)
         {
             base.OnMouseClick(e);
-            int i = e.Y / RowH;
-            if (i >= 0 && i < Math.Min(max, items.Count))
-            {
-                try { items[i].Run(); } catch (Exception ex) { MessageBox.Show(ex.Message, "Dashboard", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
-            }
+            int r = HitRow(e.Location);
+            if (!Clickable(r)) return;
+            var row = rows[r];
+            if (row.Kind == RowKind.More) { ToggleExpand?.Invoke(this, EventArgs.Empty); return; }
+            if (row.Kind == RowKind.Empty) { ClearFilters?.Invoke(this, EventArgs.Empty); return; }
+            try { items[row.Index].Run(); } catch (Exception ex) { MessageBox.Show(ex.Message, "Dashboard", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -742,52 +902,175 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Gfx.HighQuality(g);
             g.Clear(AppTheme.Surface);
             var flags = TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter;
-            if (items.Count == 0)
-            {
-                using var ok = new SolidBrush(AppTheme.Success);
-                g.FillEllipse(ok, S(4), (RowH - S(22)) / 2, S(22), S(22));
-                using var cf = new Font("Segoe UI Semibold", 9F);
-                TextRenderer.DrawText(g, "✓", cf, new Rectangle(S(4), (RowH - S(22)) / 2, S(22), S(22)), Color.White, flags | TextFormatFlags.HorizontalCenter);
-                using var tf0 = new Font("Segoe UI Semibold", 10.5F);
-                TextRenderer.DrawText(g, "All caught up — nothing needs your attention right now.", tf0, new Rectangle(S(38), 0, Width - S(40), RowH), AppTheme.TextPrimary, flags);
-                return;
-            }
             using var tf = new Font("Segoe UI Semibold", 10F);
             using var sf = new Font("Segoe UI", 8.75F);
             using var af = new Font("Segoe UI Semibold", 9F);
-            int n = Math.Min(max, items.Count);
-            for (int i = 0; i < n; i++)
+            using var pf = new Font("Segoe UI Semibold", 7.75F);
+            bool firstItem = true;
+            for (int k = 0; k < rows.Count; k++)
             {
-                var it = items[i];
-                var r = new Rectangle(0, i * RowH, Width, RowH);
-                if (i == hover)
+                var row = rows[k];
+                var r = new Rectangle(0, row.Y, Width, row.H);
+                if (row.Kind == RowKind.Empty)
+                {
+                    if (string.IsNullOrEmpty(emptyText))
+                    {
+                        using var ok = new SolidBrush(AppTheme.Success);
+                        g.FillEllipse(ok, S(4), r.Y + (RowH - S(22)) / 2, S(22), S(22));
+                        using var cf = new Font("Segoe UI Semibold", 9F);
+                        TextRenderer.DrawText(g, "✓", cf, new Rectangle(S(4), r.Y + (RowH - S(22)) / 2, S(22), S(22)), Color.White, flags | TextFormatFlags.HorizontalCenter);
+                        using var tf0 = new Font("Segoe UI Semibold", 10.5F);
+                        TextRenderer.DrawText(g, "All caught up — nothing needs your attention right now.", tf0, new Rectangle(S(38), r.Y, Width - S(40), RowH), AppTheme.TextPrimary, flags);
+                    }
+                    else
+                    {
+                        TextRenderer.DrawText(g, emptyText, tf, new Rectangle(S(12), r.Y + S(6), Width - S(24), S(22)), AppTheme.TextPrimary, flags);
+                        if (canClear)
+                            TextRenderer.DrawText(g, "Clear the filters to see everything  ›", sf, new Rectangle(S(12), r.Y + S(28), Width - S(24), S(20)), hover == k ? AppTheme.AccentHover : AppTheme.AccentText, flags);
+                    }
+                    continue;
+                }
+                if (row.Kind == RowKind.Header)
+                {
+                    using var hf = new Font("Segoe UI Semibold", 8.25F);
+                    TextRenderer.DrawText(g, row.Text, hf, new Rectangle(S(12), r.Y + S(8), Width - S(24), S(20)), AppTheme.TextMuted, flags);
+                    using var lp = new Pen(AppTheme.Border);
+                    g.DrawLine(lp, S(12), r.Bottom - 1, r.Right - S(12), r.Bottom - 1);
+                    firstItem = true;
+                    continue;
+                }
+                if (row.Kind == RowKind.More)
+                {
+                    using var lp = new Pen(AppTheme.Border);
+                    g.DrawLine(lp, S(12), r.Y, r.Right - S(12), r.Y);
+                    TextRenderer.DrawText(g, row.Text, af, new Rectangle(0, r.Y, Width, row.H), hover == k ? AppTheme.AccentHover : AppTheme.AccentText, flags | TextFormatFlags.HorizontalCenter);
+                    continue;
+                }
+                var it = items[row.Index];
+                if (k == hover)
                 {
                     using var hp = Gfx.RoundedRect(new Rectangle(r.X, r.Y + S(2), r.Width - 1, r.Height - S(4)), S(8));
                     using var hb = new SolidBrush(AppTheme.SurfaceHover);
                     g.FillPath(hb, hp);
                 }
-                else if (i > 0)
+                else if (!firstItem)
                 {
                     using var lp = new Pen(AppTheme.Border);
                     g.DrawLine(lp, S(12), r.Y, r.Right - S(12), r.Y);
                 }
-                using (var db = new SolidBrush(it.Tone)) g.FillEllipse(db, S(12), r.Y + (RowH - S(10)) / 2, S(10), S(10));
+                firstItem = false;
+                int level = it.Level;
+                using (var db = new SolidBrush(LevelColor(level))) g.FillEllipse(db, S(12), r.Y + S(13), S(10), S(10));
                 var asz = TextRenderer.MeasureText(it.ActionText + "  ›", af);
                 int textRight = r.Right - asz.Width - S(28);
                 TextRenderer.DrawText(g, it.Title, tf, new Rectangle(S(32), r.Y + S(6), textRight - S(32), S(22)), AppTheme.TextPrimary, flags);
-                TextRenderer.DrawText(g, it.Detail, sf, new Rectangle(S(32), r.Y + S(27), textRight - S(32), S(20)), AppTheme.TextMuted, flags);
+                // second line: [Urgent] Area · details
+                string tag = LevelNames[level];
+                var tsz = TextRenderer.MeasureText(tag, pf);
+                var tr = new Rectangle(S(32), r.Y + S(31), tsz.Width + S(4), S(17));
+                Color soft = level == 0 ? AppTheme.WarningSoft : level == 1 ? AppTheme.InfoSoft : AppTheme.DangerSoft;
+                Color text = level == 0 ? AppTheme.WarningText : level == 1 ? AppTheme.InfoText : AppTheme.DangerText;
+                using (var tp = Gfx.RoundedRect(tr, S(5)))
+                using (var tb = new SolidBrush(soft)) g.FillPath(tb, tp);
+                TextRenderer.DrawText(g, tag, pf, tr, text, flags | TextFormatFlags.HorizontalCenter);
+                string detail = showArea && !string.IsNullOrEmpty(it.Area) ? it.Area + "  ·  " + it.Detail : it.Detail;
+                TextRenderer.DrawText(g, detail, sf, new Rectangle(tr.Right + S(8), r.Y + S(29), textRight - tr.Right - S(8), S(20)), AppTheme.TextMuted, flags);
                 var ar = new Rectangle(r.Right - asz.Width - S(20), r.Y + (RowH - S(30)) / 2, asz.Width + S(12), S(30));
                 using (var ap = Gfx.RoundedRect(ar, S(8)))
                 {
-                    using var ab = new SolidBrush(i == hover ? AppTheme.Accent : AppTheme.AccentSoft);
+                    using var ab = new SolidBrush(k == hover ? AppTheme.Accent : AppTheme.AccentSoft);
                     g.FillPath(ab, ap);
                 }
-                TextRenderer.DrawText(g, it.ActionText + "  ›", af, ar, i == hover ? AppTheme.OnAccent : AppTheme.AccentText, flags | TextFormatFlags.HorizontalCenter);
+                TextRenderer.DrawText(g, it.ActionText + "  ›", af, ar, k == hover ? AppTheme.OnAccent : AppTheme.AccentText, flags | TextFormatFlags.HorizontalCenter);
             }
-            if (items.Count > max)
+        }
+    }
+    /// <summary>"All 5 · ● Urgent 1 · ● Incoming 3 · ● Notice 1" — pick which urgency to show.</summary>
+    public sealed class AttentionBar : Control
+    {
+        private readonly int[] counts = new int[4];
+        private int selected, hover = -1;
+        public event EventHandler? SelectedChanged;
+        [System.ComponentModel.Browsable(false)]
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        public int Selected { get => selected; set { int v = Math.Max(0, Math.Min(3, value)); if (v == selected) return; selected = v; Invalidate(); SelectedChanged?.Invoke(this, EventArgs.Empty); } }
+        private int S(int v) => (int)Math.Round(v * DeviceDpi / 96f);
+        public AttentionBar()
+        {
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            BackColor = AppTheme.Surface;
+            Cursor = Cursors.Hand;
+            TabStop = true;
+        }
+        public event EventHandler? CountsChanged;
+        public void SetCounts(int all, int urgent, int soon, int fyi) { counts[0] = all; counts[1] = urgent; counts[2] = soon; counts[3] = fyi; Invalidate(); CountsChanged?.Invoke(this, EventArgs.Empty); }
+        /// <summary>Width needed to show all four buttons.</summary>
+        public int NeededWidth { get { var sl = Slots(); return sl[3].Right + S(2); } }
+        private static string Name(int i) => i == 0 ? "All" : ActionList.LevelNames[i - 1];
+        private Rectangle[] Slots()
+        {
+            var r = new Rectangle[4];
+            using var f = new Font("Segoe UI Semibold", 9F);
+            int x = 0, h = S(30), y = Math.Max(0, (Height - h) / 2);
+            for (int i = 0; i < 4; i++)
             {
-                using var mf = new Font("Segoe UI", 8.75F);
-                TextRenderer.DrawText(g, $"+ {items.Count - max} more", mf, new Rectangle(S(32), n * RowH, Width - S(32), S(26)), AppTheme.TextMuted, flags);
+                int w = TextRenderer.MeasureText(Name(i) + "  " + counts[i], f).Width + (i == 0 ? S(20) : S(36));
+                r[i] = new Rectangle(x, y, w, h);
+                x += w + S(6);
+            }
+            return r;
+        }
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            var sl = Slots(); int h = -1;
+            for (int i = 0; i < sl.Length; i++) if (sl[i].Contains(e.Location)) h = i;
+            if (h != hover) { hover = h; Invalidate(); }
+        }
+        protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hover = -1; Invalidate(); }
+        protected override void OnMouseClick(MouseEventArgs e)
+        {
+            base.OnMouseClick(e);
+            var sl = Slots();
+            for (int i = 0; i < sl.Length; i++) if (sl[i].Contains(e.Location)) { Selected = i; return; }
+        }
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (e.KeyCode == Keys.Right) { Selected = (selected + 1) % 4; e.Handled = true; }
+            if (e.KeyCode == Keys.Left) { Selected = (selected + 3) % 4; e.Handled = true; }
+        }
+        protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+        protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            Gfx.HighQuality(g);
+            g.Clear(AppTheme.Surface);
+            using var f = new Font("Segoe UI Semibold", 9F);
+            var sl = Slots();
+            for (int i = 0; i < 4; i++)
+            {
+                var r = sl[i];
+                if (r.Right > Width) break;
+                bool on = i == selected, hot = i == hover;
+                Color fill = on ? AppTheme.AccentSoft : hot ? AppTheme.SurfaceHover : AppTheme.Surface;
+                Color border = on ? AppTheme.Accent : hot || (Focused && on) ? AppTheme.BorderStrong : AppTheme.Border;
+                using (var path = Gfx.RoundedRect(new Rectangle(r.X, r.Y, r.Width - 1, r.Height - 1), S(15)))
+                {
+                    using (var b = new SolidBrush(fill)) g.FillPath(b, path);
+                    using (var p = new Pen(border, on ? 1.5f : 1f)) g.DrawPath(p, path);
+                }
+                int tx = r.X + S(10);
+                if (i > 0)
+                {
+                    using var db = new SolidBrush(ActionList.LevelColor(i - 1));
+                    g.FillEllipse(db, tx, r.Y + (r.Height - S(8)) / 2, S(8), S(8));
+                    tx += S(14);
+                }
+                Color fore = counts[i] == 0 && !on ? AppTheme.TextMuted : on ? AppTheme.AccentText : AppTheme.TextPrimary;
+                TextRenderer.DrawText(g, Name(i) + "  " + counts[i], f, new Rectangle(tx, r.Y, r.Right - tx, r.Height), fore,
+                    TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
             }
         }
     }

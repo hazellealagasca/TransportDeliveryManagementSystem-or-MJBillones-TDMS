@@ -323,6 +323,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblMain.Controls.Add(cardDisplay, 0, 2);
             tblMain.Controls.Add(cardAccount, 0, 3);
             tblMain.Controls.Add(cardActions, 0, 4);
+            // Docked-top children stack in reverse order, so move each card's title and subtitle back above its content.
+            foreach (Control card in tblMain.Controls)
+            {
+                Control? sub = null, title = null;
+                foreach (Control c in card.Controls) { if (Equals(c.Tag, "cardSub")) sub = c; else if (Equals(c.Tag, "cardTitle")) title = c; }
+                sub?.SendToBack();
+                title?.SendToBack();
+            }
             chkAllowMultiDest.CheckedChanged += (s, e) => AutoSavePreferences();
             chkRequireCrates.CheckedChanged += (s, e) => AutoSavePreferences();
             chkAutoTruck.CheckedChanged += (s, e) => AutoSavePreferences();
@@ -474,6 +482,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Padding = new Padding(0, 0, 0, 12)
             };
 
+            lblTitle.Tag = "cardTitle";
+            lblSubtitle.Tag = "cardSub";
             card.Controls.Add(lblSubtitle);
             card.Controls.Add(lblTitle);
             return card;
