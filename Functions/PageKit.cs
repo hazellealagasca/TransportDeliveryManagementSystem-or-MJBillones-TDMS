@@ -155,6 +155,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)] public string Value { get => value; set { this.value = value ?? ""; Invalidate(); } }
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)] public string Note { get => note; set { note = value ?? ""; Invalidate(); } }
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)] public bool Selected { get => selected; set { selected = value; Invalidate(); } }
+        private string value2 = "", note2 = "", label1 = "", label2 = "";
+        /// <summary>Optional second figure shown beside the first one (e.g. drivers | aides). Empty = single figure.</summary>
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)] public string Value2 { get => value2; set { value2 = value ?? ""; Invalidate(); } }
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)] public string Note2 { get => note2; set { note2 = value ?? ""; Invalidate(); } }
+        /// <summary>Small labels drawn before each figure when the tile is split (e.g. "Drivers", "Aides").</summary>
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)] public string Label1 { get => label1; set { label1 = value ?? ""; Invalidate(); } }
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)] public string Label2 { get => label2; set { label2 = value ?? ""; Invalidate(); } }
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)] public Color? ValueColor2 { get; set; }
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)] public object? Key { get; set; }
         public StatTile(string caption, Color accent, string note = "")
         {
@@ -200,6 +208,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             using var capFont = new Font("Segoe UI Semibold", 9F);
             TextRenderer.DrawText(g, caption, capFont, new Rectangle(pad + dot + S(8), S(10), Width - pad * 2 - dot, S(22)), AppTheme.TextSecondary, flags);
             using var valFont = new Font("Segoe UI Semibold", 19F);
+            if (!string.IsNullOrEmpty(value2))
+            {
+                // Two figures side by side with a thin divider: [Label1 value / note] | [Label2 value2 / note2]
+                int half = (Width - pad * 2) / 2;
+                using var lblFont = new Font("Segoe UI Semibold", 9F);
+                using var noteF = new Font("Segoe UI", 8.5F);
+                void Half(int x, int w, string lbl, string v, string n, Color? vc)
+                {
+                    int lw = string.IsNullOrEmpty(lbl) ? 0 : TextRenderer.MeasureText(g, v, valFont, Size.Empty, TextFormatFlags.NoPadding).Width + S(6);
+                    TextRenderer.DrawText(g, v, valFont, new Rectangle(x - S(2), S(32), w, S(36)), vc ?? AppTheme.TextPrimary, flags);
+                    if (lw > 0) TextRenderer.DrawText(g, lbl, lblFont, new Rectangle(x + lw, S(42), Math.Max(1, w - lw), S(22)), AppTheme.TextSecondary, flags);
+                    if (!string.IsNullOrEmpty(n)) TextRenderer.DrawText(g, n, noteF, new Rectangle(x, S(68), w - S(6), S(20)), AppTheme.TextMuted, flags);
+                }
+                Half(pad, half - S(8), label1, value, note, ValueColor);
+                using (var dp = new Pen(AppTheme.Border)) g.DrawLine(dp, pad + half, S(38), pad + half, Height - S(14));
+                Half(pad + half + S(14), half - S(14), label2, value2, note2, ValueColor2);
+                return;
+            }
             TextRenderer.DrawText(g, value, valFont, new Rectangle(pad - S(2), S(32), Width - pad * 2, S(36)), ValueColor ?? AppTheme.TextPrimary, flags);
             if (!string.IsNullOrEmpty(note))
             {

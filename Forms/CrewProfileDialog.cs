@@ -29,7 +29,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static void ShowFor(IWin32Window? owner, Crew crew, Action<Crew>? onEdit = null)
         {
             using var dlg = new CrewProfileDialog(crew, onEdit);
+            dlg.FormClosing += (s, e) => DarkModeKit.StopAutoComplete(dlg);
             dlg.ShowDialog(owner);
+            DarkModeKit.StopAutoComplete(dlg);
         }
         public CrewProfileDialog(Crew crew, Action<Crew>? onEdit = null)
         {

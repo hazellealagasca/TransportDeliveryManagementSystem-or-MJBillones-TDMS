@@ -27,11 +27,42 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     if (f == null || f.IsDisposed || done.TryGetValue(f, out _)) continue;
                     done.Add(f, true);
+                    GuardAutoComplete(f);
                     if (f is LoginForm || f is MainForm) continue;
                     Apply(f);
                 }
             }
             catch (InvalidOperationException) { /* the open-forms list changed while sweeping; next tick */ }
+        }
+        /// <summary>
+        /// Windows' suggestion list for auto-complete boxes runs on its own thread. If a window is closed while that list
+        /// is open (or was just used), WinForms throws "Cross-thread operation not valid". Turning auto-complete off
+        /// just before the window closes prevents it.
+        /// </summary>
+        public static void GuardAutoComplete(Form f)
+        {
+            f.FormClosing += (s, e) => { if (!e.Cancel) StopAutoComplete(f); };
+        }
+        public static void StopAutoComplete(Control root)
+        {
+            try
+            {
+                foreach (Control c in root.Controls)
+                {
+                    if (c is TextBox t && (t.AutoCompleteMode != AutoCompleteMode.None || t.AutoCompleteSource != AutoCompleteSource.None))
+                    {
+                        t.AutoCompleteMode = AutoCompleteMode.None;
+                        t.AutoCompleteSource = AutoCompleteSource.None;
+                    }
+                    else if (c is ComboBox cb && cb.AutoCompleteMode != AutoCompleteMode.None)
+                    {
+                        cb.AutoCompleteMode = AutoCompleteMode.None;
+                        if (cb.AutoCompleteSource == AutoCompleteSource.CustomSource) cb.AutoCompleteSource = AutoCompleteSource.None;
+                    }
+                    if (c.HasChildren) StopAutoComplete(c);
+                }
+            }
+            catch { }
         }
         /// <summary>Applies the active theme to a window and everything in it (safe to call more than once).</summary>
         public static void Apply(Form f)

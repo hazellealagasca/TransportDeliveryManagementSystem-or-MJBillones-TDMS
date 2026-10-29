@@ -50,6 +50,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Pal.RemapTree(this);
             gridInvoices.BringToFront();
             SetupGridColumns();
+            InitListChips();
             SetupContextMenu();
             gridInvoices.ColumnHeaderMouseClick += (s, e) => {
                 if (e.ColumnIndex < 0 || e.ColumnIndex >= gridInvoices.Columns.Count) return;
@@ -190,8 +191,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "LoadingScheduleNumber", HeaderText = "Schedule #", FillWeight = 12F, MinimumWidth = 100, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DispatchNumber", HeaderText = "Dispatch #", FillWeight = 12F, MinimumWidth = 100, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ClientName", HeaderText = "Client", FillWeight = 18F, MinimumWidth = 120, ReadOnly = true });
-            gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "InvoiceDate", HeaderText = "Date", DefaultCellStyle = { Format = "MM/dd/yyyy" }, FillWeight = 10F, MinimumWidth = 85, ReadOnly = true });
-            gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "GrossAmount", HeaderText = "Gross", DefaultCellStyle = { Format = "N2" }, FillWeight = 12F, MinimumWidth = 90, ReadOnly = true });
+            gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "IssueDate", HeaderText = "Date", DefaultCellStyle = { Format = "MM/dd/yyyy" }, FillWeight = 10F, MinimumWidth = 85, ReadOnly = true });
+            gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TotalAmount", HeaderText = "Gross", DefaultCellStyle = { Format = "N2" }, FillWeight = 12F, MinimumWidth = 90, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Deductions", HeaderText = "Deductions", DefaultCellStyle = { Format = "N2" }, FillWeight = 11F, MinimumWidth = 85, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "NetAmount", HeaderText = "Net Due", DefaultCellStyle = { Format = "N2" }, FillWeight = 12F, MinimumWidth = 90, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 10F, MinimumWidth = 80, ReadOnly = true });
@@ -732,9 +733,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     (!string.IsNullOrEmpty(i.Status) && i.Status.ToLower().Contains(q))
                 ).ToList();
 
+            filtered = ApplyListChips(filtered);
             gridInvoices.DataSource = null;
             gridInvoices.DataSource = filtered;
-            lblGridHeader.Text = string.IsNullOrEmpty(q)
+            lblGridHeader.Text = string.IsNullOrEmpty(q) && filtered.Count == allInvoices.Count
                 ? $"Active Issued Invoices ({allInvoices.Count})"
                 : $"Active Issued Invoices ({filtered.Count} of {allInvoices.Count})";
 

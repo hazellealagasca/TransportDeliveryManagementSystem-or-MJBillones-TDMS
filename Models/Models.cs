@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 
+using System.Linq;
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models
 {
     public interface IRefreshable
@@ -450,6 +451,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string DriverName { get; set; } = string.Empty;
         public int AideId { get; set; }
         public string AideName { get; set; } = string.Empty;
+        /// <summary>All aides on the trip as a comma list of crew ids ("12,15"). AideId holds the first one; AideName lists every name.</summary>
+        public string AideIds { get; set; } = string.Empty;
+        public List<int> AllAideIds
+        {
+            get
+            {
+                var ids = (AideIds ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(x => int.TryParse(x.Trim(), out int v) ? v : 0).Where(v => v > 0).Distinct().ToList();
+                if (ids.Count == 0 && AideId > 0) ids.Add(AideId);
+                return ids;
+            }
+        }
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime? CompletedAt { get; set; }
         public string Remarks { get; set; } = string.Empty;
@@ -512,7 +524,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public decimal Extra { get; set; }
         public decimal Deduction { get; set; }
         public string Notes { get; set; } = string.Empty;
-        public decimal NetPay => BasePay + Allowance + Extra - Deduction;
+        /// <summary>Recorded pay for the trip (daily wage + meal allowance). Kept for documentation only — no payroll deductions.</summary>
+        public decimal NetPay => BasePay + Allowance;
     }
     public class IncidentReport
     {

@@ -966,7 +966,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (numDailyWage == null) return true;
             if (numDailyWage.Value <= 0)
             {
-                var ans = MessageBox.Show("No pay per trip is set for this crew member, so their trip pay and pay slips will show ₱0.00.\n\nSave anyway?", "Pay per trip is ₱0", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+                var ans = MessageBox.Show("No pay per trip is set for this crew member, so their trip pay records will show ₱0.00.\n\nSave anyway?", "Pay per trip is ₱0", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
                 if (ans != DialogResult.Yes) { numDailyWage.Focus(); return false; }
             }
             if (numFoodAllowance != null && numDailyWage.Value > 0 && numFoodAllowance.Value > numDailyWage.Value)

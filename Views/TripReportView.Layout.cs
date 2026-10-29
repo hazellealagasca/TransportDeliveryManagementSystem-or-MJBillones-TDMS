@@ -79,7 +79,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblDel, cbDelivery, lblDispatchInfoBanner);
             var card2 = CreateSectionCard(2, "Stores & crates", "What each store received and what came back.",
                 pnlMultiDropInfo, CreateGap(Dpi(12)), tblCrateTotals, CreateGap(Dpi(8)), btnLogIncident, tblTimes, tblManagerNames);
-            var card3 = CreateSectionCard(3, "Driver & aide pay", "What the crew earns for this trip. Saved with the report and used in the crew payroll.",
+            var card3 = CreateSectionCard(3, "Driver & aide pay", "Daily wage and meal allowance of each crew member on this trip, recorded with the report for reference.",
                 pnlCrewPay);
             var card4 = CreateSectionCard(4, "Plant gate & sign-off", "Truck times at the plant, the people who signed, and any remarks.",
                 pnlTripFooter, lblRem, txtRemarks);
@@ -299,6 +299,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             isEditingExistingReport = true;
             ApplyFormMode();
             SetFormVisibility(true);
+            SyncAttachmentOwner();
         }
         private void ApplyFormMode()
         {
@@ -317,10 +318,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return allDeliveries.FirstOrDefault(del => selText.StartsWith(del.DispatchNumber + " - "));
         }
         private AttachmentPanel? tripAttachments;
+        /// <summary>Points the attachments box at the trip's dispatch: the picked dispatch, or the report being edited.</summary>
+        private void SyncAttachmentOwner()
+        {
+            if (tripAttachments == null) return;
+            var d = GetSelectedDelivery();
+            if (d == null && isEditingExistingReport && selectedTripReport != null)
+                d = allDeliveries.FirstOrDefault(x => x.Id == selectedTripReport.DeliveryId || string.Equals(x.DispatchNumber, selectedTripReport.DispatchNumber, StringComparison.OrdinalIgnoreCase));
+            if (d != null) { tripAttachments.SetOwner("Dispatch", d.Id, d.DispatchNumber ?? ""); return; }
+            if (isEditingExistingReport && selectedTripReport != null && selectedTripReport.DeliveryId > 0)
+                tripAttachments.SetOwner("Dispatch", selectedTripReport.DeliveryId, selectedTripReport.DispatchNumber ?? "");
+            else tripAttachments.SetOwner("Dispatch", 0, "");
+        }
         private void LoadSelectedDeliveryIntoForm()
         {
             var d = GetSelectedDelivery();
-            tripAttachments?.SetOwner("Dispatch", d?.Id ?? 0, d?.DispatchNumber ?? "");
+            SyncAttachmentOwner();
             if (d == null)
             {
                 LoadCrewPay(null);
@@ -380,12 +393,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridCrewPay.Columns.Add(new DataGridViewTextBoxColumn { Name = "colPayName", HeaderText = "Name", FillWeight = 150, MinimumWidth = Dpi(120), ReadOnly = true });
             gridCrewPay.Columns.Add(Money("colPayBase", "Base pay"));
             gridCrewPay.Columns.Add(Money("colPayAllow", "Meal allowance"));
-            gridCrewPay.Columns.Add(Money("colPayExtra", "Extra / OT"));
-            gridCrewPay.Columns.Add(Money("colPayDeduct", "Deductions"));
+            var colExtra = Money("colPayExtra", "Extra / OT"); colExtra.Visible = false;
+            var colDeduct = Money("colPayDeduct", "Deductions"); colDeduct.Visible = false;
+            gridCrewPay.Columns.Add(colExtra);
+            gridCrewPay.Columns.Add(colDeduct);
             gridCrewPay.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "colPayNet",
-                HeaderText = "Net pay",
+                HeaderText = "Total",
                 FillWeight = 85,
                 MinimumWidth = Dpi(90),
                 ReadOnly = true,
@@ -548,7 +563,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 foreach (DataGridViewRow row in gridCrewPay.Rows)
                 {
-                    decimal net = CellMoney(row, "colPayBase") + CellMoney(row, "colPayAllow") + CellMoney(row, "colPayExtra") - CellMoney(row, "colPayDeduct");
+                    decimal net = CellMoney(row, "colPayBase") + CellMoney(row, "colPayAllow");
                     row.Cells["colPayNet"].Value = net;
                     row.Cells["colPayNet"].Style.ForeColor = net < 0 ? AppTheme.DangerText : AppTheme.TextPrimary;
                     total += net;

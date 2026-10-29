@@ -17,6 +17,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bool userAsked = e.CloseReason == CloseReason.UserClosing;
             if (userAsked && !IsLoggingOut && !IsReloading && !exitConfirmed)
             {
+                // Closed from the taskbar while minimized: bring the window back first, otherwise the question
+                // is hidden together with the minimized window and the person never sees it.
+                if (WindowState == FormWindowState.Minimized)
+                {
+                    WindowState = restoreStateBeforeMinimize;
+                    Show();
+                    Activate();
+                }
                 var choice = AskHowToClose();
                 if (choice == CloseChoice.Cancel || !CanLeaveCurrentView())
                 {
@@ -38,6 +46,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             base.OnFormClosing(e);
         }
         private bool exitConfirmed;
+        private FormWindowState restoreStateBeforeMinimize = FormWindowState.Maximized;
+        protected override void OnResize(EventArgs e)
+        {
+            if (WindowState != FormWindowState.Minimized) restoreStateBeforeMinimize = WindowState;
+            base.OnResize(e);
+        }
         private CloseChoice AskHowToClose()
         {
             int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
@@ -52,7 +66,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ClientSize = new Size(D(460), D(210)),
                 BackColor = AppTheme.Surface,
                 Font = new Font("Segoe UI", 9.5F),
-                KeyPreview = true
+                KeyPreview = true,
+                TopMost = true
             };
             try { ThemeManager.StyleWindowChrome(dlg); } catch { }
             string name = (currentUser?.FullName ?? "").Replace(" (Owner)", "").Replace(" (Admin)", "").Trim();

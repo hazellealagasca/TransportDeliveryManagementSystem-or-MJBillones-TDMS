@@ -856,6 +856,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         {
 
+            if (visible && !pnlForm.Visible && selectedDelivery == null && string.IsNullOrWhiteSpace(cbClient.Text)) BeginInvoke(new Action(CheckAndPromptDraft));
+
             tblMasterContent.SuspendLayout();
 
             // The order form is a full page of its own: it replaces the order list instead of sitting beside it.
@@ -1028,9 +1030,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-                txtDispatchNumber.Text = !string.IsNullOrEmpty(schedule.ScheduleNumber) ? schedule.ScheduleNumber : GenerateNextDispatchNumber();
-
                 cbClient.Text = schedule.ClientName;
+
+                lastAutoDispatchNumber = MJdatabase.NextDispatchNumber(schedule.ClientName);
+
+                txtDispatchNumber.Text = lastAutoDispatchNumber;
 
                 var matchedRoute = MJdatabase.FindRouteByNameOrCode(schedule.Destination);
 
@@ -1152,7 +1156,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             };
 
-            cbClient.TextChanged += (s, e) => clientStrip?.ShowFor(cbClient.Text);
+            cbClient.TextChanged += (s, e) => { clientStrip?.ShowFor(cbClient.Text); AutoFillDispatchNumber(); };
+
+            txtDispatchNumber.PlaceholderText = "Auto-filled from the client, e.g. Red Ribbon → RR0001";
 
             cbDestination.SelectedIndexChanged += (s, e) =>
             {
@@ -1275,15 +1281,45 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+        /// <summary>Client initials + running number, e.g. Red Ribbon → RR0001. Multi-drop uses the first stop's client.</summary>
+
         private string GenerateNextDispatchNumber()
 
         {
 
-            string datePart = DateTime.Today.ToString("yyyyMMdd");
+            string client = cbClient.Text.Trim();
 
-            int countToday = (allDispatches?.Count(d => d.DispatchDate.Date == DateTime.Today) ?? 0) + 1;
+            if (string.IsNullOrWhiteSpace(client) && currentStops.Count > 0) client = currentStops[0].ClientName ?? "";
 
-            return $"DSP-{datePart}-{countToday:D4}";
+            return MJdatabase.NextDispatchNumber(client);
+
+        }
+
+        private string lastAutoDispatchNumber = "";
+
+        /// <summary>Fills the dispatch # for a new order when the client is chosen, unless the user typed their own number.</summary>
+
+        private void AutoFillDispatchNumber()
+
+        {
+
+            if (isBindingForm || selectedDelivery != null || !pnlForm.Visible) return;
+
+            string cur = txtDispatchNumber.Text.Trim();
+
+            if (cur.Length > 0 && !cur.Equals(lastAutoDispatchNumber, StringComparison.OrdinalIgnoreCase)) return;
+
+            string client = cbClient.Text.Trim();
+
+            if (string.IsNullOrWhiteSpace(client) && currentStops.Count == 0) return;
+
+            string next = GenerateNextDispatchNumber();
+
+            if (next.Equals(cur, StringComparison.OrdinalIgnoreCase)) return;
+
+            lastAutoDispatchNumber = next;
+
+            txtDispatchNumber.Text = next;
 
         }
 
@@ -2804,6 +2840,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         {
 
+            if (currentStops.Count > 0 && string.IsNullOrWhiteSpace(cbClient.Text)) BeginInvoke(new Action(AutoFillDispatchNumber));
+
             lstStops.Items.Clear();
 
             for (int i = 0; i < currentStops.Count; i++)
@@ -3360,7 +3398,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 SafeStep("UpdateDestinationHint", UpdateDestinationHint);
 
-                SafeStep("CheckAndPromptDraft", CheckAndPromptDraft);
+                // The draft is offered when the order form is opened, not every time the list loads.
+
+                if (pnlForm.Visible) SafeStep("CheckAndPromptDraft", CheckAndPromptDraft);
 
             }
 
@@ -4031,13 +4071,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 string dspNum = txtDispatchNumber.Text.Trim();
 
-                if (string.IsNullOrWhiteSpace(dspNum))
+                if (string.IsNullOrWhiteSpace(dspNum) || dspNum.Equals(lastAutoDispatchNumber, StringComparison.OrdinalIgnoreCase))
 
                 {
 
+                    // Re-check at save time so two orders for the same client never get the same number.
+
                     dspNum = GenerateNextDispatchNumber();
 
+                    lastAutoDispatchNumber = dspNum;
+
+                    isBindingForm = true;
+
                     txtDispatchNumber.Text = dspNum;
+
+                    isBindingForm = false;
 
                 }
 
@@ -5182,6 +5230,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
 
+            var dr = DateFilter;
+
+            if (!dr.IsAll) query = query.Where(d => dr.Contains(d.DispatchDate));
+
             var matching = string.IsNullOrEmpty(q)
                 ? query
                 : query.Where(d =>
@@ -5208,7 +5260,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             UpdateAwaitingCompletionBadge();
 
-            lblGridHeader.Text = string.IsNullOrEmpty(q) && string.IsNullOrEmpty(currentStatusFilter)
+            if (!dr.IsAll) filterTag += $" [{dr.Describe(DatePresets.Orders)}]";
+
+            lblGridHeader.Text = string.IsNullOrEmpty(q) && string.IsNullOrEmpty(currentStatusFilter) && dr.IsAll
 
                 ? $"Delivery & Dispatch Orders ({allDispatches.Count})"
 
@@ -5903,6 +5957,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 UpdateDestinationHint();
 
+                AutoFillDispatchNumber();
+
                 ToastHelper.ShowToast(this, "Dispatch draft restored ✓", ToastType.Success);
 
             }
@@ -6013,7 +6069,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public bool HasUnsavedChanges()
         {
-            if (selectedDelivery != null) return false;
+            // Only a form that is open counts. A draft sitting in the closed form is already saved.
+
+            if (!pnlForm.Visible || selectedDelivery != null) return false;
+
             return !string.IsNullOrWhiteSpace(txtDispatchNumber.Text)
                 || !string.IsNullOrWhiteSpace(cbClient.Text)
                 || !string.IsNullOrWhiteSpace(cbDestination.Text)

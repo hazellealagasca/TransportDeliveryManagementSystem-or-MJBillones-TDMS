@@ -130,8 +130,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbRole.Font = new Font("Segoe UI", 10F);
             cbRole.Items.AddRange(new object[]
             {
-                "Dispatcher",
-                "Billing Clerk",
                 "Office Staff",
                 "Owner/Admin"
             });

@@ -227,8 +227,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.cbRole.FormattingEnabled = true;
             this.cbRole.Items.AddRange(new object[] {
             "Owner/Admin",
-            "Dispatcher",
-            "Billing Clerk",
             "Office Staff"});
             this.cbRole.Location = new System.Drawing.Point(16, 216);
             this.cbRole.Name = "cbRole";

@@ -28,6 +28,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             cbReportType.SelectedIndex = 0;
             cbStatusFilter.SelectedIndex = 0;
+            int payIdx = cbReportType.Items.IndexOf("Crew Trip Compensation & Pay Slips");
+            if (payIdx >= 0) cbReportType.Items[payIdx] = "Crew Trip Pay Records";
             cbReportType.SelectedIndexChanged += CbReportType_SelectedIndexChanged;
             LoadReportData();
             UIThemeHelper.ApplyTheme(this);
@@ -38,7 +40,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var menuActions = new ContextMenuStrip();
             menuActions.Items.Add("📊 Export Report to CSV...", null, BtnExport_Click);
             menuActions.Items.Add("🖨️ Print Report", null, BtnPrint_Click);
-            menuActions.Items.Add("📄 Print Pay Slip", null, BtnPrintPaySlip_Click);
+            menuActions.Items.Add("📄 Print Crew Pay Record", null, BtnPrintPaySlip_Click);
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             flowActions.Controls.Add(btnActions);
             RowMenu.AttachBasic(gridReport, "Report", "Report", () => BtnPrint_Click(this, EventArgs.Empty));
@@ -368,9 +370,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         var tripPay = myTrips.Select(t => MJdatabase.ResolveTripPay(c, t, recordedPay)).ToList();
                         decimal baseWages = tripPay.Sum(p => p.BasePay);
                         decimal allowances = tripPay.Sum(p => p.Allowance);
-                        decimal extras = tripPay.Sum(p => p.Extra);
-                        decimal deductions = tripPay.Sum(p => p.Deduction);
-                        decimal netPayout = baseWages + allowances + extras - deductions;
+                        decimal netPayout = baseWages + allowances;
                         totalTripsSum += tripCount;
                         totalPayoutSum += netPayout;
 
@@ -384,14 +384,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             Total_Wages = $"PHP {baseWages:N2}",
                             Food_Allowance = $"PHP {c.FoodAllowance:N2}",
                             Total_Allowance = $"PHP {allowances:N2}",
-                            Extra_OT = $"PHP {extras:N2}",
-                            Deductions = $"PHP {deductions:N2}",
-                            Net_Compensation = $"PHP {netPayout:N2}"
+                            Total_Recorded = $"PHP {netPayout:N2}"
                         });
                     }
 
                     gridReport.DataSource = crewPayList;
-                    lblSummary.Text = $"👥 Crew Personnel: {allCrews.Count:N0}  |  🚚 Total Hauling Trips: {totalTripsSum:N0}  |  💵 Total Net Compensation Payable: PHP {totalPayoutSum:N2}";
+                    lblSummary.Text = $"👥 Crew Personnel: {allCrews.Count:N0}  |  🚚 Total Hauling Trips: {totalTripsSum:N0}  |  💵 Total Crew Pay Recorded: PHP {totalPayoutSum:N2}";
                     break;
 
                 case 9:
@@ -500,7 +498,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (selectedCrew == null)
                 {
-                    MessageBox.Show("Please select a crew member row in the 'Crew Trip Compensation & Pay Slips' report first.", "Select Crew Member", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("Please select a crew member row in the 'Crew Trip Pay Records' report first.", "Select Crew Member", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
@@ -519,7 +517,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to print pay slip: {ex.Message}", "Print Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Failed to print crew pay record: {ex.Message}", "Print Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

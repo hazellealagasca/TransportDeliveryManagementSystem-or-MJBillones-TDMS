@@ -89,7 +89,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             SuspendLayout();
             Padding = new Padding(D(4), D(6), D(4), D(4));
-            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, BackColor = Color.Transparent, Margin = new Padding(0), Padding = new Padding(0) };
+            var root = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 1, RowCount = 5, BackColor = Color.Transparent, Margin = new Padding(0), Padding = new Padding(0) };
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, D(14)));
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, D(96)));
@@ -100,37 +100,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             header.Dock = DockStyle.Fill;
             if (CanOps) header.AddActions(PageKit.Action("＋  New loading order", "primary", (s, e) => GoOps("Dispatch")));
             header.AddActions(PageKit.Action("↻  Refresh", "secondary", (s, e) => LoadDashboardData()));
-            var seg = new FlowLayoutPanel { AutoSize = true, WrapContents = false, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(D(8), 0, 0, 0), BackColor = Color.Transparent };
-            foreach (var key in new[] { "Today", "Tomorrow", "This week", "This month" })
-            {
-                var b = new Button
-                {
-                    Text = key,
-                    AutoSize = true,
-                    AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                    MinimumSize = new Size(D(70), D(36)),
-                    FlatStyle = FlatStyle.Flat,
-                    Font = new Font("Segoe UI Semibold", 9F),
-                    Cursor = Cursors.Hand,
-                    Margin = new Padding(0, 0, D(4), 0),
-                    UseMnemonic = false
-                };
-                b.Click += (s, e) => { scope = key; StyleScope(); Render(); };
-                scopeButtons[key] = b;
-                seg.Controls.Add(b);
-            }
-            header.Actions.Controls.Add(seg);
+            // One date chip: quick periods, a specific date or a range, and ‹ › to step to the previous / next period.
+            dateChip = new DateFilterChip(DatePresets.Dashboard, "Today") { Margin = new Padding(D(8), D(2), 0, 0) };
+            new ToolTip().SetToolTip(dateChip, "Pick the period to show. Use ‹ › for the previous or next day, week or month.");
+            dateChip.RangeChanged += (s, e) => { scope = dateChip.Range.Describe(DatePresets.Dashboard); Render(); };
+            header.Actions.Controls.Add(dateChip);
             lblUpdated = new Label { AutoSize = true, Font = new Font("Segoe UI", 8.5F), ForeColor = AppTheme.TextMuted, Margin = new Padding(D(8), D(10), 0, 0), UseMnemonic = false };
             header.Actions.Controls.Add(lblUpdated);
             StyleScope();
             root.Controls.Add(header, 0, 0);
             // Summary tiles
             tiles = new TileStrip { Dock = DockStyle.Fill };
+            // Only two summary tiles: dispatches in the chosen period, and crew available now (drivers | aides in one box).
+            // Crates, trucks-ready and outstanding-balance tiles were removed; the objects stay so the refresh code is unchanged.
             tDispatch = tiles.Add(new StatTile("Dispatches", AppTheme.Info) { NavigateOnClick = CanOps });
-            tCrates = tiles.Add(new StatTile("Crates to deliver", AppTheme.Accent) { NavigateOnClick = CanOps });
-            tTrucks = tiles.Add(new StatTile("Trucks ready", AppTheme.Success) { NavigateOnClick = CanRes });
-            tCrew = tiles.Add(new StatTile("Drivers free", AppTheme.Warning) { NavigateOnClick = CanRes });
-            tFifth = tiles.Add(new StatTile(CanFin ? "Outstanding balance" : "Trip reports to file", CanFin ? AppTheme.Danger : AppTheme.Info) { NavigateOnClick = true });
+            tCrew = tiles.Add(new StatTile("Available crew", AppTheme.Warning) { NavigateOnClick = CanRes, Label1 = "drivers", Label2 = "aides" });
+            tCrates = new StatTile("Crates to deliver", AppTheme.Accent);
+            tTrucks = new StatTile("Trucks ready", AppTheme.Success);
+            tFifth = new StatTile("Outstanding balance", AppTheme.Danger);
             tDispatch.Click += (s, e) => { if (CanOps) GoOps("Dispatch"); };
             tCrates.Click += (s, e) => { if (CanOps) GoOps("Dispatch"); };
             tTrucks.Click += (s, e) => { if (CanRes) MainForm.Instance?.NavigateToResources("Trucks"); };
@@ -146,7 +133,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             body.Controls.Add(BuildLeftColumn(), 0, 0);
             body.Controls.Add(BuildRightColumn(), 2, 0);
             root.Controls.Add(body, 0, 4);
-            Controls.Add(root);
+            // The whole page scrolls as one: header, tiles and both columns move together.
+            pageRoot = root;
+            scroller = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.Transparent, Margin = new Padding(0), Padding = new Padding(0, 0, D(6), 0) };
+            scroller.Controls.Add(root);
+            scroller.Resize += (s, e) => FitPage();
+            Controls.Add(scroller);
             ResumeLayout(true);
             HandleCreated += (s, e) =>
             {
@@ -154,7 +146,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 root.RowStyles[2].Height = D(96);
                 root.RowStyles[3].Height = D(14);
                 body.ColumnStyles[1].Width = D(14);
+                FitPage();
             };
+        }
+        private Panel scroller = null!;
+        private TableLayoutPanel pageRoot = null!;
+        private Panel rightCol = null!;
+        private Control schedCardRef = null!;
+        private bool fitting;
+        /// <summary>Sizes the page to its content (at least the window height) so one scrollbar moves everything.</summary>
+        private void FitPage()
+        {
+            if (fitting || scroller == null || pageRoot == null || attentionCard == null || rightCol == null) return;
+            fitting = true;
+            try
+            {
+                int top = header.Height + D(14) + D(96) + D(14) + pageRoot.Padding.Vertical;
+                int left = attentionCard.Height + D(14) + D(460);
+                int right = 0;
+                foreach (Control c in rightCol.Controls) if (c.Visible) right += c.Height;
+                right += rightCol.Padding.Vertical;
+                int view = scroller.ClientSize.Height;
+                int want = Math.Max(view, top + Math.Max(left, right) + D(6));
+                int width = scroller.ClientSize.Width - scroller.Padding.Horizontal;
+                if (pageRoot.Height != want) pageRoot.Height = want;
+                if (want > view) width = Math.Max(1, scroller.ClientSize.Width - scroller.Padding.Horizontal);
+                if (pageRoot.Width != width && width > 0) pageRoot.Width = width;
+            }
+            finally { fitting = false; }
         }
 
         private Control BuildLeftColumn()
@@ -164,6 +183,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             attention = new ActionList { Dock = DockStyle.Top };
             attentionCard = Card("Needs attention", "What to do next, most urgent first. Click a row to go straight there.", attention, out var attnHead);
             attentionCard.Dock = DockStyle.Top;
+            attentionCard.SizeChanged += (s, e) => FitPage();
             lblAttentionCount = new Label { AutoSize = true, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextMuted, Anchor = AnchorStyles.Right, UseMnemonic = false };
             attnHead.Controls.Add(lblAttentionCount, 1, 0);
 
@@ -208,6 +228,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             schedBody.Controls.Add(lblScheduleFoot);
             schedBody.Controls.Add(bar);
             var schedCard = Card("Schedule", "", schedBody, out var schedHead);
+            schedCardRef = schedCard;
             lblScheduleTitle = (Label)schedHead.GetControlFromPosition(0, 0)!;
             schedCard.Dock = DockStyle.Fill;
             var gap = new Panel { Dock = DockStyle.Top, Height = D(14), BackColor = Color.Transparent };
@@ -219,11 +240,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private Control BuildRightColumn()
         {
-            var col = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.Transparent, Padding = new Padding(0, 0, D(2), 0) };
+            var col = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent, Padding = new Padding(0, 0, D(2), 0) };
+            rightCol = col;
             var stack = new List<Control>();
             // Fleet
             fleetBar = new FleetBar { Dock = DockStyle.Top, Height = D(92) };
-            var fleetCard = Card("Fleet right now", "Trucks by what they're doing.", fleetBar, out _, "Trucks ›", CanRes ? () => MainForm.Instance?.NavigateToResources("Trucks") : null);
+            var fleetCard = Card("Trucks available", "Trucks free to dispatch now, and what the rest are doing.", fleetBar, out _, "Trucks ›", CanRes ? () => MainForm.Instance?.NavigateToResources("Trucks") : null);
             stack.Add(fleetCard);
             // Money (finance roles)
             if (CanFin)
@@ -237,7 +259,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 grid.Controls.Add(Figure("Overdue", out lblMoneyOverdue), 1, 0);
                 grid.Controls.Add(Figure("Collected this month", out lblMoneyCollected), 0, 1);
                 grid.Controls.Add(Figure("Draft invoices", out lblMoneyDraft), 1, 1);
-                moneyCard = Card("Money", "Invoices and payments.", grid, out _, "Billing ›", () => MainForm.Instance?.NavigateToFinance("Billing"));
+                moneyCard = Card("Billing", "Invoices and payments.", grid, out _, "Open ›", () => MainForm.Instance?.NavigateToFinance("Billing"));
                 stack.Add(moneyCard);
             }
             // Last 7 days
@@ -248,7 +270,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             weekChart.Dock = DockStyle.Fill;
             weekBody.Controls.Add(weekChart);
             weekBody.Controls.Add(lblWeekNote);
-            stack.Add(Card("Last 7 days", "Dispatches completed per day.", weekBody, out _, "Completed ›", CanOps ? () => GoOps("Completed") : null));
+            // "Last 7 days" chart is no longer shown on the dashboard (kept off-screen so the refresh code stays simple).
             // "Busiest clients this month" is no longer shown on the dashboard; the list is kept off-screen so refresh code stays simple.
             topClients = new RankList { Dock = DockStyle.Top, Height = D(180), Visible = false };
             for (int i = stack.Count - 1; i >= 0; i--)
@@ -256,6 +278,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 stack[i].Dock = DockStyle.Top;
                 if (i < stack.Count - 1) col.Controls.Add(new Panel { Dock = DockStyle.Top, Height = D(14), BackColor = Color.Transparent });
                 col.Controls.Add(stack[i]);
+                stack[i].SizeChanged += (s, e) => FitPage();
             }
             // Added last-to-first, so the first card (highest index) docks at the top.
             return col;
@@ -315,7 +338,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void StyleScope()
         {
-            foreach (var kv in scopeButtons) Seg(kv.Value, kv.Key == scope);
         }
         private void StyleTabs()
         {
@@ -377,16 +399,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             finally { loading = false; }
         }
+        private DateFilterChip? dateChip;
         private (DateTime from, DateTime to) ScopeRange()
         {
-            var t = DateTime.Today;
-            return scope switch
-            {
-                "Tomorrow" => (t.AddDays(1), t.AddDays(1)),
-                "This week" => (t.AddDays(-(((int)t.DayOfWeek + 6) % 7)), t.AddDays(-(((int)t.DayOfWeek + 6) % 7)).AddDays(6)),
-                "This month" => (new DateTime(t.Year, t.Month, 1), new DateTime(t.Year, t.Month, 1).AddMonths(1).AddDays(-1)),
-                _ => (t, t)
-            };
+            var r = dateChip?.Range ?? DateRange.Preset("Today");
+            return (r.From ?? DateTime.Today, r.To ?? DateTime.Today);
+        }
+        /// <summary>"today", "this week", "on Oct 30", "Oct 1 – 15" for tile captions.</summary>
+        private string WhenText()
+        {
+            var r = dateChip?.Range ?? DateRange.Preset("Today");
+            foreach (var p in DatePresets.Dashboard) if (DateRange.Preset(p).SameAs(r)) return p.ToLowerInvariant();
+            string d = r.Describe();
+            return r.From == r.To ? "on " + d : d;
         }
         private static bool Active(string? s) => RowMenu.Is(s, "Scheduled", "Pending", "In Transit", "Rescheduled", "Dispatched", "Delayed");
         private static bool Done(string? s) => DispatchGate.IsCompleted(s);
@@ -404,13 +429,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var (from, to) = ScopeRange();
             var dels = data.Deliveries;
             var inScope = dels.Where(d => d.DispatchDate.Date >= from && d.DispatchDate.Date <= to && !DispatchGate.IsCancelled(d.Status)).ToList();
-            string when = scope switch { "Today" => "today", "Tomorrow" => "tomorrow", "This week" => "this week", _ => "this month" };
+            string when = WhenText();
             // Tiles
             tDispatch.Caption = $"Dispatches {when}";
             tDispatch.Value = inScope.Count.ToString("N0");
             tDispatch.Note = $"{inScope.Count(d => RowMenu.Is(d.Status, "In Transit", "Delayed"))} on the road · {inScope.Count(d => Done(d.Status))} delivered · {inScope.Count(d => RowMenu.Is(d.Status, "Scheduled", "Pending", "Rescheduled"))} waiting";
             int crates = inScope.Sum(d => d.TotalCrates > 0 ? d.TotalCrates : d.GCrate + d.ECrate);
-            tCrates.Caption = scope == "Today" || scope == "Tomorrow" ? $"Crates {when}" : $"Crates {when}";
+            tCrates.Caption = $"Crates {when}";
             tCrates.Value = crates.ToString("N0");
             tCrates.Note = $"G {inScope.Sum(d => d.GCrate):N0}  ·  E {inScope.Sum(d => d.ECrate):N0}";
             var busyTrucks = dels.Where(d => Active(d.Status)).Select(d => d.TruckId).Where(i => i > 0).ToHashSet();
@@ -425,9 +450,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var drivers = data.Crews.Where(c => c.IsActive && IsDriver(c)).ToList();
             var aides = data.Crews.Where(c => c.IsActive && !IsDriver(c)).ToList();
             int freeDrivers = drivers.Count(c => !busyCrew.Contains(c.Id));
-            tCrew.Value = $"{freeDrivers} of {drivers.Count}";
-            tCrew.Note = $"{aides.Count(c => !busyCrew.Contains(c.Id))} of {aides.Count} aides free";
+            int freeAides = aides.Count(c => !busyCrew.Contains(c.Id));
+            tCrew.Caption = "Available crew";
+            tCrew.Value = freeDrivers.ToString("N0");
+            tCrew.Note = $"of {drivers.Count} drivers · {drivers.Count - freeDrivers} on a trip";
             tCrew.ValueColor = freeDrivers == 0 && drivers.Count > 0 ? AppTheme.DangerText : null;
+            tCrew.Value2 = freeAides.ToString("N0");
+            tCrew.Note2 = $"of {aides.Count} aides · {aides.Count - freeAides} on a trip";
+            tCrew.ValueColor2 = freeAides == 0 && aides.Count > 0 ? AppTheme.DangerText : null;
             var paidByInvoice = data.Receipts.GroupBy(r => r.InvoiceId).ToDictionary(g => g.Key, g => g.Sum(r => r.AmountPaid));
             decimal Balance(Invoice i) => Math.Max(0, i.NetAmount - (paidByInvoice.TryGetValue(i.Id, out var p) ? p : 0));
             var openInv = data.Invoices.Where(i => RowMenu.Is(i.Status, "Unpaid", "Partial", "Overdue")).ToList();
@@ -504,11 +534,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 items.Add(new ActionList.Item(AppTheme.Warning, $"{data.PendingUsers} account(s) waiting for approval", "New staff sign-ups need an administrator", "Review", () => MainForm.Instance?.OpenUserAccounts()));
             attention.SetItems(items, 6);
             foreach (var f in fitters) f();
+            FitPage();
             lblAttentionCount.Text = items.Count == 0 ? "" : $"{items.Count} item{(items.Count == 1 ? "" : "s")}";
             // Fleet
             fleetBar.SetSegments(new List<(string, int, Color)>
             {
-                ("Ready", ready, AppTheme.Success),
+                ("Available", ready, AppTheme.Success),
                 ("On dispatches", data.Trucks.Count(t => busyTrucks.Contains(t.Id)), AppTheme.Info),
                 ("Maintenance", maint, AppTheme.Warning),
                 ("Inactive", data.Trucks.Count(t => RowMenu.Is(t.Status, "Inactive")), AppTheme.BorderStrong)
@@ -552,7 +583,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             var (from, to) = ScopeRange();
             string q = txtQuickSearch.Text.Trim().ToLowerInvariant();
-            string when = scope switch { "Today" => "today", "Tomorrow" => "tomorrow", "This week" => "this week", _ => "this month" };
+            string when = WhenText();
             gridOperations.SuspendLayout();
             gridOperations.Rows.Clear();
             gridOperations.Columns.Clear();

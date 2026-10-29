@@ -17,6 +17,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private DataGridView gridCompleted = null!;
         private TextBox txtSearch = null!;
         private ComboBox cbDateFilter = null!;
+        private int Dz(int v) => (int)Math.Round(v * DeviceDpi / 96f);
+        private DateFilterChip dateChip = null!;
+        private ChoiceChip sortChip = null!;
+        private static readonly string[] CompletedSorts = { "Newest first", "Oldest first", "Client A–Z", "Most crates first" };
         private Label lblTotalTrips = null!;
         private Label lblGridCount = null!;
         public Action<int, string>? OnNavigateToIncidentRequested;
@@ -48,9 +52,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 BackColor = Pal.C(248, 250, 252),
                 Padding = new Padding(16)
             };
-            pnlMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 55F));
-            pnlMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 68F));
-            pnlMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 86F));
+            pnlMain.RowStyles.Add(new RowStyle(SizeType.Absolute, Dz(58)));
+            pnlMain.RowStyles.Add(new RowStyle(SizeType.Absolute, Dz(72)));
+            pnlMain.RowStyles.Add(new RowStyle(SizeType.Absolute, Dz(104)));
             pnlMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             var pnlHeader = new Panel
@@ -70,7 +74,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var lblSubtitle = new Label
             {
-                Text = "Interactive audit log for fulfilled deliveries, route completions, and end-to-end dossier printing.",
+                Text = "Every delivered trip. Select a row, then bill it, print it or open its trip report.",
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
                 ForeColor = Pal.C(100, 116, 139),
                 AutoSize = true,
@@ -97,6 +101,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlHeader.Controls.Add(lblSubtitle);
             pnlHeader.Controls.Add(btnRefresh);
 
+            void PlaceSub() { lblSubtitle.Top = lblTitle.Bottom + 1; }
+            lblTitle.SizeChanged += (s, e) => PlaceSub();
+            lblTitle.HandleCreated += (s, e) => PlaceSub();
             var pnlKpis = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -119,7 +126,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var pnlSearchRow = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 32
+                Height = Dz(42)
             };
 
             var flowFilter = new FlowLayoutPanel
@@ -162,14 +169,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 1, 8, 0)
             };
             btnClearFilter.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
+            dateChip = new DateFilterChip(DatePresets.History, "All dates") { Margin = new Padding(0, 0, 8, 0) };
+            dateChip.RangeChanged += (s, e) => ApplyFilter();
+            sortChip = new ChoiceChip("Sort", CompletedSorts, "⇅") { Margin = new Padding(0, 0, 8, 0) };
+            sortChip.SelectionChanged += (s, e) => ApplyFilter();
             btnClearFilter.Click += (s, e) =>
             {
                 txtSearch.Clear();
                 cbDateFilter.SelectedIndex = 0;
+                dateChip.Range = DateRange.All;
+                sortChip.SelectedIndex = 0;
             };
 
+            cbDateFilter.Visible = false;
             flowFilter.Controls.Add(txtSearch);
-            flowFilter.Controls.Add(cbDateFilter);
+            flowFilter.Controls.Add(dateChip);
+            flowFilter.Controls.Add(sortChip);
             flowFilter.Controls.Add(btnClearFilter);
 
             pnlSearchRow.Controls.Add(flowFilter);
@@ -177,7 +192,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var flowActions = new FlowLayoutPanel
             {
                 Dock = DockStyle.Bottom,
-                Height = 32,
+                Height = Dz(38),
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
                 Margin = new Padding(0, 4, 0, 0)
@@ -579,25 +594,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     (!string.IsNullOrEmpty(d.LoadingScheduleInfo) && d.LoadingScheduleInfo.ToLowerInvariant().Contains(q)));
             }
 
-            if (dateFilter == "Today")
+            var range = dateChip?.Range ?? DateRange.All;
+            if (!range.IsAll) filtered = filtered.Where(d => range.Contains(d.DispatchDate));
+            filtered = (sortChip?.SelectedIndex ?? 0) switch
             {
-                filtered = filtered.Where(d => d.DispatchDate.Date == now);
-            }
-            else if (dateFilter == "Last 7 Days")
-            {
-                DateTime cutoff = now.AddDays(-7);
-                filtered = filtered.Where(d => d.DispatchDate.Date >= cutoff);
-            }
-            else if (dateFilter == "This Month")
-            {
-                filtered = filtered.Where(d => d.DispatchDate.Year == now.Year && d.DispatchDate.Month == now.Month);
-            }
-            else if (dateFilter == "Last 30 Days")
-            {
-                DateTime cutoff = now.AddDays(-30);
-                filtered = filtered.Where(d => d.DispatchDate.Date >= cutoff);
-            }
-
+                1 => filtered.OrderBy(d => d.DispatchDate).ThenBy(d => d.Id),
+                2 => filtered.OrderBy(d => d.ClientName).ThenByDescending(d => d.DispatchDate),
+                3 => filtered.OrderByDescending(d => d.TotalCrates).ThenByDescending(d => d.DispatchDate),
+                _ => filtered.OrderByDescending(d => d.DispatchDate).ThenByDescending(d => d.Id)
+            };
             filteredDeliveries = filtered.ToList();
             gridCompleted.DataSource = filteredDeliveries;
 

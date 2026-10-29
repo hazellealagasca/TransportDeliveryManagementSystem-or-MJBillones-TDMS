@@ -45,8 +45,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private ComboBox cbTruck = null!;
         private ComboBox cbDriver = null!;
-        private ComboBox cbAide = null!;
-
+        private CheckedListBox clbAides = null!;
+        private ComboBox cbPayment = null!;
+        private static readonly string[] PaymentModes = { "With trip report", "With SOA", "With Service Invoice", "With collection" };
         private Button btnSave = null!;
         private Button btnUpdate = null!;
         private Button btnClear = null!;
@@ -107,7 +108,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             lblSubtitle = new Label
             {
-                Text = "Direct on-demand delivery configuration, resource assignment, and itemized multi-stop routing",
+                Text = "An on-demand trip for non-crate or special cargo: stops, truck, driver, aides and payment.",
                 Font = new Font("Segoe UI", 8.5F),
                 ForeColor = Pal.C(148, 163, 184),
                 AutoSize = true,
@@ -123,7 +124,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             lblFlow = new Label
             {
-                Text = "Create Special Trip  ➔  Type Date  ➔  Assign Truck & Driver  ➔  Assign Route & Items  ➔  Complete -> Save to History",
+                Text = "1 Company & date  ➔  2 Stops  ➔  3 Truck, driver & aides  ➔  4 Status & payment  ➔  Save",
                 Font = new Font("Segoe UI", 8F, FontStyle.Bold),
                 ForeColor = Pal.C(224, 242, 254),
                 AutoSize = true,
@@ -135,6 +136,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlHeader.Controls.Add(lblSubtitle);
             pnlHeader.Controls.Add(pnlBreadcrumb);
 
+            // Stack title, subtitle and steps at any text size (they overlapped on larger displays).
+            void PlaceHeader()
+            {
+                lblSubtitle.Top = lblTitle.Bottom + 1;
+                pnlBreadcrumb.Top = lblSubtitle.Bottom + 4;
+                pnlBreadcrumb.Height = lblFlow.Height + 2;
+                pnlBreadcrumb.Width = Math.Max(pnlBreadcrumb.Width, lblFlow.Width + 4);
+                pnlHeader.Height = pnlBreadcrumb.Bottom + 10;
+            }
+            lblTitle.SizeChanged += (s, e) => PlaceHeader();
+            lblFlow.SizeChanged += (s, e) => PlaceHeader();
+            pnlHeader.HandleCreated += (s, e) => PlaceHeader();
             Panel pnlFooter = new Panel
             {
                 Dock = DockStyle.Bottom,
@@ -407,7 +420,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Top,
                 ColumnCount = 2,
                 RowCount = 1,
-                Height = 240,
+                Height = 300,
                 Padding = new Padding(0, 10, 0, 0)
             };
             tblBottomSections.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -420,8 +433,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbServiceType.Items.AddRange(new object[] { "Dedicated / Special Delivery", "Non-Crate / Specialized Cargo", "Bulk / Boxed Goods", "Equipment / Oversized Cargo", "Fragile / High-Value Cargo", "Hotshot / Urgent Delivery", "Inter-Branch Transfer", "Event / Urgent Dispatch", "Return Trip" });
             cbServiceType.SelectedIndex = 0;
 
-            Label lblStat = new Label { Text = "Status", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Location = new Point(0, 55), AutoSize = true };
-            cbStatus = new ComboBox { Location = new Point(0, 75), Size = new Size(420, 28), DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F) };
+            Label lblStat = new Label { Text = "Status", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Location = new Point(0, 0), AutoSize = true };
+            cbStatus = new ComboBox { Location = new Point(0, 20), Size = new Size(420, 28), DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F) };
             cbStatus.Items.AddRange(new object[] { "Pending", "In-Transit", "Completed", "Cancelled" });
             cbStatus.SelectedIndex = 0;
 
@@ -438,16 +451,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             chkWithSOA = new CheckBox { Text = "With SOA", Font = new Font("Segoe UI", 9F), ForeColor = Pal.C(51, 65, 85), Location = new Point(12, 35), AutoSize = true };
             chkWithInvoice = new CheckBox { Text = "With Service Invoice", Font = new Font("Segoe UI", 9F), ForeColor = Pal.C(51, 65, 85), Location = new Point(12, 60), AutoSize = true };
             chkWithCollection = new CheckBox { Text = "With collection", Font = new Font("Segoe UI", 9F), ForeColor = Pal.C(51, 65, 85), Location = new Point(12, 85), AutoSize = true };
-            pnlPaymentBox.Controls.Add(chkPaymentWithReport);
-            pnlPaymentBox.Controls.Add(chkWithSOA);
-            pnlPaymentBox.Controls.Add(chkWithInvoice);
-            pnlPaymentBox.Controls.Add(chkWithCollection);
-
-            pnlLeftBlock.Controls.Add(lblSvc);
-            pnlLeftBlock.Controls.Add(cbServiceType);
+            // Mode of payment is one choice from a dropdown (the old tick boxes are kept off-screen and follow the dropdown).
+            // Service Type is no longer asked; existing trips keep the value they had.
+            Label lblPay = new Label { Text = "Mode of Payment", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Location = new Point(0, 65), AutoSize = true };
+            cbPayment = new ComboBox { Location = new Point(0, 85), Size = new Size(420, 28), DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F) };
+            cbPayment.Items.AddRange(PaymentModes.Cast<object>().ToArray());
+            cbPayment.SelectedIndex = 0;
+            pnlPaymentBox.Dispose();
+            lblSvc.Dispose();
             pnlLeftBlock.Controls.Add(lblStat);
             pnlLeftBlock.Controls.Add(cbStatus);
-            pnlLeftBlock.Controls.Add(pnlPaymentBox);
+            pnlLeftBlock.Controls.Add(lblPay);
+            pnlLeftBlock.Controls.Add(cbPayment);
             tblBottomSections.Controls.Add(pnlLeftBlock, 0, 0);
 
             Panel pnlRightBlock = new Panel { Dock = DockStyle.Fill, Margin = new Padding(10, 0, 0, 0) };
@@ -458,15 +473,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Label lblDrv = new Label { Text = "Assign Driver", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Location = new Point(0, 65), AutoSize = true };
             cbDriver = new ComboBox { Location = new Point(0, 85), Size = new Size(420, 28), DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F) };
 
-            Label lblAid = new Label { Text = "Assign Aide", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Location = new Point(0, 130), AutoSize = true };
-            cbAide = new ComboBox { Location = new Point(0, 150), Size = new Size(420, 28), DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F) };
-
+            Label lblAid = new Label { Text = "Assign Aides  (tick one or more)", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Location = new Point(0, 130), AutoSize = true };
+            clbAides = new CheckedListBox { Location = new Point(0, 150), Size = new Size(420, 140), CheckOnClick = true, IntegralHeight = false, Font = new Font("Segoe UI", 9.5F), BorderStyle = BorderStyle.FixedSingle };
+            clbAides.ItemCheck += (s, e) => BeginInvoke(new Action(UpdateAideLabel));
+            lblAidesRef = lblAid;
             pnlRightBlock.Controls.Add(lblTrk);
             pnlRightBlock.Controls.Add(cbTruck);
             pnlRightBlock.Controls.Add(lblDrv);
             pnlRightBlock.Controls.Add(cbDriver);
             pnlRightBlock.Controls.Add(lblAid);
-            pnlRightBlock.Controls.Add(cbAide);
+            pnlRightBlock.Controls.Add(clbAides);
             tblBottomSections.Controls.Add(pnlRightBlock, 1, 0);
 
             pnlCard.Controls.Add(tblBottomSections);
@@ -648,13 +664,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 cbDriver.SelectedIndex = 0;
 
-                cbAide.Items.Clear();
-                cbAide.Items.Add("-- Select Aide / Helper --");
-                foreach (var a in availableAides)
-                {
-                    cbAide.Items.Add(a.FullName);
-                }
-                cbAide.SelectedIndex = 0;
+                clbAides.Items.Clear();
+                foreach (var a in availableAides) clbAides.Items.Add(a.FullName);
+                UpdateAideLabel();
             }
             catch (Exception ex)
             {
@@ -697,6 +709,42 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+        private Label? lblAidesRef;
+        private List<Crew> SelectedAides()
+        {
+            var list = new List<Crew>();
+            foreach (int i in clbAides.CheckedIndices) if (i >= 0 && i < availableAides.Count) list.Add(availableAides[i]);
+            return list;
+        }
+        private void SetSelectedAides(List<int> ids, string names)
+        {
+            var nameSet = new HashSet<string>((names ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(n => n.Trim()), StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < clbAides.Items.Count && i < availableAides.Count; i++)
+                clbAides.SetItemChecked(i, ids.Contains(availableAides[i].Id) || (ids.Count == 0 && nameSet.Contains(availableAides[i].FullName)));
+            UpdateAideLabel();
+        }
+        private void ApplySelectedAides(SpecialTrip trip)
+        {
+            var aides = SelectedAides();
+            trip.AideId = aides.Count > 0 ? aides[0].Id : 0;
+            trip.AideName = string.Join(", ", aides.Select(a => a.FullName));
+            trip.AideIds = string.Join(",", aides.Select(a => a.Id));
+        }
+        private void UpdateAideLabel()
+        {
+            if (lblAidesRef == null || clbAides == null) return;
+            int n = clbAides.CheckedItems.Count;
+            lblAidesRef.Text = n == 0 ? "Assign Aides  (tick one or more)" : $"Assign Aides  ·  {n} selected";
+        }
+        /// <summary>Copies the Mode of Payment dropdown into the stored flags (exactly one is on).</summary>
+        private void SyncPaymentChecks()
+        {
+            int p = Math.Max(0, cbPayment.SelectedIndex);
+            chkPaymentWithReport.Checked = p == 0;
+            chkWithSOA.Checked = p == 1;
+            chkWithInvoice.Checked = p == 2;
+            chkWithCollection.Checked = p == 3;
+        }
         private void ResetFormForNew()
         {
             currentTripId = 0;
@@ -716,8 +764,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             cbTruck.SelectedIndex = 0;
             cbDriver.SelectedIndex = 0;
-            cbAide.SelectedIndex = 0;
-
+            SetSelectedAides(new List<int>(), "");
+            cbPayment.SelectedIndex = 0;
             lblTableTitle.Text = "Delivery Details";
             lblTableDesc.Text = "add a line or row and column";
             UpdateTableTitleAndDescPositions();
@@ -778,13 +826,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 trip.DriverId = drv.Id;
                 trip.DriverName = drv.FullName;
             }
-            if (cbAide.SelectedIndex > 0 && cbAide.SelectedIndex - 1 < availableAides.Count)
-            {
-                var aid = availableAides[cbAide.SelectedIndex - 1];
-                trip.AideId = aid.Id;
-                trip.AideName = aid.FullName;
-            }
-
+            ApplySelectedAides(trip);
             using (var dlg = new RescheduleDeliveryDialog(trip))
             {
                 if (dlg.ShowDialog(this) == DialogResult.OK)
@@ -891,6 +933,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             chkWithInvoice.Checked = loadedTrip.WithServiceInvoice;
             chkWithCollection.Checked = loadedTrip.WithCollection;
 
+            cbPayment.SelectedIndex = loadedTrip.WithCollection ? 3 : loadedTrip.WithServiceInvoice ? 2 : loadedTrip.WithSOA ? 1 : 0;
             if (loadedTrip.TruckId > 0 && !string.IsNullOrWhiteSpace(loadedTrip.TruckPlate))
             {
                 for (int i = 0; i < cbTruck.Items.Count; i++)
@@ -915,18 +958,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
 
-            if (!string.IsNullOrWhiteSpace(loadedTrip.AideName))
-            {
-                for (int i = 0; i < cbAide.Items.Count; i++)
-                {
-                    if (cbAide.Items[i]?.ToString()?.Equals(loadedTrip.AideName, StringComparison.OrdinalIgnoreCase) == true)
-                    {
-                        cbAide.SelectedIndex = i;
-                        break;
-                    }
-                }
-            }
-
+            SetSelectedAides(loadedTrip.AllAideIds, loadedTrip.AideName);
             lblTableTitle.Text = "Delivery Details";
             lblTableDesc.Text = "add a line or row and column";
             currentColumns = SpecialTripTableEditorDialog.GetDefaultColumns();
@@ -1093,13 +1125,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var early = MessageBox.Show($"This trip is dated {dtpDispatchDate.Value:MMMM d, yyyy}, which is still ahead. Save it as Completed anyway?", "Trip is in the future", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
                 if (early != DialogResult.Yes) return;
             }
-            if (cbDriver.SelectedIndex > 0 && cbAide.SelectedIndex > 0 && cbDriver.SelectedIndex - 1 < availableDrivers.Count && cbAide.SelectedIndex - 1 < availableAides.Count
-                && availableDrivers[cbDriver.SelectedIndex - 1].Id == availableAides[cbAide.SelectedIndex - 1].Id)
+            if (cbDriver.SelectedIndex > 0 && cbDriver.SelectedIndex - 1 < availableDrivers.Count
+                && SelectedAides().Any(a => a.Id == availableDrivers[cbDriver.SelectedIndex - 1].Id))
             {
-                MessageBox.Show("The same person can't be both the driver and the aide.", "Check the crew", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                cbAide.Focus();
+                MessageBox.Show("The same person can't be both the driver and an aide.", "Check the crew", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                clbAides.Focus();
                 return;
             }
+            SyncPaymentChecks();
             SpecialTrip trip = new SpecialTrip
             {
                 Id = isNew ? 0 : currentTripId,
@@ -1108,7 +1141,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Company = company,
                 DepartureTime = cbDepartureTime.Text.Trim(),
                 Address = txtAddress.Text.Trim(),
-                ServiceType = cbServiceType.Text.Trim(),
+                ServiceType = loadedTrip != null && !string.IsNullOrWhiteSpace(loadedTrip.ServiceType) ? loadedTrip.ServiceType : cbServiceType.Text.Trim(),
                 Status = cbStatus.Text.Trim(),
                 ModeOfPaymentWithReport = chkPaymentWithReport.Checked,
                 WithSOA = chkWithSOA.Checked,
@@ -1133,13 +1166,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 trip.DriverName = drv.FullName;
             }
 
-            if (cbAide.SelectedIndex > 0 && cbAide.SelectedIndex - 1 < availableAides.Count)
-            {
-                var aid = availableAides[cbAide.SelectedIndex - 1];
-                trip.AideId = aid.Id;
-                trip.AideName = aid.FullName;
-            }
-
+            ApplySelectedAides(trip);
             trip.Stops = new List<SpecialTripStop>();
             var allRows = CaptureGridRows();
             int seq = 1;

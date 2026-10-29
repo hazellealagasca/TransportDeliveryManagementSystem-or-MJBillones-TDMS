@@ -12,7 +12,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     /// <summary>Sort and status pickers for the dispatch list. Newest first by default.</summary>
     public partial class DispatchManagementView
     {
-        private ComboBox? cbSortBy, cbStatusPick;
+        private ChoiceChip? cbSortBy, cbStatusPick;
+        private DateFilterChip? dateChip;
+        private DateRange DateFilter => dateChip?.Range ?? DateRange.All;
         private bool syncingPickers;
         private static readonly (string Label, string Column, bool Asc)[] SortOptions =
         {
@@ -37,24 +39,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             currentSortColumn = "Date";
             isSortAscending = false;
-            int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
-            ComboBox Make(IEnumerable<string> items, int width)
-            {
-                var cb = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = D(width), FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 9.5F), Margin = new Padding(D(6), D(4), 0, 0) };
-                cb.Items.AddRange(items.Cast<object>().ToArray());
-                cb.SelectedIndex = 0;
-                return cb;
-            }
-            cbStatusPick = Make(StatusOptions.Select(s => s.Label), 160);
-            cbSortBy = Make(SortOptions.Select(s => "Sort: " + s.Label), 200);
-            cbStatusPick.SelectedIndexChanged += (s, e) =>
+            cbStatusPick = new ChoiceChip("Status", StatusOptions.Select(o => o.Label));
+            cbSortBy = new ChoiceChip("Sort", SortOptions.Select(o => o.Label), "⇅");
+            dateChip = new DateFilterChip(DatePresets.Orders, "All dates");
+            cbStatusPick.SelectionChanged += (s, e) =>
             {
                 if (syncingPickers) return;
                 currentStatusFilter = StatusOptions[Math.Max(0, cbStatusPick.SelectedIndex)].Filter;
                 FilterGridData();
                 UpdateSummaryButtonStyles();
             };
-            cbSortBy.SelectedIndexChanged += (s, e) =>
+            cbSortBy.SelectionChanged += (s, e) =>
             {
                 if (syncingPickers) return;
                 var opt = SortOptions[Math.Max(0, cbSortBy.SelectedIndex)];
@@ -62,16 +57,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 isSortAscending = opt.Asc;
                 FilterGridData();
             };
+            dateChip.RangeChanged += (s, e) => FilterGridData();
             var tips = new ToolTip();
             tips.SetToolTip(cbStatusPick, "Show only orders with this status");
             tips.SetToolTip(cbSortBy, "Order of the list (you can also click a column header)");
+            tips.SetToolTip(dateChip, "Show orders for a day, week, month or any dates you pick. ‹ › step back or forward.");
+            FlowFit.Grow(pnlGridActionsFlow);
             int at = pnlGridActionsFlow.Controls.IndexOf(btnClearSearch);
             pnlGridActionsFlow.Controls.Add(cbStatusPick);
             pnlGridActionsFlow.Controls.Add(cbSortBy);
+            pnlGridActionsFlow.Controls.Add(dateChip);
             if (at >= 0)
             {
-                pnlGridActionsFlow.Controls.SetChildIndex(cbStatusPick, at + 1);
-                pnlGridActionsFlow.Controls.SetChildIndex(cbSortBy, at + 2);
+                pnlGridActionsFlow.Controls.SetChildIndex(dateChip, at + 1);
+                pnlGridActionsFlow.Controls.SetChildIndex(cbStatusPick, at + 2);
+                pnlGridActionsFlow.Controls.SetChildIndex(cbSortBy, at + 3);
             }
         }
         /// <summary>Header clicks: date and crates start newest/largest first; others A–Z.</summary>
@@ -124,10 +124,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 int si = Array.FindIndex(SortOptions, o => o.Column == currentSortColumn && o.Asc == isSortAscending);
-                if (si >= 0) cbSortBy.SelectedIndex = si;
+                if (si >= 0) cbSortBy.SetQuietly(si);
                 string f = currentStatusFilter == "Pending" ? "Scheduled" : currentStatusFilter;
                 int fi = Array.FindIndex(StatusOptions, o => o.Filter == f);
-                cbStatusPick.SelectedIndex = fi >= 0 ? fi : 0;
+                cbStatusPick.SetQuietly(fi >= 0 ? fi : 0);
             }
             finally { syncingPickers = false; }
         }

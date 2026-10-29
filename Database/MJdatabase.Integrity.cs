@@ -335,6 +335,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             // Exact duplicate stores (same client, code and name) are merged into the first one before the unique index.
             Try("dup stores", "DELETE FROM ClientStores WHERE TRIM(StoreCode) <> '' AND Id NOT IN (SELECT MIN(Id) FROM ClientStores GROUP BY LOWER(TRIM(ClientCompanyName)), LOWER(TRIM(StoreCode)), LOWER(TRIM(StoreName)))");
+            // Only two roles use the system: Owner/Admin and Office Staff. Older Dispatcher / Billing Clerk accounts become Office Staff.
+            Try("roles", "UPDATE Users SET Role = 'Office Staff' WHERE Role LIKE '%Dispatcher%' OR Role LIKE '%Billing%' OR (TRIM(COALESCE(Role,'')) <> '' AND Role NOT IN ('Owner/Admin','Office Staff','Admin','Administrator','Owner','Owner / Admin','Business Owner'))");
             // Unique identifiers (case- and space-insensitive). If old data already has duplicates the index is skipped
             // and the app-level checks still stop new ones.
             Try("ux store code", "CREATE UNIQUE INDEX IF NOT EXISTS ux_clientstores_code ON ClientStores(LOWER(TRIM(ClientCompanyName)), LOWER(TRIM(StoreCode))) WHERE TRIM(StoreCode) <> ''");

@@ -26,6 +26,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Pal.RemapTree(this);
             gridCollections.BringToFront();
             SetupGridColumns();
+            InitListChips();
             SetupContextMenu();
             gridCollections.ColumnHeaderMouseClick += (s, e) => {
                 if (e.ColumnIndex < 0 || e.ColumnIndex >= gridCollections.Columns.Count) return;
@@ -514,9 +515,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     (!string.IsNullOrEmpty(r.Notes) && r.Notes.ToLower().Contains(q))
                 ).ToList();
 
+            filtered = ApplyListChips(filtered);
             gridCollections.DataSource = null;
             gridCollections.DataSource = filtered;
-            lblGridHeader.Text = string.IsNullOrEmpty(q)
+            lblGridHeader.Text = string.IsNullOrEmpty(q) && filtered.Count == allReceipts.Count
                 ? $"Payment Collections Register Log ({allReceipts.Count})"
                 : $"Payment Collections Register Log - Showing {filtered.Count} of {allReceipts.Count}";
 

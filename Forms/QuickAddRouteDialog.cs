@@ -42,6 +42,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public QuickAddRouteDialog(string? initialClient = null)
         {
             loading = true;
+            FormClosing += (s, e) => DarkModeKit.StopAutoComplete(this);
             try { allRoutes = MJdatabase.GetDeliveryRoutes(activeOnly: false); } catch { allRoutes = new List<DeliveryRoute>(); }
             InitializeCustomComponent();
             PopulateClients(initialClient);
@@ -434,6 +435,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             CreatedRoute = newRoute;
+            DarkModeKit.StopAutoComplete(this);
             DialogResult = DialogResult.OK;
             Close();
         }

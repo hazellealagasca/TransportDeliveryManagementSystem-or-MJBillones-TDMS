@@ -47,24 +47,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return dv;
             });
 
-            AddTab("Completed", "✅  Completed Dispatches", () =>
-            {
-                var cv = new CompletedDispatchesView();
-                cv.OnNavigateToIncidentRequested = (delId, dispNum) =>
-                {
-                    FilterIncidentsByDispatch(dispNum);
-                };
-                cv.OnNavigateToTripReportRequested = (delId, dispNum) =>
-                {
-                    FilterTripReportsByDispatch(dispNum);
-                };
-                cv.OnNavigateToCreateInvoiceRequested = (del) =>
-                {
-                    OnCreateInvoiceForward?.Invoke(del);
-                };
-                return cv;
-            });
-
+            // Completed Dispatches is now the "Completed" tab inside Order History.
             AddTab("SpecialTrips", "🌟  Special Trip History", () => new SpecialTripHistoryView());
 
             AddTab("Incidents", "⚠️  Incident & Damage Logs", () =>
@@ -88,7 +71,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return tv;
             });
 
-            AddTab("History", "📜  Order History", () => new ModuleHistoryView("Order History", new[] { "LoadingSchedules", "Deliveries" }, isAdminOnly: false));
+            AddTab("History", "📜  Order History", () =>
+            {
+                var hv = new OrderHistoryView();
+                hv.OnIncidentsRequested = (delId, dispNum) => FilterIncidentsByDispatch(dispNum);
+                hv.OnTripReportRequested = (delId, dispNum) => FilterTripReportsByDispatch(dispNum);
+                hv.OnCreateInvoiceRequested = (del) => OnCreateInvoiceForward?.Invoke(del);
+                return hv;
+            });
         }
 
         private void AddTab(string key, string title, Func<UserControl> viewFactory)
@@ -141,15 +131,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (dvCurr.HasUnsavedChanges())
                 {
+                    // The order is kept as a draft, so there is nothing to lose: save it and let the person go.
                     dvCurr.AutoSaveDraft();
-                    var owner = FindForm();
-                    if (owner != null) { if (owner.WindowState == FormWindowState.Minimized) owner.WindowState = FormWindowState.Normal; owner.Activate(); }
-                    var dr = MessageBox.Show(owner,
-                        "Unsaved inputs detected. Your draft was saved.\n\nDo you want to leave this tab?",
-                        "Unsaved Changes",
-                        MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Warning);
-                    return dr == DialogResult.Yes;
+                    try { ToastHelper.ShowToast(FindForm() ?? (Control)this, "Dispatch draft saved. It will be offered when you open the order form again.", ToastType.Info); } catch { }
                 }
             }
             else if (pnlContentHost.Controls.Count > 0 && pnlContentHost.Controls[0] is LoadingManagementView lvCurr)
@@ -172,10 +156,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public void SelectTab(string key)
         {
             if (key == "Loading") key = "Dispatch";
+            bool completed = key == "Completed";
+            if (completed) key = "History";
             if (tabButtons.TryGetValue(key, out var btn))
             {
                 btn.PerformClick();
             }
+            if (completed && cachedViews.TryGetValue("History", out var hv) && hv is OrderHistoryView oh) oh.ShowCompleted();
         }
 
         private void ActivateTab(Button btn, UserControl view)

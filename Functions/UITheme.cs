@@ -658,6 +658,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btn.MouseUp += (s, e) => { st.Down = false; btn.Invalidate(); };
             btn.EnabledChanged += (s, e) => btn.Invalidate();
             btn.Paint += (s, e) => PaintButton(btn, st, e.Graphics);
+            FitButtonToText(btn);
+            btn.TextChanged += (s, e) => FitButtonToText(btn);
+            btn.FontChanged += (s, e) => FitButtonToText(btn);
+            btn.HandleCreated += (s, e) => FitButtonToText(btn);
+            btn.ParentChanged += (s, e) => FitButtonToText(btn);
+        }
+        /// <summary>
+        /// Buttons laid out in a row (flow panels) with a fixed width written for 100% scaling cut their text off on
+        /// larger text sizes ("Print Loading She…"). Widen them to fit their text; never shrink, never touch docked buttons.
+        /// </summary>
+        public static void FitButtonToText(Button btn)
+        {
+            try
+            {
+                if (btn.AutoSize || btn.Dock != DockStyle.None || btn.Parent is not FlowLayoutPanel || string.IsNullOrEmpty(btn.Text)) return;
+                float k = btn.DeviceDpi / 96f;
+                int need = TextRenderer.MeasureText(btn.Text, btn.Font, Size.Empty, TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix).Width + (int)Math.Round(26 * k)
+                           + (btn.Image != null ? btn.Image.Width + (int)Math.Round(6 * k) : 0);
+                if (btn.Width < need) btn.Width = need;
+                int needH = TextRenderer.MeasureText("Ag", btn.Font).Height + (int)Math.Round(10 * k);
+                if (btn.Height < needH) btn.Height = needH;
+            }
+            catch { }
         }
         private static readonly System.Reflection.PropertyInfo? EventsProp =
             typeof(System.ComponentModel.Component).GetProperty("Events", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);

@@ -86,6 +86,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
+        private static string SafeColumn(SqliteDataReader reader, string name)
+
+        {
+
+            try { int i = reader.GetOrdinal(name); return reader.IsDBNull(i) ? "" : reader.GetValue(i)?.ToString() ?? ""; } catch { return ""; }
+
+        }
+
         private static List<int> ParseIdList(string? csv)
 
         {
@@ -164,7 +172,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 cmd.Transaction = tx;
 
-                cmd.CommandText = $"SELECT TruckId, DriverId, AideId FROM SpecialTrips WHERE Status IN {ActiveSpecialTripStatusesSql} AND (Status = 'In Transit' OR DATE(DispatchDate) <= DATE(@today))";
+                cmd.CommandText = $"SELECT TruckId, DriverId, AideId, COALESCE(AideIds,'') FROM SpecialTrips WHERE Status IN {ActiveSpecialTripStatusesSql} AND (Status = 'In Transit' OR DATE(DispatchDate) <= DATE(@today))";
 
                 cmd.Parameters.AddWithValue("@today", today);
 
@@ -179,6 +187,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (!r.IsDBNull(1) && r.GetInt32(1) > 0) busyCrew.Add(r.GetInt32(1));
 
                     if (!r.IsDBNull(2) && r.GetInt32(2) > 0) busyCrew.Add(r.GetInt32(2));
+
+                    foreach (int a in ParseIdList(r.IsDBNull(3) ? "" : r.GetString(3))) busyCrew.Add(a);
 
                 }
 
@@ -1934,6 +1944,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     "ALTER TABLE Trucks ADD COLUMN RegistrationExpiry TEXT DEFAULT '';",
 
                     "ALTER TABLE Trucks ADD COLUMN InsuranceExpiry TEXT DEFAULT '';",
+
+                    "ALTER TABLE SpecialTrips ADD COLUMN AideIds TEXT DEFAULT '';",
 
                     "ALTER TABLE Clients ADD COLUMN DeactivatedAt TEXT DEFAULT '';",
 
@@ -7341,9 +7353,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         int stDriver = newDriverId.HasValue && newDriverId.Value > 0 ? newDriverId.Value : trip.DriverId;
 
-                        int stAide = newAideId.HasValue && newAideId.Value > 0 ? newAideId.Value : trip.AideId;
+                        var stAides = newAideId.HasValue && newAideId.Value > 0 ? new List<int> { newAideId.Value } : trip.AllAideIds;
 
-                        string? stConflict = ValidateResourceConflict(0, tripId, stTruck, stDriver, stAide > 0 ? new List<int> { stAide } : new List<int>(), newDate);
+                        string? stConflict = ValidateResourceConflict(0, tripId, stTruck, stDriver, stAides, newDate);
 
                         if (!string.IsNullOrEmpty(stConflict))
 
@@ -7390,6 +7402,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             {
                                 setClauses.Add("AideId = @aiId");
                                 setClauses.Add("AideName = @aiName");
+                                setClauses.Add("AideIds = @aiIds");
+
+                                updateCmd.Parameters.AddWithValue("@aiIds", newAideId.Value.ToString());
+
                                 updateCmd.Parameters.AddWithValue("@aiId", newAideId.Value);
                                 updateCmd.Parameters.AddWithValue("@aiName", newAideName ?? "");
                             }
@@ -8334,7 +8350,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             {
 
-                                d.DispatchNumber = $"DSP-{DateTime.Now:yyyyMMdd-HHmmss}-{DateTime.Now.Millisecond:D3}{Random.Shared.Next(10, 99)}";
+                                d.DispatchNumber = NextDispatchNumber(d.ClientName);
 
                             }
 
@@ -9016,7 +9032,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     var cmdSt = conn.CreateCommand();
 
-                    cmdSt.CommandText = $@"SELECT OrderReference, Status, TruckId, DriverId, AideId FROM SpecialTrips
+                    cmdSt.CommandText = $@"SELECT OrderReference, Status, TruckId, DriverId, AideId, COALESCE(AideIds,'') FROM SpecialTrips
 
                                           WHERE DATE(DispatchDate) = DATE(@dd) AND Id <> @sid AND Status IN {ActiveSpecialTripStatusesSql}";
 
@@ -9038,6 +9054,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         int stAide = reader.IsDBNull(4) ? 0 : reader.GetInt32(4);
 
+                        var stAides = ParseIdList(reader.IsDBNull(5) ? "" : reader.GetString(5));
+
                         if (truckId > 0 && stTruck == truckId)
 
                         {
@@ -9050,7 +9068,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         {
 
-                            if (c.Id == stDriver || c.Id == stAide)
+                            if (c.Id == stDriver || c.Id == stAide || stAides.Contains(c.Id))
 
                             {
 
@@ -15112,6 +15130,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         DriverName = reader["DriverName"]?.ToString() ?? string.Empty,
                         AideId = reader["AideId"] != DBNull.Value ? Convert.ToInt32(reader["AideId"]) : 0,
                         AideName = reader["AideName"]?.ToString() ?? string.Empty,
+                        AideIds = SafeColumn(reader, "AideIds"),
+
                         CreatedAt = DateTime.TryParse(reader["CreatedAt"]?.ToString(), out var cdt) ? cdt : DateTime.Now,
                         CompletedAt = reader["CompletedAt"] != DBNull.Value && DateTime.TryParse(reader["CompletedAt"]?.ToString(), out var cpdt) ? (DateTime?)cpdt : null,
                         Remarks = reader["Remarks"]?.ToString() ?? string.Empty
@@ -15161,6 +15181,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         DriverName = reader["DriverName"]?.ToString() ?? string.Empty,
                         AideId = reader["AideId"] != DBNull.Value ? Convert.ToInt32(reader["AideId"]) : 0,
                         AideName = reader["AideName"]?.ToString() ?? string.Empty,
+                        AideIds = SafeColumn(reader, "AideIds"),
+
                         CreatedAt = DateTime.TryParse(reader["CreatedAt"]?.ToString(), out var cdt) ? cdt : DateTime.Now,
                         CompletedAt = reader["CompletedAt"] != DBNull.Value && DateTime.TryParse(reader["CompletedAt"]?.ToString(), out var cpdt) ? (DateTime?)cpdt : null,
                         Remarks = reader["Remarks"]?.ToString() ?? string.Empty
@@ -15209,11 +15231,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             bool stActive = !stStatus.Equals("Completed", StringComparison.OrdinalIgnoreCase) && !stStatus.Equals("Cancelled", StringComparison.OrdinalIgnoreCase);
 
-            if (stActive && (trip.TruckId > 0 || trip.DriverId > 0 || trip.AideId > 0))
+            if (stActive && (trip.TruckId > 0 || trip.DriverId > 0 || trip.AllAideIds.Count > 0))
 
             {
 
-                var aides = trip.AideId > 0 ? new List<int> { trip.AideId } : new List<int>();
+                var aides = trip.AllAideIds;
 
                 string? conflict = ValidateResourceConflict(0, trip.Id, trip.TruckId, trip.DriverId, aides, trip.DispatchDate);
 
@@ -15245,11 +15267,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         cmd.CommandText = @"INSERT INTO SpecialTrips 
                             (OrderReference, DispatchDate, Company, DepartureTime, Address, ServiceType, Status, 
                              ModeOfPaymentWithReport, WithSOA, WithServiceInvoice, WithCollection, 
-                             TruckId, TruckPlate, DriverId, DriverName, AideId, AideName, CreatedAt, CompletedAt, Remarks)
+                             TruckId, TruckPlate, DriverId, DriverName, AideId, AideName, AideIds, CreatedAt, CompletedAt, Remarks)
+
                             VALUES 
                             (@orderRef, @dispDate, @comp, @depTime, @addr, @svcType, @status, 
                              @mopReport, @wSoa, @wInv, @wColl, 
-                             @trId, @trPlate, @drId, @drName, @aiId, @aiName, @createdAt, @completedAt, @remarks);
+                             @trId, @trPlate, @drId, @drName, @aiId, @aiName, @aiIds, @createdAt, @completedAt, @remarks);
+
                             SELECT last_insert_rowid();";
                         cmd.Parameters.AddWithValue("@orderRef", trip.OrderReference.Trim());
                         cmd.Parameters.AddWithValue("@dispDate", trip.DispatchDate.ToString("yyyy-MM-dd HH:mm:ss"));
@@ -15268,6 +15292,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         cmd.Parameters.AddWithValue("@drName", trip.DriverName.Trim());
                         cmd.Parameters.AddWithValue("@aiId", trip.AideId);
                         cmd.Parameters.AddWithValue("@aiName", trip.AideName.Trim());
+                        cmd.Parameters.AddWithValue("@aiIds", string.Join(",", trip.AllAideIds));
+
                         cmd.Parameters.AddWithValue("@createdAt", trip.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"));
                         cmd.Parameters.AddWithValue("@completedAt", trip.CompletedAt.HasValue ? trip.CompletedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") : (object)DBNull.Value);
                         cmd.Parameters.AddWithValue("@remarks", trip.Remarks.Trim());
@@ -15282,7 +15308,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             OrderReference = @orderRef, DispatchDate = @dispDate, Company = @comp, DepartureTime = @depTime, 
                             Address = @addr, ServiceType = @svcType, Status = @status, 
                             ModeOfPaymentWithReport = @mopReport, WithSOA = @wSoa, WithServiceInvoice = @wInv, WithCollection = @wColl, 
-                            TruckId = @trId, TruckPlate = @trPlate, DriverId = @drId, DriverName = @drName, AideId = @aiId, AideName = @aiName, 
+                            TruckId = @trId, TruckPlate = @trPlate, DriverId = @drId, DriverName = @drName, AideId = @aiId, AideName = @aiName, AideIds = @aiIds, 
+
                             CompletedAt = @completedAt, Remarks = @remarks
                             WHERE Id = @id";
                         cmd.Parameters.AddWithValue("@id", trip.Id);
@@ -15303,6 +15330,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         cmd.Parameters.AddWithValue("@drName", trip.DriverName.Trim());
                         cmd.Parameters.AddWithValue("@aiId", trip.AideId);
                         cmd.Parameters.AddWithValue("@aiName", trip.AideName.Trim());
+                        cmd.Parameters.AddWithValue("@aiIds", string.Join(",", trip.AllAideIds));
+
                         cmd.Parameters.AddWithValue("@completedAt", trip.CompletedAt.HasValue ? trip.CompletedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") : (object)DBNull.Value);
                         cmd.Parameters.AddWithValue("@remarks", trip.Remarks.Trim());
                         cmd.ExecuteNonQuery();

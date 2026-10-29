@@ -32,6 +32,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridIncidents.BringToFront();
             try { ProfileKit.Suggest(txtCause, "incident"); ProfileKit.Suggest(txtDescription, "incident-notes"); } catch { }
             SetupGridColumns();
+            InitListChips();
             SetupContextMenu();
             gridIncidents.ColumnHeaderMouseClick += (s, e) => {
                 if (e.ColumnIndex < 0 || e.ColumnIndex >= gridIncidents.Columns.Count) return;
@@ -575,6 +576,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     (!string.IsNullOrEmpty(i.Status) && i.Status.ToLower().Contains(q))
                 ).ToList();
 
+            filtered = ApplyDateChip(filtered);
             switch (currentSortColumn)
             {
                 case "Id":

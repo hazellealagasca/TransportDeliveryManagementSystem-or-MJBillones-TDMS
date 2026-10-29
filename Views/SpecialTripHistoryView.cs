@@ -18,6 +18,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private ComboBox cbStatusFilter = null!;
         private DateTimePicker dtpFrom = null!;
         private DateTimePicker dtpTo = null!;
+        private DateFilterChip dateChip = null!;
         private Button btnNewSpecialTrip = null!;
         private Button btnExportCsv = null!;
         private Button btnRefresh = null!;
@@ -76,7 +77,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             Label lblSubtitle = new Label
             {
-                Text = "Historical archive, itemized stop breakdown, and lifecycle execution of special on-demand dispatches",
+                Text = "Every special (non-crate) trip, its stops, crew and status. Double-click a row to open it.",
                 Font = new Font("Segoe UI", 8.5F),
                 ForeColor = Pal.C(100, 116, 139),
                 AutoSize = true,
@@ -85,6 +86,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlTitleBlock.Controls.Add(lblTitle);
             pnlTitleBlock.Controls.Add(lblSubtitle);
 
+            // Keep the subtitle under the title at any text size (it used to overlap on larger displays).
+            void PlaceSub() { lblSubtitle.Top = lblTitle.Bottom + 2; if (pnlHeader.Height < lblSubtitle.Bottom + pnlHeader.Padding.Vertical + 6) pnlHeader.Height = lblSubtitle.Bottom + pnlHeader.Padding.Vertical + 6; }
+            lblTitle.SizeChanged += (s, e) => PlaceSub();
+            lblTitle.HandleCreated += (s, e) => PlaceSub();
             FlowLayoutPanel flowKpis = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -108,9 +113,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Panel pnlToolbar = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 56,
+                Height = (int)Math.Round(64 * DeviceDpi / 96f),
                 BackColor = Pal.C(241, 245, 249),
-                Padding = new Padding(24, 10, 24, 10)
+                Padding = new Padding(24, 8, 24, 6)
             };
 
             FlowLayoutPanel flowFilters = new FlowLayoutPanel
@@ -151,11 +156,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             flowFilters.Controls.Add(txtSearch);
             flowFilters.Controls.Add(cbStatusFilter);
-            flowFilters.Controls.Add(lblFrom);
-            flowFilters.Controls.Add(dtpFrom);
-            flowFilters.Controls.Add(lblTo);
-            flowFilters.Controls.Add(dtpTo);
-
+            dateChip = new DateFilterChip(DatePresets.Orders, "All dates") { Margin = new Padding(0, 0, 10, 0) };
+            dateChip.RangeChanged += (s, e) => ApplyFilter();
+            flowFilters.Controls.Add(dateChip);
             FlowLayoutPanel flowButtons = new FlowLayoutPanel
             {
                 Dock = DockStyle.Right,
@@ -333,7 +336,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Name = "colServiceType",
                 HeaderText = "Service Type",
-                Width = 140
+                Width = 140,
+                Visible = false // Service Type is no longer asked on the form
             });
 
             gridSpecialTrips.Columns.Add(new DataGridViewTextBoxColumn
@@ -454,13 +458,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             string query = txtSearch.Text.Trim();
             string status = cbStatusFilter.SelectedItem?.ToString() ?? "All Statuses";
-            DateTime fromDate = dtpFrom.Value.Date;
-            DateTime toDate = dtpTo.Value.Date.AddDays(1).AddSeconds(-1);
-
+            var range = dateChip?.Range ?? DateRange.All;
             var filtered = allSpecialTrips.Where(t =>
             {
-                if (t.DispatchDate < fromDate || t.DispatchDate > toDate) return false;
-
+                if (!range.Contains(t.DispatchDate)) return false;
                 if (!status.Equals("All Statuses", StringComparison.OrdinalIgnoreCase) &&
                     !t.Status.Equals(status, StringComparison.OrdinalIgnoreCase))
                 {

@@ -41,6 +41,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private ComboBox cbCrew = null!;
         private ComboBox cbRole = null!;
         private ComboBox cbDateFilter = null!;
+        private DateFilterChip dateChip = null!;
         private TextBox txtSearch = null!;
         private StatTile tileTrips = null!, tileCrates = null!, tileDone = null!, tileUpcoming = null!, tileTrucks = null!;
         private TileStrip tiles = null!;
@@ -89,7 +90,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             filterCard.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34F));
             filterCard.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, D(150)));
-            filterCard.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, D(160)));
+            filterCard.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             filterCard.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 66F));
             filterCard.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             filterCard.Paint += (s, e) => PaintCard(filterCard, e);
@@ -127,12 +128,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbRole.SelectedIndex = 0;
                 txtSearch.Clear();
                 cbDateFilter.SelectedIndex = 0;
+                dateChip.Range = DateRange.All;
                 tiles.ClearSelection();
             };
 
             filterCard.Controls.Add(cbCrew, 0, 0);
             filterCard.Controls.Add(cbRole, 1, 0);
-            filterCard.Controls.Add(cbDateFilter, 2, 0);
+            dateChip = new DateFilterChip(DatePresets.History, "All dates") { Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, D(8), 0) };
+            dateChip.RangeChanged += (s, e) => ApplyFilter();
+            cbDateFilter.Visible = false;
+            filterCard.Controls.Add(dateChip, 2, 0);
             filterCard.Controls.Add(txtSearch, 3, 0);
             filterCard.Controls.Add(btnReset, 4, 0);
             // 4. Table
@@ -542,25 +547,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     r.Status.ToLowerInvariant().Contains(q));
             }
 
-            if (dateFilter == "Today")
-            {
-                filtered = filtered.Where(r => r.DispatchDate.Date == now);
-            }
-            else if (dateFilter == "Last 7 Days")
-            {
-                DateTime cutoff = now.AddDays(-7);
-                filtered = filtered.Where(r => r.DispatchDate.Date >= cutoff);
-            }
-            else if (dateFilter == "This Month")
-            {
-                filtered = filtered.Where(r => r.DispatchDate.Year == now.Year && r.DispatchDate.Month == now.Month);
-            }
-            else if (dateFilter == "Last 30 Days")
-            {
-                DateTime cutoff = now.AddDays(-30);
-                filtered = filtered.Where(r => r.DispatchDate.Date >= cutoff);
-            }
-
+            var range = dateChip?.Range ?? DateRange.All;
+            if (!range.IsAll) filtered = filtered.Where(r => range.Contains(r.DispatchDate));
             // Tiles count what the other filters left, before the tile filter itself
             var beforeTile = filtered.ToList();
             bool IsDone(CrewTripHistoryRow r) => DispatchGate.IsCompleted(r.Status);

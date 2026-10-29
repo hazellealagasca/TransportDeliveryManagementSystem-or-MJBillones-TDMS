@@ -673,6 +673,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     RecalculateTotalsFromStoreGrid();
                     LoadCrewPay(d);
                 }
+                SyncAttachmentOwner();
             };
 
             numDeliveredGCrates.ValueChanged += (s, e) => { if (!isBindingForm) CheckCrateVariance(); };
@@ -795,6 +796,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (del != null) UpdateMultiDropTripInfo(del);
                 LoadCrewPay(del);
                 isBindingForm = false;
+                SyncAttachmentOwner();
             }
         }
 

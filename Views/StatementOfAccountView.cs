@@ -112,9 +112,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlTopBar = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 50,
+                Height = Dpi(56),
                 BackColor = Pal.White,
-                Padding = new Padding(12, 8, 12, 8)
+                Padding = new Padding(12, 8, 12, 4)
             };
 
             pnlGridActionsFlow = new FlowLayoutPanel
@@ -240,6 +240,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblMasterContent.Controls.Add(gridSoa, 1, 0);
 
             this.Controls.Add(tblMasterContent);
+            // Fill must dock after the top bar, or the bar covers the list's column headers.
+            tblMasterContent.BringToFront();
         }
 
         private void InitializeFormDrawer()

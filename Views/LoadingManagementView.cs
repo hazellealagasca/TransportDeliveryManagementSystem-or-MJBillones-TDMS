@@ -1296,7 +1296,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public bool HasUnsavedChanges()
         {
-            if (selectedSchedule != null) return false;
+            if (!pnlForm.Visible || selectedSchedule != null) return false;
             return !string.IsNullOrWhiteSpace(txtScheduleNumber.Text)
                 || !string.IsNullOrWhiteSpace(cbClient.Text)
                 || !string.IsNullOrWhiteSpace(cbDestination.Text)

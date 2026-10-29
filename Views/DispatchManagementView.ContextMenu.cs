@@ -286,7 +286,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 BindDeliveryToForm(full);
                 selectedDelivery = null;
                 isBindingForm = true;
-                txtDispatchNumber.Text = GenerateNextDispatchNumber();
+                lastAutoDispatchNumber = GenerateNextDispatchNumber();
+                txtDispatchNumber.Text = lastAutoDispatchNumber;
                 txtDispatchNumber.Enabled = true;
                 DateTime day = DateTime.Today;
                 if (day >= dtpDispatchDate.MinDate && day <= dtpDispatchDate.MaxDate) dtpDispatchDate.Value = day;

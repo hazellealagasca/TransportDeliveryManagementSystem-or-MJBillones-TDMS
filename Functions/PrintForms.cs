@@ -296,9 +296,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Dictionary<(int, int), TripCrewPay>? recorded = null;
             try { recorded = MJdatabase.GetAllTripCrewPay(); } catch { }
             var pay = trips.OrderBy(t => t.DispatchDate).Select(t => (Trip: t, Pay: MJdatabase.ResolveTripPay(crew, t, recorded))).ToList();
-            decimal basePay = pay.Sum(p => p.Pay.BasePay), allow = pay.Sum(p => p.Pay.Allowance), extra = pay.Sum(p => p.Pay.Extra), ded = pay.Sum(p => p.Pay.Deduction);
-            decimal net = basePay + allow + extra - ded;
-            var o = NewOptions("PaySlip", "Pay Slip", $"{from:MMM d} – {to:MMM d, yyyy}");
+            decimal basePay = pay.Sum(p => p.Pay.BasePay), allow = pay.Sum(p => p.Pay.Allowance);
+            decimal net = basePay + allow;
+            var o = NewOptions("PaySlip", "Crew Trip Pay Record", $"{from:MMM d} – {to:MMM d, yyyy}");
             o.Fields = new List<PrintField>
             {
                 new PrintField("name", "Employee", crew.FullName), new PrintField("code", "Crew ID", crew.CrewCode),
@@ -307,11 +307,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 new PrintField("rate", "Pay per trip", Money(crew.DailyWage)), new PrintField("meal", "Meal allowance per trip", Money(crew.FoodAllowance)),
                 new PrintField("issued", "Date issued", D(DateTime.Today)), new PrintField("pay_method", "Paid via", "Cash", false, false)
             };
-            o.Sections = new List<PrintChoice> { new("employee", "Employee details"), new("trips", "Trip-by-trip table"), new("summary", "Pay summary"), new("words", "Net pay in words") };
+            o.Sections = new List<PrintChoice> { new("employee", "Employee details"), new("trips", "Trip-by-trip table"), new("summary", "Pay summary"), new("words", "Total in words") };
             AddCommon(o);
-            o.Columns = new List<PrintChoice> { new("no", "No."), new("dispatch", "Dispatch #"), new("date", "Date"), new("client", "Client"), new("route", "Route", false), new("crates", "Crates"), new("base", "Base pay"), new("allow", "Allowance"), new("extra", "Extra"), new("ded", "Deductions"), new("net", "Net") };
-            o.Signatures = new List<PrintSig> { new PrintSig("Prepared by", CurrentUserName, "Payroll", true), new PrintSig("Approved by", OwnerName, "Owner"), new PrintSig("Received by", crew.FullName, crew.Role, true) };
-            var def = new PrintFormDef { Key = o.FormKey, Name = "Crew pay slip", FileName = $"PaySlip_{Regex.Replace(crew.FullName, "[^A-Za-z0-9]+", "_")}", Defaults = o };
+            o.Columns = new List<PrintChoice> { new("no", "No."), new("dispatch", "Dispatch #"), new("date", "Date"), new("client", "Client"), new("route", "Route", false), new("crates", "Crates"), new("base", "Daily wage"), new("allow", "Meal allowance"), new("net", "Total") };
+            o.Signatures = new List<PrintSig> { new PrintSig("Prepared by", CurrentUserName, "Office Staff", true), new PrintSig("Approved by", OwnerName, "Owner"), new PrintSig("Received by", crew.FullName, crew.Role, true) };
+            var def = new PrintFormDef { Key = o.FormKey, Name = "Crew trip pay record", FileName = $"PaySlip_{Regex.Replace(crew.FullName, "[^A-Za-z0-9]+", "_")}", Defaults = o };
             def.Body = opt =>
             {
                 var sb = new StringBuilder();
@@ -320,17 +320,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (opt.On("trips"))
                 {
                     sb.Append(SectionTitle($"Trips ({pay.Count})"));
-                    sb.Append(Table(opt, new[] { ("no", "No.", "center"), ("dispatch", "Dispatch #", ""), ("date", "Date", ""), ("client", "Client", ""), ("route", "Route", ""), ("crates", "Crates", "num"), ("base", "Base", "num"), ("allow", "Allowance", "num"), ("extra", "Extra", "num"), ("ded", "Deductions", "num"), ("net", "Net", "num") },
+                    sb.Append(Table(opt, new[] { ("no", "No.", "center"), ("dispatch", "Dispatch #", ""), ("date", "Date", ""), ("client", "Client", ""), ("route", "Route", ""), ("crates", "Crates", "num"), ("base", "Daily wage", "num"), ("allow", "Meal allowance", "num"), ("net", "Total", "num") },
                         pay.Select(p => Row(("no", ++n), ("dispatch", p.Trip.DispatchNumber), ("date", p.Trip.DispatchDate.ToString("MM/dd/yyyy")), ("client", p.Trip.ClientName), ("route", p.Trip.CleanRouteDisplay), ("crates", p.Trip.TotalCrates.ToString("N0")),
-                            ("base", p.Pay.BasePay.ToString("N2")), ("allow", p.Pay.Allowance.ToString("N2")), ("extra", p.Pay.Extra.ToString("N2")), ("ded", p.Pay.Deduction > 0 ? "- " + p.Pay.Deduction.ToString("N2") : "0.00"), ("net", $"<b>{p.Pay.NetPay:N2}</b>"))),
-                        new Dictionary<string, string> { ["dispatch"] = "Totals", ["crates"] = pay.Sum(p => p.Trip.TotalCrates).ToString("N0"), ["base"] = basePay.ToString("N2"), ["allow"] = allow.ToString("N2"), ["extra"] = extra.ToString("N2"), ["ded"] = ded.ToString("N2"), ["net"] = net.ToString("N2") }));
+                            ("base", p.Pay.BasePay.ToString("N2")), ("allow", p.Pay.Allowance.ToString("N2")), ("net", $"<b>{p.Pay.NetPay:N2}</b>"))),
+                        new Dictionary<string, string> { ["dispatch"] = "Totals", ["crates"] = pay.Sum(p => p.Trip.TotalCrates).ToString("N0"), ["base"] = basePay.ToString("N2"), ["allow"] = allow.ToString("N2"), ["net"] = net.ToString("N2") }));
                 }
                 if (opt.On("summary"))
                 {
                     var lines = new List<(string, string)> { ("Completed trips", pay.Count.ToString()), ("Base pay", Money(basePay)), ("Meal / allowances", Money(allow)) };
-                    if (extra != 0) lines.Add(("Extra / overtime", Money(extra)));
-                    if (ded != 0) lines.Add(("Less: deductions", "- " + Money(ded)));
-                    lines.Add(("Net pay", Money(net)));
+                    lines.Add(("Total recorded", Money(net)));
                     sb.Append(Summary(lines, "Pay summary"));
                 }
                 if (opt.On("words")) sb.Append($"<div style='text-align:right;margin-top:4px;font-style:italic'>{Esc(AmountInWords(net))}</div>");
@@ -443,8 +441,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (opt.On("pay") && crewPay.Count > 0)
                 {
                     sb.Append(SectionTitle("Crew pay for this trip"));
-                    sb.Append(Table(new PrintOptions(), new[] { ("n", "Crew", ""), ("r", "Role", ""), ("b", "Base", "num"), ("a", "Allowance", "num"), ("e", "Extra", "num"), ("d", "Deductions", "num"), ("t", "Net", "num") },
-                        crewPay.Select(p => Row(("n", p.CrewName), ("r", p.Role), ("b", p.BasePay.ToString("N2")), ("a", p.Allowance.ToString("N2")), ("e", p.Extra.ToString("N2")), ("d", p.Deduction.ToString("N2")), ("t", $"<b>{p.NetPay:N2}</b>")))));
+                    sb.Append(Table(new PrintOptions(), new[] { ("n", "Crew", ""), ("r", "Role", ""), ("b", "Base", "num"), ("a", "Meal allowance", "num"), ("t", "Total", "num") },
+                        crewPay.Select(p => Row(("n", p.CrewName), ("r", p.Role), ("b", p.BasePay.ToString("N2")), ("a", p.Allowance.ToString("N2")), ("t", $"<b>{p.NetPay:N2}</b>")))));
                 }
                 return sb.ToString();
             };

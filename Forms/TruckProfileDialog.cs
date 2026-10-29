@@ -9,7 +9,7 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.M
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Forms
 {
     /// <summary>
-    /// Everything about one truck: specifications (editable), every dispatch it ran, its maintenance log and the
+    /// Everything about one truck: specifications (editable), every dispatch it ran, its documents and the
     /// incidents logged on its trips. All history lists are newest first.
     /// </summary>
     public sealed class TruckProfileDialog : Form
@@ -17,7 +17,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly Truck truck;
         private readonly Action<Truck>? onEditDetails;
         private readonly ProfileHeader header = new ProfileHeader();
-        private readonly SegmentTabs tabs = new SegmentTabs("Specs", "Dispatch history", "Maintenance history", "Incident logs", "Documents & photos");
+        private readonly SegmentTabs tabs = new SegmentTabs("Specs", "Dispatch history", "Incident logs", "Documents & photos");
         private readonly Panel body = new Panel { Dock = DockStyle.Fill };
         private readonly Panel[] pages = new Panel[5];
         private List<Delivery> trips = new List<Delivery>();
@@ -28,7 +28,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static void ShowFor(IWin32Window? owner, Truck truck, Action<Truck>? onEditDetails = null)
         {
             using var dlg = new TruckProfileDialog(truck, onEditDetails);
+            dlg.FormClosing += (s, e) => DarkModeKit.StopAutoComplete(dlg);
             dlg.ShowDialog(owner);
+            DarkModeKit.StopAutoComplete(dlg);
         }
         public TruckProfileDialog(Truck truck, Action<Truck>? onEditDetails = null)
         {
@@ -62,10 +64,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Controls.Add(footer);
             Controls.Add(tabs);
             Controls.Add(header);
-            tabs.Badges = new[] { 0, trips.Count, maintenance.Count, incidents.Count, DocCount() };
+            tabs.Badges = new[] { 0, trips.Count, incidents.Count, DocCount() };
             tabs.SelectedChanged += (s, e) => ShowPage(tabs.Selected);
             ShowPage(0);
-            KeyDown += (s, e) => { if (e.Control && e.KeyCode == Keys.Tab) { tabs.Selected = (tabs.Selected + (e.Shift ? 4 : 1)) % 5; e.Handled = true; } };
+            KeyDown += (s, e) => { if (e.Control && e.KeyCode == Keys.Tab) { tabs.Selected = (tabs.Selected + (e.Shift ? 3 : 1)) % 4; e.Handled = true; } };
             try { ThemeManager.StyleWindowChrome(this); } catch { }
         }
         private void LoadData()
@@ -97,12 +99,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             Due("Registration", specs.RegistrationExpiry);
             Due("Insurance", specs.InsuranceExpiry);
-            var nextDue = maintenance.Where(m => m.NextDueDate.HasValue).OrderBy(m => m.NextDueDate).FirstOrDefault(m => m.NextDueDate!.Value.Date >= DateTime.Today.AddDays(-365));
-            if (nextDue != null) Due("Maintenance", nextDue.NextDueDate);
             header.Invalidate();
         }
-        private void ShowPage(int i)
+        // Asset maintenance is out of scope (see project limitations), so the Maintenance tab is not shown.
+        // Tab order: Specs, Dispatch history, Incident logs, Documents & photos -> page ids 0, 1, 3, 4.
+        private void ShowPage(int tab)
         {
+            int i = tab >= 2 ? tab + 1 : tab;
             if (pages[i] == null)
             {
                 pages[i] = i switch { 0 => BuildSpecs(), 1 => BuildTrips(), 2 => BuildMaintenance(), 3 => BuildIncidents(), _ => BuildDocuments() };
@@ -116,7 +119,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void Rebuild(int page)
         {
             if (pages[page] != null) { body.Controls.Remove(pages[page]); pages[page].Dispose(); pages[page] = null!; }
-            tabs.Badges = new[] { 0, trips.Count, maintenance.Count, incidents.Count, DocCount() };
+            tabs.Badges = new[] { 0, trips.Count, incidents.Count, DocCount() };
             tabs.Invalidate();
             BuildHeader();
             ShowPage(tabs.Selected);
@@ -131,10 +134,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var stats = new StatRow();
             int completed = trips.Count(t => RowMenu.Is(t.Status, "Completed"));
             var last = trips.FirstOrDefault(t => RowMenu.Is(t.Status, "Completed", "In Transit"));
-            decimal yearCost = maintenance.Where(m => m.ServiceDate.Year == DateTime.Today.Year).Sum(m => m.Cost);
             stats.Add("Trips completed", completed.ToString("N0"), $"{trips.Count} dispatch(es) in total", AppTheme.Accent);
             stats.Add("Last trip", last == null ? "—" : last.DispatchDate.ToString("MMM d, yyyy"), last == null ? "no trips yet" : last.DispatchNumber, AppTheme.Info);
-            stats.Add("Maintenance this year", $"₱{yearCost:N0}", $"{maintenance.Count(m => m.ServiceDate.Year == DateTime.Today.Year)} job(s)", AppTheme.Warning);
             stats.Add("Incidents", incidents.Count.ToString("N0"), $"{incidents.Sum(i => i.DamagedQuantity):N0} damaged crate(s)", incidents.Count > 0 ? AppTheme.Danger : AppTheme.Success);
             var grid = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, BackColor = AppTheme.Canvas, Padding = new Padding(0, D(14), 0, 0) };
             grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42F));
@@ -421,7 +422,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var page = Page();
             var panel = new AttachmentPanel("Registration / OR-CR") { Dock = DockStyle.Fill };
             panel.SetOwner("Truck", truck.Id, truck.PlateNumber);
-            panel.AttachmentsChanged += (s, e) => { tabs.Badges = new[] { 0, trips.Count, maintenance.Count, incidents.Count, panel.Items.Count }; tabs.Invalidate(); };
+            panel.AttachmentsChanged += (s, e) => { tabs.Badges = new[] { 0, trips.Count, incidents.Count, panel.Items.Count }; tabs.Invalidate(); };
             page.Controls.Add(ProfileKit.Card(panel, 1));
             page.Controls.Add(ProfileKit.Section("Documents & photos", "OR/CR, insurance, inspection photos, repair receipts · double-click to view"));
             return page;

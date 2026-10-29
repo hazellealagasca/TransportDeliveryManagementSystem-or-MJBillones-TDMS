@@ -71,7 +71,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UIThemeHelper.SetButtonRole(btnReset, "secondary");
             btnReset.Name = "tripFilterReset";
             btnReset.Click += (s, e) => ResetView();
-            filterBar.Controls.AddRange(new Control[] { cbPeriod, dtpFromF, dtpToF, cbClientF, cbDriverF, cbTruckF, cbShowF, cbSortF, btnReset });
+            // Simple chips for the period and the order; the old period/sort boxes stay hidden and hold the saved view.
+            dateChipF = new DateFilterChip(DatePresets.History, "All dates") { Margin = new Padding(0, 0, Dc(8), 0) };
+            dateChipF.RangeChanged += (s, e) =>
+            {
+                if (applyingView) return;
+                var r = dateChipF.Range;
+                applyingView = true;
+                try
+                {
+                    if (r.IsAll) cbPeriod.SelectedIndex = 0;
+                    else { cbPeriod.SelectedIndex = 6; dtpFromF.Value = r.From!.Value; dtpToF.Value = r.To!.Value; }
+                    UpdateCustomRange();
+                }
+                finally { applyingView = false; }
+                SaveView(); FilterGridData();
+            };
+            sortChipF = new ChoiceChip("Sort", cbSortF.Items.Cast<object>().Select(o => o.ToString() ?? ""), "⇅") { Margin = new Padding(0, 0, Dc(8), 0) };
+            sortChipF.SelectionChanged += (s, e) => { if (!applyingView) cbSortF.SelectedIndex = sortChipF.SelectedIndex; SaveView(); };
+            cbPeriod.Visible = false; cbSortF.Visible = false;
+            filterBar.Controls.AddRange(new Control[] { dateChipF, cbPeriod, dtpFromF, dtpToF, cbClientF, cbDriverF, cbTruckF, cbShowF, sortChipF, cbSortF, btnReset });
             var tilesGap = new Panel { Dock = DockStyle.Top, Height = Dc(10), BackColor = pnlGridCard.BackColor };
             PageKit.InsertBelow(pnlGridHeaderBar, trTiles);
             PageKit.InsertBelow(trTiles, tilesGap);
@@ -95,11 +114,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             centerReady = true;
             LoadView();
         }
+        private DateFilterChip? dateChipF;
+        private ChoiceChip? sortChipF;
         private void UpdateCustomRange()
         {
-            bool custom = cbPeriod.SelectedIndex == 6;
-            dtpFromF.Visible = custom;
-            dtpToF.Visible = custom;
+            // The date chip shows the period now, so the separate From / To boxes stay hidden.
+            dtpFromF.Visible = false;
+            dtpToF.Visible = false;
+            SyncTripChips();
+        }
+        /// <summary>Shows the saved period and sort on the chips.</summary>
+        private void SyncTripChips()
+        {
+            if (dateChipF == null || sortChipF == null) return;
+            DateRange r = cbPeriod.SelectedIndex switch
+            {
+                1 => DateRange.Preset("Today"),
+                2 => DateRange.Preset("This week"),
+                3 => DateRange.Preset("This month"),
+                4 => DateRange.Preset("Last 30 days"),
+                5 => DateRange.Preset("This year"),
+                6 => new DateRange(dtpFromF.Value.Date, dtpToF.Value.Date, dtpFromF.Value.Date == dtpToF.Value.Date ? "day" : "custom"),
+                _ => DateRange.All
+            };
+            dateChipF.SetQuietly(r);
+            sortChipF.SetQuietly(Math.Max(0, cbSortF.SelectedIndex));
         }
         /// <summary>Refreshes the joined data and the dropdown choices after the reports are loaded.</summary>
         private void RefreshCenterData()
