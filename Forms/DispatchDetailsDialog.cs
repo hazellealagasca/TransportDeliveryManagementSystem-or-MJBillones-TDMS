@@ -1073,7 +1073,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (!IsActiveOrder)
             {
-                MessageBox.Show(this, $"Dispatch {del.DispatchNumber} is {del.Status.ToLowerInvariant()} and can't be rescheduled.", "Reschedule", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show(this, $"Dispatch {del.DispatchNumber} is {del.Status.ToLowerInvariant()} and can't be rescheduled.", "Reschedule", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             using var dlg = new RescheduleDeliveryDialog(del);

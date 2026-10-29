@@ -14,8 +14,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Crate cargo types a regular dispatch or loading order can carry.</summary>
         public static readonly string[] CrateCargoTypes = { "Cold / Chilled", "Dry Goods", "Dry and Chilled Mix" };
         private static readonly string[] SpecialWords = { "non-crate", "noncrate", "special", "bulk", "equipment", "oversize", "fragile", "furniture", "machinery", "appliance", "box", "pallet", "loose" };
+        /// <summary>False when Special trips are turned off in Settings → Features &amp; Pop-ups.</summary>
+        public static bool Enabled => Features.On(Features.SpecialTrips);
+        /// <summary>The "book it as a Special Trip" hint for validation messages (empty when Special trips are off).</summary>
+        public static string SpecialHint => Enabled ? " Non-crate or specialized cargo must be booked as a Special Trip (choose \"" + SpecialOption + "\" under Cargo Type)." : "";
         public static bool IsSpecial(string? cargoType)
         {
+            if (!Enabled) return false;
             string t = (cargoType ?? "").Trim().ToLowerInvariant();
             if (t.Length == 0) return false;
             if (t == SpecialOption.ToLowerInvariant()) return true;
@@ -27,8 +32,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string keep = cb.Text;
             cb.Items.Clear();
             cb.Items.AddRange(CrateCargoTypes.Cast<object>().ToArray());
-            cb.Items.Add(SpecialOption);
-            if (!string.IsNullOrEmpty(keep) && !IsSpecial(keep))
+            if (Enabled) cb.Items.Add(SpecialOption);
+            if (!string.IsNullOrEmpty(keep) && !IsSpecial(keep) && keep != SpecialOption)
             {
                 int i = cb.FindStringExact(keep);
                 if (i >= 0) cb.SelectedIndex = i; else cb.Text = keep;
@@ -40,6 +45,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// </summary>
         public static bool OfferSpecialTrip(IWin32Window? owner, string? company, DateTime date, string? note = null)
         {
+            if (!Enabled) return false;
             var dr = MessageBox.Show(owner,
                 "Regular dispatches and loading orders are for crate deliveries only.\n\n" +
                 "Non-crate deliveries and specialized cargo (boxes, bulk, equipment, oversized or fragile items) must be booked as a Special Trip / Special Delivery.\n\n" +

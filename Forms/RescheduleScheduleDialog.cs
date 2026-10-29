@@ -343,7 +343,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (result.Success)
             {
-                MessageBox.Show(result.Message, "Schedule Updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show(result.Message, "Schedule Updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 this.DialogResult = DialogResult.OK;
                 this.Close();
             }

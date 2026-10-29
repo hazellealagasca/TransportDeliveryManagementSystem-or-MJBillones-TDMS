@@ -780,7 +780,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (currentTripId <= 0)
             {
-                MessageBox.Show("Please save or open a valid Special Trip record before rescheduling.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please save or open a valid Special Trip record before rescheduling.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 

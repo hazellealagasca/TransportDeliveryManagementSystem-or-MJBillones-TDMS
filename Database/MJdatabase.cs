@@ -5567,6 +5567,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             truckTypeMatched = false;
 
+            if (!Functions.Features.On(Functions.Features.RateMatrix)) return null; // Rate Matrix turned off in Settings
+
             try
 
             {
@@ -5630,6 +5632,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static decimal CalculateDeliveryTariff(Delivery del, out string matchDescription)
 
         {
+
+            if (!Functions.Features.On(Functions.Features.RateMatrix))
+
+            {
+
+                matchDescription = "Rate Matrix is turned off. Type the amount for this trip.";
+
+                return 0m;
+
+            }
 
             try
 

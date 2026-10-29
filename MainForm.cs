@@ -1404,14 +1404,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string q = txtGlobalSearch.Text.Trim();
             if (string.IsNullOrEmpty(q))
             {
-                MessageBox.Show("Please enter an order #, employee name, truck plate, or place to search.", "Search Prompt", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please enter an order #, employee name, truck plate, or place to search.", "Search Prompt", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             var results = MJdatabase.GlobalSearch(q);
             if (results.Count == 0)
             {
-                MessageBox.Show($"No records found matching '{q}'.", "Search Results", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"No records found matching '{q}'.", "Search Results", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 

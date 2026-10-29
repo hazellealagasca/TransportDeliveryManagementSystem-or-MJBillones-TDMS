@@ -321,7 +321,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             currentUser.SecurityAnswer = answer;
 
             EventNotificationService.Publish("Security Updated", $"Security settings updated for @{currentUser.Username}", ToastType.Success, this);
-            MessageBox.Show("Security settings saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            QuietBox.Show("Security settings saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             this.Close();
         }
     }

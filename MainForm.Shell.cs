@@ -389,7 +389,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Replacement = null;
                 this.Cursor = Cursors.Default;
                 System.Diagnostics.Debug.WriteLine($"[MainForm] ReloadForTheme: {ex.Message}");
-                MessageBox.Show("The new theme was saved and will be fully applied the next time you sign in.", "Theme", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("The new theme was saved and will be fully applied the next time you sign in.", "Theme", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
         internal void SetSidebarExpandedImmediately()

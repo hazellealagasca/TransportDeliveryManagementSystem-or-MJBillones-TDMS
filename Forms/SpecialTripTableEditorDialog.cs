@@ -628,7 +628,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridColumns.EndEdit();
             if (gridColumns.SelectedRows.Count == 0)
             {
-                MessageBox.Show("Please select a column header from the list on the left to rename.", "Select Column", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a column header from the list on the left to rename.", "Select Column", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -662,7 +662,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridColumns.EndEdit();
             if (gridColumns.SelectedRows.Count == 0)
             {
-                MessageBox.Show("Please select a column header to delete.", "Select Column", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a column header to delete.", "Select Column", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             RemoveColumnAt(gridColumns.SelectedRows[0].Index);
@@ -673,7 +673,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (index < 0 || index >= EditedColumns.Count) return;
             if (EditedColumns.Count <= 1)
             {
-                MessageBox.Show("The table must keep at least one data column.", "Cannot Delete Last Column", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("The table must keep at least one data column.", "Cannot Delete Last Column", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -814,7 +814,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridRows.EndEdit();
             if (gridRows.CurrentRow == null || gridRows.CurrentRow.Index < 0)
             {
-                MessageBox.Show("Please select a row in the table to delete.", "Select Row", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a row in the table to delete.", "Select Row", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             gridRows.Rows.RemoveAt(gridRows.CurrentRow.Index);

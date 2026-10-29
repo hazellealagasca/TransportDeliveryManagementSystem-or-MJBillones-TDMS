@@ -1080,7 +1080,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (selectedClient == null || isNewClient)
             {
-                MessageBox.Show("Create the client first, then add its stores.", "Stores", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Create the client first, then add its stores.", "Stores", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -1117,7 +1117,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (MJdatabase.IsClientStoreInUse(store, out var usedOn))
             {
-                MessageBox.Show($"Store \"{store.StoreCode} - {store.StoreName}\" appears on a past {usedOn}, so it can't be removed without breaking that history.\n\nIf the store changed, rename it instead.", "Store is part of history", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"Store \"{store.StoreCode} - {store.StoreName}\" appears on a past {usedOn}, so it can't be removed without breaking that history.\n\nIf the store changed, rename it instead.", "Store is part of history", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             var res = MessageBox.Show($"Are you sure you want to delete store \"{store.StoreCode} - {store.StoreName}\"?\n\nIt has never been used on an order, so nothing in the history refers to it.", "Delete store", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);

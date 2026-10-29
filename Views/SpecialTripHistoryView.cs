@@ -584,7 +584,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (RowMenu.Is(trip.Status, "Completed"))
             {
-                MessageBox.Show($"Special Trip '{trip.OrderReference}' is already marked as Completed.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"Special Trip '{trip.OrderReference}' is already marked as Completed.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             if (RowMenu.Is(trip.Status, "Cancelled"))
@@ -648,7 +648,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (gridSpecialTrips.Rows.Count == 0)
             {
-                MessageBox.Show("No special trip records to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("No special trip records to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -672,7 +672,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             }
                         }
                         File.WriteAllText(sfd.FileName, sb.ToString(), Encoding.UTF8);
-                        MessageBox.Show("Special Trip history successfully exported to CSV!", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        QuietBox.Show("Special Trip history successfully exported to CSV!", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
                     { ErrLog.Error("SpecialTripHistoryView", ex); 

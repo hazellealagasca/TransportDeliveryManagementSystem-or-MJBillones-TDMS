@@ -1099,7 +1099,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (string.IsNullOrWhiteSpace(cbClient.Text) && !chkPickerAllClients.Checked)
             {
-                MessageBox.Show("Pick the client first, so only their trips are added.", "Add trips", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Pick the client first, so only their trips are added.", "Add trips", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 cbClient.Focus();
                 return;
             }
@@ -1107,7 +1107,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var ready = gridPicker.Rows.Cast<DataGridViewRow>().Where(r => r.Tag is PickRow pr && pr.State == PickState.Ready).Select(r => ((PickRow)r.Tag!).Delivery).ToList();
             if (ready.Count == 0)
             {
-                MessageBox.Show($"No completed trips are waiting to be billed for {(string.IsNullOrWhiteSpace(cbClient.Text) ? "this period" : cbClient.Text.Trim())}.\n\nThe list in step 2 shows which trips are already on this or another statement.", "Add trips", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"No completed trips are waiting to be billed for {(string.IsNullOrWhiteSpace(cbClient.Text) ? "this period" : cbClient.Text.Trim())}.\n\nThe list in step 2 shows which trips are already on this or another statement.", "Add trips", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -1292,8 +1292,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 soa.Id = savedId;
                 selectedSoa = soa;
 
-                MessageBox.Show($"Statement of Account #{soa.SoaNumber} successfully saved and linked to Billing Invoice (SI NO. {soa.SalesInvoiceNo})!", "SOA Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
+                QuietBox.Show($"Statement of Account #{soa.SoaNumber} successfully saved and linked to Billing Invoice (SI NO. {soa.SalesInvoiceNo})!", "SOA Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadData();
                 SetFormVisibility(false);
 
@@ -1344,7 +1343,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else
             {
-                MessageBox.Show("Please select a Statement of Account from the table to print.", "Select SOA", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a Statement of Account from the table to print.", "Select SOA", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
@@ -1397,11 +1396,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         return;
                     }
                 }
-                MessageBox.Show($"This Statement of Account is linked to Billing Invoice #{selectedSoa.SalesInvoiceNo}.\nPlease open the Billing Invoices tab to view it.", "Linked Invoice", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"This Statement of Account is linked to Billing Invoice #{selectedSoa.SalesInvoiceNo}.\nPlease open the Billing Invoices tab to view it.", "Linked Invoice", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
-                MessageBox.Show("Please select an issued Statement of Account with a linked Sales Invoice.", "Select SOA", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select an issued Statement of Account with a linked Sales Invoice.", "Select SOA", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
     }

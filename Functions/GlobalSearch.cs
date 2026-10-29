@@ -42,8 +42,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Page("Loading schedule & dispatch", "operations orders dispatch loading", () => mf?.NavigateToOperations("Dispatch"));
                 Page("Completed dispatches", "operations done finished", () => mf?.NavigateToOperations("Completed"));
                 Page("Trip reports", "operations trip report", () => mf?.NavigateToOperations("TripReports"));
-                Page("Incident & damage logs", "operations incidents damage", () => mf?.NavigateToOperations("Incidents"));
-                Page("Special trips", "operations special trip", () => mf?.NavigateToOperations("SpecialTrips"));
+                if (Features.On(Features.Incidents)) Page("Incident & damage logs", "operations incidents damage", () => mf?.NavigateToOperations("Incidents"));
+                if (Features.On(Features.SpecialTrips)) Page("Special trips", "operations special trip", () => mf?.NavigateToOperations("SpecialTrips"));
             }
             if (res)
             {
@@ -61,6 +61,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Page("Clients", "master data clients customers", () => mf?.NavigateToMasterData("Clients"));
                 Page("Delivery routes", "master data routes stores", () => mf?.NavigateToMasterData("Routes"));
+                if (Features.On(Features.RateMatrix)) Page("Rate Matrix", "master data rates price tariff", () => mf?.NavigateToMasterData("Rates"));
             }
             try
             {

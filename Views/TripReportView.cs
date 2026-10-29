@@ -657,7 +657,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
             }
-            MessageBox.Show("Please select a Trip Report or Dispatch Order to print the Official Trip Report.", "Select Trip", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            QuietBox.Show("Please select a Trip Report or Dispatch Order to print the Official Trip Report.", "Select Trip", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void SetupEvents()
@@ -707,7 +707,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 int missing = totalDisp - totalDel;
                 btnLogIncident.Text = $"⚠️ LOG INCIDENT ({missing} MISSING CRATES)";
-                btnLogIncident.Visible = true;
+                btnLogIncident.Visible = Features.On(Features.Incidents);
             }
             else
             {
@@ -1073,8 +1073,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SaveCrewPayFor(selDel.Id);
                 MJdatabase.ClearFormDraft("TripReport", SessionContext.CurrentUsername);
                 if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
-                MessageBox.Show("Trip Report saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                if (totalDispatched > totalDelivered)
+                QuietBox.Show("Trip Report saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (totalDispatched > totalDelivered && Features.On(Features.Incidents))
                 {
                     int missing = totalDispatched - totalDelivered;
                     var promptLog = MessageBox.Show($"Trip Report completed with {missing} missing/damaged crate(s).\n\nWould you like to log an Incident & Damage Report for this delivery now?", "Log Incident Report?", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
@@ -1246,7 +1246,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 MJdatabase.SaveTripReport(selectedTripReport);
                 if (selDel != null) SaveCrewPayFor(selDel.Id);
-                MessageBox.Show("Trip Report updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Trip Report updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadData();
                 SetFormVisibility(false);
@@ -1273,7 +1273,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     bool deleted = MJdatabase.DeleteRecord("TripReports", selectedTripReport.Id);
                     if (deleted)
                     {
-                        MessageBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        QuietBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         ClearFields();
                         LoadData();
                     }
@@ -1471,9 +1471,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.Add(RowMenu.Sep());
                 if (!invoiced) m.Items.Add(RowMenu.Good("Issue billing invoice for this trip", () => { if (del != null) MainForm.Instance?.CreateInvoiceForDelivery(del); }, del != null));
                 else m.Items.Add(RowMenu.Item($"Show invoice {invoice!.InvoiceNumber}", () => MainForm.Instance?.ShowFinanceRecords("Billing", invoice.InvoiceNumber)));
-                m.Items.Add(RowMenu.Item(shortCrates > 0 ? $"Log incident ({shortCrates} crates unaccounted)" : "Log an incident for this trip", () =>
-                    OnLogIncidentRequested?.Invoke(tr.DeliveryId, tr.DispatchNumber, shortCrates, del?.DispatchDate ?? tr.ReportDate)));
-                m.Items.Add(RowMenu.Item("Show incidents for this dispatch", () => MainForm.Instance?.ShowIncidentsForDispatch(tr.DispatchNumber)));
+                if (Features.On(Features.Incidents))
+                {
+                    m.Items.Add(RowMenu.Item(shortCrates > 0 ? $"Log incident ({shortCrates} crates unaccounted)" : "Log an incident for this trip", () =>
+                        OnLogIncidentRequested?.Invoke(tr.DeliveryId, tr.DispatchNumber, shortCrates, del?.DispatchDate ?? tr.ReportDate)));
+                    m.Items.Add(RowMenu.Item("Show incidents for this dispatch", () => MainForm.Instance?.ShowIncidentsForDispatch(tr.DispatchNumber)));
+                }
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.Sub("🖨️  Print",
                     RowMenu.Item("Official trip report", () => PrintSelectedTripReport()),

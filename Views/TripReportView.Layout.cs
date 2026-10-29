@@ -91,7 +91,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlFormBody.Controls.Add(card4);
             pnlFormBody.Controls.Add(CreateSectionSpacer());
             pnlFormBody.Controls.Add(card3);
-            pnlFormBody.Controls.Add(CreateSectionSpacer());
+            var payGap = CreateSectionSpacer();
+            pnlFormBody.Controls.Add(payGap);
+            // Settings → Features & Pop-ups → "Crew pay on trip reports"
+            Features.Bind(card3, () => { bool on = Features.On(Features.CrewPay); card3.Visible = on; payGap.Visible = on; }, Features.CrewPay);
             pnlFormBody.Controls.Add(card2);
             pnlFormBody.Controls.Add(CreateSectionSpacer());
             pnlFormBody.Controls.Add(card1);

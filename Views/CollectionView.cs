@@ -368,7 +368,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 };
 
                 MJdatabase.SaveCollectionReceipt(cr);
-                MessageBox.Show("Collection Receipt issued successfully and Invoice marked as PAID!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Collection Receipt issued successfully and Invoice marked as PAID!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadData();
                 SetFormVisibility(false);
@@ -453,7 +453,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedCollection.Notes = txtNotes.Text.Trim();
 
                 MJdatabase.SaveCollectionReceipt(selectedCollection);
-                MessageBox.Show("Collection Receipt updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Collection Receipt updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadData();
                 SetFormVisibility(false);
@@ -480,7 +480,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     bool deleted = MJdatabase.DeleteRecord("CollectionReceipts", selectedCollection.Id);
                     if (deleted)
                     {
-                        MessageBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        QuietBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         ClearFields();
                         LoadData();
                     }
@@ -553,7 +553,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (selectedCollection == null)
             {
-                MessageBox.Show("Please select a collection receipt from the list first, then click Print Slip.", "Select a Receipt", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a collection receipt from the list first, then click Print Slip.", "Select a Receipt", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             PrintHelper.PrintOfficialCollectionReceipt(selectedCollection);
@@ -652,7 +652,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int idx = unpaidInvoices.FindIndex(i => i.Id == inv.Id);
             if (idx < 0)
             {
-                MessageBox.Show($"Invoice {inv.InvoiceNumber} has no balance left to collect (status: {inv.Status}).", "Nothing to collect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"Invoice {inv.InvoiceNumber} has no balance left to collect (status: {inv.Status}).", "Nothing to collect", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             OpenNewRecordForm();

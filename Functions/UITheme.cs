@@ -71,6 +71,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static void ShowToast(Control parent, string message, ToastType type = ToastType.Success)
         {
             if (Suppressed) return;
+            if (!Features.On(Features.Toasts)) return; // Settings → Features & Pop-ups → "Small notices in the corner"
             try
             {
                 Form? parentForm = parent is Form f ? f : parent.FindForm();

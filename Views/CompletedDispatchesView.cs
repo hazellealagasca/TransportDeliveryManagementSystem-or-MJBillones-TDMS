@@ -218,7 +218,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 else
                 {
-                    MessageBox.Show("Please select a completed delivery from the list to create its billing invoice.", "Select Delivery", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    QuietBox.Show("Please select a completed delivery from the list to create its billing invoice.", "Select Delivery", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             };
 
@@ -624,7 +624,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var del = GetSelectedDelivery();
             if (del == null)
             {
-                MessageBox.Show("Please select a completed dispatch first.", "Select Delivery", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a completed dispatch first.", "Select Delivery", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             RecordDetailsDialog.ShowDetails(this, del);
@@ -635,7 +635,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var del = GetSelectedDelivery();
             if (del == null)
             {
-                MessageBox.Show("Please select a completed dispatch from the grid first.", "Select Delivery", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a completed dispatch from the grid first.", "Select Delivery", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             PrintHelper.PrintEndToEndDeliveryDossier(del.Id, del.DispatchNumber);
@@ -646,7 +646,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var del = GetSelectedDelivery();
             if (del == null)
             {
-                MessageBox.Show("Please select a completed dispatch from the grid first.", "Select Delivery", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a completed dispatch from the grid first.", "Select Delivery", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             PrintHelper.PrintOfficialTripReport(del.Id, del.DispatchNumber);
@@ -657,7 +657,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var del = GetSelectedDelivery();
             if (del == null)
             {
-                MessageBox.Show("Please select a completed dispatch first.", "Select Delivery", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a completed dispatch first.", "Select Delivery", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             OnNavigateToIncidentRequested?.Invoke(del.Id, del.DispatchNumber);
@@ -668,7 +668,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var del = GetSelectedDelivery();
             if (del == null)
             {
-                MessageBox.Show("Please select a completed dispatch first.", "Select Delivery", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a completed dispatch first.", "Select Delivery", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             OnNavigateToTripReportRequested?.Invoke(del.Id, del.DispatchNumber);

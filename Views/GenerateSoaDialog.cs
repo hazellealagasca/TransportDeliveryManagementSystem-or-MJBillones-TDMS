@@ -398,8 +398,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int soaId = MJdatabase.SaveStatementOfAccount(soa, selected.Select(i => i.Id).ToList());
             soa.Id = soaId;
 
-            MessageBox.Show($"Statement of Account #{soa.SoaNumber} successfully generated and saved!", "SOA Issued", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
+            QuietBox.Show($"Statement of Account #{soa.SoaNumber} successfully generated and saved!", "SOA Issued", MessageBoxButtons.OK, MessageBoxIcon.Information);
             PrintHelper.PrintStatementOfAccount(soa, selected);
             this.DialogResult = DialogResult.OK;
             this.Close();

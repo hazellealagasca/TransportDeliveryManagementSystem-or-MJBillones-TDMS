@@ -189,7 +189,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             ToolStripMenuItem itemPrintTripReport = new ToolStripMenuItem("📋 Print Official Trip Report", null, (s, e) => {
                 if (selectedDelivery != null) PrintHelper.PrintOfficialTripReport(selectedDelivery.Id, selectedDelivery.DispatchNumber);
-                else MessageBox.Show("Please select a dispatch order first.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                else QuietBox.Show("Please select a dispatch order first.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
             });
 
             ToolStripMenuItem itemExport = new ToolStripMenuItem("📊 Export to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridDispatch, "Dispatch_Orders", "Active and Dispatched Trips"));
@@ -755,6 +756,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridActionsFlow.Controls.Add(btnSpecialTrip);
 
 
+
+            Features.Bind(btnSpecialTrip, () => btnSpecialTrip.Visible = Features.On(Features.SpecialTrips), Features.SpecialTrips);
 
             btnCompleteOrder = new Button
 
@@ -3020,7 +3023,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                MessageBox.Show("Please select a stop to remove from the route list.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a stop to remove from the route list.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             }
 
@@ -3311,7 +3314,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-                if (!cbCargoType.Items.Contains(CargoRouting.SpecialOption))
+                if (cbCargoType.Items.Count == 0 || CargoRouting.Enabled != cbCargoType.Items.Contains(CargoRouting.SpecialOption))
 
                 {
 
@@ -3798,7 +3801,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                MessageBox.Show("Please select a dispatch order in the table first.", "Select an Order", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a dispatch order in the table first.", "Select an Order", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 return;
 
@@ -3810,7 +3813,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (RowMenu.Is(d.Status, "Completed", "Cancelled"))
 
-                    MessageBox.Show($"Dispatch #{d.DispatchNumber} is already {d.Status.ToLowerInvariant()}.", "Complete Order", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    QuietBox.Show($"Dispatch #{d.DispatchNumber} is already {d.Status.ToLowerInvariant()}.", "Complete Order", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 else if (MessageBox.Show($"Dispatch #{d.DispatchNumber} hasn't left yet — it goes in transit automatically at {MJdatabase.DepartureDateTime(d):MMM d, h:mm tt}.\n\nDid the truck already leave? Click Yes to start the trip now.", "Not on the road yet", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
 
@@ -4040,7 +4043,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (plannedCrates <= 0 && (!chkMultiDrop.Checked || currentStops.Sum(s => s.TotalCrates) <= 0))
                 {
                     ValidationHelper.ApplyValidationState(numGCrate, false, "Total Crates must be greater than zero.");
-                    valErrors.Add("Total Crates to deliver must be greater than 0. Non-crate or specialized cargo must be booked as a Special Trip (choose \"" + CargoRouting.SpecialOption + "\" under Cargo Type).");
+                    valErrors.Add("Total Crates to deliver must be greater than 0." + CargoRouting.SpecialHint);
 
                     firstInvalid ??= numGCrate;
                 }
@@ -4440,7 +4443,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
 
-                MessageBox.Show("Dispatch & Loading Order created and crew assigned successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Dispatch & Loading Order created and crew assigned successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 ClearFields();
 
@@ -4469,7 +4472,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (target == null)
             {
-                MessageBox.Show("Please select an active dispatch order to reschedule.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select an active dispatch order to reschedule.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
                 return;
             }
 
@@ -4852,7 +4856,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 MJdatabase.SaveDelivery(selectedDelivery);
 
-                MessageBox.Show("Dispatch & Loading Order updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Dispatch & Loading Order updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 ClearFields();
 
@@ -4920,7 +4924,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        MessageBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        QuietBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                         ClearFields();
 

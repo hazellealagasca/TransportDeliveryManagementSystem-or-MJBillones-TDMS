@@ -1226,7 +1226,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.NotifyCategoriesChanged();
                 LoadClientRoutes(clientName, code);
                 FilterGrid();
-                MessageBox.Show($"Route '{code} - {name}' with {placesList.Count} store stop(s) saved successfully!", "Route Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"Route '{code} - {name}' with {placesList.Count} store stop(s) saved successfully!", "Route Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
@@ -1249,7 +1249,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.NotifyCategoriesChanged();
                 LoadClientRoutes(txtItemValue.Text.Trim());
                 FilterGrid();
-                MessageBox.Show("Route deleted successfully.", "Route Deleted", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Route deleted successfully.", "Route Deleted", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
@@ -1399,12 +1399,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         MJdatabase.SaveDeliveryRoute(newR);
                     }
 
-                    MessageBox.Show($"Client Company '{val}' saved successfully!", "Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    QuietBox.Show($"Client Company '{val}' saved successfully!", "Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else
                 {
                     MJdatabase.SaveLookupItem(selectedCategory, val);
-                    MessageBox.Show($"'{val}' added to {selectedCategory} successfully!", "Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    QuietBox.Show($"'{val}' added to {selectedCategory} successfully!", "Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
 
                 MJdatabase.NotifyCategoriesChanged();
@@ -1501,7 +1501,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         MJdatabase.SaveDeliveryRoute(rToSave);
                     }
 
-                    MessageBox.Show($"Client Company '{val}' updated successfully!", "Updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    QuietBox.Show($"Client Company '{val}' updated successfully!", "Updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     MJdatabase.NotifyCategoriesChanged();
                     LoadCategoryData();
                     SetFormVisibility(false);
@@ -1542,7 +1542,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         MJdatabase.DeleteLookupItem(selectedCategory, val);
                     }
                     MJdatabase.NotifyCategoriesChanged();
-                    MessageBox.Show(isClient ? $"'{val}' was deactivated. Its orders, invoices and payments are kept, and you can reactivate it from Master Data → Clients." : $"'{val}' removed successfully.", "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    QuietBox.Show(isClient ? $"'{val}' was deactivated. Its orders, invoices and payments are kept, and you can reactivate it from Master Data → Clients." : $"'{val}' removed successfully.", "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     LoadCategoryData();
                 }
             }

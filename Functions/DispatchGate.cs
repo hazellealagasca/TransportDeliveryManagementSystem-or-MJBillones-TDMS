@@ -31,7 +31,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (d == null) return false;
             string? why = WhyBlocked(d, nextStep);
             if (why == null) return true;
-            MessageBox.Show(owner, why, "Complete the dispatch first", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            QuietBox.Show(owner, why, "Complete the dispatch first", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return false;
         }
         /// <summary>Incidents: always allowed once completed; on the road only after confirming; never before it leaves or once cancelled.</summary>
@@ -41,7 +41,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (IsCompleted(d.Status)) return true;
             if (IsCancelled(d.Status))
             {
-                MessageBox.Show(owner, $"Dispatch {d.DispatchNumber} was cancelled, so no incident can be logged for it.", "Dispatch cancelled", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show(owner, $"Dispatch {d.DispatchNumber} was cancelled, so no incident can be logged for it.", "Dispatch cancelled", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return false;
             }
             if (HasDeparted(d.Status))
@@ -49,7 +49,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return MessageBox.Show(owner, $"Dispatch {d.DispatchNumber} is still \"{d.Status}\" — it hasn't been marked completed.\n\nLog an incident that happened on the road (accident, breakdown, damage in transit)?",
                     "Dispatch not completed yet", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
             }
-            MessageBox.Show(owner, $"Dispatch {d.DispatchNumber} is still \"{d.Status}\" and hasn't left yet, so there is nothing to report.\n\nIncidents can be logged once the truck is on the road, or after the dispatch is marked completed.",
+            QuietBox.Show(owner, $"Dispatch {d.DispatchNumber} is still \"{d.Status}\" and hasn't left yet, so there is nothing to report.\n\nIncidents can be logged once the truck is on the road, or after the dispatch is marked completed.",
                 "Dispatch hasn't left", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return false;
         }

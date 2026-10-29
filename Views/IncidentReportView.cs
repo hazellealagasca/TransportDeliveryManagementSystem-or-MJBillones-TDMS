@@ -377,7 +377,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         string savedRelPath = SecurityHelper.SaveReferencePhoto(ofd.FileName, "Incidents");
                         currentPhotoPath = savedRelPath;
                         DisplayPhotoPreview(currentPhotoPath);
-                        MessageBox.Show("Photo uploaded and attached successfully for reference!", "Upload Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        QuietBox.Show("Photo uploaded and attached successfully for reference!", "Upload Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
                     { ErrLog.Error("IncidentReportView", ex); 
@@ -391,7 +391,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (string.IsNullOrEmpty(currentPhotoPath))
             {
-                MessageBox.Show("No photo attached to view.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("No photo attached to view.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -460,7 +460,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.SaveIncidentReport(ir);
                 MJdatabase.ClearFormDraft("IncidentReport", SessionContext.CurrentUsername);
                 if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
-                MessageBox.Show("Incident & cargo damage log saved successfully!", "Log Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Incident & cargo damage log saved successfully!", "Log Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadData();
                 SetFormVisibility(false);
             }
@@ -502,7 +502,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedIncident.PhotoPath = currentPhotoPath;
 
                 MJdatabase.SaveIncidentReport(selectedIncident);
-                MessageBox.Show("Incident record updated successfully!", "Update Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Incident record updated successfully!", "Update Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadData();
                 SetFormVisibility(false);
             }
@@ -528,7 +528,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     bool deleted = MJdatabase.DeleteRecord("IncidentReports", selectedIncident.Id);
                     if (deleted)
                     {
-                        MessageBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        QuietBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         LoadData();
                     }
                     else
@@ -680,7 +680,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (inc == null)
             {
-                MessageBox.Show("Please select an incident record first.", "Select Incident", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select an incident record first.", "Select Incident", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             PrintHelper.PrintEndToEndDeliveryDossier(inc.DeliveryId, inc.DispatchNumber);
@@ -767,7 +767,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bool next = !inc.ChargeableToCrew;
             if (next && inc.EstimatedCost <= 0)
             {
-                MessageBox.Show("Enter an estimated cost first (Edit incident) — there is nothing to charge to the crew yet.", "No cost to charge", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Enter an estimated cost first (Edit incident) — there is nothing to charge to the crew yet.", "No cost to charge", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             MJdatabase.ToggleIncidentChargeable(inc.Id, next);

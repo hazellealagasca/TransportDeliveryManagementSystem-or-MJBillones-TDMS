@@ -612,7 +612,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 RescheduledAideId = newAideId;
                 RescheduledAideName = newAideName;
 
-                MessageBox.Show(result.Message, "Reschedule Confirmed", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show(result.Message, "Reschedule Confirmed", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 this.DialogResult = DialogResult.OK;
                 this.Close();
             }

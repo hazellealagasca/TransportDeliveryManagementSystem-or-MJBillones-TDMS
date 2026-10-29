@@ -690,7 +690,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-            string rateNotice = matchedRate != null ? $"  |  🏷️ Rate: PHP {matchedRate.RateAmount:N2} ({(matchedRate.IsPeakSeason ? "Peak Season" : "Regular")})" : "  |  ⚠️ No rate configured for this destination (set it in Rate Matrix)";
+            string rateNotice = !Features.On(Features.RateMatrix) ? "" : matchedRate != null ? $"  |  🏷️ Rate: PHP {matchedRate.RateAmount:N2} ({(matchedRate.IsPeakSeason ? "Peak Season" : "Regular")})" : "  |  ⚠️ No rate configured for this destination (set it in Rate Matrix)";
             lblRec.Text = rec.RecommendationMessage + routeNotice + rateNotice;
 
 
@@ -914,7 +914,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (gTotal <= 0)
                 {
                     ValidationHelper.ApplyValidationState(numGCrate, false, "Planned Crates must be greater than zero.");
-                    valErrors.Add("Total planned crates must be greater than 0. Non-crate or specialized cargo must be booked as a Special Trip (choose \"" + CargoRouting.SpecialOption + "\" under Cargo Type).");
+                    valErrors.Add("Total planned crates must be greater than 0." + CargoRouting.SpecialHint);
                     firstInvalid ??= numGCrate;
                 }
 
@@ -1012,7 +1012,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 MJdatabase.ClearFormDraft("LoadingSchedule", SessionContext.CurrentUsername);
                 if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
-                MessageBox.Show("Loading Schedule created successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Loading Schedule created successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadSchedules();
             }
@@ -1109,7 +1109,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     MJdatabase.SaveLoadingScheduleStops(selectedSchedule.Id, storeStops);
                 }
-                MessageBox.Show("Loading Schedule updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Loading Schedule updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadSchedules();
             }
@@ -1142,7 +1142,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     bool deleted = MJdatabase.DeleteRecord("LoadingSchedules", selectedSchedule.Id);
                     if (deleted)
                     {
-                        MessageBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        QuietBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         ClearFields();
                         LoadSchedules();
                     }
@@ -1164,7 +1164,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (selectedSchedule == null)
                 {
-                    MessageBox.Show("Please select an existing loading schedule from the table to repeat / clone.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    QuietBox.Show("Please select an existing loading schedule from the table to repeat / clone.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
@@ -1190,7 +1190,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     MJdatabase.SaveLoadingScheduleStops(newSched.Id, srcStops);
                 }
                 LoadSchedules();
-                MessageBox.Show($"New Loading Order '{newSched.ScheduleNumber}' for {newSched.ClientName} ({newSched.Destination}) cloned successfully for today!", "Order Cloned", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"New Loading Order '{newSched.ScheduleNumber}' for {newSched.ClientName} ({newSched.Destination}) cloned successfully for today!", "Order Cloned", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             { ErrLog.Error("LoadingManagementView", ex); 
@@ -1346,14 +1346,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 else
                 {
-                    MessageBox.Show("Please select a loading schedule to dispatch.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    QuietBox.Show("Please select a loading schedule to dispatch.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
             }
 
             if (selectedSchedule.Status == "Completed")
             {
-                MessageBox.Show($"Loading Order '{selectedSchedule.ScheduleNumber}' is already completed and delivered.", "Already Delivered", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"Loading Order '{selectedSchedule.ScheduleNumber}' is already completed and delivered.", "Already Delivered", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -1436,7 +1436,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void CancelSchedule(LoadingSchedule ls)
         {
-            if (RowMenu.Is(ls.Status, "Cancelled")) { MessageBox.Show("This loading order is already cancelled.", "Notice", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            if (RowMenu.Is(ls.Status, "Cancelled")) { QuietBox.Show("This loading order is already cancelled.", "Notice", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
             if (RowMenu.Is(ls.Status, "Completed")) { MessageBox.Show("This loading order has already been delivered and can't be cancelled.", "Already delivered", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             var live = FindDispatchForSchedule(ls);
             if (live != null)
@@ -1472,7 +1472,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (selectedSchedule == null)
             {
-                MessageBox.Show("Please select a loading schedule order to reschedule.", "Select Order", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a loading schedule order to reschedule.", "Select Order", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 

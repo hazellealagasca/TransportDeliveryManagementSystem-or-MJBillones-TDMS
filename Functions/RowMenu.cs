@@ -151,7 +151,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var d = FindDelivery(deliveryId, dispatchNumber);
             if (d == null)
             {
-                MessageBox.Show($"Dispatch {dispatchNumber} could not be found. It may have been deleted.", "Dispatch not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"Dispatch {dispatchNumber} could not be found. It may have been deleted.", "Dispatch not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             Forms.DispatchDetailsDialog.ShowFor(owner, d);

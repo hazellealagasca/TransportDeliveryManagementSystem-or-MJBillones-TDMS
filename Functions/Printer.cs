@@ -50,7 +50,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (deliveries == null || deliveries.Count == 0)
             {
-                MessageBox.Show("No dispatch / loading orders available to print.", "Print", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("No dispatch / loading orders available to print.", "Print", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             PrintStudio.Show(() => PrintForms.LoadingSheetFromDeliveries(deliveries));
@@ -59,7 +59,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (schedules == null || schedules.Count == 0)
             {
-                MessageBox.Show("No loading schedules available to print.", "Print", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("No loading schedules available to print.", "Print", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             PrintStudio.Show(() => PrintForms.LoadingSheetFromSchedules(schedules));

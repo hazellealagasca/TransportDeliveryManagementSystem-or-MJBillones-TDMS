@@ -580,7 +580,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 };
 
                 MJdatabase.SaveInvoice(inv);
-                MessageBox.Show("Service Invoice generated and issued with 15-day credit terms!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Service Invoice generated and issued with 15-day credit terms!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadData();
                 SetFormVisibility(false);
@@ -662,7 +662,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     selectedInvoice.Status = "Unpaid";
                 }
                 MJdatabase.SaveInvoice(selectedInvoice);
-                MessageBox.Show("Invoice updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Invoice updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadData();
                 SetFormVisibility(false);
@@ -697,7 +697,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     bool deleted = MJdatabase.DeleteRecord("Invoices", selectedInvoice.Id);
                     if (deleted)
                     {
-                        MessageBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        QuietBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         ClearFields();
                         LoadData();
                     }

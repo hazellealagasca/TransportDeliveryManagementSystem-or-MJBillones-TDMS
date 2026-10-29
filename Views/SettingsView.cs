@@ -130,6 +130,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             AddTabButton(flowTabs, "Appearance", "🎨  Appearance & Theme", (s, e) => LoadChildView(new AppearanceSettingsView(), (Button)s!));
             AddTabButton(flowTabs, "Customization", "🧩  Preferences & Customization", (s, e) => LoadChildView(new SystemCustomizationView(currentUser), (Button)s!));
             if (isAdmin)
+                AddTabButton(flowTabs, "Features", "🔀  Features & Pop-ups", (s, e) => LoadChildView(new FeaturesSettingsView(), (Button)s!));
+            if (isAdmin)
             {
                 AddTabButton(flowTabs, "SystemHistory", "📜  System Change History", (s, e) => LoadChildView(new ModuleHistoryView("Master System Change Tracking (Add, Update, Delete)", null, isAdminOnly: true), (Button)s!));
                 AddTabButton(flowTabs, "Backup", "💾  Backup & Restore", (s, e) => LoadChildView(new BackupRestoreView(), (Button)s!));

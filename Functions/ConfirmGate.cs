@@ -69,6 +69,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private static bool Ask(Button b, Kind kind)
         {
+            // Settings → Features & Pop-ups → "Ask before saving". Resets always ask.
+            if (kind != Kind.Reset && !Features.On(Features.ConfirmSaves)) return true;
             string what = Clean(b.Text);
             if (what.Length == 0) what = kind switch { Kind.Add => "add this record", Kind.Update => "update this record", Kind.Reset => "reset", _ => "save" };
             string question, title;

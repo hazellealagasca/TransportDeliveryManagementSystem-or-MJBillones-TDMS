@@ -585,7 +585,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var row = GetSelectedRow();
             if (row == null)
             {
-                MessageBox.Show("Please select a trip history record first.", "Select Trip", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a trip history record first.", "Select Trip", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             RecordDetailsDialog.ShowDetails(this, row.DeliveryRef);
@@ -609,7 +609,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (targetCrew == null)
             {
-                MessageBox.Show("Please select a specific crew member from the dropdown or click a row in the grid first.", "Select Crew Member", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a specific crew member from the dropdown or click a row in the grid first.", "Select Crew Member", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -622,7 +622,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var row = GetSelectedRow();
             if (row == null)
             {
-                MessageBox.Show("Please select a trip record from the grid first.", "Select Trip", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Please select a trip record from the grid first.", "Select Trip", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             PrintHelper.PrintEndToEndDeliveryDossier(row.DeliveryRef.Id, row.DeliveryRef.DispatchNumber);

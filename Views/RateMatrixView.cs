@@ -14,6 +14,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private RateMatrix? selectedRate = null;
         private bool isBindingForm = false;
         private List<RateMatrix> allRates = new List<RateMatrix>();
+        private Label lblDupes = null!;
+        private readonly HashSet<int> dupIds = new HashSet<int>();
+        /// <summary>Rates that share the same route, destination, truck type and season (left over from older versions): shown in a banner and highlighted.</summary>
+        private void ShowDuplicates()
+        {
+            dupIds.Clear();
+            var groups = allRates.GroupBy(r => ((r.RouteName ?? "").Trim().ToLowerInvariant(), (r.Destination ?? "").Trim().ToLowerInvariant(), (r.TruckType ?? "").Trim().ToLowerInvariant(), r.IsPeakSeason))
+                                 .Where(g => g.Count() > 1).ToList();
+            foreach (var g in groups) foreach (var r in g) dupIds.Add(r.Id);
+            if (groups.Count == 0) { lblDupes.Visible = false; return; }
+            var g0 = groups[0];
+            string prices = string.Join(" and ", g0.Select(r => "PHP " + r.RateAmount.ToString("N2")));
+            lblDupes.Text = $"⚠  {(groups.Count == 1 ? "One rate is" : groups.Count + " rates are")} entered twice with different prices: {g0.First().RouteName} · {g0.First().TruckType} · {(g0.Key.IsPeakSeason ? "peak" : "regular")} ({prices}). " +
+                            "Keep the correct one and delete the other (highlighted below), so invoices always pick the right price.";
+            lblDupes.BackColor = AppTheme.WarningSoft;
+            lblDupes.ForeColor = AppTheme.WarningText;
+            lblDupes.Visible = true;
+            gridRates.Invalidate();
+        }
         private Button btnToggleForm = null!;
         private Button btnCloseForm = null!;
 
@@ -21,8 +40,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             InitializeComponent();
             Pal.RemapTree(this);
+            lblDupes = new Label { Dock = DockStyle.Top, AutoSize = false, Height = (int)Math.Round(52 * DeviceDpi / 96f), Visible = false, Padding = new Padding(14, 6, 14, 6), Font = new Font("Segoe UI Semibold", 9F), UseMnemonic = false, TextAlign = ContentAlignment.MiddleLeft };
+            gridRates.Parent?.Controls.Add(lblDupes);
             gridRates.BringToFront();
             SetupGridColumns();
+            gridRates.CellFormatting += (s, e) =>
+            {
+                if (e.RowIndex < 0 || dupIds.Count == 0) return;
+                if (gridRates.Rows[e.RowIndex].DataBoundItem is RateMatrix rr && dupIds.Contains(rr.Id) && e.CellStyle != null)
+                {
+                    e.CellStyle.BackColor = AppTheme.WarningSoft;
+                    e.CellStyle.ForeColor = AppTheme.WarningText;
+                }
+            };
             gridRates.CurrentCellDirtyStateChanged += (s, e) => { if (gridRates.IsCurrentCellDirty && gridRates.CurrentCell is DataGridViewCheckBoxCell) gridRates.CommitEdit(DataGridViewDataErrorContexts.Commit); };
             gridRates.CellValueChanged += (s, e) => {
                 if (isBindingForm) return;
@@ -504,7 +534,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         ? $"Successfully configured combined multi-stop route rate for {saved.Count} destinations!\n\n• Route: {saved[0]}\n• Rate: PHP {numRate.Value:N2} ({ttypeMulti})"
                         : $"Successfully applied rate rule (PHP {numRate.Value:N2} for {ttypeMulti}, Peak={chkPeak.Checked}) across {saved.Count} destination(s)!\n\n• New Rates Added: {added}\n• Existing Rates Updated: {updated}\n\nDestinations applied:\n• " + string.Join("\n• ", saved);
 
-                    MessageBox.Show(summary, "Rate Matrix Updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    QuietBox.Show(summary, "Rate Matrix Updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     ClearFields();
                     LoadRates();
                     return;
@@ -537,7 +567,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var dupRate = existingRates.Find(r => (selectedRate == null || r.Id != selectedRate.Id) && (r.Destination.Equals(fullDest, StringComparison.OrdinalIgnoreCase) || r.RouteName.Equals(routeTitle, StringComparison.OrdinalIgnoreCase)) && r.TruckType.Equals(ttype, StringComparison.OrdinalIgnoreCase) && r.IsPeakSeason == chkPeak.Checked);
                 if (dupRate != null)
                 {
-                    MessageBox.Show($"DUPLICATE RATE RULE BLOCKED:\nA rate entry for Route '{routeTitle}', Truck Type '{ttype}', and Peak Season={chkPeak.Checked} already exists (Current Rate: PHP {dupRate.RateAmount:N2}). Duplicate rate rules are strictly prohibited.", "Duplicate Rate Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    MessageBox.Show($"This rate already exists:\n\n{routeTitle} · {ttype} · {(chkPeak.Checked ? "peak season" : "regular season")} · PHP {dupRate.RateAmount:N2}\n\nEach route, truck type and season can have only one rate, so invoices always pick the right price. Select that rate in the list and change its amount instead.", "Rate already exists", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
@@ -553,7 +583,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 };
 
                 MJdatabase.SaveRateMatrix(rm);
-                MessageBox.Show("Rate Matrix entry added successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Rate Matrix entry added successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadRates();
                 SetFormVisibility(false);
@@ -606,7 +636,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var dupRate = existingRates.Find(r => r.Id != selectedRate.Id && (r.Destination.Equals(fullDest, StringComparison.OrdinalIgnoreCase) || r.RouteName.Equals(routeTitle, StringComparison.OrdinalIgnoreCase)) && r.TruckType.Equals(ttype, StringComparison.OrdinalIgnoreCase) && r.IsPeakSeason == chkPeak.Checked);
                 if (dupRate != null)
                 {
-                    MessageBox.Show($"DUPLICATE RATE RULE BLOCKED:\nA rate entry for Route '{routeTitle}', Truck Type '{ttype}', and Peak Season={chkPeak.Checked} already exists (Current Rate: PHP {dupRate.RateAmount:N2}). Duplicate rate rules are strictly prohibited.", "Duplicate Rate Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    MessageBox.Show($"This rate already exists:\n\n{routeTitle} · {ttype} · {(chkPeak.Checked ? "peak season" : "regular season")} · PHP {dupRate.RateAmount:N2}\n\nEach route, truck type and season can have only one rate, so invoices always pick the right price. Select that rate in the list and change its amount instead.", "Rate already exists", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
@@ -619,7 +649,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedRate.RateAmount = numRate.Value;
 
                 MJdatabase.SaveRateMatrix(selectedRate);
-                MessageBox.Show("Rate Matrix entry updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Rate Matrix entry updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadRates();
                 SetFormVisibility(false);
@@ -646,7 +676,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     bool deleted = MJdatabase.DeleteRecord("RateMatrix", selectedRate.Id);
                     if (deleted)
                     {
-                        MessageBox.Show("Rate Matrix entry deleted successfully!", "Deleted", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        QuietBox.Show("Rate Matrix entry deleted successfully!", "Deleted", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         ClearFields();
                         LoadRates();
                     }
@@ -796,6 +826,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 allRates = MJdatabase.GetRateMatrix();
                 FilterGridData();
 
+                ShowDuplicates();
                 lblSummary.Text = $"📊 Total Configured Rates: {allRates.Count:N0}  |  📍 Unique Destinations: {allRates.Select(r => r.Destination).Distinct().Count():N0}";
             }
             catch (Exception ex)

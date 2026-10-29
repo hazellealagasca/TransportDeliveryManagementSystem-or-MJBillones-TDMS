@@ -540,7 +540,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     done.Controls.Add(Act("📝  Trip report", "secondary", () => OnTripReportRequested?.Invoke(del.Id, del.DispatchNumber)));
                     done.Controls.Add(Act("🖨  Print trip report", "secondary", () => PrintHelper.PrintOfficialTripReport(del.Id, del.DispatchNumber)));
                     done.Controls.Add(Act("🖨  Print dossier", "secondary", () => PrintHelper.PrintEndToEndDeliveryDossier(del.Id, del.DispatchNumber)));
-                    done.Controls.Add(Act("⚠  Incidents", "secondary", () => OnIncidentsRequested?.Invoke(del.Id, del.DispatchNumber)));
+                    if (Features.On(Features.Incidents)) done.Controls.Add(Act("⚠  Incidents", "secondary", () => OnIncidentsRequested?.Invoke(del.Id, del.DispatchNumber)));
                     stack.Controls.Add(done);
                 }
                 var facts = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, BackColor = Color.Transparent, Margin = new Padding(0) };
@@ -649,7 +649,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void ExportCsv()
         {
-            if (shown.Count == 0) { MessageBox.Show(FindForm(), "There is nothing in the list to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            if (shown.Count == 0) { QuietBox.Show(FindForm(), "There is nothing in the list to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
             using var dlg = new SaveFileDialog { Filter = "CSV file|*.csv", FileName = $"Order_History_{DateTime.Now:yyyyMMdd_HHmm}.csv", Title = "Export Order History" };
             if (dlg.ShowDialog(FindForm()) != DialogResult.OK) return;
             static string Q(string? s) => "\"" + (s ?? "").Replace("\"", "\"\"") + "\"";

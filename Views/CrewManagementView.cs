@@ -515,7 +515,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         File.Copy(ofd.FileName, destPath, true);
                         currentPhotoPath = destPath;
                         DisplayPhotoPreview(currentPhotoPath);
-                        MessageBox.Show("Photo attached successfully!", "Photo Uploaded", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        QuietBox.Show("Photo attached successfully!", "Photo Uploaded", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
                     { ErrLog.Error("CrewManagementView", ex); 
@@ -538,7 +538,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else
             {
-                MessageBox.Show("No valid photo file found to display.", "Photo Not Found", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("No valid photo file found to display.", "Photo Not Found", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
@@ -546,7 +546,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             currentPhotoPath = string.Empty;
             DisplayPhotoPreview(string.Empty);
-            MessageBox.Show("Photo reference removed. Click 'Save' or 'Update' to persist changes.", "Photo Removed", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            QuietBox.Show("Photo reference removed. Click 'Save' or 'Update' to persist changes.", "Photo Removed", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void BtnSave_Click(object? sender, EventArgs e)
@@ -626,7 +626,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 ApplyClassification(crew);
                 MJdatabase.SaveCrew(crew);
-                MessageBox.Show("Crew member registered successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Crew member registered successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadCrew();
                 SetFormVisibility(false);
@@ -711,7 +711,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedCrew.PhotoPath = currentPhotoPath;
 
                 MJdatabase.SaveCrew(selectedCrew);
-                MessageBox.Show("Crew member updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Crew member updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadCrew();
                 SetFormVisibility(false);
@@ -745,7 +745,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     bool deleted = MJdatabase.DeleteRecord("Crews", selectedCrew.Id);
                     if (deleted)
                     {
-                        MessageBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        QuietBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         ClearFields();
                         LoadCrew();
                     }
@@ -984,7 +984,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.GetDeliveryCrewIds(d).Any(x => x.CrewId == c.Id)).ToList();
             if (trips.Count == 0)
             {
-                MessageBox.Show($"{c.FullName} has no completed trips from {from:MMM d} to {to:MMM d, yyyy}.", "No trips to pay", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"{c.FullName} has no completed trips from {from:MMM d} to {to:MMM d, yyyy}.", "No trips to pay", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             PrintHelper.PrintCrewPaySlip(c, trips, from, to);

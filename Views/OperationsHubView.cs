@@ -79,6 +79,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 hv.OnCreateInvoiceRequested = (del) => OnCreateInvoiceForward?.Invoke(del);
                 return hv;
             });
+            // Settings → Features & Pop-ups can hide Special trips and Incident logs; their records are kept.
+            Features.Bind(this, () =>
+            {
+                tabButtons["SpecialTrips"].Visible = Features.On(Features.SpecialTrips);
+                tabButtons["Incidents"].Visible = Features.On(Features.Incidents);
+                string? cur = activeTabBtn?.Tag as string;
+                if ((cur == "SpecialTrips" && !Features.On(Features.SpecialTrips)) || (cur == "Incidents" && !Features.On(Features.Incidents))) SelectTab("Dispatch");
+            }, Features.SpecialTrips, Features.Incidents);
         }
 
         private void AddTab(string key, string title, Func<UserControl> viewFactory)
@@ -156,6 +164,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public void SelectTab(string key)
         {
             if (key == "Loading") key = "Dispatch";
+            if (key == "SpecialTrips" && !Features.On(Features.SpecialTrips)) { Features.TellOff(this, "Special trips"); key = "Dispatch"; }
+            if (key == "Incidents" && !Features.On(Features.Incidents)) { Features.TellOff(this, "Incident & damage logs"); key = "Dispatch"; }
             bool completed = key == "Completed";
             if (completed) key = "History";
             if (tabButtons.TryGetValue(key, out var btn))
@@ -219,6 +229,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public void PrefillIncidentFromTrip(int deliveryId, string dispatchNumber, int missingCrates, DateTime tripDate)
         {
+            if (!Features.On(Features.Incidents)) { Features.TellOff(this, "Incident & damage logs"); return; }
             SelectTab("Incidents");
             if (cachedViews.TryGetValue("Incidents", out var view) && view is IncidentReportView inc)
             {
@@ -228,6 +239,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public void FilterIncidentsByDispatch(string dispatchNumber)
         {
+            if (!Features.On(Features.Incidents)) { Features.TellOff(this, "Incident & damage logs"); return; }
             SelectTab("Incidents");
             if (cachedViews.TryGetValue("Incidents", out var view) && view is IncidentReportView inc)
             {

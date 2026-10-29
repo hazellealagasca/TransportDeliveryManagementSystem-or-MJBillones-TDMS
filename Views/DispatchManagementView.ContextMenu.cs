@@ -259,7 +259,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (!IsActiveStatus(d))
                 {
-                    MessageBox.Show($"Dispatch {d.DispatchNumber} is already {d.Status.ToLowerInvariant()}.", "Cancel order", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    QuietBox.Show($"Dispatch {d.DispatchNumber} is already {d.Status.ToLowerInvariant()}.", "Cancel order", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 string? reason = CancellationReasonDialog.PromptCancellationReason(this.FindForm() ?? this.ParentForm!, "Dispatch Order", d.DispatchNumber);

@@ -384,7 +384,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 };
 
                 MJdatabase.SaveUser(u);
-                MessageBox.Show("User account created successfully (password securely hashed with SHA-256)!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("User account created successfully (password securely hashed with SHA-256)!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadUsers();
                 SetFormVisibility(false);
@@ -501,7 +501,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedUser.IsActive = chkActive.Checked;
 
                 MJdatabase.SaveUser(selectedUser);
-                MessageBox.Show("User account updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("User account updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadUsers();
                 SetFormVisibility(false);
@@ -548,7 +548,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     bool deleted = MJdatabase.DeleteRecord("Users", selectedUser.Id);
                     if (deleted)
                     {
-                        MessageBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        QuietBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         ClearFields();
                         LoadUsers();
                     }
@@ -573,7 +573,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (confirm == DialogResult.Yes)
                 {
                     await MJdatabase.ApproveUserAsync(selectedUser.Id);
-                    MessageBox.Show($"Staff account '{selectedUser.FullName}' has been successfully approved and activated!", "Account Approved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    QuietBox.Show($"Staff account '{selectedUser.FullName}' has been successfully approved and activated!", "Account Approved", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     LoadUsers();
                 }
             }

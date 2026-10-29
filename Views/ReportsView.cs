@@ -482,7 +482,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var crews = await MJdatabase.GetCrewsAsync();
                 if (crews.Count == 0)
                 {
-                    MessageBox.Show("No registered crew members found.", "No Personnel", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    QuietBox.Show("No registered crew members found.", "No Personnel", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
@@ -498,7 +498,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (selectedCrew == null)
                 {
-                    MessageBox.Show("Please select a crew member row in the 'Crew Trip Pay Records' report first.", "Select Crew Member", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    QuietBox.Show("Please select a crew member row in the 'Crew Trip Pay Records' report first.", "Select Crew Member", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
@@ -575,7 +575,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
 
                     File.WriteAllText(sfd.FileName, sb.ToString());
-                    MessageBox.Show("Report exported successfully to CSV!", "Export Completed", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    QuietBox.Show("Report exported successfully to CSV!", "Export Completed", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex)
                 { ErrLog.Error("ReportsView", ex); 

@@ -96,7 +96,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void AddFiles(IEnumerable<string> paths)
         {
-            if (ownerId <= 0) { MessageBox.Show(FindForm(), "Choose or save the record first, then attach files.", "Attachments", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            if (ownerId <= 0) { QuietBox.Show(FindForm(), "Choose or save the record first, then attach files.", "Attachments", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
             var list = paths.Where(p => !Directory.Exists(p)).ToList();
             if (list.Count == 0) return;
             string category = cbCategory.Text;

@@ -372,7 +372,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string? notDone = DispatchGate.WhyBlocked(fresh, "put it on a statement of account");
             if (notDone != null)
             {
-                MessageBox.Show(notDone, "Complete the dispatch first", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show(notDone, "Complete the dispatch first", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 lblAddDispatchResult.Text = $"{del.DispatchNumber} is not completed yet.";
                 lblAddDispatchResult.ForeColor = AppTheme.WarningText;
                 return;
@@ -408,7 +408,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var rows = SelectedItemRows();
             if (rows.Count == 0)
             {
-                MessageBox.Show("Click a cell in the rows to remove (Shift/Ctrl-click to pick several).", "Remove rows", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Click a cell in the rows to remove (Shift/Ctrl-click to pick several).", "Remove rows", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             if (rows.Count > 1 && MessageBox.Show($"Remove {rows.Count} rows from the statement?", "Remove rows", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
@@ -423,7 +423,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var rows = SelectedItemRows();
             if (rows.Count == 0)
             {
-                MessageBox.Show("Select the rows to change first: click a cell, then Shift/Ctrl-click to add more rows.", "Edit selected rows", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Select the rows to change first: click a cell, then Shift/Ctrl-click to add more rows.", "Edit selected rows", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             var editable = gridItems.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible && !c.ReadOnly && c.Name != "colTripNo").OrderBy(c => c.DisplayIndex).ToList();

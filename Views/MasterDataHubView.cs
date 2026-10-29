@@ -28,7 +28,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             AddTab("Clients", "🏢  Clients", () => new ClientManagementView());
             AddTab("Routes", "🗺️  Delivery Routes", () => new DeliveryRoutesView());
-            AddTab("History", "📜  Master Data History", () => new ModuleHistoryView("Master Data History", new[] { "Clients", "DeliveryRoutes", "ClientStores" }, isAdminOnly: true));
+            AddTab("Rates", "🏷️  Rate Matrix", () => new RateMatrixView());
+            AddTab("History", "📜  Master Data History", () => new ModuleHistoryView("Master Data History", new[] { "Clients", "DeliveryRoutes", "ClientStores", "RateMatrix" }, isAdminOnly: true));
+            // Settings → Features & Pop-ups can hide the Rate Matrix; its rates stay saved for when it is turned back on.
+            Features.Bind(this, () =>
+            {
+                bool on = Features.On(Features.RateMatrix);
+                tabButtons["Rates"].Visible = on;
+                if (!on && Equals(activeTabBtn?.Tag, "Rates")) SelectTab("Clients");
+            }, Features.RateMatrix);
         }
 
         private void AddTab(string key, string title, Func<UserControl> viewFactory)
@@ -77,6 +85,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (!tabButtons.ContainsKey(key) || !cachedViews.ContainsKey(key))
                 return;
 
+            if (key == "Rates" && !Features.On(Features.RateMatrix)) { Features.TellOff(this, "The Rate Matrix"); key = "Clients"; }
             foreach (var kvp in tabButtons)
             {
                 bool isSelected = kvp.Key == key;

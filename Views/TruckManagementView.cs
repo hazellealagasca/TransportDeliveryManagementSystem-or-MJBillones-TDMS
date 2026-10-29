@@ -405,7 +405,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 };
 
                 MJdatabase.SaveTruck(truck);
-                MessageBox.Show($"Truck '{plateNumber}' ({truckType} - {capacity} crates) added successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"Truck '{plateNumber}' ({truckType} - {capacity} crates) added successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadTrucks();
                 SetFormVisibility(false);
@@ -485,7 +485,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedTruck.CargoType = cbCargoType.SelectedItem?.ToString() ?? "Cold / Chilled";
 
                 MJdatabase.SaveTruck(selectedTruck);
-                MessageBox.Show($"Truck '{plateNumber}' updated successfully! New capacity: {capacity} crates.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"Truck '{plateNumber}' updated successfully! New capacity: {capacity} crates.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadTrucks();
                 SetFormVisibility(false);
@@ -525,7 +525,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     bool deleted = MJdatabase.DeleteRecord("Trucks", selectedTruck.Id);
                     if (deleted)
                     {
-                        MessageBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        QuietBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         ClearFields();
                         LoadTrucks();
                     }
@@ -1180,7 +1180,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.NotifyCategoriesChanged();
                 LoadTruckCategories();
                 LoadTrucks();
-                MessageBox.Show($"Truck category '{name}' with {cap} crate capacity saved successfully!", "Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"Truck category '{name}' with {cap} crate capacity saved successfully!", "Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
@@ -1212,7 +1212,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.NotifyCategoriesChanged();
                 LoadTruckCategories();
                 LoadTrucks();
-                MessageBox.Show($"Truck category updated successfully!", "Updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"Truck category updated successfully!", "Updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
@@ -1237,7 +1237,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 LoadTruckCategories();
                 LoadTrucks();
                 ClearCatInputs();
-                MessageBox.Show($"Category '{name}' deleted.", "Deleted", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"Category '{name}' deleted.", "Deleted", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 

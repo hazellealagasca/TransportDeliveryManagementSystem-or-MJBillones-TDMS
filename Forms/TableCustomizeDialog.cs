@@ -213,7 +213,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (string.IsNullOrWhiteSpace(name)) return;
             if (working.Any(w => string.Equals(w.Header.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase)))
             {
-                MessageBox.Show(this, $"There's already a column called \"{name}\".", "Add custom column", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show(this, $"There's already a column called \"{name}\".", "Add custom column", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             working.Add(new GridColumnPref
@@ -255,7 +255,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             for (int i = 0; i < working.Count; i++) { PullRow(i); working[i].Order = i; }
             if (!working.Any(w => w.Visible || w.Locked))
             {
-                MessageBox.Show(this, "Keep at least one column visible.", "Customize table", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show(this, "Keep at least one column visible.", "Customize table", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             if (working.Any(w => string.IsNullOrWhiteSpace(w.Header)))

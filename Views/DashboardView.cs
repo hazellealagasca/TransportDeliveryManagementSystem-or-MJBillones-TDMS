@@ -612,7 +612,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else if (undispatched.Count > 1)
                     items.Add(new ActionList.Item(AppTheme.Info, $"{undispatched.Count} loading orders have no dispatch yet", $"For today and tomorrow · earliest {undispatched[0].ScheduleNumber} ({undispatched[0].ClientName})", "Dispatch", () => GoOps("Dispatch"), "Loading orders", 2, undispatched[0].ScheduleDate, undispatched.Count));
                 int openInc = data.Incidents.Count(i => !RowMenu.Is(i.Status, "Resolved", "Closed"));
-                if (openInc > 0)
+                if (openInc > 0 && Features.On(Features.Incidents))
                     items.Add(new ActionList.Item(AppTheme.Info, $"{openInc} incident(s) still open", $"Damaged or missing crates: {data.Incidents.Where(i => !RowMenu.Is(i.Status, "Resolved", "Closed")).Sum(i => i.DamagedQuantity):N0} · est. {Peso(data.Incidents.Where(i => !RowMenu.Is(i.Status, "Resolved", "Closed")).Sum(i => i.EstimatedCost))}", "Review", () => GoOps("Incidents"), "Incidents", 2, data.Incidents.Where(i => !RowMenu.Is(i.Status, "Resolved", "Closed")).Min(i => (DateTime?)i.IncidentDate), openInc));
             }
             if (CanFin)
@@ -632,7 +632,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 items.Add(new ActionList.Item(AppTheme.TextMuted, $"{maint} truck(s) under maintenance", string.Join(", ", data.Trucks.Where(t => MJdatabase.IsTruckBlockedStatus(t.Status) && !RowMenu.Is(t.Status, "Inactive")).Select(t => t.PlateNumber).Take(5)), "Trucks", () => MainForm.Instance?.NavigateToResources("Trucks"), "Trucks", 2, null, maint));
             if (SessionContext.IsAdmin && data.PendingUsers > 0)
                 items.Add(new ActionList.Item(AppTheme.Warning, $"{data.PendingUsers} account(s) waiting for approval", "New staff sign-ups need an administrator", "Review", () => MainForm.Instance?.OpenUserAccounts(), "Accounts", 1, null, data.PendingUsers));
-            if (SessionContext.IsAdmin)
+            if (SessionContext.IsAdmin && Features.On(Features.BackupReminder))
             {
                 DateTime? lastBackup = null;
                 try { lastBackup = MJdatabase.LastManualBackup(); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
