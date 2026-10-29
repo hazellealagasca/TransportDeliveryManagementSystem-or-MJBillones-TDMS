@@ -36,17 +36,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Label lblStatus = null!;
         private bool isInitializingSettings = false;
 
+        private PictureBox picLogoPreview = null!;
+        private Label lblLogoSource = null!;
+        private Button btnChangeLogo = null!;
+        private Button btnDefaultLogo = null!;
+        private CheckBox chkLightenLogo = null!;
         public SystemCustomizationView(User? user = null)
         {
             currentUser = user;
             InitializeComponent();
             LoadSettings();
             UIThemeHelper.ApplyTheme(this);
+            RefreshLogoPreview();
+            BrandAssets.LogoChanged += RefreshLogoPreview;
+            Disposed += (s, e) => BrandAssets.LogoChanged -= RefreshLogoPreview;
         }
 
         public void RefreshData()
         {
             LoadSettings();
+            RefreshLogoPreview();
         }
 
         private void InitializeComponent()
@@ -87,6 +96,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtCompanyAddress = AddFormField(tblBranding, 2, 0, "Principal Business Address *:", "Cavite / Batangas Operations Depot", true);
             txtInvoiceFooter = AddFormField(tblBranding, 3, 0, "Standard Terms / Invoice Footer Note:", "Thank you for your business! All deliveries are subject to standard transport terms.", true);
 
+            AddLogoPicker(tblBranding, 8);
             cardBranding.Controls.Add(tblBranding);
 
             Panel cardOps = CreateCard("🚚 Operations & Dispatch Workflow Preferences", "Configure delivery assignment behaviors, scheduling defaults, and automatic vehicle recommendations.");
@@ -338,6 +348,100 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.PerformLayout();
         }
 
+        /// <summary>Company logo: preview (as it looks on the sidebar), change, back to default.</summary>
+        private void AddLogoPicker(TableLayoutPanel parent, int row)
+        {
+            Label lbl = new Label
+            {
+                Text = "Company Logo:",
+                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                ForeColor = Pal.C(51, 65, 85),
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                Margin = new Padding(0, 4, 0, 2)
+            };
+            var line = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(0, 0, 0, 10) };
+            picLogoPreview = new PictureBox { Size = new Size(240, 84), SizeMode = PictureBoxSizeMode.Zoom, Padding = new Padding(14, 10, 14, 10), Margin = new Padding(0, 0, 16, 0), BorderStyle = BorderStyle.None };
+            var side = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0) };
+            var buttons = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0, 0, 0, 6) };
+            btnChangeLogo = new Button { Text = "Change logo…", AutoSize = true, MinimumSize = new Size(130, 34), Cursor = Cursors.Hand, Margin = new Padding(0, 0, 8, 0) };
+            btnDefaultLogo = new Button { Text = "Use default logo", AutoSize = true, MinimumSize = new Size(140, 34), Cursor = Cursors.Hand, Margin = new Padding(0) };
+            UIThemeHelper.SetButtonRole(btnChangeLogo, "primary");
+            UIThemeHelper.SetButtonRole(btnDefaultLogo, "secondary");
+            btnChangeLogo.Click += (s, e) => ChooseLogo();
+            btnDefaultLogo.Click += (s, e) => UseDefaultLogo();
+            buttons.Controls.Add(btnChangeLogo);
+            buttons.Controls.Add(btnDefaultLogo);
+            chkLightenLogo = new CheckBox { Text = "Turn black lettering white on the dark sidebar", AutoSize = true, Cursor = Cursors.Hand, Margin = new Padding(0, 2, 0, 4), Font = new Font("Segoe UI", 9F) };
+            chkLightenLogo.CheckedChanged += (s, e) =>
+            {
+                if (isInitializingSettings) return;
+                try { BrandAssets.LightenCustomLogoOnDark = chkLightenLogo.Checked; } catch { }
+            };
+            lblLogoSource = new Label { AutoSize = true, MaximumSize = new Size(460, 0), Font = new Font("Segoe UI", 8.75F), ForeColor = Pal.C(100, 116, 139), Margin = new Padding(0) };
+            side.Controls.Add(buttons);
+            side.Controls.Add(chkLightenLogo);
+            side.Controls.Add(lblLogoSource);
+            line.Controls.Add(picLogoPreview);
+            line.Controls.Add(side);
+            parent.Controls.Add(lbl, 0, row);
+            parent.Controls.Add(line, 0, row + 1);
+            parent.SetColumnSpan(lbl, 2);
+            parent.SetColumnSpan(line, 2);
+            if (!SessionContext.IsAdmin)
+            {
+                btnChangeLogo.Enabled = false;
+                btnDefaultLogo.Enabled = false;
+                chkLightenLogo.Enabled = false;
+            }
+        }
+        private void RefreshLogoPreview()
+        {
+            if (IsDisposed || picLogoPreview == null) return;
+            if (InvokeRequired) { BeginInvoke(new Action(RefreshLogoPreview)); return; }
+            bool custom = BrandAssets.HasCustomLogo;
+            picLogoPreview.BackColor = AppTheme.Sidebar;
+            picLogoPreview.Image = BrandAssets.LogoFor(AppTheme.Sidebar);
+            btnDefaultLogo.Visible = custom;
+            isInitializingSettings = true;
+            chkLightenLogo.Checked = BrandAssets.LightenCustomLogoOnDark;
+            isInitializingSettings = false;
+            chkLightenLogo.Visible = custom && AppTheme.SidebarIsDark;
+            string where = "Shown on the sign-in screen, the side menu and every printed form (invoices, statements, receipts, trip reports).";
+            lblLogoSource.Text = (custom ? "Using your uploaded logo. " : "Using the built-in M.J. Billones logo. ")
+                + where + (SessionContext.IsAdmin ? " A PNG with a transparent background looks best." : " Only the administrator can change it.");
+        }
+        private void ChooseLogo()
+        {
+            using var dlg = new OpenFileDialog
+            {
+                Title = "Choose the company logo",
+                Filter = "Images (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif",
+                CheckFileExists = true,
+                Multiselect = false
+            };
+            if (dlg.ShowDialog(FindForm()) != DialogResult.OK) return;
+            Cursor = Cursors.WaitCursor;
+            string? error;
+            try { error = BrandAssets.SetCustomLogo(dlg.FileName); }
+            finally { Cursor = Cursors.Default; }
+            if (error != null)
+            {
+                MessageBox.Show(FindForm(), error, "Logo not changed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            try { MJdatabase.LogSecurityEvent(currentUser?.Username ?? "", "SETTINGS", "Company logo changed (" + System.IO.Path.GetFileName(dlg.FileName) + ")"); } catch { }
+            EventNotificationService.Publish("Logo updated", "The new company logo is now used on screen and on printed forms.", ToastType.Success, this);
+        }
+        private void UseDefaultLogo()
+        {
+            if (MessageBox.Show(FindForm(), "Remove the uploaded logo and go back to the built-in M.J. Billones logo?", "Use default logo",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+            try { BrandAssets.ResetToDefaultLogo(); }
+            catch (Exception ex) { MessageBox.Show(FindForm(), "The logo could not be reset: " + ex.Message, "Logo", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            try { MJdatabase.LogSecurityEvent(currentUser?.Username ?? "", "SETTINGS", "Company logo reset to default"); } catch { }
+            EventNotificationService.Publish("Logo updated", "The built-in M.J. Billones logo is back in use.", ToastType.Success, this);
+        }
         private Panel CreateCard(string title, string subtitle)
         {
             Panel card = new Panel

@@ -132,7 +132,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!System.IO.File.Exists(logoPath)) logoPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "logo.png");
                 if (!System.IO.File.Exists(logoPath)) logoPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "Assets", "logo.png");
 
-                if (System.IO.File.Exists(logoPath))
+                var customLogo = BrandAssets.CustomLogoCopy();
+                if (customLogo != null)
+                {
+                    cleanLogoImage = customLogo;
+                }
+                else if (System.IO.File.Exists(logoPath))
                 {
                     cleanLogoImage = Image.FromFile(logoPath);
                     using (Bitmap bmp = new Bitmap(logoPath))

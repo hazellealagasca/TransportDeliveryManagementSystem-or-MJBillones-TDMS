@@ -272,7 +272,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
     }
     /// <summary>Brand images prepared for the current theme.</summary>
-    public static class BrandAssets
+    public static partial class BrandAssets
     {
         private static readonly Dictionary<string, Image?> cache = new Dictionary<string, Image?>();
         private static string AssetPath(string name) => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", name);
@@ -296,13 +296,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lock (cache)
             {
                 if (cache.TryGetValue(key, out Image? hit)) return hit;
-                Bitmap? src = LoadBitmap("logo_transparent.png");
+                Bitmap? custom = CustomLogoCopy();
+                Bitmap? src = custom ?? LoadBitmap("logo_transparent.png");
                 if (src == null)
                 {
                     src = LoadBitmap("logo.png");
                 }
                 Image? result = src;
-                if (src != null && dark) result = RecolorDarkInk(src);
+                if (src != null && dark && (custom == null || LightenCustomLogoOnDark)) result = RecolorDarkInk(src);
                 if (src != null) result = Trim(result!);
                 cache[key] = result;
                 return result;
@@ -317,6 +318,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (cache.TryGetValue(key, out Image? hit)) return hit;
                 Image? full = null;
+                if (HasCustomLogo)
+                {
+                    // A custom logo has no separate emblem: the collapsed sidebar shows the whole logo, scaled down.
+                    full = LogoFor(background);
+                    cache[key] = full;
+                    return full;
+                }
                 Bitmap? src = LoadBitmap("logo_transparent.png");
                 if (src != null)
                 {

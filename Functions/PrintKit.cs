@@ -184,6 +184,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
+                byte[]? custom = BrandAssets.CustomLogoPngBytes();
+                if (custom != null && custom.Length > 0) return "data:image/png;base64," + Convert.ToBase64String(custom);
                 foreach (var dir in new[] { AppDomain.CurrentDomain.BaseDirectory, Directory.GetCurrentDirectory() })
                 {
                     string p = Path.Combine(dir, "Assets", "logo.png");

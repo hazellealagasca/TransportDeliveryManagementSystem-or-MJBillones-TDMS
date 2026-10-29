@@ -46,6 +46,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblLogoTitle.Visible = false;
                 lblLogoSubtitle.Visible = false;
             }
+            BrandAssets.LogoChanged -= OnBrandLogoChanged;
+            BrandAssets.LogoChanged += OnBrandLogoChanged;
+            this.FormClosed -= UnhookBrandLogo;
+            this.FormClosed += UnhookBrandLogo;
             panelLogo.Paint += (s, e) =>
             {
                 using var pen = new Pen(AppTheme.SidebarDivider, 1f);
@@ -263,6 +267,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (btn == btnNavMasterData) return "Master Data";
             if (btn == btnNavSettings) return "Settings";
             return btn.Text.Trim();
+        }
+        private void UnhookBrandLogo(object? sender, FormClosedEventArgs e) => BrandAssets.LogoChanged -= OnBrandLogoChanged;
+        /// <summary>Settings changed the company logo: show the new one in the sidebar straight away.</summary>
+        private void OnBrandLogoChanged()
+        {
+            if (IsDisposed) return;
+            if (InvokeRequired) { BeginInvoke(new Action(OnBrandLogoChanged)); return; }
+            logoFull = BrandAssets.LogoFor(AppTheme.Sidebar);
+            logoMark = BrandAssets.EagleMark(AppTheme.Sidebar);
+            if (logoFull == null) { picLogo.Image = null; lblLogoTitle.Visible = true; lblLogoSubtitle.Visible = true; return; }
+            UpdateSidebarBrand(panelSidebar.Width < S(120));
         }
         private void UpdateSidebarBrand(bool collapsed)
         {
