@@ -39,7 +39,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("SettingsView", ex); 
                 MessageBox.Show($"Failed to refresh settings view: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -222,7 +222,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("SettingsView", ex); 
                 MessageBox.Show($"Failed to load configuration view: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

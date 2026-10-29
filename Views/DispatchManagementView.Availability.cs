@@ -46,7 +46,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 foreach (var st in MJdatabase.GetSpecialTrips().Where(s => s.DispatchDate.Date == date && RowMenu.Is(s.Status, "Pending", "Scheduled", "In Transit", "Rescheduled")))
                     Book(st.TruckId, new[] { st.DriverId }.Concat(st.AllAideIds), $"special trip {st.OrderReference}");
             }
-            catch { }
+            catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }
         private void EnsureBookings()
         {

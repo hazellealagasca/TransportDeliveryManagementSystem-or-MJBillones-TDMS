@@ -148,8 +148,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (string.IsNullOrWhiteSpace(sourceFilePath) || !File.Exists(sourceFilePath)) return string.Empty;
 
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string targetFolder = Path.Combine(baseDir, "Attachments", "Photos", subFolder);
+            string targetFolder = Path.Combine(AppPaths.DataRoot, "Attachments", "Photos", subFolder);
             if (!Directory.Exists(targetFolder))
             {
                 Directory.CreateDirectory(targetFolder);
@@ -172,7 +171,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return relativeOrAbsPath;
             }
 
-            string abs = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relativeOrAbsPath);
+            string abs = AppPaths.Resolve(relativeOrAbsPath);
+            if (Path.IsPathRooted(abs) && File.Exists(abs)) return abs;
+            abs = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relativeOrAbsPath);
             if (File.Exists(abs)) return abs;
 
             string projAbs = Path.Combine(Directory.GetCurrentDirectory(), relativeOrAbsPath);

@@ -130,13 +130,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         internal static void OpenExternally(string path)
         {
             try { Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }); }
-            catch (Exception ex) { MessageBox.Show("Couldn't open the file: " + ex.Message, "Attachment", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            catch (Exception ex) { ErrLog.Error("AttachmentPanel", ex);  MessageBox.Show("Couldn't open the file: " + ex.Message, "Attachment", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
         internal ContextMenuStrip MenuFor(Attachment a)
         {
             var m = new ContextMenuStrip();
             m.Items.Add("Open", null, (s, e) => Open(a));
-            m.Items.Add("Show in folder", null, (s, e) => { try { Process.Start("explorer.exe", $"/select,\"{a.StoredPath}\""); } catch { } });
+            m.Items.Add("Show in folder", null, (s, e) => { try { Process.Start("explorer.exe", $"/select,\"{a.StoredPath}\""); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); } });
             var cat = new ToolStripMenuItem("Change category");
             foreach (var c in MJdatabase.AttachmentCategories)
             {
@@ -152,7 +152,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cat.DropDownItems.Add(it);
             }
             m.Items.Add(cat);
-            m.Items.Add("Copy file path", null, (s, e) => { try { Clipboard.SetText(a.StoredPath); } catch { } });
+            m.Items.Add("Copy file path", null, (s, e) => { try { Clipboard.SetText(a.StoredPath); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); } });
             m.Items.Add(new ToolStripSeparator());
             var v = new ToolStripMenuItem("Void attachment…") { ForeColor = AppTheme.DangerText };
             v.Click += (s, e) =>
@@ -295,7 +295,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else if (e.KeyCode == Keys.Subtract || e.KeyCode == Keys.OemMinus) Zoom(0.8f);
             };
             LoadCurrent();
-            try { ThemeManager.StyleWindowChrome(this); } catch { }
+            try { ThemeManager.StyleWindowChrome(this); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
         }
         private void Zoom(float f)
         {

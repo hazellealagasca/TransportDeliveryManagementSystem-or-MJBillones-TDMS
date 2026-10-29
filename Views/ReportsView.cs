@@ -470,7 +470,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("ReportsView", ex); 
                 MessageBox.Show($"Failed to load report data: {ex.Message}", "Report Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -516,7 +516,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 PrintHelper.PrintCrewPaySlip(selectedCrew, crewTrips, startDate, endDate);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("ReportsView", ex); 
                 MessageBox.Show($"Failed to print crew pay record: {ex.Message}", "Print Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -530,7 +530,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 PrintHelper.PrintGridReport(selectedType, gridReport, $"Official generated report summary. {filterNote}");
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("ReportsView", ex); 
                 MessageBox.Show($"Failed to generate print report: {ex.Message}", "Print Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -578,7 +578,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     MessageBox.Show("Report exported successfully to CSV!", "Export Completed", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception ex)
-                {
+                { ErrLog.Error("ReportsView", ex); 
                     MessageBox.Show($"Export failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }

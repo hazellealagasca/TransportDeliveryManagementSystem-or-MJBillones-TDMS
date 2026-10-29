@@ -324,7 +324,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbInactiveAfter.SelectedIndex = MJdatabase.GetSystemSetting(InactiveAfterKey, "90") == "180" ? 1 : 0;
             cbInactiveAfter.SelectedIndexChanged += (s, e) =>
             {
-                try { MJdatabase.SetSystemSetting(InactiveAfterKey, InactiveAfterDays.ToString(), "Days without orders or invoices before a client counts as inactive"); } catch { }
+                try { MJdatabase.SetSystemSetting(InactiveAfterKey, InactiveAfterDays.ToString(), "Days without orders or invoices before a client counts as inactive"); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 LoadClients();
             };
             tips.SetToolTip(cbInactiveAfter, "A client with no dispatch, loading order, special trip or invoice in this many days is shown as Inactive. Deactivated clients are always Inactive.");
@@ -681,7 +681,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var done = mine.Where(d => string.Equals(d.Status, "Completed", StringComparison.OrdinalIgnoreCase)).ToList();
                 decimal unpaid = invoices.Where(i => Same(i.ClientName, c.CompanyName) && !string.Equals(i.Status, "Paid", StringComparison.OrdinalIgnoreCase) && !string.Equals(i.Status, "Cancelled", StringComparison.OrdinalIgnoreCase)).Sum(i => i.NetAmount);
                 int stores = 0;
-                try { stores = MJdatabase.GetClientStores(c.CompanyName).Count; } catch { }
+                try { stores = MJdatabase.GetClientStores(c.CompanyName).Count; } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
                 string contact = string.Join("  ·  ", new[] { c.ContactPerson, c.ContactNumber }.Where(x => !string.IsNullOrWhiteSpace(x)));
                 string status = "Active", note;
                 lastActivity.TryGetValue(c.CompanyName.Trim(), out var lastAct);
@@ -898,7 +898,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             decimal unpaid = openInv.Sum(i => i.NetAmount);
             int overdue = openInv.Count(i => i.DueDate.Date < DateTime.Today);
             ClientPaymentSummary? pay = null;
-            try { pay = MJdatabase.GetClientPaymentSummary(clientName); } catch { }
+            try { pay = MJdatabase.GetClientPaymentSummary(clientName); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
             flowBillingTiles.Controls.Add(Tile("Total billed", $"₱{billed:N2}", $"{invoices.Count} invoice{(invoices.Count == 1 ? "" : "s")}"));
             flowBillingTiles.Controls.Add(Tile("Collected", $"₱{(pay?.TotalPaidAmount ?? 0):N2}", string.IsNullOrEmpty(pay?.LatestReceiptNumber) ? "No receipts yet" : $"Latest {pay!.LatestReceiptNumber}", AppTheme.SuccessText));
             flowBillingTiles.Controls.Add(Tile("Unpaid", $"₱{unpaid:N2}", $"{openInv.Count} open invoice{(openInv.Count == 1 ? "" : "s")}", unpaid > 0 ? AppTheme.WarningText : (Color?)null));
@@ -1004,7 +1004,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return true;
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("ClientManagementView", ex); 
                 MessageBox.Show("Couldn't save the client: " + ex.Message, "Client", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
@@ -1031,7 +1031,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ToastHelper.ShowToast(this, active ? $"\"{name}\" is active again" : $"\"{name}\" deactivated — its history is kept", active ? ToastType.Success : ToastType.Info);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("ClientManagementView", ex); 
                 MessageBox.Show("Couldn't change the client's status: " + ex.Message, "Client", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1070,7 +1070,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblSaveState.ForeColor = AppTheme.SuccessText;
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("ClientManagementView", ex); 
                 MessageBox.Show("Couldn't save the store: " + ex.Message, "Stores", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 LoadClientBranches(selectedClient.CompanyName);
             }
@@ -1123,7 +1123,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var res = MessageBox.Show($"Are you sure you want to delete store \"{store.StoreCode} - {store.StoreName}\"?\n\nIt has never been used on an order, so nothing in the history refers to it.", "Delete store", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
             if (res != DialogResult.Yes) return;
             try { MJdatabase.DeleteClientStore(store.Id); }
-            catch (Exception ex) { MessageBox.Show(ex.Message, "Delete store", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            catch (Exception ex) { ErrLog.Error("ClientManagementView", ex);  MessageBox.Show(ex.Message, "Delete store", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
             LoadClientBranches(selectedClient.CompanyName);
         }
 
@@ -1272,7 +1272,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Clipboard.SetText(text);
                 ToastHelper.ShowToast(this, "Copied", ToastType.Success);
             }
-            catch { }
+            catch (System.Exception swx4) { ErrLog.Swallowed(swx4); }
         }
     }
 }

@@ -30,7 +30,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (rows.Count == 0) return;
                 current?.Dispose();
                 current = new ContextMenuStrip { Font = new Font("Segoe UI", 9.5F), ShowImageMargin = false };
-                try { build(current, rows); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[RowMenu] {ex.Message}"); }
+                try { build(current, rows); } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[RowMenu] {ex.Message}"); ErrLog.Swallowed(ex); }
                 if (current.Items.Count > 0) current.Show(grid, at);
             }
             grid.CellMouseDown += (s, e) =>
@@ -41,12 +41,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 bool alreadyPicked = rowMode ? row.Selected : (e.ColumnIndex >= 0 && row.Cells[e.ColumnIndex].Selected);
                 if (!alreadyPicked)
                 {
-                    try { grid.EndEdit(); } catch { }
+                    try { grid.EndEdit(); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                     grid.ClearSelection();
                     int col = e.ColumnIndex >= 0 && grid.Columns[e.ColumnIndex].Visible ? e.ColumnIndex
                         : grid.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible).OrderBy(c => c.DisplayIndex).Select(c => c.Index).DefaultIfEmpty(-1).First();
-                    try { if (col >= 0) grid.CurrentCell = row.Cells[col]; } catch { }
-                    try { if (rowMode) row.Selected = true; } catch { }
+                    try { if (col >= 0) grid.CurrentCell = row.Cells[col]; } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
+                    try { if (rowMode) row.Selected = true; } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
                 }
                 Open(grid.PointToClient(Cursor.Position));
             };
@@ -80,7 +80,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             it.Click += (s, e) =>
             {
                 try { act(); }
-                catch (Exception ex) { MessageBox.Show(ex.Message, "Something went wrong", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+                catch (Exception ex) { ErrLog.Error("RowMenu", ex);  MessageBox.Show(ex.Message, "Something went wrong", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
             };
             return it;
         }
@@ -114,7 +114,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static void Copy(Control owner, string text, string toast)
         {
             if (string.IsNullOrWhiteSpace(text)) return;
-            try { Clipboard.SetText(text); ToastHelper.ShowToast(owner, toast, ToastType.Success); } catch { }
+            try { Clipboard.SetText(text); ToastHelper.ShowToast(owner, toast, ToastType.Success); } catch (System.Exception swx4) { ErrLog.Swallowed(swx4); }
         }
         /// <summary>Puts text in a table's search box (filters the list), e.g. "other orders for this client".</summary>
         public static void Search(TextBox box, string text)
@@ -159,11 +159,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static Models.Delivery? FindDelivery(int deliveryId, string? dispatchNumber)
         {
             Models.Delivery? d = null;
-            try { if (deliveryId > 0) d = Database.MJdatabase.GetDeliveryById(deliveryId); } catch { }
+            try { if (deliveryId > 0) d = Database.MJdatabase.GetDeliveryById(deliveryId); } catch (System.Exception swx5) { ErrLog.Swallowed(swx5); }
             if (d == null && !string.IsNullOrWhiteSpace(dispatchNumber))
             {
                 string num = dispatchNumber.Trim();
-                try { d = Database.MJdatabase.GetDeliveries().FirstOrDefault(x => x.DispatchNumber.Equals(num, StringComparison.OrdinalIgnoreCase)); } catch { }
+                try { d = Database.MJdatabase.GetDeliveries().FirstOrDefault(x => x.DispatchNumber.Equals(num, StringComparison.OrdinalIgnoreCase)); } catch (System.Exception swx6) { ErrLog.Swallowed(swx6); }
             }
             return d;
         }

@@ -73,7 +73,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         var fin = MJdatabase.GetFinancialTotals();
                         sb.Append(Stats(new[] { ("Total billed", Money(fin.TotalBilled)), ("Collected", Money(fin.TotalCollected)), ("Still receivable", Money(fin.TotalToBeCollected)) }));
                     }
-                    catch { }
+                    catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 }
                 sb.Append(Table(opt, cols.Select(c => ($"c{c.Index}", Regex.Replace(c.HeaderText, "[▲▼]", "").Trim(), c.DefaultCellStyle.Alignment.ToString().EndsWith("Right") ? "num" : "")), use.Select(r => (IDictionary<string, string>)r.Cells)));
                 return sb.ToString();
@@ -294,7 +294,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static PrintFormDef PaySlip(Crew crew, List<Delivery> trips, DateTime from, DateTime to)
         {
             Dictionary<(int, int), TripCrewPay>? recorded = null;
-            try { recorded = MJdatabase.GetAllTripCrewPay(); } catch { }
+            try { recorded = MJdatabase.GetAllTripCrewPay(); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
             var pay = trips.OrderBy(t => t.DispatchDate).Select(t => (Trip: t, Pay: MJdatabase.ResolveTripPay(crew, t, recorded))).ToList();
             decimal basePay = pay.Sum(p => p.Pay.BasePay), allow = pay.Sum(p => p.Pay.Allowance);
             decimal net = basePay + allow;
@@ -382,9 +382,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             stops ??= new List<DispatchStop>();
             Invoice? inv = null;
-            try { inv = MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == d.Id); } catch { }
+            try { inv = MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == d.Id); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
             List<TripCrewPay> crewPay = new();
-            try { crewPay = MJdatabase.GetTripCrewPay(d.Id); } catch { }
+            try { crewPay = MJdatabase.GetTripCrewPay(d.Id); } catch (System.Exception swx4) { ErrLog.Swallowed(swx4); }
             var o = NewOptions("DeliveryDossier", "Delivery Dossier", $"Dispatch {d.DispatchNumber} · {d.Status}");
             o.Fields = new List<PrintField>
             {

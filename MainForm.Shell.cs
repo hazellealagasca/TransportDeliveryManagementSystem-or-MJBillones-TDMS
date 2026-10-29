@@ -384,7 +384,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 this.Close();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("MainForm.Shell", ex); 
                 IsReloading = false;
                 Replacement = null;
                 this.Cursor = Cursors.Default;
@@ -430,7 +430,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     case "Settings": OpenSettingsTab(tab ?? "DispatchRules"); break;
                 }
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[MainForm] RestoreLocation: {ex.Message}"); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[MainForm] RestoreLocation: {ex.Message}"); ErrLog.Swallowed(ex); }
         }
         public void OpenSettingsTab(string tab)
         {

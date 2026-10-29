@@ -268,7 +268,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
             ThemeManager.Apply(pendingMode, pendingAccent, pendingSidebar);
-            try { Database.MJdatabase.LogSecurityEvent(SessionContext.ActiveUser?.Username ?? "", "THEME_CHANGED", $"Appearance set to {pendingMode}, accent {ThemeManager.ToHex(pendingAccent)}, sidebar {pendingSidebar}"); } catch { }
+            try { Database.MJdatabase.LogSecurityEvent(SessionContext.ActiveUser?.Username ?? "", "THEME_CHANGED", $"Appearance set to {pendingMode}, accent {ThemeManager.ToHex(pendingAccent)}, sidebar {pendingSidebar}"); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
             var main = MainForm.Instance;
             if (main != null) main.ReloadForTheme("Appearance");
         }

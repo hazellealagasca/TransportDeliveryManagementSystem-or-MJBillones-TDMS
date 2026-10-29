@@ -133,7 +133,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     // The order is kept as a draft, so there is nothing to lose: save it and let the person go.
                     dvCurr.AutoSaveDraft();
-                    try { ToastHelper.ShowToast(FindForm() ?? (Control)this, "Dispatch draft saved. It will be offered when you open the order form again.", ToastType.Info); } catch { }
+                    try { ToastHelper.ShowToast(FindForm() ?? (Control)this, "Dispatch draft saved. It will be offered when you open the order form again.", ToastType.Info); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 }
             }
             else if (pnlContentHost.Controls.Count > 0 && pnlContentHost.Controls[0] is LoadingManagementView lvCurr)

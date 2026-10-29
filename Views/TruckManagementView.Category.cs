@@ -47,7 +47,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             string n = (name ?? "").Trim();
             if (n.Length == 0) return null;
-            if (allTruckCategories.Count == 0) try { allTruckCategories = MJdatabase.GetTruckCategories(); } catch { }
+            if (allTruckCategories.Count == 0) try { allTruckCategories = MJdatabase.GetTruckCategories(); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
             return allTruckCategories.FirstOrDefault(c => string.Equals(c.CategoryName.Trim(), n, StringComparison.OrdinalIgnoreCase));
         }
         private static string CleanCategoryName(string? s) => System.Text.RegularExpressions.Regex.Replace((s ?? "").Trim(), @"\s+", " ");
@@ -115,7 +115,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void ResetCategoryHint()
         {
             if (chkSaveCatDefault != null) chkSaveCatDefault.Checked = false;
-            try { allTruckCategories = MJdatabase.GetTruckCategories(); } catch { }
+            try { allTruckCategories = MJdatabase.GetTruckCategories(); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
             UpdateCategoryHint();
         }
         /// <summary>Rename or remove categories without leaving the truck form.</summary>
@@ -139,7 +139,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlCategoriesContainer.Dock = DockStyle.Fill;
             pnlCategoriesContainer.Visible = true;
             LoadTruckCategories();
-            try { UIThemeHelper.ApplyTheme(dlg); } catch { }
+            try { UIThemeHelper.ApplyTheme(dlg); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
             try { dlg.ShowDialog(owner); }
             finally
             {

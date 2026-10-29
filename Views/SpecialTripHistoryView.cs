@@ -435,10 +435,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 UpdateKpiCards();
                 ApplyFilter();
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[SpecialTripHistory] LoadData error: {ex.Message}");
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[SpecialTripHistory] LoadData error: {ex.Message}"); ErrLog.Swallowed(ex); }
         }
 
         private void UpdateKpiCards()
@@ -630,7 +627,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("SpecialTripHistoryView", ex); 
                 MessageBox.Show(ex.Message, "Can't remove this trip", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
@@ -678,7 +675,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         MessageBox.Show("Special Trip history successfully exported to CSV!", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
-                    {
+                    { ErrLog.Error("SpecialTripHistoryView", ex); 
                         MessageBox.Show($"Failed to export CSV: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }

@@ -98,7 +98,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return true;
                 }
                 catch (Exception ex)
-                {
+                { ErrLog.Error("DataExportHelper", ex); 
                     MessageBox.Show($"Failed to export data to CSV: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return false;
                 }
@@ -212,7 +212,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return true;
                 }
                 catch (Exception ex)
-                {
+                { ErrLog.Error("DataExportHelper", ex); 
                     MessageBox.Show($"Failed to export data to Excel XML: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return false;
                 }
@@ -268,7 +268,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         Process.Start("explorer.exe", $"/select,\"{filePath}\"");
                     }
-                    catch { }
+                    catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 }
             }
         }

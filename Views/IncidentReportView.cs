@@ -30,7 +30,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             InitializeComponent();
             Pal.RemapTree(this);
             gridIncidents.BringToFront();
-            try { ProfileKit.Suggest(txtCause, "incident"); ProfileKit.Suggest(txtDescription, "incident-notes"); } catch { }
+            try { ProfileKit.Suggest(txtCause, "incident"); ProfileKit.Suggest(txtDescription, "incident-notes"); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
             SetupGridColumns();
             InitListChips();
             SetupContextMenu();
@@ -62,7 +62,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         gridIncidents.InvalidateRow(e.RowIndex);
                     }
                     catch (Exception ex)
-                    {
+                    { ErrLog.Error("IncidentReportView", ex); 
                         inc.ChargeableToCrew = !inc.ChargeableToCrew;
                         gridIncidents.InvalidateRow(e.RowIndex);
                         MessageBox.Show($"Failed to update incident chargeable status: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -351,7 +351,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 CheckAndPromptDraft();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("IncidentReportView", ex); 
                 MessageBox.Show($"Failed to load incident reports: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -380,7 +380,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         MessageBox.Show("Photo uploaded and attached successfully for reference!", "Upload Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
-                    {
+                    { ErrLog.Error("IncidentReportView", ex); 
                         MessageBox.Show($"Failed to save photo: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
@@ -465,7 +465,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("IncidentReportView", ex); 
                 MessageBox.Show($"Failed to save incident report: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -507,7 +507,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("IncidentReportView", ex); 
                 MessageBox.Show($"Failed to update incident report: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -538,7 +538,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("IncidentReportView", ex); 
                 MessageBox.Show($"Failed to delete incident report: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -710,7 +710,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 PrintHelper.PrintGridReport("Incident & Cargo Damage Incident Logs", gridIncidents, "Official log of cargo damage, transit incidents, and driver liability charges.");
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("IncidentReportView", ex); 
                 MessageBox.Show($"Failed to generate print report: {ex.Message}", "Print Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -756,7 +756,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ToastHelper.ShowToast(this, $"Incident on {inc.DispatchNumber} is now {status.ToLowerInvariant()}", ToastType.Success);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("IncidentReportView", ex); 
                 inc.Status = old;
                 MessageBox.Show($"Failed to update the incident: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -813,10 +813,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     pnlDraftBanner.BringToFront();
                 }
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[IncidentReport] CheckAndPromptDraft: {ex.Message}");
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[IncidentReport] CheckAndPromptDraft: {ex.Message}"); ErrLog.Swallowed(ex); }
         }
 
         private void RestoreDraft()
@@ -895,10 +892,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string json = DraftAutoSaveService.SerializeDraft(map);
                 MJdatabase.SaveFormDraft("IncidentReport", SessionContext.CurrentUsername, json);
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[IncidentReport] SaveCurrentDraft: {ex.Message}");
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[IncidentReport] SaveCurrentDraft: {ex.Message}"); ErrLog.Swallowed(ex); }
         }
     }
 }

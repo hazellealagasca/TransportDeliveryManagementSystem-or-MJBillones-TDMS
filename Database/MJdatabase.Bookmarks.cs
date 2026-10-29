@@ -43,7 +43,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 while (r.Read())
                     list.Add((r.GetString(0), r.GetString(1), DateTime.TryParse(r.GetString(2), out var t) ? t : DateTime.MinValue));
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[Marks] " + ex.Message); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine("[Marks] " + ex.Message); ErrLog.Swallowed(ex); }
             return list;
         }
         public static void SetRecordPinned(string username, string kind, string number, bool pinned)
@@ -63,7 +63,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.Parameters.AddWithValue("@t", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                 cmd.ExecuteNonQuery();
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[Marks] " + ex.Message); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine("[Marks] " + ex.Message); ErrLog.Swallowed(ex); }
         }
         /// <summary>Puts the record at the top of the user's "recently viewed" list (keeps the latest 15).</summary>
         public static void TouchRecentRecord(string username, string kind, string number)
@@ -90,7 +90,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     trim.ExecuteNonQuery();
                 }
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[Marks] " + ex.Message); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine("[Marks] " + ex.Message); ErrLog.Swallowed(ex); }
         }
     }
 }

@@ -69,7 +69,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     MJdatabase.SetSystemSetting("Theme.Accent", ToHex(AccentColor), "Appearance: accent colour");
                     MJdatabase.SetSystemSetting("Theme.Sidebar", Sidebar.ToString(), "Appearance: sidebar style");
                 }
-                catch { }
+                catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
             }
             Resolve(quiet);
             if (!quiet) ThemeChanged?.Invoke(null, EventArgs.Empty);
@@ -129,7 +129,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetPreferredAppMode(IsDark ? 2 : 3);
                 FlushMenuThemes();
             }
-            catch { }
+            catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
         }
         /// <summary>Makes the Windows title bar follow the theme (dark title bar, caption colour on Windows 11).</summary>
         public static void StyleWindowChrome(Form form, Color? caption = null)
@@ -149,7 +149,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     int textRef = txt.R | (txt.G << 8) | (txt.B << 16);
                     DwmSetWindowAttribute(form.Handle, 36, ref textRef, sizeof(int));
                 }
-                catch { }
+                catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
             }
             if (form.IsHandleCreated) Do();
             else form.HandleCreated += (s, e) => Do();
@@ -165,7 +165,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     string theme = c is ComboBox ? (IsDark ? "DarkMode_CFD" : "CFD") : (IsDark ? "DarkMode_Explorer" : "Explorer");
                     SetWindowTheme(c.Handle, theme, null);
                 }
-                catch { }
+                catch (System.Exception swx4) { ErrLog.Swallowed(swx4); }
             }
             if (c.IsHandleCreated) Do();
             else c.HandleCreated += (s, e) => Do();

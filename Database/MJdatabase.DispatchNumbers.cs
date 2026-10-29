@@ -53,7 +53,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (m.Success && int.TryParse(m.Groups[1].Value, out int n) && n > max) max = n;
                 }
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[DispatchNo] " + ex.Message); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine("[DispatchNo] " + ex.Message); ErrLog.Swallowed(ex); }
             return $"{prefix}{max + 1:D4}";
         }
     }

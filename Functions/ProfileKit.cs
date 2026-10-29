@@ -33,7 +33,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Font = new Font("Segoe UI", 9.5F)
             };
             g.RowTemplate.Height = 32;
-            try { UIThemeHelper.ApplyGridTheme(g); } catch { }
+            try { UIThemeHelper.ApplyGridTheme(g); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
             return g;
         }
         public static DataGridViewTextBoxColumn Col(string name, string header, float weight, bool right = false)

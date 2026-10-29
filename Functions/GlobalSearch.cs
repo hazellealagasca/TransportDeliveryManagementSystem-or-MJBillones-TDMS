@@ -118,7 +118,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         Add("Users", "🔑", u.FullName, $"@{u.Username} · {u.Role}{(u.IsActive ? "" : " · waiting for approval")}", u.ContactNumber, DateTime.MinValue, () => RecordDetailsDialog.ShowDetails(mf!, u));
                 }
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[SearchIndex] {ex.Message}"); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[SearchIndex] {ex.Message}"); ErrLog.Swallowed(ex); }
             return list;
         }
         /// <summary>Best matches, grouped by kind, at most <paramref name="perGroup"/> per kind.</summary>
@@ -333,7 +333,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int i = list.SelectedIndex >= 0 ? list.SelectedIndex : NextResult(0, 1);
                 if (i < 0 || i >= rows.Count || rows[i] is not SearchItem item) return;
                 owner.AfterOpen();
-                try { item.Open(); } catch (Exception ex) { MessageBox.Show(ex.Message, "Search", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+                try { item.Open(); } catch (Exception ex) { ErrLog.Error("GlobalSearch", ex);  MessageBox.Show(ex.Message, "Search", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
             }
             public void ShowResults(string q, List<SearchItem> hits)
             {

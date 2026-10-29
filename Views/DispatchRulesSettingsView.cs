@@ -189,7 +189,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 chkAutoFillCrates.Checked = autoRec.Equals("True", StringComparison.OrdinalIgnoreCase) || autoRec == "1";
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("DispatchRulesSettingsView", ex); 
                 MessageBox.Show($"Failed to load system settings: {ex.Message}", "Settings Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -216,7 +216,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 t.Start();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("DispatchRulesSettingsView", ex); 
                 MessageBox.Show($"Failed to save preferences: {ex.Message}", "Save Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

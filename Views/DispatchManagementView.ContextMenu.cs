@@ -95,9 +95,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             TripReport? trip = null;
             Invoice? invoice = null;
             int incidents = 0;
-            try { trip = MJdatabase.GetTripReports().FirstOrDefault(t => t.DeliveryId == d.Id || t.DispatchNumber == d.DispatchNumber); } catch { }
-            try { invoice = MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == d.Id); } catch { }
-            try { incidents = MJdatabase.GetIncidentReports().Count(i => i.DeliveryId == d.Id); } catch { }
+            try { trip = MJdatabase.GetTripReports().FirstOrDefault(t => t.DeliveryId == d.Id || t.DispatchNumber == d.DispatchNumber); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
+            try { invoice = MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == d.Id); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
+            try { incidents = MJdatabase.GetIncidentReports().Count(i => i.DeliveryId == d.Id); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
             bool active = IsActiveStatus(d), completed = IsCompletedStatus(d), cancelled = IsCancelledStatus(d);
             string status = MJdatabase.IsAwaitingCompletion(d) ? "Awaiting completion" : d.Status;
             string client = string.IsNullOrWhiteSpace(d.ClientName) ? "No client" : d.ClientName;
@@ -192,7 +192,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void CopyToClipboard(string text, string toast)
         {
             if (string.IsNullOrWhiteSpace(text)) return;
-            try { Clipboard.SetText(text); ToastHelper.ShowToast(this, toast, ToastType.Success); } catch { }
+            try { Clipboard.SetText(text); ToastHelper.ShowToast(this, toast, ToastType.Success); } catch (System.Exception swx4) { ErrLog.Swallowed(swx4); }
         }
         private static string Shorten(string? s, int max) => string.IsNullOrEmpty(s) ? "" : (s.Length <= max ? s : s.Substring(0, max - 1) + "…");
         private static string RouteCodeOf(Delivery d)
@@ -222,7 +222,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (list.Count == 0) return;
             try { PrintHelper.PrintOfficialLoadingScheduleFromDeliveries(list); }
-            catch (Exception ex) { MessageBox.Show($"Print failed: {ex.Message}", "Print", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            catch (Exception ex) { ErrLog.Error("DispatchManagementView.ContextMenu", ex);  MessageBox.Show($"Print failed: {ex.Message}", "Print", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
         private void RescheduleOrder(Delivery d)
         {
@@ -249,7 +249,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (success) ok++; else failed.Add($"{d.DispatchNumber}: {message}");
             }
             LoadDropdownsAndGrid();
-            try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch { }
+            try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch (System.Exception swx5) { ErrLog.Swallowed(swx5); }
             if (failed.Count > 0) MessageBox.Show($"{ok} completed. These could not be completed:\n\n" + string.Join("\n", failed), "Complete orders", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             else ToastHelper.ShowToast(this, $"{ok} orders marked complete", ToastType.Success);
         }
@@ -268,11 +268,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 d.CancellationReason = reason;
                 MJdatabase.SaveDelivery(d);
                 LoadDropdownsAndGrid();
-                try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch { }
+                try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch (System.Exception swx6) { ErrLog.Swallowed(swx6); }
                 ToastHelper.ShowToast(this, $"Dispatch {d.DispatchNumber} cancelled", ToastType.Warning);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("DispatchManagementView.ContextMenu", ex); 
                 MessageBox.Show($"Failed to cancel dispatch order: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -300,7 +300,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 dtpDispatchDate.Focus();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("DispatchManagementView.ContextMenu", ex); 
                 MessageBox.Show($"Couldn't duplicate the order: {ex.Message}", "Duplicate order", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }

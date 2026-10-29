@@ -150,7 +150,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
         }
         // ---------- Needs attention: filter, sort, group ----------
-        private static readonly string[] AttnAreas = { "All areas", "Dispatches", "Loading orders", "Trip reports", "Incidents", "Billing", "Trucks", "Accounts" };
+        private static readonly string[] AttnAreas = { "All areas", "Dispatches", "Loading orders", "Trip reports", "Incidents", "Billing", "Trucks", "Accounts", "Backups" };
         private static readonly string[] AttnSorts = { "Most urgent first", "Oldest first", "Newest first", "Most records first", "Group by area" };
         private static int attnLevel, attnArea, attnSort;
         private static bool attnExpanded;
@@ -497,10 +497,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Render();
                 lblUpdated.Text = $"Updated {DateTime.Now:h:mm tt}";
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Dashboard] {ex.Message}");
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[Dashboard] {ex.Message}"); ErrLog.Swallowed(ex); }
             finally { loading = false; }
         }
         private DateFilterChip? dateChip;
@@ -521,9 +518,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static bool Done(string? s) => DispatchGate.IsCompleted(s);
         private static DateTime Departure(DateTime date, string? time)
         {
-            if (DateTime.TryParse(time, CultureInfo.InvariantCulture, DateTimeStyles.None, out var t) || DateTime.TryParse(time, out t))
-                return date.Date + t.TimeOfDay;
-            return date.Date.AddHours(8);
+            if (TimeText.TryParse(time, out var t)) return date.Date + t;
+            return date.Date.AddHours(8); // no readable time: treat it as the usual 8:00 AM departure
         }
         private static string Peso(decimal v) => v >= 1_000_000 ? $"₱{v / 1_000_000m:0.##}M" : $"₱{v:N0}";
         private void Render()
@@ -636,6 +632,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 items.Add(new ActionList.Item(AppTheme.TextMuted, $"{maint} truck(s) under maintenance", string.Join(", ", data.Trucks.Where(t => MJdatabase.IsTruckBlockedStatus(t.Status) && !RowMenu.Is(t.Status, "Inactive")).Select(t => t.PlateNumber).Take(5)), "Trucks", () => MainForm.Instance?.NavigateToResources("Trucks"), "Trucks", 2, null, maint));
             if (SessionContext.IsAdmin && data.PendingUsers > 0)
                 items.Add(new ActionList.Item(AppTheme.Warning, $"{data.PendingUsers} account(s) waiting for approval", "New staff sign-ups need an administrator", "Review", () => MainForm.Instance?.OpenUserAccounts(), "Accounts", 1, null, data.PendingUsers));
+            if (SessionContext.IsAdmin)
+            {
+                DateTime? lastBackup = null;
+                try { lastBackup = MJdatabase.LastManualBackup(); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
+                int bkDays = lastBackup.HasValue ? (DateTime.Today - lastBackup.Value.Date).Days : -1;
+                if (bkDays < 0 || bkDays >= 7)
+                    items.Add(new ActionList.Item(AppTheme.Danger,
+                        bkDays < 0 ? "No backup has been made yet" : $"Last backup was {bkDays} days ago",
+                        "Make a backup and keep a copy on a USB drive or cloud storage (at least once a week)",
+                        "Back up", () => MainForm.Instance?.OpenBackupRestore(), "Backups", 2, lastBackup));
+            }
             allAttention = items;
             ApplyAttention();
             // Fleet
@@ -894,7 +901,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var row = rows[r];
             if (row.Kind == RowKind.More) { ToggleExpand?.Invoke(this, EventArgs.Empty); return; }
             if (row.Kind == RowKind.Empty) { ClearFilters?.Invoke(this, EventArgs.Empty); return; }
-            try { items[row.Index].Run(); } catch (Exception ex) { MessageBox.Show(ex.Message, "Dashboard", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            try { items[row.Index].Run(); } catch (Exception ex) { ErrLog.Error("DashboardView", ex);  MessageBox.Show(ex.Message, "Dashboard", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
         protected override void OnPaint(PaintEventArgs e)
         {

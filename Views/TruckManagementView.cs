@@ -87,7 +87,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var menuActions = new ContextMenuStrip();
             menuActions.Items.Add("📊 Export Table to CSV...", null, (s, e) => {
                 try { DataExportHelper.ExportToCsv(gridTrucks, "Truck_Vehicles", "Registered Trucks"); }
-                catch (Exception ex) { MessageBox.Show($"Export error: {ex.Message}", "Export Failed", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                catch (Exception ex) { ErrLog.Error("TruckManagementView", ex);  MessageBox.Show($"Export error: {ex.Message}", "Export Failed", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             });
             menuActions.Items.Add("🖨 Print Truck Report", null, BtnPrint_Click);
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
@@ -411,7 +411,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("TruckManagementView", ex); 
                 MessageBox.Show(ex.Message, "Truck Management", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
@@ -491,7 +491,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("TruckManagementView", ex); 
                 MessageBox.Show(ex.Message, "Truck Management", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
@@ -536,7 +536,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("TruckManagementView", ex); 
                 MessageBox.Show($"Failed to delete truck record: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -646,7 +646,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 PrintHelper.PrintGridReport("Truck & Vehicle Inventory Report", gridTrucks, "Official truck inventory statement including plate numbers, crate capacities, and operational statuses.");
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("TruckManagementView", ex); 
                 MessageBox.Show($"Failed to generate print report: {ex.Message}", "Print Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -708,7 +708,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("TruckManagementView", ex); 
                 if (!this.IsDisposed)
                 {
                     MessageBox.Show($"Failed to load truck data: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -743,7 +743,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string status = string.IsNullOrWhiteSpace(t.Status) ? "Active" : t.Status;
                 bool blocked = MJdatabase.IsTruckBlockedStatus(status);
                 bool onTrip = false;
-                try { onTrip = MJdatabase.IsTruckOnActiveTrip(t.Id); } catch { }
+                try { onTrip = MJdatabase.IsTruckOnActiveTrip(t.Id); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 m.Items.AddRange(RowMenu.Header($"🚚  {t.PlateNumber}", $"{t.TruckType} · {t.CapacityCrates} crates · {status}{(onTrip ? " · assigned to a dispatch" : "")}"));
                 m.Items.Add(RowMenu.Item("Open truck profile", () => OpenTruckProfile(t), "Enter"));
                 m.Items.Add(RowMenu.Item("Quick details", () => RecordDetailsDialog.ShowDetails(this, t)));
@@ -787,7 +787,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ToastHelper.ShowToast(this, $"{t.PlateNumber} is now {status}", ToastType.Success);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("TruckManagementView", ex); 
                 t.Status = old;
                 MessageBox.Show($"Failed to update truck status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -1111,10 +1111,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 allTruckCategories = MJdatabase.GetTruckCategories();
                 FilterTruckCategories();
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to load truck categories: {ex.Message}");
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"Failed to load truck categories: {ex.Message}"); ErrLog.Swallowed(ex); }
         }
 
         private void FilterTruckCategories()

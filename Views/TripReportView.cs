@@ -859,7 +859,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("TripReportView", ex); 
                 MessageBox.Show($"Failed to load trip completion records: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1090,7 +1090,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("TripReportView", ex); 
                 MessageBox.Show($"Failed to save trip completion report: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1252,7 +1252,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("TripReportView", ex); 
                 MessageBox.Show($"Failed to update trip completion report: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1284,7 +1284,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("TripReportView", ex); 
                 MessageBox.Show($"Delete operation error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1399,7 +1399,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 PrintHelper.PrintGridReport("Plant & Store Trip Documentation Report", gridTripReports, "Official trip delivery completion register with G/E crate receipts and store signees.");
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("TripReportView", ex); 
                 MessageBox.Show($"Print error: {ex.Message}", "Print Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1462,7 +1462,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var del = RowMenu.FindDelivery(tr.DeliveryId, tr.DispatchNumber);
                 if (del != null) shortCrates = Math.Max(0, del.TotalCrates - tr.DeliveredCrates - tr.ReturnedCrates);
                 Invoice? invoice = null;
-                try { invoice = tr.DeliveryId > 0 ? MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == tr.DeliveryId) : null; } catch { }
+                try { invoice = tr.DeliveryId > 0 ? MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == tr.DeliveryId) : null; } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 bool invoiced = invoice != null;
                 m.Items.AddRange(RowMenu.Header($"📋  Trip report {tr.TripReportNumber}",
                     $"Dispatch {tr.DispatchNumber} · {tr.ReportDate:MMM d, yyyy} · {tr.DeliveredCrates} delivered, {tr.ReturnedCrates} returned{(shortCrates > 0 ? $" · {shortCrates} unaccounted" : "")}"));
@@ -1511,7 +1511,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     pnlFormBody.Controls.SetChildIndex(pnlDraftBanner, pnlFormBody.Controls.Count - 1);
                 }
             }
-            catch { }
+            catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
         }
 
         private void RestoreDraft()
@@ -1606,7 +1606,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string json = DraftAutoSaveService.SerializeDraft(map);
                 MJdatabase.SaveFormDraft("TripReport", SessionContext.CurrentUsername, json);
             }
-            catch { }
+            catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
         }
     }
 }

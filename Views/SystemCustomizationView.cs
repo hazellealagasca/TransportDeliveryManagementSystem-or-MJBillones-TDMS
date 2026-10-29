@@ -384,7 +384,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             chkLightenLogo.CheckedChanged += (s, e) =>
             {
                 if (isInitializingSettings) return;
-                try { BrandAssets.LightenCustomLogoOnDark = chkLightenLogo.Checked; } catch { }
+                try { BrandAssets.LightenCustomLogoOnDark = chkLightenLogo.Checked; } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
             };
             lblLogoSource = new Label { AutoSize = true, MaximumSize = new Size(460, 0), Font = new Font("Segoe UI", 8.75F), ForeColor = Pal.C(100, 116, 139), Margin = new Padding(0) };
             side.Controls.Add(buttons);
@@ -438,7 +438,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show(FindForm(), error, "Logo not changed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            try { MJdatabase.LogSecurityEvent(currentUser?.Username ?? "", "SETTINGS", "Company logo changed (" + System.IO.Path.GetFileName(dlg.FileName) + ")"); } catch { }
+            try { MJdatabase.LogSecurityEvent(currentUser?.Username ?? "", "SETTINGS", "Company logo changed (" + System.IO.Path.GetFileName(dlg.FileName) + ")"); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
             EventNotificationService.Publish("Logo updated", "The new company logo is now used on screen and on printed forms.", ToastType.Success, this);
         }
         private void UseDefaultLogo()
@@ -446,8 +446,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (MessageBox.Show(FindForm(), "Remove the uploaded logo and go back to the built-in M.J. Billones logo?", "Use default logo",
                     MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
             try { BrandAssets.ResetToDefaultLogo(); }
-            catch (Exception ex) { MessageBox.Show(FindForm(), "The logo could not be reset: " + ex.Message, "Logo", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
-            try { MJdatabase.LogSecurityEvent(currentUser?.Username ?? "", "SETTINGS", "Company logo reset to default"); } catch { }
+            catch (Exception ex) { ErrLog.Error("SystemCustomizationView", ex);  MessageBox.Show(FindForm(), "The logo could not be reset: " + ex.Message, "Logo", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            try { MJdatabase.LogSecurityEvent(currentUser?.Username ?? "", "SETTINGS", "Company logo reset to default"); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
             EventNotificationService.Publish("Logo updated", "The built-in M.J. Billones logo is back in use.", ToastType.Success, this);
         }
         private Panel CreateCard(string title, string subtitle)
@@ -571,7 +571,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string lowTrucks = MJdatabase.GetSystemSetting("NotifyLowTrucks", "True");
                 chkNotifyLowTrucks.Checked = lowTrucks.Equals("True", StringComparison.OrdinalIgnoreCase) || lowTrucks == "1";
             }
-            catch { }
+            catch (System.Exception swx4) { ErrLog.Swallowed(swx4); }
             finally
             {
                 isInitializingSettings = false;
@@ -609,7 +609,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     EventNotificationService.Publish("Preferences Saved", "System customization preferences updated successfully.", ToastType.Success, this);
                 }
             }
-            catch { }
+            catch (System.Exception swx5) { ErrLog.Swallowed(swx5); }
         }
 
         private void BtnSave_Click(object? sender, EventArgs e)
@@ -630,7 +630,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 t.Start();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("SystemCustomizationView", ex); 
                 MessageBox.Show($"Failed to save preferences: {ex.Message}", "Save Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

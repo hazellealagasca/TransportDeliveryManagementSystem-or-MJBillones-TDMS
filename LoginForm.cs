@@ -69,6 +69,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             SetupBackgroundAndLogo();
+            Shown += (s, e) =>
+            {
+                if (AppPaths.MigrationMessage.Length == 0) return;
+                BeginInvoke(new Action(() => AppDialog.Show(this, "Data folder moved", DialogTone.Success,
+                    "Your data has a new, safer home",
+                    "The database, photos, documents, backups and logs are now kept in this folder. Rebuilding, updating or reinstalling the app won't touch it.",
+                    path: AppPaths.DataRoot,
+                    note: "The old copy in the program folder was left as it was, as an extra backup. Back up this folder (Settings → Backup & Restore) and keep a copy on a USB drive.",
+                    okText: "Got it")));
+            };
             SetupInputFocusAndPlaceholders();
             LoadRememberedUsername();
 
@@ -118,11 +128,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     rawBackgroundImage = Image.FromFile(bgPath);
                 }
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Login] Background init: {ex.Message}");
-            }
-
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[Login] Background init: {ex.Message}"); ErrLog.Swallowed(ex); }
             try
             {
                 string logoPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "logo_clean.png");
@@ -148,10 +154,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Login] Logo init: {ex.Message}");
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[Login] Logo init: {ex.Message}"); ErrLog.Swallowed(ex); }
         }
 
         private void SetupInputFocusAndPlaceholders()
@@ -882,7 +885,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
             }
-            catch { }
+            catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }
 
         private void SaveRememberedUsername(string username)
@@ -904,12 +907,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     System.IO.File.Delete(prefPath);
                 }
             }
-            catch { }
+            catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
         }
 
         private string GetUserPrefPath()
         {
-            return System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "login_pref.dat");
+            // Kept in the data folder so a rebuild or reinstall doesn't forget it; an older copy in Assets is still read once.
+            string p = System.IO.Path.Combine(AppPaths.DataRoot, "login_pref.dat");
+            string old = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "login_pref.dat");
+            try { if (!System.IO.File.Exists(p) && System.IO.File.Exists(old)) System.IO.File.Copy(old, p); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
+            return p;
         }
 
         private void ShowError(string message, bool isSuccess = false)
@@ -1017,8 +1024,33 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+        /// <summary>Picks up a logo changed in Settings while someone was signed in (the sign-in window is reused after log out).</summary>
+        private void ReloadLogoIfChanged()
+        {
+            try
+            {
+                var custom = BrandAssets.CustomLogoCopy();
+                Image? next = custom;
+                if (next == null)
+                {
+                    foreach (var name in new[] { "logo_clean.png", "logo_transparent.png", "logo.png" })
+                    {
+                        string p = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", name);
+                        if (System.IO.File.Exists(p)) { using var fs = new System.IO.FileStream(p, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite); using var img = Image.FromStream(fs); next = new Bitmap(img); break; }
+                    }
+                }
+                if (next == null) return;
+                var old = cleanLogoImage;
+                cleanLogoImage = next;
+                old?.Dispose();
+                RebuildSceneBitmap();
+                Invalidate(true);
+            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[Login] Logo reload: {ex.Message}"); ErrLog.Swallowed(ex); }
+        }
         private void ResetForReLogin()
         {
+            ReloadLogoIfChanged();
             failedAttempts = 0;
             txtPassword.Clear();
             HideError();
@@ -1085,7 +1117,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("LoginForm", ex); 
                 MessageBox.Show($"Unable to open password recovery dialog: {ex.Message}", "Recovery Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

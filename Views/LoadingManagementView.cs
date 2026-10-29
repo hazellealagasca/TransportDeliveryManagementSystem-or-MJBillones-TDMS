@@ -672,7 +672,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 tipRouteStores.SetToolTip(cbDestination, text);
                 tipRouteStores.Show(text, cbDestination, 0, cbDestination.Height + 4, 6000);
             }
-            catch { }
+            catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }
 
         private void CalculateCratesAndRecommendation()
@@ -892,7 +892,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 CheckAndPromptDraft();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("LoadingManagementView", ex); 
                 MessageBox.Show($"Failed to load loading schedules: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1017,7 +1017,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 LoadSchedules();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("LoadingManagementView", ex); 
                 MessageBox.Show($"Failed to save loading schedule: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1114,7 +1114,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 LoadSchedules();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("LoadingManagementView", ex); 
                 MessageBox.Show($"Failed to update loading schedule: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1153,7 +1153,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("LoadingManagementView", ex); 
                 MessageBox.Show($"Delete operation error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1193,7 +1193,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show($"New Loading Order '{newSched.ScheduleNumber}' for {newSched.ClientName} ({newSched.Destination}) cloned successfully for today!", "Order Cloned", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("LoadingManagementView", ex); 
                 MessageBox.Show($"Failed to clone loading schedule: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1455,7 +1455,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 LoadSchedules();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("LoadingManagementView", ex); 
                 MessageBox.Show($"Failed to cancel loading schedule: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1518,7 +1518,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     pnlDraftBanner.BringToFront();
                 }
             }
-            catch { }
+            catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
         }
 
         private void RestoreDraft()
@@ -1795,10 +1795,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string json = DraftAutoSaveService.SerializeDraft(map);
                 MJdatabase.SaveFormDraft("LoadingSchedule", SessionContext.CurrentUsername, json);
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[LoadingSchedule] SaveDraft: {ex.Message}");
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[LoadingSchedule] SaveDraft: {ex.Message}"); ErrLog.Swallowed(ex); }
         }
     
         private void OpenDeliveryRoutesForCurrentStore()

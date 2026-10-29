@@ -92,11 +92,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 for (int i = 0; i < prefs.Count; i++) prefs[i].Order = i;
                 MJdatabase.SetSystemSetting(SettingKey(gridKey), JsonSerializer.Serialize(prefs), "Table layout");
             }
-            catch { }
+            catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }
         public static void Reset(string gridKey)
         {
-            try { MJdatabase.SetSystemSetting(SettingKey(gridKey), "", "Table layout"); } catch { }
+            try { MJdatabase.SetSystemSetting(SettingKey(gridKey), "", "Table layout"); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
         }
         /// <summary>
         /// Applies a layout to a grid: adds/removes custom columns (built by <paramref name="customFactory"/>),

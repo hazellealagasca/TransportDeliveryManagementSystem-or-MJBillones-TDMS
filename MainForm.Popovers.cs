@@ -50,7 +50,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     // The bell toggles the panel itself; anything else outside the panel closes it.
                     if (!insidePanel && !onBell) panel.Visible = false;
                 }
-                catch { }
+                catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 return false;
             }
         }

@@ -484,10 +484,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 cbAide.SelectedIndex = 0;
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[RescheduleDialog] LoadResources error: {ex.Message}");
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[RescheduleDialog] LoadResources error: {ex.Message}"); ErrLog.Swallowed(ex); }
         }
 
         private void BtnConfirm_Click(object? sender, EventArgs e)

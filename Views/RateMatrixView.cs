@@ -32,7 +32,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         r.IsPeakSeason = !r.IsPeakSeason;
                         int row = e.RowIndex;
-                        BeginInvoke(new Action(() => { try { gridRates.InvalidateRow(row); } catch { } }));
+                        BeginInvoke(new Action(() => { try { gridRates.InvalidateRow(row); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); } }));
                         MessageBox.Show(clash, "Duplicate Rate Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                         return;
                     }
@@ -559,7 +559,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("RateMatrixView", ex); 
                 MessageBox.Show($"Failed to save rate rule: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -625,7 +625,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("RateMatrixView", ex); 
                 MessageBox.Show($"Failed to update rate rule: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -657,7 +657,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("RateMatrixView", ex); 
                 MessageBox.Show($"Delete operation error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -799,7 +799,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblSummary.Text = $"📊 Total Configured Rates: {allRates.Count:N0}  |  📍 Unique Destinations: {allRates.Select(r => r.Destination).Distinct().Count():N0}";
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("RateMatrixView", ex); 
                 MessageBox.Show($"Failed to load rate matrix: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

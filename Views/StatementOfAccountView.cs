@@ -990,7 +990,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 FilterGridData();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("StatementOfAccountView", ex); 
                 MessageBox.Show($"Failed to load Statements of Account: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1300,7 +1300,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 PrintOfficialSoa(soa);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("StatementOfAccountView", ex); 
                 MessageBox.Show($"Failed to save Statement of Account: {ex.Message}", "Save Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1325,7 +1325,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     SetFormVisibility(false);
                 }
                 catch (Exception ex)
-                {
+                { ErrLog.Error("StatementOfAccountView", ex); 
                     MessageBox.Show($"Delete failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }

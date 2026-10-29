@@ -116,11 +116,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[MainForm] LoadLogo: {ex.Message}");
-            }
-
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[MainForm] LoadLogo: {ex.Message}"); ErrLog.Swallowed(ex); }
             if (!isThemeReload) MJdatabase.PerformStartupSanityCheck();
             categoriesChangedHandler = () =>
             {
@@ -139,7 +135,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 tmrAutoTransitCheck?.Dispose();
                 foreach (var cached in viewCache.Values)
                 {
-                    try { if (!cached.IsDisposed) cached.Dispose(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[MainForm] Dispose view: {ex.Message}"); }
+                    try { if (!cached.IsDisposed) cached.Dispose(); } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[MainForm] Dispose view: {ex.Message}"); ErrLog.Swallowed(ex); }
                 }
                 viewCache.Clear();
                 if (Instance == this) Instance = null;
@@ -209,7 +205,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
             }
-            catch { }
+            catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }
 
         private void ShowUserProfileDialog()
@@ -754,10 +750,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         EventNotificationService.Publish("Database Snapshot", "Automatic background database backup snapshot created.", ToastType.Info, this);
                     }
                 }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Snapshot] {ex.Message}");
-                }
+                catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[Snapshot] {ex.Message}"); ErrLog.Swallowed(ex); }
             };
             tmrRollingSnapshot.Start();
         }
@@ -804,10 +797,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     }
                 }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[MainForm] tmrAutoTransitCheck: {ex.Message}");
-                }
+                catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[MainForm] tmrAutoTransitCheck: {ex.Message}"); ErrLog.Swallowed(ex); }
             };
             tmrAutoTransitCheck.Start();
         }
@@ -875,10 +865,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 ApplyAdaptiveHeader();
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[MainForm] UpdateHeaderKpiBadges: {ex.Message}");
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[MainForm] UpdateHeaderKpiBadges: {ex.Message}"); ErrLog.Swallowed(ex); }
         }
 
         public void ApplyAdaptiveHeader()
@@ -913,10 +900,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     btnKpiUnpaid.Text = isCompact ? $"\U0001f4b3  {lastUnpaidCount}" : $"\U0001f4b3  {lastUnpaidCount} unpaid";
                 }
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[MainForm] ApplyAdaptiveHeader: {ex.Message}");
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[MainForm] ApplyAdaptiveHeader: {ex.Message}"); ErrLog.Swallowed(ex); }
         }
 
         private void MainForm_KeyDown(object? sender, KeyEventArgs e)

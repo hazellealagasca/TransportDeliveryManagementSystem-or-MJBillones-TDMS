@@ -116,13 +116,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         }
                         toast.Dispose();
                     }
-                    catch { }
+                    catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 }
                 toast.Click += (s, e) => Dismiss();
                 tmr.Tick += (s, e) => Dismiss();
                 tmr.Start();
             }
-            catch { }
+            catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
         }
         private sealed class ToastCard : Control
         {
@@ -187,7 +187,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 // Native edit/list controls paint themselves; double-buffering them only adds work.
                 if (!(c is TextBoxBase) && !(c is ComboBox) && !(c is ListBox) && !(c is DateTimePicker) && !(c is UpDownBase))
                 {
-                    try { DoubleBufferedProp?.SetValue(c, true, null); } catch { }
+                    try { DoubleBufferedProp?.SetValue(c, true, null); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
                 }
             }
             foreach (Control child in c.Controls)
@@ -211,11 +211,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     themeDepth--;
                     parent.ResumeLayout(true);
                 }
-                try { ConfirmGate.Watch(parent); } catch { }
+                try { ConfirmGate.Watch(parent); } catch (System.Exception swx4) { ErrLog.Swallowed(swx4); }
                 return;
             }
             ApplyThemeCore(parent);
-            try { ConfirmGate.Watch(parent); } catch { }
+            try { ConfirmGate.Watch(parent); } catch (System.Exception swx5) { ErrLog.Swallowed(swx5); }
         }
         private static void ApplyThemeCore(Control parent)
         {
@@ -259,7 +259,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (e.Control == null) return;
                     StyleDynamicTree(e.Control);
                 }
-                catch { }
+                catch (System.Exception swx6) { ErrLog.Swallowed(swx6); }
             };
         }
         private static void StyleDynamicTree(Control c)
@@ -680,7 +680,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int needH = TextRenderer.MeasureText("Ag", btn.Font).Height + (int)Math.Round(10 * k);
                 if (btn.Height < needH) btn.Height = needH;
             }
-            catch { }
+            catch (System.Exception swx7) { ErrLog.Swallowed(swx7); }
         }
         private static readonly System.Reflection.PropertyInfo? EventsProp =
             typeof(System.ComponentModel.Component).GetProperty("Events", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -821,8 +821,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 this.owner = owner;
                 if (owner.IsHandleCreated) AssignHandle(owner.Handle);
-                owner.HandleCreated += (s, e) => { try { if (Handle != IntPtr.Zero) ReleaseHandle(); AssignHandle(owner.Handle); } catch { } };
-                owner.HandleDestroyed += (s, e) => { try { ReleaseHandle(); } catch { } };
+                owner.HandleCreated += (s, e) => { try { if (Handle != IntPtr.Zero) ReleaseHandle(); AssignHandle(owner.Handle); } catch (System.Exception swx8) { ErrLog.Swallowed(swx8); } };
+                owner.HandleDestroyed += (s, e) => { try { ReleaseHandle(); } catch (System.Exception swx9) { ErrLog.Swallowed(swx9); } };
                 owner.Enter += (s, e) => Redraw();
                 owner.Leave += (s, e) => Redraw();
                 owner.MouseEnter += (s, e) => { hover = true; Redraw(); };
@@ -840,7 +840,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 bool relevant = owner is TextBoxBase ? (m.Msg == WM_NCPAINT || m.Msg == WM_ENABLE) : (m.Msg == WM_PAINT || m.Msg == WM_NCPAINT || m.Msg == WM_ENABLE);
                 if (relevant)
                 {
-                    try { DrawFrame(); } catch { }
+                    try { DrawFrame(); } catch (System.Exception swx10) { ErrLog.Swallowed(swx10); }
                 }
             }
             private void DrawFrame()
@@ -890,7 +890,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.SetProperty,
                     null, grid, new object[] { true });
             }
-            catch { }
+            catch (System.Exception swx11) { ErrLog.Swallowed(swx11); }
             grid.BackgroundColor = AppTheme.Surface;
             grid.BorderStyle = BorderStyle.None;
             grid.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
@@ -938,7 +938,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             grid.RowTemplate.Height = rowH;
             if (grid.Rows.Count > 0 && grid.Rows.Count <= 150)
             {
-                foreach (DataGridViewRow row in grid.Rows) { try { if (row.Height < rowH) row.Height = rowH; } catch { } }
+                foreach (DataGridViewRow row in grid.Rows) { try { if (row.Height < rowH) row.Height = rowH; } catch (System.Exception swx12) { ErrLog.Swallowed(swx12); } }
             }
             grid.ColumnHeadersDefaultCellStyle.Font = UITheme.GridHeaderFont;
             grid.ColumnHeadersDefaultCellStyle.BackColor = AppTheme.GridHeaderBack;
@@ -1337,7 +1337,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 var mode = cb.AutoCompleteMode;
                 var source = cb.AutoCompleteSource;
-                try { cb.AutoCompleteMode = AutoCompleteMode.None; } catch { }
+                try { cb.AutoCompleteMode = AutoCompleteMode.None; } catch (System.Exception swx13) { ErrLog.Swallowed(swx13); }
                 try
                 {
                     cb.AutoCompleteSource = source;
@@ -1345,7 +1345,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 catch
                 {
-                    try { cb.AutoCompleteMode = AutoCompleteMode.None; } catch { }
+                    try { cb.AutoCompleteMode = AutoCompleteMode.None; } catch (System.Exception swx14) { ErrLog.Swallowed(swx14); }
                 }
             }
         }

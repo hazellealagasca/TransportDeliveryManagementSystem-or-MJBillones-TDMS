@@ -329,8 +329,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             targetEntity = MJdatabase.GetTripReports().FirstOrDefault(x => x.Id == log.RecordId || (!string.IsNullOrEmpty(x.TripReportNumber) && x.TripReportNumber == log.RecordIdentifier) || (!string.IsNullOrEmpty(x.DispatchNumber) && x.DispatchNumber == log.RecordIdentifier));
                         }
                     }
-                    catch { }
-
+                    catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                     RecordDetailsDialog.ShowDetails(this, targetEntity ?? log);
                 }
             };
@@ -379,7 +378,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 rawLogs = await MJdatabase.GetAuditTrailAsync(targetTables, null, 1000);
                 ApplyFilter();
             }
-            catch { }
+            catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
             finally
             {
                 btnRefresh.Enabled = true;

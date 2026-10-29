@@ -157,7 +157,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         protected ContextMenuStrip NewMenu()
         {
             var m = new ContextMenuStrip { ShowImageMargin = false, ShowCheckMargin = true, Font = new Font("Segoe UI", 9.5F) };
-            try { m.Renderer = new ToolStripProfessionalRenderer(); m.BackColor = AppTheme.Surface; m.ForeColor = AppTheme.TextPrimary; } catch { }
+            try { m.Renderer = new ToolStripProfessionalRenderer(); m.BackColor = AppTheme.Surface; m.ForeColor = AppTheme.TextPrimary; } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
             m.Closed += (s, e) => BeginInvoke(new Action(() => m.Dispose()));
             return m;
         }
@@ -313,7 +313,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MinimizeBox = false, MaximizeBox = false, ShowInTaskbar = false, BackColor = AppTheme.Surface,
                 Font = new Font("Segoe UI", 9.5F), AutoScaleMode = AutoScaleMode.Dpi, KeyPreview = true
             };
-            try { ThemeManager.StyleWindowChrome(dlg); } catch { }
+            try { ThemeManager.StyleWindowChrome(dlg); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
             DateTime start = current.From ?? DateTime.Today, end = current.To ?? DateTime.Today;
             MonthCalendar Cal(DateTime d) => new MonthCalendar { MaxSelectionCount = 1, SelectionStart = d, SelectionEnd = d, ShowToday = true, ShowTodayCircle = true, Margin = new Padding(D(8)) };
             var calFrom = Cal(start);
@@ -335,7 +335,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var bar = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(D(8)), Anchor = AnchorStyles.Right, WrapContents = false };
             var ok = new Button { Text = "Show these dates", AutoSize = true, DialogResult = DialogResult.OK, Padding = new Padding(D(10), D(3), D(10), D(3)) };
             var cancel = new Button { Text = "Cancel", AutoSize = true, DialogResult = DialogResult.Cancel, Padding = new Padding(D(10), D(3), D(10), D(3)) };
-            try { UIThemeHelper.SetButtonRole(ok, "primary"); UIThemeHelper.SetButtonRole(cancel, "secondary"); } catch { }
+            try { UIThemeHelper.SetButtonRole(ok, "primary"); UIThemeHelper.SetButtonRole(cancel, "secondary"); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
             bar.Controls.Add(ok); bar.Controls.Add(cancel);
             var root = new FlowLayoutPanel { Location = new Point(0, 0), FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, BackColor = AppTheme.Surface };
             root.Controls.Add(grid); root.Controls.Add(summary); root.Controls.Add(bar);
@@ -396,7 +396,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private static void BeginInvokeSafe(this Control c, Action a)
         {
-            try { if (c.IsHandleCreated && !c.IsDisposed) c.BeginInvoke(a); } catch { }
+            try { if (c.IsHandleCreated && !c.IsDisposed) c.BeginInvoke(a); } catch (System.Exception swx4) { ErrLog.Swallowed(swx4); }
         }
     }
 }

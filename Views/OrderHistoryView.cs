@@ -256,7 +256,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 LoadMarks();
                 Render();
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[OrderHistory] " + ex.Message); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine("[OrderHistory] " + ex.Message); ErrLog.Swallowed(ex); }
             finally { if (btnRefresh != null && !btnRefresh.IsDisposed) btnRefresh.Enabled = true; }
         }
         private void LoadMarks()
@@ -374,7 +374,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             rendering = false;
             var now = keep?.Tag as TxRecord;
             if (now == null || now.Key != selected?.Key || preview.Controls.Count == 0) ShowPreview(now);
-            if (firstVisible >= 0 && firstVisible < grid.Rows.Count) try { grid.FirstDisplayedScrollingRowIndex = firstVisible; } catch { }
+            if (firstVisible >= 0 && firstVisible < grid.Rows.Count) try { grid.FirstDisplayedScrollingRowIndex = firstVisible; } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
             lblEmpty.Visible = shown.Count == 0;
             grid.Visible = shown.Count > 0;
             lblEmpty.Text = all.Count == 0 ? "No transactions yet."
@@ -591,7 +591,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void CopyNumber(TxRecord r)
         {
-            try { Clipboard.SetText(r.Number); ToastHelper.ShowToast(this, $"{r.Number} copied", ToastType.Info); } catch { }
+            try { Clipboard.SetText(r.Number); ToastHelper.ShowToast(this, $"{r.Number} copied", ToastType.Info); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
         }
         private void OpenRecord(TxRecord r)
         {
@@ -603,7 +603,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (src is Delivery d) src = MJdatabase.GetDeliveryById(d.Id) ?? d;
                 else if (src is SpecialTrip st) src = MJdatabase.GetSpecialTripById(st.Id) ?? st;
             }
-            catch { }
+            catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
             RecordDetailsDialog.ShowDetails(this, src);
             recent = MJdatabase.GetRecordMarks(User, "recent").Select(m => m.Kind + "|" + m.Number).ToList();
             if (tabs.Selected == TabRecent) Render();
@@ -666,7 +666,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 File.WriteAllText(dlg.FileName, sb.ToString(), new UTF8Encoding(true));
                 ToastHelper.ShowToast(this, $"{shown.Count:N0} transaction(s) exported", ToastType.Success);
             }
-            catch (Exception ex) { MessageBox.Show(FindForm(), "Couldn't save the file: " + ex.Message, "Export", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            catch (Exception ex) { ErrLog.Error("OrderHistoryView", ex);  MessageBox.Show(FindForm(), "Couldn't save the file: " + ex.Message, "Export", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
         private static string Short(string s, int n) => string.IsNullOrEmpty(s) || s.Length <= n ? s ?? "" : s.Substring(0, n - 1) + "…";
     }

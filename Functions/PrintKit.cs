@@ -121,7 +121,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     o.Signatures = merged;
                 }
             }
-            catch { }
+            catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
             return o;
         }
         private static void MergeFields(List<PrintField> target, List<PrintField> saved)
@@ -144,11 +144,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 copy.Notes = "";
                 Database.MJdatabase.SetSystemSetting(Key(o.FormKey), JsonSerializer.Serialize(copy), "Print layout");
             }
-            catch { }
+            catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
         }
         public static void Reset(string formKey)
         {
-            try { Database.MJdatabase.SetSystemSetting(Key(formKey), "", "Print layout"); } catch { }
+            try { Database.MJdatabase.SetSystemSetting(Key(formKey), "", "Print layout"); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
         }
     }
     /// <summary>The shared page: company header, title block, the form's body, notes, signatures and footer.</summary>
@@ -192,7 +192,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (File.Exists(p)) return "data:image/png;base64," + Convert.ToBase64String(File.ReadAllBytes(p));
                 }
             }
-            catch { }
+            catch (System.Exception swx4) { ErrLog.Swallowed(swx4); }
             return "";
         }
         // ---------------------------------------------------------------- building blocks for form bodies

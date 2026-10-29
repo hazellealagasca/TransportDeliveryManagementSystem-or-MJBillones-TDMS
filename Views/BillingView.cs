@@ -481,7 +481,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblSummary.Text = $"📊 Total Invoices: {allInvoices.Count:N0}  |  ⏳ Unpaid: {unpaid}  |  🟡 Partial: {partial}  |  🚨 Overdue: {overdue}  |  🟢 Paid: {paid}  |  💰 Total Billed: PHP {totalNet:N2}";
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("BillingView", ex); 
                 System.Diagnostics.Debug.WriteLine($"[BillingView] LoadData: {ex}");
                 MessageBox.Show($"Failed to load invoice billing records: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -586,7 +586,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("BillingView", ex); 
                 System.Diagnostics.Debug.WriteLine($"[BillingView] BtnSave_Click: {ex}");
                 MessageBox.Show($"Failed to save invoice: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -668,7 +668,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("BillingView", ex); 
                 System.Diagnostics.Debug.WriteLine($"[BillingView] BtnUpdate_Click: {ex}");
                 MessageBox.Show($"Failed to update invoice: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -708,7 +708,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("BillingView", ex); 
                 System.Diagnostics.Debug.WriteLine($"[BillingView] BtnDelete_Click: {ex}");
                 MessageBox.Show($"Delete operation error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -857,7 +857,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var inv = invs[0];
                 selectedInvoice = inv;
                 decimal paid = 0;
-                try { paid = MJdatabase.GetTotalCollectedForInvoice(inv.Id); } catch { }
+                try { paid = MJdatabase.GetTotalCollectedForInvoice(inv.Id); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 decimal balance = Math.Max(0, inv.NetAmount - paid);
                 bool isPaid = RowMenu.Is(inv.Status, "Paid") || (inv.NetAmount > 0 && balance <= 0);
                 bool isDraft = RowMenu.Is(inv.Status, "Draft");

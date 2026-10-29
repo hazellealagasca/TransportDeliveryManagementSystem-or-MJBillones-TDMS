@@ -18,6 +18,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private UserBadge? userBadge;
         public void NavigateHome() => OpenDashboard();
         public void OpenUserAccounts() => btnNavUsers_Click(this, EventArgs.Empty);
+        /// <summary>Settings → Backup & Restore (from the dashboard's backup reminder).</summary>
+        public void OpenBackupRestore()
+        {
+            NavigateToView("SettingsView", btnNavSettings, () => new Views.SettingsView(currentUser, "Backup"));
+            if (viewCache.TryGetValue("SettingsView", out var sv) && sv is Views.SettingsView setv) setv.SelectTab("Backup");
+        }
         public void DispatchLoadingOrder(LoadingSchedule ls) => GetOperationsHub("Dispatch")?.DispatchLoadingSchedule(ls);
         private void InitHeaderRedesign()
         {

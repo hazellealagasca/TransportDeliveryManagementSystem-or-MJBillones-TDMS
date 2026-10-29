@@ -32,7 +32,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         u.IsActive = true;
                         int row = e.RowIndex;
-                        BeginInvoke(new Action(() => { try { gridUsers.InvalidateRow(row); } catch { } }));
+                        BeginInvoke(new Action(() => { try { gridUsers.InvalidateRow(row); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); } }));
                         MessageBox.Show(block, "Can't deactivate", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                         return;
                     }
@@ -390,7 +390,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("UserManagementView", ex); 
                 MessageBox.Show($"Failed to save user account: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -507,7 +507,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("UserManagementView", ex); 
                 MessageBox.Show($"Failed to update user account: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -559,7 +559,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("UserManagementView", ex); 
                 MessageBox.Show($"Failed to delete user account: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -578,7 +578,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("UserManagementView", ex); 
                 MessageBox.Show($"Failed to approve user account: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -622,7 +622,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 LoadUsers();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("UserManagementView", ex); 
                 MessageBox.Show($"Failed to approve user account: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -660,7 +660,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 PrintHelper.PrintGridReport("User Accounts Access & Credentials Audit Register", gridUsers, "Official user access roster detailing usernames, assigned system roles, active status, and encrypted password security.");
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("UserManagementView", ex); 
                 MessageBox.Show($"Failed to generate print report: {ex.Message}", "Print Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -695,7 +695,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (cbRole.Items.Count > 0 && cbRole.SelectedIndex < 0) cbRole.SelectedIndex = 0;
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("UserManagementView", ex); 
                 MessageBox.Show($"Failed to load users: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

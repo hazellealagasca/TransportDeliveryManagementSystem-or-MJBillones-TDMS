@@ -33,13 +33,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 if (choice == CloseChoice.Logout)
                 {
-                    try { MJdatabase.LogSecurityEvent(currentUser?.Username ?? "", "LOGOUT", "User logged out (window closed)"); } catch { }
+                    try { MJdatabase.LogSecurityEvent(currentUser?.Username ?? "", "LOGOUT", "User logged out (window closed)"); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                     IsLoggingOut = true;
                     SessionContext.ActiveUser = null;
                 }
                 else
                 {
-                    try { MJdatabase.LogSecurityEvent(currentUser?.Username ?? "", "LOGOUT", "User exited the application"); } catch { }
+                    try { MJdatabase.LogSecurityEvent(currentUser?.Username ?? "", "LOGOUT", "User exited the application"); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
                     exitConfirmed = true;
                 }
             }
@@ -69,7 +69,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 KeyPreview = true,
                 TopMost = true
             };
-            try { ThemeManager.StyleWindowChrome(dlg); } catch { }
+            try { ThemeManager.StyleWindowChrome(dlg); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
             string name = (currentUser?.FullName ?? "").Replace(" (Owner)", "").Replace(" (Admin)", "").Trim();
             string who = name.Length == 0 ? "" : $", {name}";
             var title = new Label

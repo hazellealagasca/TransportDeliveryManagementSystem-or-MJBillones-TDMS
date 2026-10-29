@@ -531,7 +531,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 var del = dels[0];
                 Invoice? invoice = null;
-                try { invoice = MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == del.Id); } catch { }
+                try { invoice = MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == del.Id); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 m.Items.AddRange(RowMenu.Header($"✅  {del.DispatchNumber}", $"{RowMenu.Short(del.ClientName, 26)} · {del.DispatchDate:MMM d, yyyy} · {del.TotalCrates} crates · {del.TruckInfo}"));
                 m.Items.Add(RowMenu.Item("Open dispatch details", () => ShowSelectedDetails()));
                 m.Items.Add(RowMenu.Item("Trip report", () => NavigateToTripReport()));
@@ -569,7 +569,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ApplyFilter();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CompletedDispatchesView", ex); 
                 MessageBox.Show("Failed to load completed dispatches: " + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

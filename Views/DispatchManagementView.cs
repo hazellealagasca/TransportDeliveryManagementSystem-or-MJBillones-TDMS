@@ -952,13 +952,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex)
-
-            {
-
-                System.Diagnostics.Debug.WriteLine($"[Dispatch] PreSelectTruck: {ex.Message}");
-
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[Dispatch] PreSelectTruck: {ex.Message}"); ErrLog.Swallowed(ex); }
 
         }
 
@@ -1000,13 +994,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex)
-
-            {
-
-                System.Diagnostics.Debug.WriteLine($"[Dispatch] EditDeliveryOrder: {ex.Message}");
-
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[Dispatch] EditDeliveryOrder: {ex.Message}"); ErrLog.Swallowed(ex); }
 
         }
 
@@ -1118,13 +1106,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex)
-
-            {
-
-                System.Diagnostics.Debug.WriteLine($"[Dispatch] InitiateDispatchForSchedule: {ex.Message}");
-
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[Dispatch] InitiateDispatchForSchedule: {ex.Message}"); ErrLog.Swallowed(ex); }
 
         }
 
@@ -1359,7 +1341,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
 
         }
 
@@ -1698,7 +1680,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             catch (Exception ex)
 
-            {
+            { ErrLog.Error("DispatchManagementView", ex); 
 
                 MessageBox.Show(this.FindForm(), "Couldn't update the route: " + ex.Message, "Save stores to route", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
@@ -3281,7 +3263,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         {
 
-            try { System.IO.File.AppendAllText(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "crash_log.txt"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [DispatchView.{where}] {ex}{Environment.NewLine}{Environment.NewLine}"); } catch { }
+            AppLog.Error("DispatchView." + where, ex);
 
         }
 
@@ -3406,7 +3388,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             catch (Exception ex)
 
-            {
+            { ErrLog.Error("DispatchManagementView", ex); 
 
                 LogViewError("Load", ex);
 
@@ -3750,7 +3732,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             LoadDropdownsAndGrid();
 
-            try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch { }
+            try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
 
         }
 
@@ -3894,7 +3876,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             LoadDropdownsAndGrid();
 
-            try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch { }
+            try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
 
         }
 
@@ -4470,7 +4452,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             catch (Exception ex)
 
-            {
+            { ErrLog.Error("DispatchManagementView", ex); 
 
                 MessageBox.Show($"Failed to create dispatch order: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
@@ -4882,7 +4864,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             catch (Exception ex)
 
-            {
+            { ErrLog.Error("DispatchManagementView", ex); 
 
                 MessageBox.Show($"Failed to update dispatch order: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
@@ -4960,7 +4942,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             catch (Exception ex)
 
-            {
+            { ErrLog.Error("DispatchManagementView", ex); 
 
                 MessageBox.Show($"Failed to delete dispatch order: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
@@ -5330,7 +5312,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             catch (Exception ex)
 
-            {
+            { ErrLog.Error("DispatchManagementView", ex); 
 
                 MessageBox.Show($"Failed to generate print report: {ex.Message}", "Print Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
@@ -5817,7 +5799,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx4) { ErrLog.Swallowed(swx4); }
 
         }
 
@@ -6137,13 +6119,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex)
-
-            {
-
-                System.Diagnostics.Debug.WriteLine($"[Dispatch] SaveDraft: {ex.Message}");
-
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[Dispatch] SaveDraft: {ex.Message}"); ErrLog.Swallowed(ex); }
 
         }
 

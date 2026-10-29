@@ -44,7 +44,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Disposed += (s, e) => delay.Dispose();
             KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) { DialogResult = DialogResult.Cancel; Close(); } };
             Shown += (s, e) => { cbClient.Focus(); Search(); };
-            try { ThemeManager.StyleWindowChrome(this); } catch { }
+            try { ThemeManager.StyleWindowChrome(this); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }
         private void BuildUi()
         {

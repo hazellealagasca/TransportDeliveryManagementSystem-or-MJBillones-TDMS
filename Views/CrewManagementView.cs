@@ -58,7 +58,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         gridCrew.InvalidateRow(e.RowIndex);
                     }
                     catch (Exception ex)
-                    {
+                    { ErrLog.Error("CrewManagementView", ex); 
                         c.IsAvailable = !c.IsAvailable;
                         gridCrew.InvalidateRow(e.RowIndex);
                         MessageBox.Show($"Failed to update crew availability: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -474,7 +474,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 FilterGridData();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CrewManagementView", ex); 
                 MessageBox.Show($"Failed to load crew records: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -503,7 +503,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             return;
                         }
 
-                        string uploadDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Uploads", "CrewPhotos");
+                        string uploadDir = Path.Combine(AppPaths.Uploads, "CrewPhotos");
                         if (!Directory.Exists(uploadDir))
                         {
                             Directory.CreateDirectory(uploadDir);
@@ -518,7 +518,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         MessageBox.Show("Photo attached successfully!", "Photo Uploaded", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
-                    {
+                    { ErrLog.Error("CrewManagementView", ex); 
                         MessageBox.Show($"Failed to save photo: {ex.Message}", "Upload Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
@@ -632,7 +632,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CrewManagementView", ex); 
                 MessageBox.Show($"Failed to register crew member: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -717,7 +717,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CrewManagementView", ex); 
                 MessageBox.Show($"Failed to update crew member: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -756,7 +756,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CrewManagementView", ex); 
                 MessageBox.Show($"Failed to delete crew record: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -880,7 +880,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 PrintHelper.PrintGridReport("Crew Personnel Roster & Wage Report", gridCrew, "Official driver and aide personnel directory with wage structure and duty availability.");
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CrewManagementView", ex); 
                 MessageBox.Show($"Failed to generate print report: {ex.Message}", "Print Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -912,7 +912,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (rows[0].DataBoundItem is not Crew c) return;
                 selectedCrew = c;
                 bool onTrip = false;
-                try { onTrip = c.Role.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0 && MJdatabase.IsDriverOnActiveTrip(c.Id); } catch { }
+                try { onTrip = c.Role.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0 && MJdatabase.IsDriverOnActiveTrip(c.Id); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 m.Items.AddRange(RowMenu.Header($"👤  {c.FullName}", $"{c.CrewCode} · {c.Role}{(c.IsSeasonal ? " (seasonal)" : "")} · {c.AvailabilityStatus} · license: {c.LicenseDisplay}"));
                 m.Items.Add(RowMenu.Item("Open crew profile", () => OpenCrewProfile(c), "Enter"));
                 m.Items.Add(RowMenu.Item("Quick details", () => RecordDetailsDialog.ShowDetails(this, c)));
@@ -954,7 +954,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ToastHelper.ShowToast(this, $"{c.FullName} is now {(active ? "active" : "inactive")}", ToastType.Success);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CrewManagementView", ex); 
                 c.IsActive = wasActive; c.IsAvailable = wasAvail;
                 MessageBox.Show($"Failed to update crew status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }

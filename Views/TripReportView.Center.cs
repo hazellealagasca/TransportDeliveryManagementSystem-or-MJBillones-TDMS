@@ -287,7 +287,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string v = string.Join("|", cbPeriod.SelectedIndex, cbShowF.SelectedIndex, cbSortF.SelectedIndex, cbClientF.Text, cbDriverF.Text, cbTruckF.Text, dtpFromF.Value.ToString("yyyy-MM-dd"), dtpToF.Value.ToString("yyyy-MM-dd"));
                 MJdatabase.SetSystemSetting(ViewSettingKey + "." + SessionContext.CurrentUsername, v, "Trip report filters");
             }
-            catch { }
+            catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }
         private void LoadView()
         {

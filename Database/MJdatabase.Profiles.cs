@@ -70,7 +70,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     INSERT OR REPLACE INTO SystemSettings (SettingKey, SettingValue, Description, UpdatedAt) VALUES ('Fix.LicenseNumbers.v1', 'done', 'License numbers replaced by license class', datetime('now'));";
                 cmd.ExecuteNonQuery();
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] MigrateLicenseNumbers: {ex.Message}"); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] MigrateLicenseNumbers: {ex.Message}"); ErrLog.Swallowed(ex); }
         }
         private static DateTime? ParseDate(object? v) => v == null || v == DBNull.Value ? null : (DateTime.TryParse(v.ToString(), out var d) ? d : null);
         private static string Who => SessionContext.ActiveUser?.Username ?? SessionContext.CurrentUsername;
@@ -94,7 +94,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     s.RegistrationExpiry = ParseDate(r.GetValue(6)); s.InsuranceExpiry = ParseDate(r.GetValue(7));
                 }
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] GetTruckSpecs: {ex.Message}"); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] GetTruckSpecs: {ex.Message}"); ErrLog.Swallowed(ex); }
             return s;
         }
         public static void SaveTruckSpecs(TruckSpecs s)
@@ -301,7 +301,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     while (r.Read()) if (!r.IsDBNull(0)) list.Add(r.GetString(0).Trim());
                 }
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] GetSuggestions({source}): {ex.Message}"); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] GetSuggestions({source}): {ex.Message}"); ErrLog.Swallowed(ex); }
             string[] defaults = source switch
             {
                 "maintenance" => DefaultMaintenanceTasks,

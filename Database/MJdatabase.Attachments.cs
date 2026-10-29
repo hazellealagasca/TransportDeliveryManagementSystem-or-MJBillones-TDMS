@@ -19,7 +19,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static readonly string[] AttachmentExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".csv", ".txt" };
         public static readonly string[] AttachmentCategories = { "Proof of delivery (POD)", "Receipt", "Trip sheet", "Delivery receipt (DR)", "Photo", "Registration / OR-CR", "Insurance", "Other" };
         private static bool attachmentsReady;
-        public static string AttachmentsRoot => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Attachments");
+        public static string AttachmentsRoot => AppPaths.Attachments;
         private static void EnsureAttachmentsTable()
         {
             if (attachmentsReady) return;
@@ -68,7 +68,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 list.Add(new Attachment
                 {
                     Id = r.GetInt32(0), OwnerType = r.GetString(1), OwnerId = r.GetInt32(2), OwnerRef = r.IsDBNull(3) ? "" : r.GetString(3),
-                    Category = r.IsDBNull(4) ? "" : r.GetString(4), FileName = r.GetString(5), StoredPath = r.GetString(6), ContentType = r.IsDBNull(7) ? "" : r.GetString(7),
+                    Category = r.IsDBNull(4) ? "" : r.GetString(4), FileName = r.GetString(5), StoredPath = AppPaths.Resolve(r.GetString(6)), ContentType = r.IsDBNull(7) ? "" : r.GetString(7),
                     SizeBytes = r.IsDBNull(8) ? 0 : r.GetInt64(8), Sha256 = r.GetString(9), Caption = r.IsDBNull(10) ? "" : r.GetString(10),
                     AddedBy = r.IsDBNull(11) ? "" : r.GetString(11), AddedAt = DateTime.TryParse(r.IsDBNull(12) ? "" : r.GetString(12), out var at) ? at : DateTime.Now
                 });
@@ -90,7 +90,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 using var r = cmd.ExecuteReader();
                 while (r.Read()) map[r.GetInt32(0)] = (r.GetInt32(1), r.IsDBNull(2) ? 0 : r.GetInt32(2));
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] GetAttachmentCounts: {ex.Message}"); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] GetAttachmentCounts: {ex.Message}"); ErrLog.Swallowed(ex); }
             return map;
         }
         /// <summary>Checks a file before it is attached. Returns a reason when it can't be accepted.</summary>
@@ -160,7 +160,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             catch
             {
-                try { File.Delete(stored); } catch { }
+                try { File.Delete(stored); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 throw;
             }
             LogAuditTrail("ADD", "Attachments", a.Id, $"{ownerType} {ownerRef}".Trim(), "File", "", a.FileName, $"Attached {a.Category}: {a.FileName} ({a.SizeBytes / 1024} KB)");

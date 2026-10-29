@@ -28,10 +28,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
         public static void ShowFor(IWin32Window? owner, Crew crew, Action<Crew>? onEdit = null)
         {
-            using var dlg = new CrewProfileDialog(crew, onEdit);
+            var dlg = new CrewProfileDialog(crew, onEdit);
             dlg.FormClosing += (s, e) => DarkModeKit.StopAutoComplete(dlg);
-            dlg.ShowDialog(owner);
-            DarkModeKit.StopAutoComplete(dlg);
+            try { dlg.ShowDialog(owner); }
+            finally { DarkModeKit.StopAutoComplete(dlg); DarkModeKit.SafeDispose(dlg); }
         }
         public CrewProfileDialog(Crew crew, Action<Crew>? onEdit = null)
         {
@@ -74,7 +74,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tabs.SelectedChanged += (s, e) => ShowPage(tabs.Selected);
             ShowPage(0);
             KeyDown += (s, e) => { if (e.Control && e.KeyCode == Keys.Tab) { tabs.Selected = (tabs.Selected + (e.Shift ? 4 : 1)) % 5; e.Handled = true; } };
-            try { ThemeManager.StyleWindowChrome(this); } catch { }
+            try { ThemeManager.StyleWindowChrome(this); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }
         private bool OnTrip(Delivery d) => d.DriverId == crew.Id || d.AideId == crew.Id || (d.AideIds ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Any(x => x.Trim() == crew.Id.ToString());
         private string RoleOn(Delivery d) => d.DriverId == crew.Id ? "Driver" : "Aide";
@@ -363,7 +363,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     records = MJdatabase.GetCrewRecords(crew.Id);
                     Rebuild(0, 2, 4);
                 }
-                catch (Exception ex) { MessageBox.Show(this, "Couldn't save: " + ex.Message, kind, MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                catch (Exception ex) { ErrLog.Error("CrewProfileDialog", ex);  MessageBox.Show(this, "Couldn't save: " + ex.Message, kind, MessageBoxButtons.OK, MessageBoxIcon.Error); }
             }
             var btns = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0, D(8), 0, 0) };
             btns.Controls.Add(ProfileKit.Button("Add " + kind.ToLowerInvariant(), "primary", (s, e) => Save()));

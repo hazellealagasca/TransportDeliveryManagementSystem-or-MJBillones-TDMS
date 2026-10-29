@@ -43,6 +43,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             f.FormClosing += (s, e) => { if (!e.Cancel) StopAutoComplete(f); };
         }
+        /// <summary>
+        /// Disposes a closed dialog. While Visual Studio is debugging, Windows' auto-complete clean-up in TextBox.Dispose
+        /// can raise a false "cross-thread operation" error on a window that is already gone; that one is logged and ignored.
+        /// </summary>
+        public static void SafeDispose(Form f)
+        {
+            try { f.Dispose(); }
+            catch (InvalidOperationException ex) when ((ex.StackTrace ?? "").Contains("AutoComplete"))
+            {
+                AppLog.Error("SafeDispose(" + f.GetType().Name + ")", ex, "auto-complete clean-up, ignored");
+            }
+        }
         public static void StopAutoComplete(Control root)
         {
             try
@@ -62,7 +74,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (c.HasChildren) StopAutoComplete(c);
                 }
             }
-            catch { }
+            catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }
         /// <summary>Applies the active theme to a window and everything in it (safe to call more than once).</summary>
         public static void Apply(Form f)
@@ -79,7 +91,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 foreach (Control c in f.Controls) Native(c);
                 f.Invalidate(true);
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DarkModeKit] {f.GetType().Name}: {ex.Message}"); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DarkModeKit] {f.GetType().Name}: {ex.Message}"); ErrLog.Swallowed(ex); }
         }
         /// <summary>Dark-mode native styling for a control tree built after the window opened (lazy tabs).</summary>
         public static void Native(Control c)

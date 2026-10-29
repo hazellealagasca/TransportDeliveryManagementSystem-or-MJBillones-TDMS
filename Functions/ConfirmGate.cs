@@ -150,7 +150,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         list.AddHandler(ClickKey, proxy);
                     }
                 }
-                catch { }
+                catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
             }
             private void OnClick(object? sender, EventArgs e)
             {

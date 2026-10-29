@@ -304,7 +304,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 FilterRoles();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CrewRoleManageDialog", ex); 
                 MessageBox.Show($"Failed to load crew roles: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

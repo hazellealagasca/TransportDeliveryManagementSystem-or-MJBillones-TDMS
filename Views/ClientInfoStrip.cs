@@ -126,7 +126,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     Render(shownName);
                 }
                 catch (Exception ex)
-                {
+                { ErrLog.Error("ClientInfoStrip", ex); 
                     MessageBox.Show(FindForm(), "Couldn't add the client: " + ex.Message, "Clients", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
                 return;

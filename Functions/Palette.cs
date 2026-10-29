@@ -147,7 +147,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
             }
         }
         private static void RemapStyle(DataGridViewCellStyle? s)

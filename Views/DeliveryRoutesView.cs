@@ -626,7 +626,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("DeliveryRoutesView", ex); 
                 MessageBox.Show("Failed to load delivery routes: " + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
@@ -915,7 +915,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("DeliveryRoutesView", ex); 
                 MessageBox.Show("Failed to save delivery route: " + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -953,7 +953,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
                 catch (Exception ex)
-                {
+                { ErrLog.Error("DeliveryRoutesView", ex); 
                     MessageBox.Show("Failed to delete route: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }

@@ -636,7 +636,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return true;
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("TripReportView.Layout", ex); 
                 MessageBox.Show(this.FindForm(), "The trip report was saved, but the crew pay could not be saved: " + ex.Message, "Crew pay", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }

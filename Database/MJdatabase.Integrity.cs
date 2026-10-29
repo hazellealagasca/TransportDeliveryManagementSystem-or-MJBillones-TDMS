@@ -231,7 +231,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Take("SELECT ClientName, MAX(IssueDate) FROM Invoices WHERE Status <> 'Cancelled' GROUP BY ClientName");
                 Take("SELECT Company, MAX(DispatchDate) FROM SpecialTrips WHERE Status <> 'Cancelled' GROUP BY Company");
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] GetClientLastActivity: {ex.Message}"); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] GetClientLastActivity: {ex.Message}"); ErrLog.Swallowed(ex); }
             return map;
         }
         /// <summary>True when a store appears on any dispatch or loading order, so removing it would orphan history.</summary>
@@ -305,7 +305,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static void EnsureDataIntegrity(SqliteConnection conn)
         {
             try { CheckAndRepairIndexes(conn, out bool fixedIdx); if (fixedIdx) System.Diagnostics.Debug.WriteLine("[DB] Rebuilt damaged indexes"); }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] index check: {ex.Message}"); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] index check: {ex.Message}"); ErrLog.Swallowed(ex); }
             void Try(string what, string sql)
             {
                 try
@@ -314,10 +314,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     c.CommandText = sql;
                     c.ExecuteNonQuery();
                 }
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] Integrity {what}: {ex.Message}"); }
+                catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] Integrity {what}: {ex.Message}"); ErrLog.Swallowed(ex); }
             }
             MigrateLicenseNumbers(conn);
-            try { EnsureProfileTables(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] profile tables: {ex.Message}"); }
+            try { EnsureProfileTables(); } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] profile tables: {ex.Message}"); ErrLog.Swallowed(ex); }
             Try("client created", "UPDATE Clients SET CreatedAt = datetime('now') WHERE CreatedAt IS NULL OR TRIM(CreatedAt) = ''");
             Try("client active", "UPDATE Clients SET IsActive = 1 WHERE IsActive IS NULL");
             // One-time clean-up: stores that were invented for a client from other clients' / unassigned routes.

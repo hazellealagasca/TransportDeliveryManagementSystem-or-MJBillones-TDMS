@@ -965,7 +965,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 FilterGrid();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CategoryManagementView", ex); 
                 MessageBox.Show($"Failed to load categories: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1013,10 +1013,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     txtRouteCode.Text = MJdatabase.GenerateNextRouteCode();
                 }
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error loading client routes: {ex.Message}");
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"Error loading client routes: {ex.Message}"); ErrLog.Swallowed(ex); }
         }
 
         private void CmbClientRoutes_SelectedIndexChanged(object? sender, EventArgs e)
@@ -1415,7 +1412,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CategoryManagementView", ex); 
                 MessageBox.Show($"Failed to add category item: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1515,7 +1512,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CategoryManagementView", ex); 
                 MessageBox.Show($"Failed to update client company: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1550,7 +1547,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CategoryManagementView", ex); 
                 MessageBox.Show($"Failed to delete item: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

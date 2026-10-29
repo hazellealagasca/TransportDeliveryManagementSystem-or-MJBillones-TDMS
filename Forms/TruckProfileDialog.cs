@@ -27,10 +27,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
         public static void ShowFor(IWin32Window? owner, Truck truck, Action<Truck>? onEditDetails = null)
         {
-            using var dlg = new TruckProfileDialog(truck, onEditDetails);
+            var dlg = new TruckProfileDialog(truck, onEditDetails);
             dlg.FormClosing += (s, e) => DarkModeKit.StopAutoComplete(dlg);
-            dlg.ShowDialog(owner);
-            DarkModeKit.StopAutoComplete(dlg);
+            try { dlg.ShowDialog(owner); }
+            finally { DarkModeKit.StopAutoComplete(dlg); DarkModeKit.SafeDispose(dlg); }
         }
         public TruckProfileDialog(Truck truck, Action<Truck>? onEditDetails = null)
         {
@@ -68,7 +68,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tabs.SelectedChanged += (s, e) => ShowPage(tabs.Selected);
             ShowPage(0);
             KeyDown += (s, e) => { if (e.Control && e.KeyCode == Keys.Tab) { tabs.Selected = (tabs.Selected + (e.Shift ? 3 : 1)) % 4; e.Handled = true; } };
-            try { ThemeManager.StyleWindowChrome(this); } catch { }
+            try { ThemeManager.StyleWindowChrome(this); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }
         private void LoadData()
         {
@@ -220,7 +220,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (txtEngine.Text.Trim().Length is > 0 and < 4) problems.Add("Engine number looks too short.");
             if (odo > 0 && odo < specs.OdometerKm) problems.Add($"Odometer can't go down (last recorded {specs.OdometerKm:N0} km).");
             string? clash = null;
-            try { clash = MJdatabase.FindTruckSpecClash(truck.Id, txtChassis.Text, txtEngine.Text); } catch { }
+            try { clash = MJdatabase.FindTruckSpecClash(truck.Id, txtChassis.Text, txtEngine.Text); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
             if (clash != null) problems.Add(clash);
             if (problems.Count > 0)
             {
@@ -251,7 +251,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 BuildHeader();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("TruckProfileDialog", ex); 
                 MessageBox.Show(this, "Couldn't save: " + ex.Message, "Specifications", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -389,7 +389,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     Rebuild(2);
                     if (pages[0] != null) { body.Controls.Remove(pages[0]); pages[0].Dispose(); pages[0] = null!; }
                 }
-                catch (Exception ex) { MessageBox.Show(this, "Couldn't save: " + ex.Message, "Maintenance", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                catch (Exception ex) { ErrLog.Error("TruckProfileDialog", ex);  MessageBox.Show(this, "Couldn't save: " + ex.Message, "Maintenance", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             }
             btns.Controls.Add(ProfileKit.Button("Save entry", "primary", (s, e) => Save()));
             btns.Controls.Add(ProfileKit.Button("New", "secondary", (s, e) => Load(null)));

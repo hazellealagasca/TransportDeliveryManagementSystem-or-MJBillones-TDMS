@@ -64,7 +64,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (lighten == null)
                 {
                     string v = "True";
-                    try { v = MJdatabase.GetSystemSetting(KeyLighten, "True"); } catch { }
+                    try { v = MJdatabase.GetSystemSetting(KeyLighten, "True"); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                     lighten = !v.Equals("False", StringComparison.OrdinalIgnoreCase) && v != "0";
                 }
                 return lighten.Value;

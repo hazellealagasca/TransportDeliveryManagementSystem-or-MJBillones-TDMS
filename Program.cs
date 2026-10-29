@@ -62,6 +62,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 ApplicationConfiguration.Initialize();
 
+                Functions.AppPaths.Prepare();
                 Functions.ThemeManager.Load();
                 ToolStripManager.Renderer = new Functions.ThemedMenuRenderer();
                 Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
@@ -101,10 +102,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return true;
                 }, IntPtr.Zero);
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Program] EnumWindows error: {ex.Message}");
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[Program] EnumWindows error: {ex.Message}"); ErrLog.Swallowed(ex); }
             return found;
         }
 
@@ -133,10 +131,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Program] ActivateExistingInstance error: {ex.Message}");
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[Program] ActivateExistingInstance error: {ex.Message}"); ErrLog.Swallowed(ex); }
             return false;
         }
 
@@ -144,23 +139,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (ex == null) return;
 
-            try
+            // Windows' auto-complete for dropdowns sometimes fails while a list is being refilled. The list itself still
+            // works, so record it and carry on instead of showing a scary error.
+            if ((ex.StackTrace ?? "").Contains("AutoComplete"))
             {
-                string logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "crash_log.txt");
-                string errorEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{source}] {ex.GetType().FullName}: {ex.Message}{Environment.NewLine}{ex.StackTrace}{Environment.NewLine}{Environment.NewLine}";
-                File.AppendAllText(logPath, errorEntry);
+                Functions.AppLog.Error(source + " (auto-complete, ignored)", ex);
+                return;
             }
-            catch (Exception exLog)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Program] Crash log write error: {exLog.Message}");
-            }
-
-            MessageBox.Show(
-                $"An unexpected system error occurred:{Environment.NewLine}{Environment.NewLine}{ex.Message}{Environment.NewLine}{Environment.NewLine}Details have been recorded in the local log.",
-                "System Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error
-            );
+            Functions.AppLog.Crash(source, ex);
+            try { Functions.AppLog.ShowFailure(null, "System Error", "Something went wrong. The app is still running; please check that your last change was saved.", ex); }
+            catch { MessageBox.Show(ex.Message, "System Error", MessageBoxButtons.OK, MessageBoxIcon.Error); }
         }
     }
 }

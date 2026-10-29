@@ -266,7 +266,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblSummary.Text = $"📊 Total Collections: {receipts.Count:N0}  |  💵 Total Settled Payments: PHP {totalPaid:N2}";
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CollectionView", ex); 
                 MessageBox.Show($"Failed to load collection records: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -374,7 +374,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CollectionView", ex); 
                 MessageBox.Show($"Failed to record collection receipt: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -459,7 +459,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CollectionView", ex); 
                 MessageBox.Show($"Failed to update collection receipt: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -491,7 +491,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("CollectionView", ex); 
                 MessageBox.Show($"Delete operation error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

@@ -42,7 +42,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
     {
 
-        private static string dbFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mj_billones.db");
+        private static string dbFilePath = Functions.AppPaths.DatabaseFile;
 
         private static string connectionString = $"Data Source={dbFilePath};Default Timeout=10;Foreign Keys=True;";
 
@@ -252,13 +252,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex)
-
-            {
-
-                System.Diagnostics.Debug.WriteLine($"[DB] ReconcileResourceStatuses: {ex.Message}");
-
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] ReconcileResourceStatuses: {ex.Message}"); ErrLog.Swallowed(ex); }
 
         }
 
@@ -1174,7 +1168,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             }
 
-                            catch { }
+                            catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
 
                             var cmd = conn.CreateCommand();
 
@@ -2105,7 +2099,41 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     }
 
-                    catch { }
+                    catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
+
+                }
+
+                // Indexes for the columns every list filters or sorts by, so screens stay quick as records pile up.
+
+                foreach (var idx in new[]
+
+                {
+
+                    "CREATE INDEX IF NOT EXISTS idx_deliveries_date ON Deliveries(DispatchDate)",
+
+                    "CREATE INDEX IF NOT EXISTS idx_deliveries_status ON Deliveries(Status)",
+
+                    "CREATE INDEX IF NOT EXISTS idx_deliveries_schedule ON Deliveries(LoadingScheduleId)",
+
+                    "CREATE INDEX IF NOT EXISTS idx_schedules_date ON LoadingSchedules(ScheduleDate)",
+
+                    "CREATE INDEX IF NOT EXISTS idx_tripreports_delivery ON TripReports(DeliveryId)",
+
+                    "CREATE INDEX IF NOT EXISTS idx_incidents_delivery ON IncidentReports(DeliveryId)",
+
+                    "CREATE INDEX IF NOT EXISTS idx_invoices_delivery ON Invoices(DeliveryId)",
+
+                    "CREATE INDEX IF NOT EXISTS idx_invoices_due ON Invoices(DueDate)",
+
+                    "CREATE INDEX IF NOT EXISTS idx_receipts_invoice ON CollectionReceipts(InvoiceId)"
+
+                })
+
+                {
+
+                    try { using var ic = conn.CreateCommand(); ic.CommandText = idx; ic.ExecuteNonQuery(); }
+
+                    catch (System.Exception ixe) { ErrLog.Swallowed(ixe); }
 
                 }
 
@@ -2149,7 +2177,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                catch { }
+                catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
 
                                 try
 
@@ -2165,7 +2193,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     migCmd.ExecuteNonQuery();
 
-                } catch { }
+                } catch (System.Exception swx4) { ErrLog.Swallowed(swx4); }
 
                 try
 
@@ -2181,7 +2209,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     migCmd2.ExecuteNonQuery();
 
-                } catch { }
+                } catch (System.Exception swx5) { ErrLog.Swallowed(swx5); }
 
                 try
 
@@ -2193,7 +2221,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     migCmd3.ExecuteNonQuery();
 
-                } catch { }
+                } catch (System.Exception swx6) { ErrLog.Swallowed(swx6); }
 
                 try
 
@@ -2205,7 +2233,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     migCmd5.ExecuteNonQuery();
 
-                } catch { }
+                } catch (System.Exception swx7) { ErrLog.Swallowed(swx7); }
 
                 try
 
@@ -2217,7 +2245,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     migCmd6.ExecuteNonQuery();
 
-                } catch { }
+                } catch (System.Exception swx8) { ErrLog.Swallowed(swx8); }
 
                 try
 
@@ -2229,7 +2257,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     migCmd4.ExecuteNonQuery();
 
-                } catch { }
+                } catch (System.Exception swx9) { ErrLog.Swallowed(swx9); }
 
                 try
 
@@ -2239,7 +2267,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     migDelCmd.CommandText = "UPDATE Deliveries SET Status = 'In Transit' WHERE Status = 'Delayed'; UPDATE Deliveries SET Status = 'Scheduled' WHERE Status = 'Pending';";
                     migDelCmd.ExecuteNonQuery();
 
-                } catch { }
+                } catch (System.Exception swx10) { ErrLog.Swallowed(swx10); }
 
                 try
                 {
@@ -2258,21 +2286,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         var migRedRibbon = conn.CreateCommand();
 
+                        // Retired: this old one-time rename turned every "Goldilocks" client and record into "Red Ribbon".
+
+                        // Both are real, separate clients now, so it only records that it must never run.
+
                         migRedRibbon.CommandText = @"
-
-                            UPDATE Clients SET CompanyName = 'RED RIBBON BAKESHOP INC.' WHERE UPPER(CompanyName) LIKE '%GOLDILOCKS%';
-
-                            UPDATE LookupCategories SET ItemValue = 'Red Ribbon Bakeshop Inc.' WHERE UPPER(ItemValue) LIKE '%GOLDILOCKS%';
-
-                            UPDATE LoadingSchedules SET ClientName = REPLACE(REPLACE(REPLACE(ClientName, 'Goldilocks Bakeshop Inc.', 'Red Ribbon Bakeshop Inc.'), 'GOLDILOCKS CORPORATION', 'RED RIBBON BAKESHOP INC.'), 'Goldilocks', 'Red Ribbon') WHERE UPPER(ClientName) LIKE '%GOLDILOCKS%';
-
-                            UPDATE Deliveries SET LoadingScheduleInfo = REPLACE(REPLACE(REPLACE(LoadingScheduleInfo, 'Goldilocks Bakeshop Inc.', 'Red Ribbon Bakeshop Inc.'), 'GOLDILOCKS CORPORATION', 'RED RIBBON BAKESHOP INC.'), 'Goldilocks', 'Red Ribbon') WHERE UPPER(LoadingScheduleInfo) LIKE '%GOLDILOCKS%';
-
-                            UPDATE Invoices SET ClientName = REPLACE(REPLACE(REPLACE(ClientName, 'Goldilocks Bakeshop Inc.', 'Red Ribbon Bakeshop Inc.'), 'GOLDILOCKS CORPORATION', 'RED RIBBON BAKESHOP INC.'), 'Goldilocks', 'Red Ribbon') WHERE UPPER(ClientName) LIKE '%GOLDILOCKS%';
-
-                            UPDATE StatementsOfAccount SET ClientName = REPLACE(REPLACE(REPLACE(ClientName, 'Goldilocks Bakeshop Inc.', 'Red Ribbon Bakeshop Inc.'), 'GOLDILOCKS CORPORATION', 'RED RIBBON BAKESHOP INC.'), 'Goldilocks', 'Red Ribbon') WHERE UPPER(ClientName) LIKE '%GOLDILOCKS%';
-
-                            UPDATE DispatchStops SET ClientName = REPLACE(REPLACE(REPLACE(ClientName, 'Goldilocks Bakeshop Inc.', 'Red Ribbon Bakeshop Inc.'), 'GOLDILOCKS CORPORATION', 'RED RIBBON BAKESHOP INC.'), 'Goldilocks', 'Red Ribbon') WHERE UPPER(ClientName) LIKE '%GOLDILOCKS%';
 
                             INSERT OR IGNORE INTO SystemSettings (SettingKey, SettingValue, Description, UpdatedAt)
 
@@ -2283,7 +2301,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         migRedRibbon.ExecuteNonQuery();
 
                     }
-                } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] RedRibbon migration: {ex.Message}"); }
+                } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] RedRibbon migration: {ex.Message}"); ErrLog.Swallowed(ex); }
 
                 try
 
@@ -2297,7 +2315,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     truckNorm.ExecuteNonQuery();
 
-                } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] Truck status normalize: {ex.Message}"); }
+                } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] Truck status normalize: {ex.Message}"); ErrLog.Swallowed(ex); }
 
                 try
 
@@ -2317,7 +2335,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     compCmd.ExecuteNonQuery();
 
-                } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] Company settings fix: {ex.Message}"); }
+                } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] Company settings fix: {ex.Message}"); ErrLog.Swallowed(ex); }
 
                 SeedDefaultData(conn);
 
@@ -2331,9 +2349,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            try { NormalizeClientRecords(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] NormalizeClientRecords: {ex.Message}"); }
+            try { NormalizeClientRecords(); } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] NormalizeClientRecords: {ex.Message}"); ErrLog.Swallowed(ex); }
 
-            try { ReconcileAllRouteStores(); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] ReconcileAllRouteStores: {ex.Message}"); }
+            try { ReconcileAllRouteStores(); } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] ReconcileAllRouteStores: {ex.Message}"); ErrLog.Swallowed(ex); }
 
             PerformStartupSanityCheck();
 
@@ -2509,11 +2527,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                catch { }
+                catch (System.Exception swx11) { ErrLog.Swallowed(swx11); }
 
             }
 
-            catch { }
+            catch (System.Exception swx12) { ErrLog.Swallowed(swx12); }
 
         }
 
@@ -2591,11 +2609,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch
-
-            {
-
-            }
+            catch (System.Exception swx13) { ErrLog.Swallowed(swx13); }
 
         }
 
@@ -2843,7 +2857,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             }
 
-                            catch { }
+                            catch (System.Exception swx14) { ErrLog.Swallowed(swx14); }
 
                         }
 
@@ -2979,7 +2993,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx15) { ErrLog.Swallowed(swx15); }
 
         }
 
@@ -3153,7 +3167,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx16) { ErrLog.Swallowed(swx16); }
 
             return list;
 
@@ -3221,7 +3235,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx17) { ErrLog.Swallowed(swx17); }
 
         }
 
@@ -3343,7 +3357,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx18) { ErrLog.Swallowed(swx18); }
 
             return list;
 
@@ -3427,7 +3441,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx19) { ErrLog.Swallowed(swx19); }
 
         }
 
@@ -3545,7 +3559,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx20) { ErrLog.Swallowed(swx20); }
 
             return list;
 
@@ -3619,7 +3633,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx21) { ErrLog.Swallowed(swx21); }
 
         }
 
@@ -3659,7 +3673,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx22) { ErrLog.Swallowed(swx22); }
 
         }
 
@@ -3685,7 +3699,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx23) { ErrLog.Swallowed(swx23); }
 
         }
 
@@ -3725,7 +3739,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx24) { ErrLog.Swallowed(swx24); }
 
         }
 
@@ -3763,7 +3777,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx25) { ErrLog.Swallowed(swx25); }
 
         }
 
@@ -3863,7 +3877,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx26) { ErrLog.Swallowed(swx26); }
 
             return ("", "");
 
@@ -4345,7 +4359,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                 }
 
-                                catch { }
+                                catch (System.Exception swx27) { ErrLog.Swallowed(swx27); }
 
                             }
 
@@ -4699,7 +4713,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx28) { ErrLog.Swallowed(swx28); }
 
         }
 
@@ -4761,11 +4775,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         string photoPath = "";
 
-                        try { if (reader.FieldCount > 10 && !reader.IsDBNull(10)) photoPath = reader.GetString(10); } catch { }
+                        try { if (reader.FieldCount > 10 && !reader.IsDBNull(10)) photoPath = reader.GetString(10); } catch (System.Exception swx29) { ErrLog.Swallowed(swx29); }
 
                         bool isSeasonal = false;
 
-                        try { if (reader.FieldCount > 9 && !reader.IsDBNull(9)) isSeasonal = reader.GetInt32(9) == 1; } catch { }
+                        try { if (reader.FieldCount > 9 && !reader.IsDBNull(9)) isSeasonal = reader.GetInt32(9) == 1; } catch (System.Exception swx30) { ErrLog.Swallowed(swx30); }
 
                         list.Add(new Crew
 
@@ -4791,7 +4805,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             IsSeasonal = isSeasonal,
 
-                            PhotoPath = photoPath,
+                            PhotoPath = Functions.AppPaths.Resolve(photoPath),
 
                             LastName = ln,
 
@@ -4931,7 +4945,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx31) { ErrLog.Swallowed(swx31); }
 
         }
 
@@ -5337,7 +5351,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx32) { ErrLog.Swallowed(swx32); }
 
         }
 
@@ -5607,13 +5621,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex)
-
-            {
-
-                System.Diagnostics.Debug.WriteLine($"[DB] FindMatchingRate: {ex.Message}");
-
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] FindMatchingRate: {ex.Message}"); ErrLog.Swallowed(ex); }
 
             return null;
 
@@ -5661,7 +5669,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     }
 
-                    catch { }
+                    catch (System.Exception swx33) { ErrLog.Swallowed(swx33); }
 
                 }
 
@@ -6041,7 +6049,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx34) { ErrLog.Swallowed(swx34); }
 
         }
 
@@ -6127,13 +6135,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex)
-
-            {
-
-                System.Diagnostics.Debug.WriteLine($"[DB] EnsureDefaultDeliveryRoutes: {ex.Message}");
-
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] EnsureDefaultDeliveryRoutes: {ex.Message}"); ErrLog.Swallowed(ex); }
 
         }
 
@@ -6305,7 +6307,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                try { previousPlaces = GetDeliveryRoutes(activeOnly: false).FirstOrDefault(x => x.Id == r.Id)?.PlacesList; } catch { }
+                try { previousPlaces = GetDeliveryRoutes(activeOnly: false).FirstOrDefault(x => x.Id == r.Id)?.PlacesList; } catch (System.Exception swx35) { ErrLog.Swallowed(swx35); }
 
             }
 
@@ -6325,7 +6327,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] route→store sync: {ex.Message}"); }
+                catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] route→store sync: {ex.Message}"); ErrLog.Swallowed(ex); }
 
             }
 
@@ -6745,7 +6747,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         {
 
-            try { EnsureClientExists(ls.ClientName); } catch { }
+            try { EnsureClientExists(ls.ClientName); } catch (System.Exception swx36) { ErrLog.Swallowed(swx36); }
 
             bool wasNew = ls.Id <= 0;
 
@@ -6795,7 +6797,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 cmd.Parameters.AddWithValue("@sd", ls.ScheduleDate.ToString("yyyy-MM-dd"));
 
-                cmd.Parameters.AddWithValue("@dt", ls.DepartureTime ?? "08:00 AM");
+                cmd.Parameters.AddWithValue("@dt", Functions.TimeText.Normalize(ls.DepartureTime, "08:00 AM"));
 
                 cmd.Parameters.AddWithValue("@gc", ls.GCrate);
 
@@ -6849,7 +6851,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx37) { ErrLog.Swallowed(swx37); }
 
         }
 
@@ -7027,7 +7029,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             }
 
-                            catch { }
+                            catch (System.Exception swx38) { ErrLog.Swallowed(swx38); }
 
                             return (true, $"Order #{schedNum} successfully rescheduled to {newDate:MMM dd, yyyy} {newTime}.");
 
@@ -7311,7 +7313,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         }
 
-                        catch { }
+                        catch (System.Exception swx39) { ErrLog.Swallowed(swx39); }
 
                         return (true, $"Dispatch #{dspNum} successfully rescheduled to {newDate:MMM dd, yyyy} {newTime}.");
 
@@ -7422,7 +7424,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         {
                             EventNotificationService.Publish("Special Trip Rescheduled", $"Special Trip '{trip.OrderReference}' for {trip.Company} moved to {newDate:MMM dd, yyyy} {newTime} ({reason})", ToastType.Warning, null, "Operations", "SpecialTrip", trip.OrderReference);
                         }
-                        catch { }
+                        catch (System.Exception swx40) { ErrLog.Swallowed(swx40); }
+
                         return (true, $"Special Trip '{trip.OrderReference}' has been successfully rescheduled to {newDate:MMM dd, yyyy} at {newTime}.");
                     }
                     catch (Exception ex)
@@ -7594,7 +7597,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] auto in-transit: {ex.Message}"); }
+                catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] auto in-transit: {ex.Message}"); ErrLog.Swallowed(ex); }
 
                 finally { lock (reconcileLock) transitCheckRunning = false; }
 
@@ -7614,7 +7617,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            if (reconcile) { try { ReconcileResourceStatuses(); } catch { } }
+            if (reconcile) { try { ReconcileResourceStatuses(); } catch (System.Exception swx41) { ErrLog.Swallowed(swx41); } }
 
             return moved;
 
@@ -7658,7 +7661,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             lock (reconcileLock) lastResourceReconcile = DateTime.MinValue;
 
-            try { ReconcileResourceStatuses(); } catch { }
+            try { ReconcileResourceStatuses(); } catch (System.Exception swx42) { ErrLog.Swallowed(swx42); }
 
             return (true, $"Dispatch #{d.DispatchNumber} is now in transit.");
 
@@ -7760,13 +7763,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex)
-
-            {
-
-                System.Diagnostics.Debug.WriteLine($"[DB] UpdateOverdueInvoices: {ex.Message}");
-
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] UpdateOverdueInvoices: {ex.Message}"); ErrLog.Swallowed(ex); }
 
             return updatedCount;
 
@@ -7870,13 +7867,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex)
-
-            {
-
-                System.Diagnostics.Debug.WriteLine($"[DB] UpdatePastDueLoadingSchedules: {ex.Message}");
-
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] UpdatePastDueLoadingSchedules: {ex.Message}"); ErrLog.Swallowed(ex); }
 
             return updatedCount;
 
@@ -8048,7 +8039,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                catch { }
+                catch (System.Exception swx43) { ErrLog.Swallowed(swx43); }
 
                 return (true, $"Dispatch #{dspNum} is now completed. The truck and crew are available again.");
 
@@ -8280,7 +8271,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            try { LogAuditTrail("UPDATE", "Deliveries", deliveryId, number, "Remarks", oldRemarks, remarks ?? "", "Order notes edited"); } catch { }
+            try { LogAuditTrail("UPDATE", "Deliveries", deliveryId, number, "Remarks", oldRemarks, remarks ?? "", "Order notes edited"); } catch (System.Exception swx44) { ErrLog.Swallowed(swx44); }
 
         }
 
@@ -8288,7 +8279,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         {
 
-            try { EnsureClientExists(d.ClientName); } catch { }
+            try { EnsureClientExists(d.ClientName); } catch (System.Exception swx45) { ErrLog.Swallowed(swx45); }
 
             bool wasNew = d.Id <= 0;
 
@@ -8712,7 +8703,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         cmd.Parameters.AddWithValue("@dd", d.DispatchDate.ToString("yyyy-MM-dd"));
 
-                        cmd.Parameters.AddWithValue("@dt", d.DepartureTime ?? "08:00 AM");
+                        cmd.Parameters.AddWithValue("@dt", Functions.TimeText.Normalize(d.DepartureTime, "08:00 AM"));
 
                         cmd.Parameters.AddWithValue("@s", d.Status);
 
@@ -8818,7 +8809,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         }
 
-                        catch { }
+                        catch (System.Exception swx46) { ErrLog.Swallowed(swx46); }
 
                     }
 
@@ -9168,7 +9159,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx47) { ErrLog.Swallowed(swx47); }
 
             return list;
 
@@ -9240,7 +9231,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx48) { ErrLog.Swallowed(swx48); }
 
         }
 
@@ -9568,13 +9559,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex)
-
-            {
-
-                System.Diagnostics.Debug.WriteLine($"[DB] GetTripReports: {ex.Message}");
-
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] GetTripReports: {ex.Message}"); ErrLog.Swallowed(ex); }
 
             return list;
 
@@ -10186,7 +10171,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"GetTripCrewPay: {ex.Message}"); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"GetTripCrewPay: {ex.Message}"); ErrLog.Swallowed(ex); }
 
             return list;
 
@@ -10226,7 +10211,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"GetAllTripCrewPay: {ex.Message}"); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"GetAllTripCrewPay: {ex.Message}"); ErrLog.Swallowed(ex); }
 
             return map;
 
@@ -10302,7 +10287,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx49) { ErrLog.Swallowed(swx49); }
 
         }
 
@@ -10658,7 +10643,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         }
 
-                        catch { }
+                        catch (System.Exception swx50) { ErrLog.Swallowed(swx50); }
 
                     }
 
@@ -10728,7 +10713,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             Status = reader.GetString(9),
 
-                            PhotoPath = reader.IsDBNull(10) ? "" : reader.GetString(10)
+                            PhotoPath = reader.IsDBNull(10) ? "" : Functions.AppPaths.Resolve(reader.GetString(10))
 
                         });
 
@@ -10854,7 +10839,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx51) { ErrLog.Swallowed(swx51); }
 
         }
 
@@ -10980,7 +10965,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] GenerateNextInvoiceNumber: {ex.Message}"); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] GenerateNextInvoiceNumber: {ex.Message}"); ErrLog.Swallowed(ex); }
 
             return $"{prefix}{next:D4}";
 
@@ -11082,7 +11067,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx52) { ErrLog.Swallowed(swx52); }
 
         }
 
@@ -11310,7 +11295,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"GetBilledDeliveryIds: {ex.Message}"); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"GetBilledDeliveryIds: {ex.Message}"); ErrLog.Swallowed(ex); }
 
             return map;
 
@@ -11760,7 +11745,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         }
 
-                        catch { }
+                        catch (System.Exception swx53) { ErrLog.Swallowed(swx53); }
 
                         return soaId;
 
@@ -11908,7 +11893,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         }
 
-                        catch { }
+                        catch (System.Exception swx54) { ErrLog.Swallowed(swx54); }
 
                         return soaId;
 
@@ -12042,9 +12027,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-
-                string backupDir = Path.Combine(baseDir, "Backups");
+                string backupDir = Functions.AppPaths.Backups;
 
                 if (!Directory.Exists(backupDir))
 
@@ -12072,7 +12055,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                catch { }
+                catch (System.Exception swx55) { ErrLog.Swallowed(swx55); }
 
                 string backupFileName = $"AutoBackup_{DateTime.Now:yyyyMMdd_HHmmss}.bak";
 
@@ -12094,7 +12077,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        try { autoBackups[i].Delete(); } catch { }
+                        try { autoBackups[i].Delete(); } catch (System.Exception swx56) { ErrLog.Swallowed(swx56); }
 
                     }
 
@@ -12390,7 +12373,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         }
 
-                        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] SaveCollectionReceipt log: {ex.Message}"); }
+                        catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] SaveCollectionReceipt log: {ex.Message}"); ErrLog.Swallowed(ex); }
 
                     }
 
@@ -12474,7 +12457,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx57) { ErrLog.Swallowed(swx57); }
 
         }
 
@@ -12946,7 +12929,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx58) { ErrLog.Swallowed(swx58); }
 
         }
 
@@ -13103,7 +13086,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] store→route sync: {ex.Message}"); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] store→route sync: {ex.Message}"); ErrLog.Swallowed(ex); }
 
         }
 
@@ -13140,7 +13123,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] store delete→route sync: {ex.Message}"); }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] store delete→route sync: {ex.Message}"); ErrLog.Swallowed(ex); }
 
         }
 
@@ -13392,7 +13375,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                try { SyncClientStoresFromRoute(r); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] reconcile {r.RouteCode}: {ex.Message}"); }
+                try { SyncClientStoresFromRoute(r); } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] reconcile {r.RouteCode}: {ex.Message}"); ErrLog.Swallowed(ex); }
 
             }
 
@@ -13434,7 +13417,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                catch { }
+                catch (System.Exception swx59) { ErrLog.Swallowed(swx59); }
 
             }
 
@@ -13514,7 +13497,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     }
 
-                    catch { }
+                    catch (System.Exception swx60) { ErrLog.Swallowed(swx60); }
 
                 }
 
@@ -13540,7 +13523,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                catch { }
+                catch (System.Exception swx61) { ErrLog.Swallowed(swx61); }
 
             }
 
@@ -13576,9 +13559,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx62) { ErrLog.Swallowed(swx62); }
 
-            try { names.AddRange(GetLookupItems("Client Company").Select(n => n.Trim()).Where(n => n.Length > 0 && !inactive.Contains(n))); } catch { }
+            try { names.AddRange(GetLookupItems("Client Company").Select(n => n.Trim()).Where(n => n.Length > 0 && !inactive.Contains(n))); } catch (System.Exception swx63) { ErrLog.Swallowed(swx63); }
 
             return names.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
 
@@ -13644,9 +13627,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
             }
-            catch
-            {
-            }
+            catch (System.Exception swx64) { ErrLog.Swallowed(swx64); }
+
             return summary;
         }
 
@@ -13706,9 +13688,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
             }
-            catch
-            {
-            }
+            catch (System.Exception swx65) { ErrLog.Swallowed(swx65); }
+
             return summary;
         }
 
@@ -13774,11 +13755,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 try { Exec($"UPDATE {t} SET {c} = @new WHERE LOWER(TRIM({c})) = LOWER(@old)"); }
 
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"RenameClient {t}.{c}: {ex.Message}"); }
+                catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"RenameClient {t}.{c}: {ex.Message}"); ErrLog.Swallowed(ex); }
 
             }
 
-            try { Exec("UPDATE LookupCategories SET ItemValue = @new WHERE CategoryType = 'Client Company' AND LOWER(TRIM(ItemValue)) = LOWER(@old)"); } catch { }
+            try { Exec("UPDATE LookupCategories SET ItemValue = @new WHERE CategoryType = 'Client Company' AND LOWER(TRIM(ItemValue)) = LOWER(@old)"); } catch (System.Exception swx66) { ErrLog.Swallowed(swx66); }
 
             tx.Commit();
 
@@ -13830,7 +13811,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx67) { ErrLog.Swallowed(swx67); }
 
             return (orders, invoices);
 
@@ -13954,7 +13935,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx68) { ErrLog.Swallowed(swx68); }
 
             return false;
 
@@ -14154,7 +14135,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            catch { }
+            catch (System.Exception swx69) { ErrLog.Swallowed(swx69); }
 
             return results;
 
@@ -14242,7 +14223,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             LastRestoreError = "";
 
-            string backupDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Backups");
+            string backupDir = Functions.AppPaths.Backups;
 
             string preRestore = Path.Combine(backupDir, $"PreRestore_{DateTime.Now:yyyyMMdd_HHmmss}.db");
 
@@ -14368,7 +14349,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     ck.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
 
-                    try { ck.ExecuteNonQuery(); } catch { }
+                    try { ck.ExecuteNonQuery(); } catch (System.Exception swx70) { ErrLog.Swallowed(swx70); }
 
                 }
 
@@ -14424,7 +14405,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                foreach (var f in new[] { work, work + "-wal", work + "-shm" }) try { if (File.Exists(f)) File.Delete(f); } catch { }
+                foreach (var f in new[] { work, work + "-wal", work + "-shm" }) try { if (File.Exists(f)) File.Delete(f); } catch (System.Exception swx71) { ErrLog.Swallowed(swx71); }
 
             }
 
@@ -14740,9 +14721,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-
-                string backupDir = Path.Combine(baseDir, "Backups", "AutoSave");
+                string backupDir = Path.Combine(Functions.AppPaths.Backups, "AutoSave");
 
                 if (!Directory.Exists(backupDir))
 
@@ -14770,7 +14749,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                catch { }
+                catch (System.Exception swx72) { ErrLog.Swallowed(swx72); }
 
                 string backupFileName = $"AutoSave_Snapshot_{DateTime.Now:yyyyMMdd_HHmmss}.bak";
 
@@ -14792,7 +14771,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        try { snapshots[i].Delete(); } catch { }
+                        try { snapshots[i].Delete(); } catch (System.Exception swx73) { ErrLog.Swallowed(swx73); }
 
                     }
 
@@ -15278,7 +15257,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         cmd.Parameters.AddWithValue("@orderRef", trip.OrderReference.Trim());
                         cmd.Parameters.AddWithValue("@dispDate", trip.DispatchDate.ToString("yyyy-MM-dd HH:mm:ss"));
                         cmd.Parameters.AddWithValue("@comp", trip.Company.Trim());
-                        cmd.Parameters.AddWithValue("@depTime", trip.DepartureTime.Trim());
+                        cmd.Parameters.AddWithValue("@depTime", Functions.TimeText.Normalize(trip.DepartureTime));
+
                         cmd.Parameters.AddWithValue("@addr", trip.Address.Trim());
                         cmd.Parameters.AddWithValue("@svcType", trip.ServiceType.Trim());
                         cmd.Parameters.AddWithValue("@status", trip.Status.Trim());
@@ -15316,7 +15296,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         cmd.Parameters.AddWithValue("@orderRef", trip.OrderReference.Trim());
                         cmd.Parameters.AddWithValue("@dispDate", trip.DispatchDate.ToString("yyyy-MM-dd HH:mm:ss"));
                         cmd.Parameters.AddWithValue("@comp", trip.Company.Trim());
-                        cmd.Parameters.AddWithValue("@depTime", trip.DepartureTime.Trim());
+                        cmd.Parameters.AddWithValue("@depTime", Functions.TimeText.Normalize(trip.DepartureTime));
+
                         cmd.Parameters.AddWithValue("@addr", trip.Address.Trim());
                         cmd.Parameters.AddWithValue("@svcType", trip.ServiceType.Trim());
                         cmd.Parameters.AddWithValue("@status", trip.Status.Trim());
@@ -15461,10 +15442,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[SpecialTrip] QueueSpecialTripFinanceDrafts error: {ex.Message}");
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[SpecialTrip] QueueSpecialTripFinanceDrafts error: {ex.Message}"); ErrLog.Swallowed(ex); }
+
         }
 }
 

@@ -424,7 +424,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bool success;
             try { success = MJdatabase.SaveDeliveryRoute(newRoute); }
             catch (Exception ex)
-            {
+            { ErrLog.Error("QuickAddRouteDialog", ex); 
                 MessageBox.Show(this, "Couldn't save the route: " + ex.Message, "Save failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }

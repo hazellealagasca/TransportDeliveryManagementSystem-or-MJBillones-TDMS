@@ -39,7 +39,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var wa = Screen.FromPoint(Cursor.Position).WorkingArea;
             Size = new Size((int)(wa.Width * 0.9), (int)(wa.Height * 0.9));
             MinimumSize = new Size(Math.Min(wa.Width, D(980)), Math.Min(wa.Height, D(620)));
-            try { ThemeManager.StyleWindowChrome(this); } catch { }
+            try { ThemeManager.StyleWindowChrome(this); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
             // Top
             var top = new Panel { Dock = DockStyle.Top, Height = D(64), BackColor = AppTheme.Surface, Padding = new Padding(D(20), D(10), D(20), D(8)) };
             top.Paint += (s, e) => { using var p = new Pen(AppTheme.Border); e.Graphics.DrawLine(p, 0, top.Height - 1, top.Width, top.Height - 1); };
@@ -78,7 +78,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             web = new WebBrowser { Dock = DockStyle.Fill, ScriptErrorsSuppressed = true, IsWebBrowserContextMenuEnabled = false, AllowWebBrowserDrop = false, WebBrowserShortcutsEnabled = false };
             web.DocumentCompleted += (s, e) =>
             {
-                try { var html = web.Document?.GetElementsByTagName("html"); if (html != null && html.Count > 0 && html[0] is HtmlElement el) el.ScrollTop = keepScroll; } catch { }
+                try { var html = web.Document?.GetElementsByTagName("html"); if (html != null && html.Count > 0 && html[0] is HtmlElement el) el.ScrollTop = keepScroll; } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
             };
             paper.Controls.Add(web);
             previewHost.Controls.Add(paper);
@@ -350,7 +350,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 keepScroll = html != null && html.Count > 0 && html[0] is HtmlElement el ? el.ScrollTop : 0;
             }
             catch { keepScroll = 0; }
-            try { web.DocumentText = PrintKit.Page(def, o, autoPrint: false, preview: true); } catch { }
+            try { web.DocumentText = PrintKit.Page(def, o, autoPrint: false, preview: true); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
         }
         private string WriteTemp(bool autoPrint)
         {
@@ -372,7 +372,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (autoPrint) Close();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("PrintStudioDialog", ex); 
                 MessageBox.Show(this, "Couldn't open the printout: " + ex.Message, "Print", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
@@ -387,7 +387,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ToastHelper.ShowToast(this, "Saved — open it in a browser to print or save as PDF", ToastType.Success);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("PrintStudioDialog", ex); 
                 MessageBox.Show(this, "Couldn't save the file: " + ex.Message, "Print", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
@@ -407,7 +407,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (owner != null) dlg.ShowDialog(owner); else dlg.ShowDialog();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("PrintStudioDialog", ex); 
                 MessageBox.Show("Unable to open the print window: " + ex.Message, "Print", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -416,7 +416,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             PrintFormDef def;
             try { def = build(); }
             catch (Exception ex)
-            {
+            { ErrLog.Error("PrintStudioDialog", ex); 
                 MessageBox.Show("Couldn't prepare this printout: " + ex.Message, "Print", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }

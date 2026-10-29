@@ -216,7 +216,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.SaveSystemNotification(n1);
                 MJdatabase.SaveSystemNotification(n2);
             }
-            catch { }
+            catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }
 
         public static void Publish(string title, string message, ToastType type = ToastType.Info, Control? contextControl = null, string? category = null, string? targetModule = null, string? targetRecordId = null)
@@ -249,8 +249,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 MJdatabase.SaveSystemNotification(item);
             }
-            catch { }
-
+            catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
             if (item.IsAdminOnly && !SessionContext.IsAdmin)
             {
                 try
@@ -258,7 +257,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     OnNotificationsChanged?.Invoke();
                     OnNotificationPublished?.Invoke(item);
                 }
-                catch { }
+                catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
                 return;
             }
 
@@ -269,7 +268,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     OnNotificationsChanged?.Invoke();
                     OnNotificationPublished?.Invoke(item);
                 }
-                catch { }
+                catch (System.Exception swx4) { ErrLog.Swallowed(swx4); }
                 return;
             }
 
@@ -317,14 +316,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
             }
-            catch { }
-
+            catch (System.Exception swx5) { ErrLog.Swallowed(swx5); }
             try
             {
                 OnNotificationsChanged?.Invoke();
                 OnNotificationPublished?.Invoke(item);
             }
-            catch { }
+            catch (System.Exception swx6) { ErrLog.Swallowed(swx6); }
         }
 
         private static string InferCategory(string title, string? targetModule)
@@ -457,7 +455,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 MJdatabase.MarkSystemNotificationAsRead(id);
             }
-            catch { }
+            catch (System.Exception swx7) { ErrLog.Swallowed(swx7); }
             OnNotificationsChanged?.Invoke();
         }
 
@@ -478,7 +476,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 MJdatabase.MarkAllSystemNotificationsAsRead(admin);
             }
-            catch { }
+            catch (System.Exception swx8) { ErrLog.Swallowed(swx8); }
             OnNotificationsChanged?.Invoke();
         }
 
@@ -492,7 +490,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 MJdatabase.DeleteSystemNotification(id);
             }
-            catch { }
+            catch (System.Exception swx9) { ErrLog.Swallowed(swx9); }
             OnNotificationsChanged?.Invoke();
         }
 
@@ -514,7 +512,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 MJdatabase.ClearAllSystemNotifications(admin);
             }
-            catch { }
+            catch (System.Exception swx10) { ErrLog.Swallowed(swx10); }
             OnNotificationsChanged?.Invoke();
         }
 
@@ -580,7 +578,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
             }
-            catch { }
+            catch (System.Exception swx11) { ErrLog.Swallowed(swx11); }
         }
     }
 }

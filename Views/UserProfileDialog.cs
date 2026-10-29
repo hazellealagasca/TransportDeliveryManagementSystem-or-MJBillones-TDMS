@@ -68,7 +68,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else if (e.Control && e.KeyCode == Keys.Tab) { tabs.Selected = (tabs.Selected + (e.Shift ? 3 : 1)) % 4; e.Handled = true; }
             };
 
-            try { ThemeManager.StyleWindowChrome(this); } catch { }
+            try { ThemeManager.StyleWindowChrome(this); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }
         // ---------------------------------------------------------------- data
         private void LoadData()
@@ -274,7 +274,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (pages[0] != null) { body.Controls.Remove(pages[0]); pages[0].Dispose(); pages[0] = null!; }
             if (pages[3] != null) { body.Controls.Remove(pages[3]); pages[3].Dispose(); pages[3] = null!; }
             SetEditStatus("✓ Saved. Your new details show everywhere from now on.", AppTheme.SuccessText);
-            try { ToastHelper.ShowToast(this, "Profile updated.", ToastType.Success); } catch { }
+            try { ToastHelper.ShowToast(this, "Profile updated.", ToastType.Success); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
         }
         private static string Clean(string? s) => Regex.Replace((s ?? "").Trim(), @"\s+", " ");
         // ---------------------------------------------------------------- security

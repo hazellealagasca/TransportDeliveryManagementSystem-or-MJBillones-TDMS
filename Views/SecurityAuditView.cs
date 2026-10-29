@@ -244,7 +244,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ApplyFilter();
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("SecurityAuditView", ex); 
                 MessageBox.Show("Failed to load audit logs: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

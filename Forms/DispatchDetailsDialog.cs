@@ -152,7 +152,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (pf.Icon != null) Icon = pf.Icon;
             }
             if (prefs.RememberSize && prefs.Maximized) WindowState = FormWindowState.Maximized;
-            try { ThemeManager.StyleWindowChrome(this); } catch { }
+            try { ThemeManager.StyleWindowChrome(this); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
             FormClosed += (s, e) => { if (active == this) active = null; };
             FormClosing += (s, e) =>
             {
@@ -906,7 +906,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     ToastHelper.ShowToast(this, "Notes saved", ToastType.Success);
                 }
                 catch (Exception ex)
-                {
+                { ErrLog.Error("DispatchDetailsDialog", ex); 
                     MessageBox.Show(this, "Couldn't save the notes: " + ex.Message, "Notes", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             };
@@ -1125,7 +1125,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ToastHelper.ShowToast(this, $"Dispatch {del.DispatchNumber} cancelled", ToastType.Warning);
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("DispatchDetailsDialog", ex); 
                 MessageBox.Show(this, "Couldn't cancel the order: " + ex.Message, "Cancel order", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
@@ -1156,12 +1156,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void PrintDispatchSheet()
         {
             try { PrintHelper.PrintOfficialLoadingScheduleFromDeliveries(new List<Delivery> { del }); }
-            catch (Exception ex) { MessageBox.Show(this, "Print failed: " + ex.Message, "Print", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            catch (Exception ex) { ErrLog.Error("DispatchDetailsDialog", ex);  MessageBox.Show(this, "Print failed: " + ex.Message, "Print", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
         private void RefreshParent()
         {
-            try { if (parentView is IRefreshable r && !parentView.IsDisposed) r.RefreshData(); } catch { }
-            try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch { }
+            try { if (parentView is IRefreshable r && !parentView.IsDisposed) r.RefreshData(); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
+            try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
         }
         private string StoreListText()
         {
@@ -1201,7 +1201,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Clipboard.SetText(text);
                 ToastHelper.ShowToast(this, toast, ToastType.Success);
             }
-            catch { }
+            catch (System.Exception swx4) { ErrLog.Swallowed(swx4); }
         }
         private static string Shorten(string s, int max) => string.IsNullOrEmpty(s) || s.Length <= max ? (s ?? "") : s.Substring(0, max - 1) + "…";
         private Button MakeButton(string text, string role, int width)
@@ -1263,7 +1263,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception swx5) { ErrLog.Swallowed(swx5); }
                 return p;
             }
             public void Save()
@@ -1273,7 +1273,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     string B(bool x) => x ? "1" : "0";
                     MJdatabase.SetSystemSetting(Key, $"tracker={B(ShowTracker)};next={B(ShowNextStep)};tiles={B(ShowTiles)};compact={B(Compact)};remember={B(RememberSize)};max={B(Maximized)};tab={DefaultTab};w={Width};h={Height}", "Dispatch details window layout");
                 }
-                catch { }
+                catch (System.Exception swx6) { ErrLog.Swallowed(swx6); }
             }
         }
         // ------------------------------------------------------------------ Painted pieces

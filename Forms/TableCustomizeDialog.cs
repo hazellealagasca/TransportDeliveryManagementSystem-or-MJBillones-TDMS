@@ -36,7 +36,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             MinimumSize = new Size(D(640), D(440));
             BackColor = AppTheme.Canvas;
             KeyPreview = true;
-            try { ThemeManager.StyleWindowChrome(this); } catch { }
+            try { ThemeManager.StyleWindowChrome(this); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
             // Header
             var header = new Panel { Dock = DockStyle.Top, Height = D(72), BackColor = AppTheme.Surface, Padding = new Padding(D(20), D(12), D(20), D(8)) };
             header.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawLine(pen, 0, header.Height - 1, header.Width, header.Height - 1); };
@@ -287,7 +287,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 BackColor = AppTheme.Surface,
                 Font = Font
             };
-            try { ThemeManager.StyleWindowChrome(f); } catch { }
+            try { ThemeManager.StyleWindowChrome(f); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
             var lbl = new Label { Text = label, Location = new Point(D(18), D(16)), Size = new Size(D(384), D(22)), ForeColor = AppTheme.TextSecondary };
             var txt = new TextBox { Text = value, Location = new Point(D(18), D(44)), Size = new Size(D(384), D(28)), Font = new Font("Segoe UI", 10.5F) };
             var ok = MakeButton("Add", "primary", D(96));

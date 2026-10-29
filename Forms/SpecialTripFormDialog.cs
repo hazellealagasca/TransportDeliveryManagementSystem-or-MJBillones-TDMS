@@ -668,10 +668,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 foreach (var a in availableAides) clbAides.Items.Add(a.FullName);
                 UpdateAideLabel();
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[SpecialTripDialog] LoadDropdownResources error: {ex.Message}");
-            }
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[SpecialTripDialog] LoadDropdownResources error: {ex.Message}"); ErrLog.Swallowed(ex); }
         }
 
         private void CbCompany_SelectedIndexChanged(object? sender, EventArgs e)
@@ -1029,9 +1026,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                     }
                                 }
                             }
-                            catch
-                            {
-                            }
+                            catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                         }
                     }
 
@@ -1245,7 +1240,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
             catch (Exception ex)
-            {
+            { ErrLog.Error("SpecialTripFormDialog", ex); 
                 MessageBox.Show($"Failed to save Special Trip: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
