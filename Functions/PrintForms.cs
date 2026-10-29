@@ -363,7 +363,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (opt.On("stats"))
                 {
                     var done = list.Where(h => DispatchGate.IsCompleted(h.Status)).ToList();
-                    sb.Append(Stats(new[] { ("Trips assigned", list.Count.ToString("N0")), ("Completed", done.Count.ToString("N0")), ("Crates hauled", done.Sum(h => h.TotalCrates).ToString("N0")), ("Last trip", list.Count > 0 ? list[0].DispatchDate.ToString("MMM d, yyyy") : "—") }));
+                    sb.Append(Stats(new[] { ("Trips assigned", list.Count.ToString("N0")), ("Completed", done.Count.ToString("N0")), ("Last trip", list.Count > 0 ? list[0].DispatchDate.ToString("MMM d, yyyy") : "—") }));
                 }
                 if (opt.On("history"))
                 {

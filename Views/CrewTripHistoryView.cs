@@ -73,7 +73,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // 2. Summary tiles (the last three are quick filters)
             tiles = new TileStrip();
             tileTrips = tiles.Add(new StatTile("Trips", AppTheme.Info, "dispatches in view"));
-            tileCrates = tiles.Add(new StatTile("Crates hauled", AppTheme.Success, "G · E crates"));
+            tileCrates = new StatTile("Crates hauled", AppTheme.Success, "G · E crates"); // not shown on screen (kept so the totals code stays simple)
             tileDone = tiles.Add(new StatTile("Completed", AppTheme.Success, "click to show only these") { Clickable = true, Key = "done" });
             tileUpcoming = tiles.Add(new StatTile("Scheduled / on the road", AppTheme.Warning, "click to show only these") { Clickable = true, Key = "open" });
             tileTrucks = tiles.Add(new StatTile("Trucks used", AppTheme.Accent, "different trucks"));
