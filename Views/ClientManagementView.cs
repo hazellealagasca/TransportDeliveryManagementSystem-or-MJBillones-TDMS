@@ -118,12 +118,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
         /// <summary>Opens a client's profile by name (used by the order forms' "Open client" link).</summary>
-        public void OpenClientByName(string companyName)
+        public void OpenClientByName(string companyName, string? backLabel = null, Action? goBack = null)
         {
             if (pnlProfilePage.Visible && !CanLeaveWithoutLosing()) return;
             LoadClients();
             var c = allClients.FirstOrDefault(x => string.Equals(x.CompanyName.Trim(), (companyName ?? "").Trim(), StringComparison.OrdinalIgnoreCase));
-            if (c != null) OpenClient(c);
+            if (c == null) return;
+            OpenClient(c);
+            SetReturn(backLabel, goBack);
+        }
+        // Where the back button goes when the profile was opened from another screen (e.g. the order form).
+        private Action? returnBack;
+        private void SetReturn(string? label, Action? goBack)
+        {
+            returnBack = goBack;
+            btnBack.Text = goBack != null && !string.IsNullOrWhiteSpace(label) ? "←  Back to " + label : "←  Back to clients";
+            btnBack.AutoSize = true; btnBack.AutoSizeMode = AutoSizeMode.GrowAndShrink; btnBack.MinimumSize = new Size(Dpi(170), btnBack.Height);
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -400,6 +410,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlProfileHeader = new Panel { Dock = DockStyle.Top, Height = Dpi(64), BackColor = AppTheme.Canvas };
             btnBack = MakeButton("←  Back to clients", "secondary", Dpi(170));
             btnBack.Dock = DockStyle.Left;
+            VisibleChanged += (s, e) => { if (!Visible && returnBack != null) SetReturn(null, null); };
             btnBack.Click += (s, e) => TryLeaveProfile();
             var spacer = new Panel { Dock = DockStyle.Left, Width = Dpi(16), BackColor = AppTheme.Canvas };
             lblProfileTitle = new Label { Dock = DockStyle.Fill, Text = "Client", Font = new Font("Segoe UI Semibold", 15F), ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, UseMnemonic = false };
@@ -831,8 +842,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void TryLeaveProfile()
         {
             if (!CanLeaveWithoutLosing()) return;
+            var go = returnBack;
+            SetReturn(null, null);
             ShowProfile(false);
             LoadClients();
+            if (go != null) BeginInvoke(go);
         }
 
         private void LoadClientBranches(string clientName)

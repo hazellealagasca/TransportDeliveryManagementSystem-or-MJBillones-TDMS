@@ -98,7 +98,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Header
             header = PageKit.Header(Greeting(), $"{DateTime.Today:dddd, MMMM d, yyyy}  ·  here's how your deliveries stand");
             header.Dock = DockStyle.Fill;
-            if (CanOps) header.AddActions(PageKit.Action("＋  New loading order", "primary", (s, e) => GoOps("Dispatch")));
+            if (CanOps) header.AddActions(PageKit.Action("＋  New loading order", "primary", (s, e) =>
+            {
+                GoOps("Dispatch");
+                MainForm.Instance?.GetOperationsView<DispatchManagementView>("Dispatch")?.OpenNewOrderForm();
+            }));
             header.AddActions(PageKit.Action("↻  Refresh", "secondary", (s, e) => LoadDashboardData()));
             // One date chip: quick periods, a specific date or a range, and ‹ › to step to the previous / next period.
             dateChip = new DateFilterChip(DatePresets.Dashboard, "Today") { Margin = new Padding(D(8), D(2), 0, 0) };

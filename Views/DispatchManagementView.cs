@@ -695,6 +695,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
+        /// <summary>Opens a blank New Dispatch Order form (used by the dashboard's "+ New loading order").</summary>
+
+        public void OpenNewOrderForm()
+
+        {
+
+            if (pnlForm.Visible && selectedDelivery == null) return; // already on a new order
+
+            gridDispatch.ClearSelection();
+
+            ClearFields();
+
+            SetFormVisibility(true);
+
+        }
+
 
 
         private void InitializeFormToggle()
@@ -2211,6 +2227,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             clientStrip.ClientRegistered += OnClientRegisteredFromStrip;
 
+            clientStrip.ReturnTo = () =>
+
+            {
+
+                if (!pnlForm.Visible) return null;
+
+                SaveDraftQuietly();
+
+                return (OrderFormName, ReturnToOrderForm);
+
+            };
+
             if (pnlFormBody == null) return;
             pnlFormBody.SuspendLayout();
             pnlFormBody.Controls.Clear();
@@ -2306,7 +2334,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var card2 = CreateSectionCard(2, "Truck & crew", "Assign the truck, the driver and the helpers for this trip.",
 
-                pnlRowTruckDriver, pnlAidesSection);
+                BuildAddResourceLinks(), pnlRowTruckDriver, pnlAidesSection);
 
             var card3 = CreateSectionCard(3, "Schedule & status", "When the truck leaves and where the order stands.",
 
@@ -2323,6 +2351,178 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlFormBody.Controls.Add(card1);
 
             pnlFormBody.ResumeLayout(true);
+        }
+
+        /// <summary>
+
+        /// "+ Add a truck / driver / aide" links above the truck and crew pickers. They open the new-record form in
+
+        /// Resources; saving it (or clicking its back button) comes straight back to this order, with everything kept.
+
+        /// </summary>
+
+        private Control BuildAddResourceLinks()
+
+        {
+
+            var row = new FlowLayoutPanel
+
+            {
+
+                AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true,
+
+                FlowDirection = FlowDirection.LeftToRight, BackColor = AppTheme.Surface,
+
+                Padding = new Padding(0, 0, 0, Dpi(6)), Margin = new Padding(0)
+
+            };
+
+            var lead = new Label { Text = "Not in the list?", AutoSize = true, ForeColor = AppTheme.TextMuted, Font = new Font("Segoe UI", 9F), Margin = new Padding(0, Dpi(3), Dpi(8), 0) };
+
+            row.Controls.Add(lead);
+
+            LinkLabel Link(string text, string tip, Action open)
+
+            {
+
+                var l = new LinkLabel
+
+                {
+
+                    Text = text, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F), LinkBehavior = LinkBehavior.HoverUnderline,
+
+                    LinkColor = AppTheme.AccentText, ActiveLinkColor = AppTheme.AccentText, Margin = new Padding(0, Dpi(3), Dpi(18), 0), Cursor = Cursors.Hand
+
+                };
+
+                tipRouteStores.SetToolTip(l, tip);
+
+                l.LinkClicked += (s, e) => open();
+
+                row.Controls.Add(l);
+
+                return l;
+
+            }
+
+            var lnkTruck = Link("＋ Add a truck", "Opens Resources → Trucks with a new truck form. Save it to come back here.", () => OpenAddResource("truck"));
+
+            var lnkDriver = Link("＋ Add a driver", "Opens Crew Management with a new driver form. Save it to come back here.", () => OpenAddResource("driver"));
+
+            var lnkAide = Link("＋ Add an aide", "Opens Crew Management with a new aide / helper form. Save it to come back here.", () => OpenAddResource("aide"));
+
+            void Apply()
+
+            {
+
+                bool trucksOk = Permissions.Can("Resources", "Trucks"), crewOk = Permissions.Can("Resources", "Crew");
+
+                lnkTruck.Visible = trucksOk;
+
+                lnkDriver.Visible = lnkAide.Visible = crewOk;
+
+                row.Visible = trucksOk || crewOk; // (reading .Visible back is false until the form is on screen)
+
+            }
+
+            Apply();
+
+            VisibleChanged += (s, e) => { if (Visible) Apply(); };
+
+            return row;
+
+        }
+
+        private string OrderFormName => selectedDelivery != null ? "Edit Dispatch Order" : "New Dispatch Order";
+
+        /// <summary>Back to this order form after a trip to another screen (client profile, trucks, crew).</summary>
+
+        private void ReturnToOrderForm()
+
+        {
+
+            skipDraftPromptOnce = true;
+
+            MainForm.Instance?.NavigateToOperations("Dispatch");
+
+        }
+
+        private bool skipDraftPromptOnce;
+
+        // What was being added on the side trip, and who already existed, so the new one can be picked on return.
+
+        private string? pendingAdd;
+
+        private HashSet<int> idsBeforeAdd = new HashSet<int>();
+
+        private void OpenAddResource(string what)
+
+        {
+
+            if (!pnlForm.Visible) return;
+
+            SaveDraftQuietly();
+
+            pendingAdd = what;
+
+            idsBeforeAdd = what == "truck" ? allTrucks.Select(t => t.Id).ToHashSet() : allDrivers.Select(c => c.Id).Concat(allAides.Select(c => c.Id)).ToHashSet();
+
+            if (what == "truck") MainForm.Instance?.OpenNewTruckFrom(OrderFormName, ReturnToOrderForm);
+
+            else MainForm.Instance?.OpenNewCrewFrom(what == "driver", OrderFormName, ReturnToOrderForm);
+
+        }
+
+        /// <summary>After "+ Add a truck / driver / aide": picks the one that was just saved (when it is free on this date).</summary>
+
+        private void PickJustAdded()
+
+        {
+
+            string? what = pendingAdd;
+
+            pendingAdd = null;
+
+            if (what == null) return;
+
+            if (what == "truck")
+
+            {
+
+                int i = trucks.FindIndex(t => !idsBeforeAdd.Contains(t.Id));
+
+                if (i >= 0) cbTruck.SelectedIndex = i;
+
+            }
+
+            else if (what == "driver")
+
+            {
+
+                int i = drivers.FindIndex(c => !idsBeforeAdd.Contains(c.Id));
+
+                if (i >= 0) cbDriver.SelectedIndex = i;
+
+            }
+
+            else
+
+            {
+
+                var added = aides.FirstOrDefault(c => !idsBeforeAdd.Contains(c.Id));
+
+                if (added != null && !selectedAideIds.Contains(added.Id)) { selectedAideIds.Add(added.Id); RenderAidesModule(); }
+
+            }
+
+        }
+
+        private void SaveDraftQuietly()
+
+        {
+
+            try { SaveCurrentDraft(); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+
         }
 
         private Panel CreateSectionSpacer() => new Panel { Dock = DockStyle.Top, Height = Dpi(16), BackColor = AppTheme.Canvas };
@@ -3308,6 +3508,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
+        private void WhileBinding(Action a)
+
+        {
+
+            bool was = isBindingForm;
+
+            isBindingForm = true;
+
+            try { a(); } finally { isBindingForm = was; }
+
+        }
+
         private static void SafeStep(string name, Action step)
 
         {
@@ -3322,6 +3534,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         {
 
+            // An order form that is open (for example when coming back from adding a truck or opening the client)
+
+            // keeps what was typed and picked: only the lists behind it are refreshed.
+
+            bool keepForm = pnlForm.Visible;
+
+            string keepClient = cbClient.Text, keepRoute = cbDestination.Text;
+
+            int keepTruck = cbTruck.SelectedIndex >= 0 && cbTruck.SelectedIndex < trucks.Count ? trucks[cbTruck.SelectedIndex].Id : 0;
+
+            int keepDriver = cbDriver.SelectedIndex >= 0 && cbDriver.SelectedIndex < drivers.Count ? drivers[cbDriver.SelectedIndex].Id : 0;
+
             try
 
             {
@@ -3335,10 +3559,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 foreach (var c in clients.Distinct(StringComparer.OrdinalIgnoreCase)) cbClient.Items.Add(c);
                 UIThemeHelper.SafeEndUpdate(cbClient);
 
-                cbClient.SelectedIndex = -1;
-                cbClient.Text = "";
-
-
+                WhileBinding(() => { cbClient.SelectedIndex = -1; cbClient.Text = keepForm ? keepClient : ""; });
 
                 var activeRoutes = await Task.Run(() => MJdatabase.GetDeliveryRoutes(activeOnly: true));
 
@@ -3347,10 +3568,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 foreach (var r in activeRoutes.GroupBy(x => x.RouteCode).Select(g => g.First())) cbDestination.Items.Add($"{r.RouteCode} - {r.RouteName}");
                 UIThemeHelper.SafeEndUpdate(cbDestination);
 
-                cbDestination.SelectedIndex = -1;
-                cbDestination.Text = "";
-
-
+                WhileBinding(() => { cbDestination.SelectedIndex = -1; cbDestination.Text = keepForm ? keepRoute : ""; });
 
                 if (cbCargoType.Items.Count == 0 || CargoRouting.Enabled != cbCargoType.Items.Contains(CargoRouting.SpecialOption))
 
@@ -3392,7 +3610,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (this.IsDisposed || !this.IsHandleCreated) return;
 
-                SafeStep("PopulateTrucksDriversAndAides", PopulateTrucksDriversAndAides);
+                SafeStep("PopulateTrucksDriversAndAides", () =>
+
+                {
+
+                    if (!keepForm) { PopulateTrucksDriversAndAides(); return; }
+
+                    WhileBinding(() =>
+
+                    {
+
+                        PopulateTrucksDriversAndAides();
+
+                        int ti = trucks.FindIndex(t => t.Id == keepTruck);
+
+                        if (ti >= 0) cbTruck.SelectedIndex = ti;
+
+                        int di = drivers.FindIndex(c => c.Id == keepDriver);
+
+                        if (di >= 0) cbDriver.SelectedIndex = di;
+
+                        PickJustAdded();
+
+                    });
+
+                });
 
                 FilterGridData();
 
@@ -3423,7 +3665,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 // The draft is offered when the order form is opened, not every time the list loads.
 
-                if (pnlForm.Visible) SafeStep("CheckAndPromptDraft", CheckAndPromptDraft);
+                if (pnlForm.Visible && !skipDraftPromptOnce) SafeStep("CheckAndPromptDraft", CheckAndPromptDraft);
+
+                skipDraftPromptOnce = false;
 
             }
 
@@ -3657,7 +3901,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (aides.Count == 0)
             {
-                lblAi.Text = "Assigned Helper/Aides: (No Aides registered yet - add in Crew Management)";
+                lblAi.Text = allAides.Count == 0 ? "Assigned Helper/Aides: no aides yet. Use “＋ Add an aide” above." : "Assigned Helper/Aides: no aide is free on this date. Use “＋ Add an aide” above or pick another date.";
+
                 lblAi.ForeColor = Pal.C(185, 28, 28);
 
             }
@@ -3675,6 +3920,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void GridDispatch_SelectionChanged(object? sender, EventArgs e)
         {
+            // While the order form is open the list is hidden; a list refresh re-selecting its first row must not
+
+            // replace the order being typed (orders are opened for editing explicitly, see EditDeliveryOrder).
+
+            if (pnlForm.Visible) { UpdateCompleteOrderButton(); return; }
+
             if (gridDispatch.SelectedRows.Count > 0 && gridDispatch.SelectedRows[0].DataBoundItem is Delivery d)
             {
                 BindDeliveryToForm(d);
@@ -5490,6 +5741,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     Cursor = Cursors.Hand
                 };
                 btnAutoPickTwoAides.FlatAppearance.BorderSize = 0;
+                // Sized to its text so it isn't cut off on high-DPI screens.
+
+                btnAutoPickTwoAides.Width = TextRenderer.MeasureText(btnAutoPickTwoAides.Text, btnAutoPickTwoAides.Font).Width + Dpi(22);
+
+                tipRouteStores.SetToolTip(btnAutoPickTwoAides, "Picks the 2 free aides with the fewest trips");
+
                 btnAutoPickTwoAides.Click += (s, e) =>
                 {
                     selectedAideIds.Clear();

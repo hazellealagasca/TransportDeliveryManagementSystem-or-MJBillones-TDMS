@@ -1235,10 +1235,35 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             NavigateToView("FinanceHubView", btnNavFinance, () => new FinanceHubView("Billing", delivery));
         }
         /// <summary>Opens a client's profile in Master Data → Clients.</summary>
-        public void OpenClientProfile(string companyName)
+        public void OpenClientProfile(string companyName) => OpenClientProfile(companyName, null, null);
+        /// <summary>
+        /// Opens a client's profile. When <paramref name="backLabel"/> and <paramref name="goBack"/> are given, the profile's
+        /// back button reads "Back to …" and returns there (for example to the order form you were filling in).
+        /// </summary>
+        public void OpenClientProfile(string companyName, string? backLabel, Action? goBack)
         {
-            NavigateToMasterData("Clients");
-            if (viewCache.TryGetValue("MasterDataHubView", out var mv) && mv is MasterDataHubView mdv) mdv.OpenClient(companyName);
+            OperationsHubView.SuppressUnsavedPrompt = goBack != null;
+            try { NavigateToMasterData("Clients"); }
+            finally { OperationsHubView.SuppressUnsavedPrompt = false; }
+            if (viewCache.TryGetValue("MasterDataHubView", out var mv) && mv is MasterDataHubView mdv) mdv.OpenClient(companyName, backLabel, goBack);
+        }
+        /// <summary>Opens Resources → Trucks with the new-truck form; its back button returns to <paramref name="backLabel"/>.</summary>
+        public void OpenNewTruckFrom(string backLabel, Action goBack)
+        {
+            OperationsHubView.SuppressUnsavedPrompt = true;
+            try { NavigateToResources("Trucks"); }
+            finally { OperationsHubView.SuppressUnsavedPrompt = false; }
+            if (viewCache.TryGetValue("ResourcesHubView", out var rv) && rv is ResourcesHubView rhv)
+                rhv.GetView<TruckManagementView>("Trucks")?.OpenNewForReturn(backLabel, goBack);
+        }
+        /// <summary>Opens Resources → Crew Management with the new-crew form (driver or aide); its back button returns to <paramref name="backLabel"/>.</summary>
+        public void OpenNewCrewFrom(bool driver, string backLabel, Action goBack)
+        {
+            OperationsHubView.SuppressUnsavedPrompt = true;
+            try { NavigateToResources("Crew"); }
+            finally { OperationsHubView.SuppressUnsavedPrompt = false; }
+            if (viewCache.TryGetValue("ResourcesHubView", out var rv) && rv is ResourcesHubView rhv)
+                rhv.GetView<CrewManagementView>("Crew")?.OpenNewForReturn(driver, backLabel, goBack);
         }
         public T? GetOperationsView<T>(string tab) where T : UserControl
             => viewCache.TryGetValue("OperationsHubView", out var ov) && ov is OperationsHubView ohv ? ohv.GetView<T>(tab) : null;

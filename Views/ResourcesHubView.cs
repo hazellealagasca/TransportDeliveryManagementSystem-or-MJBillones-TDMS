@@ -100,6 +100,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (var kv in tabButtons) if (kv.Value.Visible) return kv.Key;
             return null;
         }
+        public T? GetView<T>(string key) where T : UserControl => cachedViews.TryGetValue(key, out var v) ? v as T : null;
         public void SelectTab(string key)
         {
             key = AllowedTab(key) ?? "";

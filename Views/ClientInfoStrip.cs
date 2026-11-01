@@ -131,7 +131,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 return;
             }
-            MainForm.Instance?.OpenClientProfile(shownName);
+            var back = ReturnTo?.Invoke();
+            if (back != null) MainForm.Instance?.OpenClientProfile(shownName, back.Value.Label, back.Value.Go);
+            else MainForm.Instance?.OpenClientProfile(shownName);
         }
+        /// <summary>Set by the form that shows this strip: where the client profile's back button should return to.</summary>
+        [System.ComponentModel.Browsable(false)]
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        public Func<(string Label, Action Go)?>? ReturnTo { get; set; }
     }
 }

@@ -74,10 +74,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>Opens the Clients tab on one client's profile.</summary>
-        public void OpenClient(string companyName)
+        public void OpenClient(string companyName, string? backLabel = null, Action? goBack = null)
         {
             SelectTab("Clients");
-            if (cachedViews.TryGetValue("Clients", out var v) && v is ClientManagementView cv) cv.OpenClientByName(companyName);
+            if (cachedViews.TryGetValue("Clients", out var v) && v is ClientManagementView cv) cv.OpenClientByName(companyName, backLabel, goBack);
         }
         /// <summary>Hides the tabs this account may not open (Settings → User Accounts → Access &amp; permissions).</summary>
         private void ApplyAccess()

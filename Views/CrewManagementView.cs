@@ -175,6 +175,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             SetFormVisibility(false);
         }
+        // Where the form's back button goes when it was opened from another screen.
+        private Action? returnBack;
+        private void SetReturn(string? label, Action? goBack)
+        {
+            returnBack = goBack;
+            btnCloseForm.Text = "←  Back to " + (goBack != null && !string.IsNullOrWhiteSpace(label) ? label : "crew");
+            btnCloseForm.Width = Math.Max(Dpi96(170), TextRenderer.MeasureText(btnCloseForm.Text, btnCloseForm.Font).Width + Dpi96(36));
+        }
+        private int Dpi96(int v) => (int)Math.Round(v * DeviceDpi / 96f);
+        /// <summary>Opens the new-record form for someone coming from another screen; saving or going back returns there.</summary>
+        public void OpenNewForReturn(bool driver, string backLabel, Action goBack)
+        {
+            if (pnlForm.Visible) SetFormVisibility(false);
+            OpenNewRecordForm();
+            try { cbRole.SelectedItem = driver ? RoleDriver : RoleAide; } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            SetReturn(backLabel, goBack);
+        }
         private void OpenNewRecordForm()
         {
             ClearFields();
@@ -183,11 +200,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void SetFormVisibility(bool visible)
         {
+            if (!visible && returnBack != null)
+            {
+                // Opened from another screen (e.g. the New Dispatch Order form): go back there.
+                var go = returnBack;
+                SetReturn(null, null);
+                if (formKit != null) formKit.Show(false); else pnlForm.Visible = false;
+                if (btnToggleForm != null) btnToggleForm.Visible = true;
+                ShowListChrome(true);
+                MainForm.Instance?.NotifyDrawerToggled(false);
+                BeginInvoke(go);
+                return;
+            }
             if (formKit != null) formKit.Show(visible);
             else pnlForm.Visible = visible;
             if (btnToggleForm != null) btnToggleForm.Visible = !visible;
             ShowListChrome(!visible);
             MainForm.Instance?.NotifyDrawerToggled(visible);
+        }
+        protected override void OnVisibleChanged(EventArgs e)
+        {
+            base.OnVisibleChanged(e);
+            if (!Visible && returnBack != null) SetReturn(null, null);
         }
 
         public void RefreshData()

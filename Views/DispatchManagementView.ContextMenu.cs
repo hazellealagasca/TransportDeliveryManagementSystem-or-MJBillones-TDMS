@@ -155,7 +155,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Item($"Orders with truck {Shorten(PlateOf(d), 20)}", () => SearchList(PlateOf(d)), enabled: !string.IsNullOrWhiteSpace(PlateOf(d))),
                 Item($"Orders with driver {Shorten(d.DriverName, 24)}", () => SearchList(d.DriverName), enabled: !string.IsNullOrWhiteSpace(d.DriverName)),
                 new ToolStripSeparator(),
-                Item("Open client profile", () => MainForm.Instance?.OpenClientProfile(d.ClientName), enabled: !string.IsNullOrWhiteSpace(d.ClientName)),
+                Item("Open client profile", () => MainForm.Instance?.OpenClientProfile(d.ClientName, "Loading Schedule & Dispatch", () => MainForm.Instance?.NavigateToOperations("Dispatch")), enabled: !string.IsNullOrWhiteSpace(d.ClientName)),
                 Item("Open route in Delivery Routes", () => MainForm.Instance?.NavigateToDeliveryRoutes(routeCode: routeCode, isNewRoute: false, returnTarget: "Dispatch",
                     backAction: () => MainForm.Instance?.NavigateToOperations("Dispatch")), enabled: !string.IsNullOrEmpty(routeCode)),
                 Item("Clear search", () => SearchList(""), enabled: !string.IsNullOrWhiteSpace(txtGridSearch.Text)));
