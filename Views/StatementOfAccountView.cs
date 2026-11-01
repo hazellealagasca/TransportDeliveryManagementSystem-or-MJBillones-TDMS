@@ -1259,10 +1259,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     MessageBox.Show("The period's end date is before its start date.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
-                if (numTotalAmountDue.Value <= 0)
+                // A statement creates (or updates) the client's invoice, so it must be for a real amount.
+                if (numTotalSales.Value < 0 || numTotalAmountDue.Value <= 0)
                 {
-                    var zero = MessageBox.Show("The total amount due is 0.00. Some trips may still need an amount.\n\nSave the statement anyway?", "Check amounts", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                    if (zero != DialogResult.Yes) return;
+                    MessageBox.Show(numTotalSales.Value < 0
+                        ? $"Total sales is negative (PHP {numTotalSales.Value:N2}). Check the amounts and deductions on the trip lines."
+                        : "The total amount due is PHP 0.00. Enter the amount for each trip line (or check the Rate Matrix) before saving.\n\nSaving creates an invoice for the client, so it must be more than PHP 0.00.",
+                        "Check amounts", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
                 }
                 if (!CheckLinkedDispatchesBeforeSave()) return;
                 var items = CollectItemsFromGrid();

@@ -2104,9 +2104,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (owner == null) return null;
 
-            string rowName = gridRouteStores.Columns.Contains("colStoreName") ? (gridRouteStores.Rows[rowIndex].Cells["colStoreName"].Value?.ToString() ?? "").Trim() : "";
+            string rowName = gridRouteStores != null && gridRouteStores.Columns.Contains("colStoreName") ? (gridRouteStores.Rows[rowIndex].Cells["colStoreName"].Value?.ToString() ?? "").Trim() : "";
 
-            if (rowName.Length == 0 || string.Equals(rowName, owner.StoreName.Trim(), StringComparison.OrdinalIgnoreCase)) return null;
+            if (rowName.Length == 0 || string.Equals(rowName, (owner.StoreName ?? "").Trim(), StringComparison.OrdinalIgnoreCase)) return null;
 
             return $"Store code {code} already belongs to \"{owner.StoreName}\" for {client}. Store codes are unique per client — use that store, or a different code.";
 

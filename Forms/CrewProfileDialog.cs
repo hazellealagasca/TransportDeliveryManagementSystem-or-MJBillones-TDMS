@@ -96,8 +96,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             var parts = (crew.FullName ?? "").Replace(",", " ").Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(p => !p.EndsWith(".")).ToList();
             header.Badge = !string.IsNullOrWhiteSpace(crew.FirstName) && !string.IsNullOrWhiteSpace(crew.LastName) ? $"{crew.FirstName[0]}{crew.LastName[0]}".ToUpperInvariant() : parts.Count > 1 ? $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant() : "👤";
-            header.Title = string.IsNullOrWhiteSpace(crew.FirstName) ? crew.FullName : $"{crew.FirstName} {(string.IsNullOrWhiteSpace(crew.MiddleName) ? "" : crew.MiddleName + " ")}{crew.LastName}";
-            header.Subtitle = string.Join("  ·  ", new[] { crew.CrewCode, crew.Role, string.IsNullOrWhiteSpace(crew.ContactNumber) ? "" : crew.ContactNumber }.Where(x => x.Length > 0));
+            header.Title = string.IsNullOrWhiteSpace(crew.FirstName) ? (crew.FullName ?? "") : $"{crew.FirstName} {(string.IsNullOrWhiteSpace(crew.MiddleName) ? "" : crew.MiddleName + " ")}{crew.LastName}";
+            header.Subtitle = string.Join("  ·  ", new[] { crew.CrewCode, crew.Role, crew.ContactNumber }.Where(x => !string.IsNullOrWhiteSpace(x)));
             header.Chips.Clear();
             header.Chips.Add((crew.IsDriverRole ? "Driver" : "Delivery aide / helper", AppTheme.AccentSoft, AppTheme.AccentText));
             if (crew.IsSeasonal) header.Chips.Add(("Seasonal / temporary", AppTheme.InfoSoft, AppTheme.InfoText));

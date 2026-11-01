@@ -154,7 +154,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
         }
         // ---------- Needs attention: filter, sort, group ----------
-        private static readonly string[] AttnAreas = { "All areas", "Dispatches", "Loading orders", "Trip reports", "Incidents", "Billing", "Trucks", "Accounts", "Backups" };
+        private static readonly string[] AttnAreas = { "All areas", "Dispatches", "Loading orders", "Trip reports", "Incidents", "Billing", "Trucks", "Crew", "Accounts", "Backups" };
         private static readonly string[] AttnSorts = { "Most urgent first", "Oldest first", "Newest first", "Most records first", "Group by area" };
         private static int attnLevel, attnArea, attnSort;
         private static bool attnExpanded;
@@ -634,6 +634,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (CanRes && maint > 0)
                 items.Add(new ActionList.Item(AppTheme.TextMuted, $"{maint} truck(s) under maintenance", string.Join(", ", data.Trucks.Where(t => MJdatabase.IsTruckBlockedStatus(t.Status) && !RowMenu.Is(t.Status, "Inactive")).Select(t => t.PlateNumber).Take(5)), "Trucks", () => MainForm.Instance?.NavigateToResources("Trucks"), "Trucks", 2, null, maint));
+            // Drivers whose licence can't be checked (no expiry date on file), has expired, or expires within 30 days.
+            if (CanRes)
+            {
+                var activeDrivers = data.Crews.Where(c => c.IsActive && c.IsDriverRole).ToList();
+                var noExpiry = activeDrivers.Where(c => !c.LicenseExpiry.HasValue).ToList();
+                var expiring = activeDrivers.Where(c => c.LicenseExpiry.HasValue && c.LicenseExpiry.Value.Date <= DateTime.Today.AddDays(30)).OrderBy(c => c.LicenseExpiry).ToList();
+                if (expiring.Count > 0)
+                {
+                    var first = expiring[0];
+                    bool expired = first.LicenseExpiry!.Value.Date < DateTime.Today;
+                    items.Add(new ActionList.Item(expired ? AppTheme.Danger : AppTheme.Warning,
+                        $"{expiring.Count} driver licence(s) expired or expiring soon",
+                        $"{string.Join(", ", expiring.Take(3).Select(c => c.FullName))} · earliest {first.LicenseExpiry:MMM d, yyyy} · expired licences can't be dispatched",
+                        "Crew", () => MainForm.Instance?.NavigateToResources("Crew"), "Crew", expired ? 0 : 1, first.LicenseExpiry, expiring.Count));
+                }
+                if (noExpiry.Count > 0)
+                    items.Add(new ActionList.Item(AppTheme.Danger,
+                        $"{noExpiry.Count} driver(s) have no licence expiry date",
+                        $"{string.Join(", ", noExpiry.Take(3).Select(c => c.FullName))}{(noExpiry.Count > 3 ? "…" : "")} · add it in Crew Management so expired licences are caught",
+                        "Crew", () => MainForm.Instance?.NavigateToResources("Crew"), "Crew", 2, null, noExpiry.Count));
+            }
             if (SessionContext.IsAdmin && data.PendingUsers > 0)
                 items.Add(new ActionList.Item(AppTheme.Warning, $"{data.PendingUsers} account(s) waiting for approval", "New staff sign-ups need an administrator", "Review", () => MainForm.Instance?.OpenUserAccounts(), "Accounts", 1, null, data.PendingUsers));
             if (SessionContext.IsAdmin && Features.On(Features.BackupReminder))
@@ -655,6 +676,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 "Incidents" => Permissions.Can("Operations", "Incidents"),
                 "Billing" => Permissions.Can("Payments", "Billing") || Permissions.Can("Payments", "StatementOfAccount"),
                 "Trucks" => Permissions.Can("Resources", "Trucks"),
+                "Crew" => Permissions.Can("Resources", "Crew"),
                 _ => true
             };
             allAttention = items.Where(CanAct).ToList();

@@ -11020,6 +11020,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         {
 
+            bool isDraft = string.Equals(inv.Status, "Draft", StringComparison.OrdinalIgnoreCase); // special-trip drafts get their amount later
+
+            if (!isDraft && inv.TotalAmount <= 0) throw new InvalidOperationException("An invoice must be for more than PHP 0.00. Nothing was saved.");
+
+            if (!isDraft && (inv.Deductions < 0 || inv.Deductions > inv.TotalAmount)) throw new InvalidOperationException("Deductions must be between PHP 0.00 and the invoice amount. Nothing was saved.");
+
             bool wasNew = inv.Id <= 0;
 
             if (wasNew && inv.DeliveryId > 0)
@@ -11481,6 +11487,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static int SaveStatementOfAccount(StatementOfAccount soa, List<StatementOfAccountItem> items)
 
         {
+
+            // Never create or update an invoice for nothing (or for a negative amount).
+
+            // (Drafts made automatically for special trips have no amount yet; they are completed in Billing later.)
+
+            if (!string.Equals(soa.Status, "Draft", StringComparison.OrdinalIgnoreCase) && (soa.TotalAmount <= 0 || soa.TotalSalesVatInc < 0))
+
+                throw new InvalidOperationException("The statement's total must be more than PHP 0.00 and total sales can't be negative. Nothing was saved.");
 
             using (var conn = new SqliteConnection(connectionString))
 
