@@ -3258,26 +3258,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-        private void BtnAddStop_Click(object? sender, EventArgs e)
-
-        {
-
-            using var dlg = new AddStopDialog(new List<LoadingSchedule>(), currentStops.Count + 1);
-
-            if (dlg.ShowDialog(this.FindForm()) == DialogResult.OK && dlg.CreatedStop != null)
-
-            {
-
-                currentStops.Add(dlg.CreatedStop);
-
-                RefreshStopsList();
-
-            }
-
-        }
-
-
-
         private void BtnRemoveStop_Click(object? sender, EventArgs e)
 
         {

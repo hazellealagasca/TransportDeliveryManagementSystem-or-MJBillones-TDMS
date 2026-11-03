@@ -1241,7 +1241,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
 
                     MessageBox.Show(
-                        $"Special Trip '{trip.OrderReference}' successfully {(isNew ? "created and saved" : "updated")}!\n\nStatus: {trip.Status}\nStops Configured: {trip.Stops.Count}\nSaved in Special Trip History.",
+                        $"Special Trip '{trip.OrderReference}' successfully {(isNew ? "created and saved" : "updated")}!\n\nStatus: {trip.Status}\nStops Configured: {trip.Stops.Count}\nSaved in Special Trip.",
                         "Special Trip Saved",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information);

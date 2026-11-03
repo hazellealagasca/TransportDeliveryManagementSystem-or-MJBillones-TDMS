@@ -12,8 +12,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 {
     public partial class CrewManagementView : UserControl, IRefreshable
     {
-        private Button btnManageRoles = null!;
-
         private Crew? selectedCrew = null;
         private List<Crew> allCrews = new List<Crew>();
         private string currentSortColumn = "FullName";
@@ -1024,75 +1022,5 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             PrintHelper.PrintCrewPaySlip(c, trips, from, to);
         }
     
-        private void SetupRoleFieldWithManageButton()
-        {
-            int roleIdx = pnlFormBody.Controls.IndexOf(cbRole);
-            if (roleIdx >= 0)
-            {
-                pnlFormBody.Controls.Remove(cbRole);
-
-                TableLayoutPanel tblRoleWrap = new TableLayoutPanel
-                {
-                    Dock = DockStyle.Top,
-                    Height = 32,
-                    ColumnCount = 2,
-                    RowCount = 1,
-                    Margin = new Padding(0, 0, 0, 8),
-                    Padding = new Padding(0)
-                };
-                tblRoleWrap.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-                tblRoleWrap.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96F));
-                tblRoleWrap.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-
-                btnManageRoles = new Button
-                {
-                    Dock = DockStyle.Fill,
-                    Text = "⚙️ Roles",
-                    FlatStyle = FlatStyle.Flat,
-                    BackColor = Pal.C(241, 245, 249),
-                    ForeColor = Pal.C(30, 41, 59),
-                    Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                    Cursor = Cursors.Hand,
-                    Margin = new Padding(0)
-                };
-                btnManageRoles.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
-                btnManageRoles.FlatAppearance.BorderSize = 1;
-                btnManageRoles.Click += BtnManageRoles_Click;
-
-                cbRole.Dock = DockStyle.Fill;
-                cbRole.Margin = new Padding(0, 0, 6, 0);
-
-                tblRoleWrap.Controls.Add(cbRole, 0, 0);
-                tblRoleWrap.Controls.Add(btnManageRoles, 1, 0);
-
-                pnlFormBody.Controls.Add(tblRoleWrap);
-                pnlFormBody.Controls.SetChildIndex(tblRoleWrap, roleIdx);
-            }
-        }
-
-        private void BtnManageRoles_Click(object? sender, EventArgs e)
-        {
-            string currentRole = cbRole.Text;
-            using (var dlg = new Forms.CrewRoleManageDialog(currentRole))
-            {
-                if (dlg.ShowDialog(this) == DialogResult.OK || !string.IsNullOrWhiteSpace(dlg.SelectedRoleName))
-                {
-                    LoadCrew();
-                    if (!string.IsNullOrWhiteSpace(dlg.SelectedRoleName))
-                    {
-                        var match = cbRole.Items.Cast<string>().FirstOrDefault(i => i.Equals(dlg.SelectedRoleName.Trim(), StringComparison.OrdinalIgnoreCase));
-                        if (match != null)
-                        {
-                            cbRole.SelectedItem = match;
-                        }
-                        else
-                        {
-                            cbRole.Items.Add(dlg.SelectedRoleName.Trim());
-                            cbRole.SelectedItem = dlg.SelectedRoleName.Trim();
-                        }
-                    }
-                }
-            }
-        }
     }
 }

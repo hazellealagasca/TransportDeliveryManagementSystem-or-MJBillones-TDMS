@@ -48,8 +48,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             });
 
             // Completed Dispatches is now the "Completed" tab inside Order History.
-            AddTab("SpecialTrips", "🌟  Special Trip History", () => new SpecialTripHistoryView());
-
+            AddTab("SpecialTrips", "🌟  Special Trip", () => new SpecialTripHistoryView());
             AddTab("Incidents", "⚠️  Incident & Damage Logs", () =>
             {
                 var iv = new IncidentReportView();
