@@ -63,6 +63,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private Button? btnAwaitingCompletion;
 
+        private Button? btnShowFinished;
+
+        /// <summary>When on, completed and cancelled orders are listed under the active ones (remembered per user).</summary>
+
+        private bool showFinished;
+
+        private static string ShowFinishedKey => "DispatchShowFinished_" + (SessionContext.CurrentUsername ?? "");
+
         private CheckBox chkMultiDrop = null!;
 
         private Panel pnlMultiDropBuilder = null!;
@@ -864,6 +872,38 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
 
             pnlGridActionsFlow.Controls.Add(btnAwaitingCompletion);
+
+            try { showFinished = string.Equals(MJdatabase.GetSystemSetting(ShowFinishedKey, "False").Trim(), "True", StringComparison.OrdinalIgnoreCase); } catch (System.Exception swxSf) { ErrLog.Swallowed(swxSf); }
+
+            btnShowFinished = new Button
+
+            {
+
+                Name = "btnShowFinished",
+
+                Text = "○ Show finished",
+
+                AutoSize = true,
+
+                AutoSizeMode = AutoSizeMode.GrowOnly,
+
+                MinimumSize = new Size(120, 30),
+
+                Padding = new Padding(10, 0, 10, 0),
+
+                Cursor = Cursors.Hand,
+
+                Margin = new Padding(0, 4, 8, 4)
+
+            };
+
+            UIThemeHelper.SetButtonRole(btnShowFinished, "secondary");
+
+            btnShowFinished.Click += (s, e) => SetShowFinished(!showFinished);
+
+            new ToolTip().SetToolTip(btnShowFinished, "Show or hide completed and cancelled orders. They also stay in Order History.");
+
+            pnlGridActionsFlow.Controls.Add(btnShowFinished);
 
             SetFormVisibility(false);
 
@@ -3368,6 +3408,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
+            if (propName != "Status" && gridDispatch.DataSource is IList<Delivery> mutedList && e.RowIndex < mutedList.Count && IsFinished(mutedList[e.RowIndex]))
+
+                e.CellStyle.ForeColor = AppTheme.TextMuted; // finished orders shown under the active ones are greyed slightly
+
             if (propName == "Status" && e.Value != null)
 
             {
@@ -3938,6 +3982,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private const string AwaitingCompletionFilter = "__AwaitingCompletion";
 
+        private const string AllOrdersFilter = "__AllOrders";
+
+        /// <summary>Completed or cancelled: the order is finished and leaves the active list.</summary>
+
+        private static bool IsFinished(Delivery d) => RowMenu.Is(d.Status, "Completed", "Cancelled");
+
         internal const string CompleteCellText = "✔ Complete";
 
         private void WireRowCompleteButtons()
@@ -4062,6 +4112,38 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
+        private void SetShowFinished(bool on)
+
+        {
+
+            showFinished = on;
+
+            try { MJdatabase.SetSystemSetting(ShowFinishedKey, on ? "True" : "False", "Loading Schedule & Dispatch: show finished orders"); } catch (System.Exception swxSf2) { ErrLog.Swallowed(swxSf2); }
+
+            if (on && currentStatusFilter == AllOrdersFilter) currentStatusFilter = "";
+
+            FilterGridData();
+
+        }
+
+        private void UpdateShowFinishedButton()
+
+        {
+
+            if (btnShowFinished == null) return;
+
+            int n = allDispatches.Count(IsFinished);
+
+            btnShowFinished.Text = showFinished ? $"● Showing finished ({n})" : $"○ Show finished ({n})";
+
+            UIThemeHelper.SetButtonRole(btnShowFinished, showFinished ? "strong" : "secondary");
+
+        }
+
+        /// <summary>Text added to the "completed"/"cancelled" notice when the order is about to leave the list.</summary>
+
+        private string FinishedNote => showFinished ? "" : " · moved to finished orders (Show finished or Order History)";
+
         private void UpdateAwaitingCompletionBadge()
 
         {
@@ -4154,7 +4236,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            ToastHelper.ShowToast(this, message, ToastType.Success);
+            ToastHelper.ShowToast(this, message + FinishedNote, ToastType.Success);
 
             if (selectedDelivery != null && selectedDelivery.Id == d.Id)
 
@@ -5468,17 +5550,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-        private static int GetDispatchStatusSortWeight(string? status)
+        /// <summary>Active first: awaiting completion, in transit, delayed, scheduled; then completed, then cancelled.</summary>
+
+        private static int StatusRank(Delivery d)
+
         {
-            if (string.Equals(status, "Scheduled", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase))
-                return 0;
-            if (string.Equals(status, "In Transit", StringComparison.OrdinalIgnoreCase))
-                return 1;
-            if (string.Equals(status, "Completed", StringComparison.OrdinalIgnoreCase))
-                return 2;
-            if (string.Equals(status, "Cancelled", StringComparison.OrdinalIgnoreCase))
-                return 3;
+            if (MJdatabase.IsAwaitingCompletion(d)) return 0;
+
+            string status = d.Status ?? "";
+
+            if (RowMenu.Is(status, "In Transit")) return 1;
+
+            if (RowMenu.Is(status, "Delayed")) return 2;
+
+            if (RowMenu.Is(status, "Scheduled", "Pending")) return 3;
+
+            if (RowMenu.Is(status, "Completed")) return 5;
+
+            if (RowMenu.Is(status, "Cancelled")) return 6;
+
             return 4;
         }
 
@@ -5486,7 +5576,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             string q = txtGridSearch.Text.Trim().ToLowerInvariant();
             var query = allDispatches.AsEnumerable();
-            if (!string.IsNullOrEmpty(currentStatusFilter))
+            if (string.IsNullOrEmpty(currentStatusFilter))
+
+            {
+
+                if (!showFinished) query = query.Where(d => !IsFinished(d));
+
+            }
+
+            else if (currentStatusFilter != AllOrdersFilter)
+
             {
                 if (currentStatusFilter == AwaitingCompletionFilter)
 
@@ -5527,21 +5626,35 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             IEnumerable<Delivery> sorted = ApplySort(matching);
 
+            // Finished orders always sit under the active ones (stable re-order keeps the chosen sort inside each part).
+
+            if (currentSortColumn != "Status") sorted = sorted.OrderBy(d => IsFinished(d) ? 1 : 0);
+
             var filtered = sorted.ToList();
             SyncPickers();
 
             gridDispatch.DataSource = null;
             gridDispatch.DataSource = filtered;
 
-            string filterTag = currentStatusFilter == AwaitingCompletionFilter ? " [Awaiting completion]" : !string.IsNullOrEmpty(currentStatusFilter) ? $" [{currentStatusFilter}]" : "";
+            string filterTag = currentStatusFilter == AwaitingCompletionFilter ? " [Awaiting completion]"
+
+                : currentStatusFilter == AllOrdersFilter ? " [All orders]"
+
+                : !string.IsNullOrEmpty(currentStatusFilter) ? $" [{currentStatusFilter}]" : "";
 
             UpdateAwaitingCompletionBadge();
 
+            UpdateShowFinishedButton();
+
             if (!dr.IsAll) filterTag += $" [{dr.Describe(DatePresets.Orders)}]";
+
+            int activeCount = allDispatches.Count(d => !IsFinished(d)), finishedCount = allDispatches.Count - activeCount;
+
+            string baseCount = showFinished ? $"{activeCount} active · {finishedCount} finished" : $"{activeCount} active";
 
             lblGridHeader.Text = string.IsNullOrEmpty(q) && string.IsNullOrEmpty(currentStatusFilter) && dr.IsAll
 
-                ? $"Delivery & Dispatch Orders ({allDispatches.Count})"
+                ? $"Delivery & Dispatch Orders ({baseCount})"
 
                 : $"Delivery & Dispatch Orders{filterTag} - Showing {filtered.Count} of {allDispatches.Count}";
 

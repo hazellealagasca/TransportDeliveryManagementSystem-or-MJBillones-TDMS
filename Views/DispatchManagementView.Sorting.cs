@@ -9,7 +9,7 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.F
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
 {
-    /// <summary>Sort and status pickers for the dispatch list. Newest first by default.</summary>
+    /// <summary>Sort and status pickers for the dispatch list. Active first by default: awaiting completion, in transit, delayed, scheduled; finished orders last.</summary>
     public partial class DispatchManagementView
     {
         private ChoiceChip? cbSortBy, cbStatusPick;
@@ -27,18 +27,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         };
         private static readonly (string Label, string Filter)[] StatusOptions =
         {
-            ("All statuses", ""),
+            ("Active orders", ""),
             ("Awaiting completion", AwaitingCompletionFilter),
             ("Scheduled", "Scheduled"),
             ("In Transit", "In Transit"),
             ("Delayed", "Delayed"),
             ("Completed", "Completed"),
-            ("Cancelled", "Cancelled")
+            ("Cancelled", "Cancelled"),
+            ("All orders (incl. finished)", AllOrdersFilter)
         };
         private void InitSortAndStatusPickers()
         {
-            currentSortColumn = "Date";
-            isSortAscending = false;
+            currentSortColumn = "Status";
+            isSortAscending = true;
             cbStatusPick = new ChoiceChip("Status", StatusOptions.Select(o => o.Label));
             cbSortBy = new ChoiceChip("Sort", SortOptions.Select(o => o.Label), "⇅");
             dateChip = new DateFilterChip(DatePresets.Orders, "All dates");
@@ -59,7 +60,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             dateChip.RangeChanged += (s, e) => FilterGridData();
             var tips = new ToolTip();
-            tips.SetToolTip(cbStatusPick, "Show only orders with this status");
+            tips.SetToolTip(cbStatusPick, "Active orders = everything not yet completed or cancelled. Pick Completed, Cancelled or All orders to see finished ones.");
             tips.SetToolTip(cbSortBy, "Order of the list (you can also click a column header)");
             tips.SetToolTip(dateChip, "Show orders for a day, week, month or any dates you pick. ‹ › step back or forward.");
             FlowFit.Grow(pnlGridActionsFlow);
@@ -100,8 +101,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 case "Status":
                     var byStatus = isSortAscending
-                        ? rows.OrderBy(d => MJdatabase.IsAwaitingCompletion(d) ? -1 : GetDispatchStatusSortWeight(d.Status))
-                        : rows.OrderByDescending(d => MJdatabase.IsAwaitingCompletion(d) ? -1 : GetDispatchStatusSortWeight(d.Status));
+                        ? rows.OrderBy(StatusRank)
+                        : rows.OrderByDescending(StatusRank);
                     return byStatus.ThenByDescending(DepartureOf).ThenByDescending(d => d.Id);
                 case "DispatchNumber":
                     return isSortAscending ? rows.OrderBy(d => d.DispatchNumber) : rows.OrderByDescending(d => d.DispatchNumber);

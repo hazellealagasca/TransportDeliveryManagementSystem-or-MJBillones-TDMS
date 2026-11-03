@@ -22,9 +22,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     /// </summary>
     public sealed class OrderHistoryView : UserControl, IRefreshable
     {
-        private readonly SegmentTabs tabs = new SegmentTabs("All", "✅ Completed", "Dispatches", "Loading orders", "Special trips", "📌 Pinned", "🕘 Recently viewed");
-        private const int TabCompleted = 1, TabPinned = 5, TabRecent = 6;
-        private static readonly string[] TabKinds = { "", "", TxRecord.KDispatch, TxRecord.KLoading, TxRecord.KSpecial, "", "" };
+        private readonly SegmentTabs tabs = new SegmentTabs("All", "✅ Completed", "✖ Cancelled", "Dispatches", "Loading orders", "Special trips", "📌 Pinned", "🕘 Recently viewed");
+        private const int TabCompleted = 1, TabCancelled = 2, TabPinned = 6, TabRecent = 7;
+        private static readonly string[] TabKinds = { "", "", "", TxRecord.KDispatch, TxRecord.KLoading, TxRecord.KSpecial, "", "" };
         private static readonly string[] StatusOptions = { "All statuses", "Waiting", "On the road", "Completed", "Cancelled" };
         private static readonly string[] GroupOptions = { "By date", "By month", "By client", "By status", "By type", "No groups" };
         private static readonly string[] SortOptions = { "Newest first", "Oldest first", "Client A–Z", "Most crates", "Number" };
@@ -220,6 +220,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     m.Items.Add("🖨  Print dossier", null, (a, b) => PrintHelper.PrintEndToEndDeliveryDossier(del.Id, del.DispatchNumber));
                     m.Items.Add("⚠  Incident log", null, (a, b) => OnIncidentsRequested?.Invoke(del.Id, del.DispatchNumber));
                 }
+                if (r.Source is LoadingSchedule lsm && CanCancelLoading(lsm))
+                {
+                    m.Items.Add(new ToolStripSeparator());
+                    m.Items.Add("✖  Cancel loading order", null, (a, b) => CancelLoadingOrder(lsm));
+                }
                 m.Items.Add(new ToolStripSeparator());
                 foreach (var it in RelatedItems(r)) m.Items.Add(it);
                 UIThemeHelper.ApplyContextMenuTheme(m);
@@ -316,12 +321,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (grid == null) return;
             var baseAll = BaseFilter().ToList();
-            tabs.Badges = new[] { baseAll.Count, baseAll.Count(r => r.StatusGroup == "Completed"), baseAll.Count(r => r.Kind == TxRecord.KDispatch), baseAll.Count(r => r.Kind == TxRecord.KLoading), baseAll.Count(r => r.Kind == TxRecord.KSpecial),
+            tabs.Badges = new[] { baseAll.Count, baseAll.Count(r => r.StatusGroup == "Completed"), baseAll.Count(r => r.StatusGroup == "Cancelled"), baseAll.Count(r => r.Kind == TxRecord.KDispatch), baseAll.Count(r => r.Kind == TxRecord.KLoading), baseAll.Count(r => r.Kind == TxRecord.KSpecial),
                 baseAll.Count(r => pinned.Contains(r.Key)), baseAll.Count(r => recent.Contains(r.Key)) };
             tabs.Invalidate();
             var q = baseAll.AsEnumerable();
             if (tabs.Selected == TabCompleted) q = q.Where(r => r.StatusGroup == "Completed");
-            else if (tabs.Selected is >= 2 and <= 4) { string k = TabKinds[tabs.Selected]; q = q.Where(r => r.Kind == k); }
+            else if (tabs.Selected == TabCancelled) q = q.Where(r => r.StatusGroup == "Cancelled");
+            else if (tabs.Selected is >= 3 and <= 5) { string k = TabKinds[tabs.Selected]; q = q.Where(r => r.Kind == k); }
             else if (tabs.Selected == TabPinned) q = q.Where(r => pinned.Contains(r.Key));
             else if (tabs.Selected == TabRecent) q = q.Where(r => recent.Contains(r.Key)).OrderBy(r => recent.IndexOf(r.Key));
             shown = tabs.Selected == TabRecent ? q.ToList() : Sorted(q).ToList();
@@ -525,6 +531,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 bCopy.Click += (s, e) => CopyNumber(r);
                 actions.Controls.AddRange(new Control[] { bOpen, bPin, bCopy });
                 stack.Controls.Add(actions);
+                if (r.Source is LoadingSchedule lsp && CanCancelLoading(lsp))
+                {
+                    stack.Controls.Add(L("This loading order was never turned into a dispatch.", new Font("Segoe UI", 9F), AppTheme.TextMuted, 6));
+                    var bCancelLs = new Button { Text = "✖  Cancel loading order", AutoSize = true, MinimumSize = new Size(0, D(32)), Margin = new Padding(0, 0, 0, D(12)) };
+                    UIThemeHelper.SetButtonRole(bCancelLs, "danger");
+                    bCancelLs.Click += (s, e) => CancelLoadingOrder(lsp);
+                    stack.Controls.Add(bCancelLs);
+                }
                 if (r.Source is Delivery del && r.StatusGroup == "Completed")
                 {
                     stack.Controls.Add(new Label { Text = "Completed trip", AutoSize = true, Font = new Font("Segoe UI Semibold", 9.5F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, D(2), 0, D(6)) });
@@ -608,6 +622,38 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             recent = MJdatabase.GetRecordMarks(User, "recent").Select(m => m.Kind + "|" + m.Number).ToList();
             if (tabs.Selected == TabRecent) Render();
             else { tabs.Badges[TabRecent] = BaseFilter().Count(x => recent.Contains(x.Key)); tabs.Invalidate(); }
+        }
+        /// <summary>Old loading orders (from the former Loading Schedule screen) that never became a dispatch can be cancelled here.</summary>
+        private static bool CanCancelLoading(LoadingSchedule ls)
+        {
+            if (!SessionContext.CanAccessOperations) return false;
+            if (RowMenu.Is(ls.Status, "Cancelled", "Completed")) return false;
+            try { return !MJdatabase.GetDeliveries().Any(d => d.LoadingScheduleId == ls.Id && !RowMenu.Is(d.Status, "Cancelled")); }
+            catch { return false; }
+        }
+        private void CancelLoadingOrder(LoadingSchedule ls)
+        {
+            if (!CanCancelLoading(ls))
+            {
+                QuietBox.Show($"Loading order {ls.ScheduleNumber} can't be cancelled here: it is already {ls.Status.ToLowerInvariant()} or has a dispatch. Cancel the dispatch instead.", "Cancel loading order", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            try
+            {
+                string? reason = CancellationReasonDialog.PromptCancellationReason(this.FindForm() ?? (IWin32Window)this, "Loading Order", ls.ScheduleNumber);
+                if (string.IsNullOrEmpty(reason)) return;
+                ls.Status = "Cancelled";
+                ls.CancellationReason = reason;
+                MJdatabase.SaveLoadingSchedule(ls);
+                ToastHelper.ShowToast(this, $"Loading order {ls.ScheduleNumber} cancelled", ToastType.Info);
+                try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch (System.Exception swxLs) { ErrLog.Swallowed(swxLs); }
+                LoadData();
+            }
+            catch (Exception ex)
+            {
+                ErrLog.Error("OrderHistoryView.CancelLoadingOrder", ex);
+                MessageBox.Show($"Could not cancel the loading order: {ex.Message}", "Cancel loading order", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
         private void ClearFilters()
         {

@@ -790,7 +790,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                     if (result.schedulesPastDue > 0)
                     {
-                        EventNotificationService.Publish("Past Due Schedules", $"{result.schedulesPastDue} pending loading order(s) passed scheduled dates without dispatch.", ToastType.Warning, this, "Operations", "LoadingManagement");
+                        EventNotificationService.Publish("Past Due Schedules", $"{result.schedulesPastDue} loading order(s) passed their date without a dispatch. Open them in Order History → Loading orders to cancel or follow up.", ToastType.Warning, this, "Operations", "History");
                     }
 
                     {

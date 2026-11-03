@@ -76,7 +76,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             switch (module)
             {
-                case "dispatch": case "loading": NavigateToOperations("Dispatch"); break;
+                case "dispatch": NavigateToOperations("Dispatch"); break;
+                case "loading": case "loadingmanagement": case "history": NavigateToOperations("History"); break;
                 case "tripreports": NavigateToOperations("TripReports"); break;
                 case "incidents": NavigateToOperations("Incidents"); break;
                 case "specialtrips": NavigateToOperations("SpecialTrips"); break;

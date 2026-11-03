@@ -251,7 +251,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             LoadDropdownsAndGrid();
             try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch (System.Exception swx5) { ErrLog.Swallowed(swx5); }
             if (failed.Count > 0) MessageBox.Show($"{ok} completed. These could not be completed:\n\n" + string.Join("\n", failed), "Complete orders", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            else ToastHelper.ShowToast(this, $"{ok} orders marked complete", ToastType.Success);
+            else ToastHelper.ShowToast(this, $"{ok} orders marked complete" + FinishedNote, ToastType.Success);
         }
         private void CancelOrder(Delivery d)
         {
@@ -269,7 +269,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.SaveDelivery(d);
                 LoadDropdownsAndGrid();
                 try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch (System.Exception swx6) { ErrLog.Swallowed(swx6); }
-                ToastHelper.ShowToast(this, $"Dispatch {d.DispatchNumber} cancelled", ToastType.Warning);
+                ToastHelper.ShowToast(this, $"Dispatch {d.DispatchNumber} cancelled" + FinishedNote, ToastType.Warning);
             }
             catch (Exception ex)
             { ErrLog.Error("DispatchManagementView.ContextMenu", ex); 

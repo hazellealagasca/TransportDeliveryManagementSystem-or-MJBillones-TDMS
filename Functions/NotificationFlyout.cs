@@ -221,6 +221,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 "tripreports" => "trip report",
                 "dispatch" => "dispatch",
                 "loading" => "loading order",
+                "history" => "Order History",
                 "billing" or "invoices" => "invoice",
                 "collections" => "receipt",
                 "incidents" => "incidents",
