@@ -144,7 +144,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Card BuildModeSection()
         {
             var card = new Card { Height = S(222), Padding = new Padding(S(20), S(18), S(20), S(18)), Margin = new Padding(S(0), S(0), S(0), S(16)) };
-            var title = SectionTitle("Theme mode", "Light is easiest on the eyes in bright offices. Dark reduces glare at night. Match Windows follows your PC setting.");
+            var title = SectionTitle("Theme mode", "Light, Dark, or Match Windows to follow your PC.");
             title.Dock = DockStyle.Top;
             var row = new FlowLayoutPanel { Dock = DockStyle.Fill, BackColor = AppTheme.Surface, WrapContents = false, Padding = new Padding(S(0), S(6), S(0), S(0)) };
             foreach (var (mode, label) in new[] { (ThemeMode.Light, "Light"), (ThemeMode.Dark, "Dark"), (ThemeMode.System, "Match Windows") })

@@ -36,124 +36,90 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             LoadAuditLogs();
         }
 
+        private PageHeader header = null!;
+        private ChoiceChip chipCategory = null!, chipDataAction = null!, chipAuthEvent = null!;
+        private static readonly string[] DataActionLabels = { "All actions", "Added", "Updated", "Deleted", "Invoice created", "Dispatch created", "Payment collected", "Completed", "Cancelled", "Security update", "Password change" };
+        private static readonly string[] AuthEventLabels = { "All events", "Signed in", "Sign-in failed", "Locked out", "Account registered", "User approved", "User rejected", "Password reset", "Password reset failed" };
+        private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
         private void InitializeComponent()
         {
             this.Dock = DockStyle.Fill;
-            this.BackColor = Pal.C(248, 250, 252);
+            this.BackColor = AppTheme.Canvas;
             this.Font = new Font("Segoe UI", 9.5F);
 
-            FlowLayoutPanel pnlTop = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = true,
-                Padding = new Padding(16, 12, 16, 12),
-                BackColor = Pal.White
-            };
-
-            Label lblCat = new Label
-            {
-                Text = "Log Type:",
-                AutoSize = true,
-                Margin = new Padding(0, 7, 4, 0),
-                Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Pal.C(51, 65, 85)
-            };
-
-            cbAuditCategory.Size = new Size(240, 26);
-            cbAuditCategory.Margin = new Padding(0, 4, 16, 0);
+            // The two lists still run on these (not shown): the chips below pick their items.
             cbAuditCategory.DropDownStyle = ComboBoxStyle.DropDownList;
-            cbAuditCategory.Items.AddRange(new object[]
-            {
-                "📋 Business Data Changes (Audit Trail)",
-                "🛡️ Access & Authentication Logs"
-            });
+            cbAuditCategory.Items.AddRange(new object[] { "Business data changes", "Access & sign-in logs" });
             cbAuditCategory.SelectedIndex = 0;
             cbAuditCategory.SelectedIndexChanged += (s, e) =>
             {
                 UpdateEventFilterOptions();
                 SetupGridColumns();
-                ApplyFilter();
+                chipDataAction.Visible = cbAuditCategory.SelectedIndex == 0;
+                chipAuthEvent.Visible = cbAuditCategory.SelectedIndex == 1;
+                chipDataAction.SetQuietly(0);
+                chipAuthEvent.SetQuietly(0);
+                LoadAuditLogs(); // the other log is loaded when you switch to it
             };
 
-            Label lblSearch = new Label
+            cbFilterEvent.DropDownStyle = ComboBoxStyle.DropDownList;
+            header = PageKit.Header("Audit logs", "Every change to your records and every sign-in. Entries can never be changed or deleted.");
+            header.Dock = DockStyle.Top;
+            header.Padding = new Padding(D(12), header.Padding.Top, D(16), header.Padding.Bottom); // line up with the toolbar and list
+            var toolbar = new FlowLayoutPanel
             {
-                Text = "🔍 Search:",
+                Dock = DockStyle.Top,
                 AutoSize = true,
-                Margin = new Padding(0, 7, 4, 0),
-                Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Pal.C(51, 65, 85)
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                WrapContents = true,
+                Padding = new Padding(D(16), D(4), D(16), D(8)),
+                BackColor = Color.Transparent
             };
 
-            txtSearch.Size = new Size(180, 26);
-            txtSearch.Margin = new Padding(0, 4, 16, 0);
-            txtSearch.PlaceholderText = "Search username, ID...";
+            chipCategory = new ChoiceChip("Log", new[] { "Data changes", "Sign-ins" }) { Margin = new Padding(0, 0, D(8), D(4)) };
+            chipCategory.SelectionChanged += (s, e) => cbAuditCategory.SelectedIndex = chipCategory.SelectedIndex;
+            PageKit.StyleSearch(txtSearch, "🔍 Search user, record or notes…");
+            txtSearch.Width = D(260);
             txtSearch.MaxLength = 100;
+            txtSearch.Margin = new Padding(0, D(4), D(8), D(4));
             txtSearch.TextChanged += (s, e) => ApplyFilter();
 
-            Label lblFilter = new Label
-            {
-                Text = "Action / Event:",
-                AutoSize = true,
-                Margin = new Padding(0, 7, 4, 0),
-                Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Pal.C(51, 65, 85)
-            };
-
-            cbFilterEvent.Size = new Size(160, 26);
-            cbFilterEvent.Margin = new Padding(0, 4, 16, 0);
-            cbFilterEvent.DropDownStyle = ComboBoxStyle.DropDownList;
+            chipDataAction = new ChoiceChip("Action", DataActionLabels) { Margin = new Padding(0, 0, D(8), D(4)) };
+            chipDataAction.SelectionChanged += (s, e) => { if (cbFilterEvent.Items.Count > chipDataAction.SelectedIndex) cbFilterEvent.SelectedIndex = chipDataAction.SelectedIndex; };
+            chipAuthEvent = new ChoiceChip("Event", AuthEventLabels) { Margin = new Padding(0, 0, D(8), D(4)), Visible = false };
+            chipAuthEvent.SelectionChanged += (s, e) => { if (cbFilterEvent.Items.Count > chipAuthEvent.SelectedIndex) cbFilterEvent.SelectedIndex = chipAuthEvent.SelectedIndex; };
             UpdateEventFilterOptions();
             cbFilterEvent.SelectedIndexChanged += (s, e) => ApplyFilter();
 
-            btnRefresh.Text = "🔄 Refresh";
-            btnRefresh.Size = new Size(95, 28);
-            btnRefresh.Margin = new Padding(0, 3, 8, 0);
-            btnRefresh.BackColor = Pal.C(241, 245, 249);
-            btnRefresh.ForeColor = Pal.C(51, 65, 85);
-            btnRefresh.FlatStyle = FlatStyle.Flat;
-            btnRefresh.FlatAppearance.BorderSize = 0;
-            btnRefresh.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
-            btnRefresh.Cursor = Cursors.Hand;
-            btnRefresh.Click += (s, e) => LoadAuditLogs();
-
-            btnExport.Text = "📊 Export";
-            btnExport.Size = new Size(95, 28);
-            btnExport.Margin = new Padding(0, 3, 16, 0);
-            btnExport.BackColor = Pal.C(15, 23, 42);
-            btnExport.ForeColor = Pal.White;
-            btnExport.FlatStyle = FlatStyle.Flat;
-            btnExport.FlatAppearance.BorderSize = 0;
-            btnExport.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
-            btnExport.Cursor = Cursors.Hand;
-            btnExport.Click += (s, e) =>
+            btnRefresh = PageKit.Action("🔄 Refresh", "secondary", (s, e) => LoadAuditLogs());
+            btnRefresh.MinimumSize = new Size(0, D(32));
+            btnRefresh.Margin = new Padding(0, 0, D(8), D(4));
+            btnExport = PageKit.Action("📊 Export", "secondary", (s, e) =>
             {
                 string title = cbAuditCategory.SelectedIndex == 0 ? "Business Data Change Audit Trail" : "System Access Logs";
                 DataExportHelper.ExportToCsv(gridAudit, cbAuditCategory.SelectedIndex == 0 ? "AuditTrail" : "AccessLogs", title);
-            };
-
+            });
+            btnExport.MinimumSize = new Size(0, D(32));
+            btnExport.Margin = new Padding(0, 0, D(12), D(4));
             lblCount.AutoSize = true;
-            lblCount.Margin = new Padding(0, 7, 0, 0);
-            lblCount.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
-            lblCount.ForeColor = Pal.C(71, 85, 105);
-            lblCount.Text = "Logs: 0";
-
-            pnlTop.Controls.AddRange(new Control[] { lblCat, cbAuditCategory, lblSearch, txtSearch, lblFilter, cbFilterEvent, btnRefresh, btnExport, lblCount });
-
+            lblCount.Margin = new Padding(0, D(8), 0, D(4));
+            lblCount.Font = new Font("Segoe UI", 9.5F);
+            lblCount.ForeColor = AppTheme.TextMuted;
+            lblCount.Text = "";
+            toolbar.Controls.AddRange(new Control[] { chipCategory, txtSearch, chipDataAction, chipAuthEvent, btnRefresh, btnExport, lblCount });
             Panel pnlGridCard = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(16),
+                Padding = new Padding(D(16), D(4), D(16), D(16)),
                 BackColor = Color.Transparent
             };
 
             gridAudit.Dock = DockStyle.Fill;
             pnlGridCard.Controls.Add(gridAudit);
 
-            this.Controls.Add(pnlTop);
             this.Controls.Add(pnlGridCard);
-            pnlGridCard.SendToBack();
+            this.Controls.Add(toolbar);
+            this.Controls.Add(header);
         }
 
         private void UpdateEventFilterOptions()
@@ -208,25 +174,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridAudit.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             gridAudit.RowTemplate.Height = 32;
 
+            gridAudit.AutoGenerateColumns = false;
+            gridAudit.ColumnHeadersVisible = true;
+            gridAudit.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            gridAudit.ColumnHeadersHeight = D(36);
             if (cbAuditCategory.SelectedIndex == 0)
             {
-                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Timestamp", HeaderText = "Timestamp", FillWeight = 14, MinimumWidth = 125, DefaultCellStyle = { Format = "yyyy-MM-dd HH:mm:ss" } });
-                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Username", HeaderText = "User", FillWeight = 11, MinimumWidth = 90 });
-                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ActionType", HeaderText = "Action", FillWeight = 13, MinimumWidth = 100 });
-                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TableName", HeaderText = "Module / Table", FillWeight = 12, MinimumWidth = 95 });
-                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "RecordIdentifier", HeaderText = "Reference #", FillWeight = 15, MinimumWidth = 115 });
-                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "FieldName", HeaderText = "Field Changed", FillWeight = 12, MinimumWidth = 95 });
-                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "NewValue", HeaderText = "New Value", FillWeight = 12, MinimumWidth = 95 });
-                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ReasonOrNotes", HeaderText = "Activity Notes", FillWeight = 25, MinimumWidth = 150 });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Timestamp", HeaderText = "Date & time", FillWeight = 14, MinimumWidth = D(130), DefaultCellStyle = { Format = "yyyy-MM-dd HH:mm" } });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Username", HeaderText = "User", FillWeight = 9, MinimumWidth = D(70) });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ActionType", HeaderText = "Action", FillWeight = 10, MinimumWidth = D(80) });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TableName", HeaderText = "Module", FillWeight = 11, MinimumWidth = D(80) });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "RecordIdentifier", HeaderText = "Record", FillWeight = 13, MinimumWidth = D(90) });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "FieldName", HeaderText = "Field", FillWeight = 9, MinimumWidth = D(70) });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "OldValue", HeaderText = "Old value", FillWeight = 10, MinimumWidth = D(80) });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "NewValue", HeaderText = "New value", FillWeight = 10, MinimumWidth = D(80) });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ReasonOrNotes", HeaderText = "Notes", FillWeight = 24, MinimumWidth = D(140) });
             }
             else
             {
-                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Timestamp", HeaderText = "Timestamp", FillWeight = 16, MinimumWidth = 120, DefaultCellStyle = { Format = "yyyy-MM-dd HH:mm:ss" } });
-                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "EventType", HeaderText = "Event", FillWeight = 16, MinimumWidth = 110 });
-                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Username", HeaderText = "Username", FillWeight = 16, MinimumWidth = 110 });
-                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "IpOrMachine", HeaderText = "Workstation", FillWeight = 16, MinimumWidth = 110 });
-                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Details", HeaderText = "Details", FillWeight = 36, MinimumWidth = 160 });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Timestamp", HeaderText = "Date & time", FillWeight = 16, MinimumWidth = D(130), DefaultCellStyle = { Format = "yyyy-MM-dd HH:mm" } });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "EventType", HeaderText = "Event", FillWeight = 16, MinimumWidth = D(110) });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Username", HeaderText = "Username", FillWeight = 14, MinimumWidth = D(90) });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "IpOrMachine", HeaderText = "Computer", FillWeight = 14, MinimumWidth = D(90) });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Details", HeaderText = "Details", FillWeight = 40, MinimumWidth = D(160) });
             }
+            foreach (DataGridViewColumn c in gridAudit.Columns) c.ToolTipText = c.HeaderText;
         }
 
         private async void LoadAuditLogs()
@@ -273,7 +245,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }).ToList();
 
                 gridAudit.DataSource = filtered;
-                lblCount.Text = $"Audit Records: {filtered.Count} of {rawDataAuditLogs.Count}";
+                lblCount.Text = filtered.Count == rawDataAuditLogs.Count ? $"{filtered.Count} entries" : $"{filtered.Count} of {rawDataAuditLogs.Count} entries";
+                header.Title.Text = $"Audit logs · data changes ({rawDataAuditLogs.Count})";
             }
             else
             {
@@ -291,7 +264,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }).ToList();
 
                 gridAudit.DataSource = filtered;
-                lblCount.Text = $"Security Logs: {filtered.Count} of {rawLoginLogs.Count}";
+                lblCount.Text = filtered.Count == rawLoginLogs.Count ? $"{filtered.Count} entries" : $"{filtered.Count} of {rawLoginLogs.Count} entries";
+                header.Title.Text = $"Audit logs · sign-ins ({rawLoginLogs.Count})";
             }
         }
     }

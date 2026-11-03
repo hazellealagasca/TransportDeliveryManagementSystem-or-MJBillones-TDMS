@@ -640,7 +640,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             try
             {
-                string? reason = CancellationReasonDialog.PromptCancellationReason(this.FindForm() ?? (IWin32Window)this, "Loading Order", ls.ScheduleNumber);
+                string? reason = CancellationReasonDialog.PromptCancellationReason(this.FindForm() ?? (IWin32Window)this, "Loading Order", ls.ScheduleNumber, ls.ClientName);
                 if (string.IsNullOrEmpty(reason)) return;
                 ls.Status = "Cancelled";
                 ls.CancellationReason = reason;

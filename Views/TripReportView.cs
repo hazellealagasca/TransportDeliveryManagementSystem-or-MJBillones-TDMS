@@ -63,7 +63,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var btnPrintOfficialTrip = new Button
             {
-                Text = "📋 Official Trip Report",
+                Text = "📋 Official trip report",
                 Size = new Size(165, 30),
                 BackColor = Pal.C(30, 58, 138),
                 ForeColor = Pal.White,
@@ -77,9 +77,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridActionsFlow.Controls.Add(btnPrintOfficialTrip);
 
             var menuActions = new ContextMenuStrip();
-            menuActions.Items.Add("📋 Print Official Trip Report", null, (s, e) => PrintSelectedTripReport());
-            menuActions.Items.Add("📊 Export Trip Documentation to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridTripReports, "Trip_Reports", "Completed Trip Reports"));
-            menuActions.Items.Add("🖨️ Print Trip Reports Register", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
+            menuActions.Items.Add("📋 Print official trip report", null, (s, e) => PrintSelectedTripReport());
+            menuActions.Items.Add("📊 Export trip documentation to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridTripReports, "Trip_Reports", "Completed Trip Reports"));
+            menuActions.Items.Add("🖨️ Print trip reports register", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
 
@@ -383,7 +383,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string refNum = $"RCS VILLASIS{d.DispatchDate:MMddyy}-{d.Id:D3}";
                 if (lblDispatchInfoBanner != null)
                 {
-                    lblDispatchInfoBanner.Text = $"📄 REF: {refNum}   |   🛣️ ROUTE: {routeTitle}   |   📅 DATE: {d.DispatchDate:dd/MM/yyyy} (STD ETD: {d.DepartureTime})" + Environment.NewLine + $"🚚 TRUCK: {d.TruckInfo}   |   👤 DRIVER: {d.DriverName}   |   🤝 HELPER: {d.AideDisplay}";
+                    lblDispatchInfoBanner.Text = $"📄 Ref: {refNum}   ·   🛣️ Route: {routeTitle}   ·   📅 Date: {d.DispatchDate:dd/MM/yyyy} (leaves {d.DepartureTime})" + Environment.NewLine + $"🚚 Truck: {d.TruckInfo}   ·   👤 Driver: {d.DriverName}   ·   🤝 Aides: {d.AideDisplay}";
                 }
                 var incidents = MJdatabase.GetIncidentReports().FindAll(ir => ir.DeliveryId == d.Id);
                 if (incidents.Count > 0)
@@ -391,7 +391,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     string incSummary = string.Join(" | ", incidents.Select(i => $"{i.Cause}: {i.DamagedQuantity} damaged crates (PHP {i.EstimatedCost:N2})"));
                     if (lblDispatchInfoBanner != null)
                     {
-                        lblDispatchInfoBanner.Text += Environment.NewLine + $"⚠️ INCIDENT RECORDED: {incSummary}";
+                        lblDispatchInfoBanner.Text += Environment.NewLine + $"⚠️ Incident recorded: {incSummary}";
                         lblDispatchInfoBanner.BackColor = Pal.C(254, 242, 242);
                         lblDispatchInfoBanner.ForeColor = Pal.C(185, 28, 28);
                     }
@@ -714,7 +714,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (totalDisp > totalDel)
             {
                 int missing = totalDisp - totalDel;
-                btnLogIncident.Text = $"⚠️ LOG INCIDENT ({missing} MISSING CRATES)";
+                btnLogIncident.Text = $"⚠️ Log incident ({missing} missing crates)";
                 btnLogIncident.Visible = Features.On(Features.Incidents);
             }
             else
@@ -744,6 +744,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridTripReports.AutoGenerateColumns = false;
             gridTripReports.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             gridTripReports.ScrollBars = ScrollBars.Both;
+            UIThemeHelper.FitColumnHeaders(gridTripReports, includeCells: true); // full column titles; the table scrolls sideways instead
             gridTripReports.AllowUserToResizeColumns = true;
             gridTripReports.ShowCellToolTips = false;
             gridTripReports.Columns.Clear();

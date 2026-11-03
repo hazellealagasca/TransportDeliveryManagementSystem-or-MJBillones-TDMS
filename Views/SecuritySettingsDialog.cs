@@ -20,6 +20,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public SecuritySettingsDialog(User user)
         {
+            UIThemeHelper.ScaleFixedLayout(this); // fixed 100%-scale layout: grow it to the screen's scaling
             currentUser = user;
             this.Text = "🔒 Account Security & Recovery Settings";
             this.Size = new Size(520, 560);
@@ -189,11 +190,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Cursor = Cursors.Hand
             };
             btnCancel.FlatAppearance.BorderSize = 0;
+            btnCancel.DialogResult = DialogResult.Cancel;
             btnCancel.Click += (s, e) => this.Close();
 
+            this.CancelButton = btnCancel; // Esc closes without saving
             Button btnSave = new Button
             {
-                Text = "Save Security Settings",
+                Text = "Save security settings",
                 Dock = DockStyle.Right,
                 Width = 175,
                 BackColor = Pal.C(37, 99, 235),
@@ -211,6 +214,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             pnlBody.Controls.Add(lblStatus);
             pnlBody.Controls.Add(txtConfirmPassword);
+            // Caption between the two password boxes so they don't read as one block.
+            pnlBody.Controls.Add(new Label { Text = "Confirm new password", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F), ForeColor = Pal.C(71, 85, 105), Padding = new Padding(0, 8, 0, 4) });
             pnlBody.Controls.Add(txtNewPassword);
             pnlBody.Controls.Add(lblPassHeading);
             pnlBody.Controls.Add(txtAnswer);

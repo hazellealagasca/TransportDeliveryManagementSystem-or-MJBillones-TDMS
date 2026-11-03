@@ -39,6 +39,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public RateMatrixView()
         {
             InitializeComponent();
+            PageKit.SummaryUnderTitle(pnlSummary, lblSummary, pnlGridHeaderBar, lblGridHeader); // totals line under the title, not cut off at the bottom
             Pal.RemapTree(this);
             lblDupes = new Label { Dock = DockStyle.Top, AutoSize = false, Height = (int)Math.Round(52 * DeviceDpi / 96f), Visible = false, Padding = new Padding(14, 6, 14, 6), Font = new Font("Segoe UI Semibold", 9F), UseMnemonic = false, TextAlign = ContentAlignment.MiddleLeft };
             gridRates.Parent?.Controls.Add(lblDupes);
@@ -80,8 +81,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnPrint.Visible = false;
             var menuActions = new ContextMenuStrip();
-            menuActions.Items.Add("📊 Export Table to CSV...", null, (s, e) => DataExportHelper.ExportToCsv(gridRates, "Rate_Matrix", "Rate Matrix"));
-            menuActions.Items.Add("🖨 Print Rate Matrix", null, BtnPrint_Click);
+            menuActions.Items.Add("📊 Export table to CSV...", null, (s, e) => DataExportHelper.ExportToCsv(gridRates, "Rate_Matrix", "Rate Matrix"));
+            menuActions.Items.Add("🖨 Print rate matrix", null, BtnPrint_Click);
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
                     InitFullPageForm();
@@ -101,7 +102,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             btnToggleForm = new Button
             {
-                Text = "📝 + New / Form ▾",
+                Text = "📝 + New / form ▾",
                 Size = new Size(150, 30),
                 BackColor = Pal.C(30, 41, 59),
                 ForeColor = Pal.White,
@@ -356,7 +357,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 numRate.Location = new Point(16, 234);
                 btnSave.Location = new Point(16, 280);
                 btnSave.Size = new Size(432, 42);
-                btnSave.Text = "➕ ADD RATE";
+                btnSave.Text = "➕ Add rate";
                 btnUpdate.Location = new Point(16, 330);
                 btnUpdate.Size = new Size(212, 40);
                 btnUpdate.Visible = true;
@@ -430,7 +431,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 btnSave.Text = checkedCount > 1
                     ? $"⚡ APPLY RATE TO ({checkedCount}) DESTINATIONS"
-                    : (checkedCount == 1 ? "➕ ADD RATE (1 DESTINATION)" : "➕ ADD RATE");
+                    : (checkedCount == 1 ? "➕ Add rate (1 destination)" : "➕ Add rate");
             }
         }
 
@@ -711,9 +712,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridRates.DataSource = null;
             gridRates.DataSource = filtered;
             lblGridHeader.Text = string.IsNullOrEmpty(q)
-                ? $"Active Transport Pricing Rates ({allRates.Count})"
-                : $"Active Transport Pricing Rates - Showing {filtered.Count} of {allRates.Count}";
-
+                ? $"Rates ({allRates.Count})"
+                : $"Rates ({filtered.Count} of {allRates.Count})";
             if (filtered.Count > 0)
             {
                 gridRates.ClearSelection();
@@ -827,7 +827,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 FilterGridData();
 
                 ShowDuplicates();
-                lblSummary.Text = $"📊 Total Configured Rates: {allRates.Count:N0}  |  📍 Unique Destinations: {allRates.Select(r => r.Destination).Distinct().Count():N0}";
+                lblSummary.Text = $"{allRates.Count:N0} rate{(allRates.Count == 1 ? "" : "s")}  ·  {allRates.Select(r => r.Destination).Distinct().Count():N0} destination{(allRates.Select(r => r.Destination).Distinct().Count() == 1 ? "" : "s")}";
             }
             catch (Exception ex)
             { ErrLog.Error("RateMatrixView", ex); 

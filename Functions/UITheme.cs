@@ -222,6 +222,146 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// Keeps a window inside the visible part of the screen (above the taskbar), so its bottom buttons such as
         /// Save, Close and Cancel can always be clicked, even on small screens or when the main window isn't maximized.
         /// </summary>
+        /// <summary>
+        /// For windows laid out with fixed pixel sizes written for 100% display scaling: grows every size and position by the
+        /// screen's scaling (fonts already follow it), re-centres the window and keeps it on screen, so nothing is cut off.
+        /// </summary>
+        public static void ScaleFixedLayout(Form form, bool modernHeader = true)
+        {
+            form.AutoScaleMode = AutoScaleMode.None;
+            bool done = false;
+            form.Load += (s, e) =>
+            {
+                if (done) return;
+                done = true;
+                try
+                {
+                    float k = form.DeviceDpi / 96f;
+                    if (k > 1.01f)
+                    {
+                        var min = form.MinimumSize;
+                        form.MinimumSize = Size.Empty;
+                        form.Scale(new SizeF(k, k));
+                        if (!min.IsEmpty) form.MinimumSize = new Size((int)Math.Round(min.Width * k), (int)Math.Round(min.Height * k));
+                        var host = form.Owner ?? (form.StartPosition == FormStartPosition.CenterParent ? Form.ActiveForm : null);
+                        Rectangle area = host != null && host != form && host.WindowState != FormWindowState.Minimized ? host.Bounds : Screen.FromControl(form).WorkingArea;
+                        if (form.StartPosition == FormStartPosition.CenterParent || form.StartPosition == FormStartPosition.CenterScreen)
+                            form.Location = new Point(area.Left + (area.Width - form.Width) / 2, area.Top + (area.Height - form.Height) / 2);
+                    }
+                }
+                catch (Exception ex) { ErrLog.Swallowed(ex); }
+                // Windows placed by position: make sure the window is big enough for everything in it (nothing cut off at the bottom).
+                try
+                {
+                    int pad = (int)Math.Round(14 * form.DeviceDpi / 96f);
+                    var placed = form.Controls.Cast<Control>().Where(c => c.Visible && c.Dock == DockStyle.None).ToList();
+                    if (placed.Count > 0)
+                    {
+                        int needH = placed.Max(c => c.Bottom) + pad, needW = placed.Max(c => c.Right) + pad;
+                        if (needH > form.ClientSize.Height || needW > form.ClientSize.Width)
+                        {
+                            form.MinimumSize = Size.Empty;
+                            form.ClientSize = new Size(Math.Max(form.ClientSize.Width, needW), Math.Max(form.ClientSize.Height, needH));
+                        }
+                    }
+                }
+                catch (Exception ex) { ErrLog.Swallowed(ex); }
+                if (modernHeader) try { ModernizeDialogHeader(form); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+                if (modernHeader) try { PolishDialogFields(form); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+                KeepOnScreen(form);
+            };
+        }
+        /// <summary>
+        /// Older windows have a coloured title band (navy, red, pink, green) that turns into a bright block in dark mode.
+        /// Repaint the band at the top of the window in the app's own header colours: soft surface, main text, muted subtitle, thin line below.
+        /// </summary>
+        /// <summary>
+        /// Field captions stacked straight on top of the box above them read as one block. Give every caption that is docked to the
+        /// top a little room above it, then shrink the window when the stacked fields end well above the buttons (no empty band).
+        /// </summary>
+        public static void PolishDialogFields(Form form)
+        {
+            int D(int v) => (int)Math.Round(v * form.DeviceDpi / 96f);
+            var band = form.Controls.Cast<Control>().Where(c => c.Dock == DockStyle.Top).OrderBy(c => c.Top).FirstOrDefault();
+            void Walk(Control c)
+            {
+                foreach (Control k in c.Controls)
+                {
+                    if (k == band) continue;
+                    if (k is Label l && !(k is LinkLabel) && l.Dock == DockStyle.Top && l.AutoSize && l.Text.Length > 0)
+                    {
+                        // Room above each caption (keeping any room the window already gave it); the label still sizes to its text.
+                        l.Padding = new Padding(l.Padding.Left, Math.Max(l.Padding.Top, D(10)), l.Padding.Right, Math.Max(l.Padding.Bottom, D(4)));
+                    }
+                    else Walk(k);
+                }
+            }
+            Walk(form);
+            form.PerformLayout();
+            // Shrink an oversized window: the fill panel's stacked content ends well before the panel does.
+            var fill = form.Controls.Cast<Control>().FirstOrDefault(c => c.Dock == DockStyle.Fill && c is ScrollableControl);
+            if (fill != null && fill.Controls.Count > 0 && fill.Controls.Cast<Control>().All(c => c.Dock == DockStyle.Top || !c.Visible))
+            {
+                int used = fill.Controls.Cast<Control>().Where(c => c.Visible).Select(c => c.Bottom).DefaultIfEmpty(0).Max() + fill.Padding.Bottom;
+                int spare = fill.ClientSize.Height - used;
+                if (spare > D(40) && fill is ScrollableControl sc && sc.VerticalScroll.Visible == false)
+                {
+                    form.MinimumSize = Size.Empty;
+                    form.Height -= spare - D(8);
+                    var host = form.Owner;
+                    if (host != null && (form.StartPosition == FormStartPosition.CenterParent || form.StartPosition == FormStartPosition.CenterScreen))
+                        form.Top = host.Top + (host.Height - form.Height) / 2;
+                }
+            }
+        }
+        public static void ModernizeDialogHeader(Form form)
+        {
+            var band = form.Controls.Cast<Control>().Where(c => c.Dock == DockStyle.Top && (c is Panel || c is TableLayoutPanel) && c.Visible)
+                .OrderBy(c => c.Top).FirstOrDefault();
+            if (band == null || band.Height > (int)Math.Round(140 * form.DeviceDpi / 96f)) return;
+            if (band.Controls.Cast<Control>().Any(c => c is TextBox || c is ComboBox || c is DataGridView)) return;
+            band.BackColor = AppTheme.SurfaceAlt;
+            var labels = new List<Label>();
+            void Walk(Control c) { foreach (Control k in c.Controls) { if (k is Label l) labels.Add(l); else if (!(k is Button)) { k.BackColor = AppTheme.SurfaceAlt; Walk(k); } } }
+            Walk(band);
+            if (labels.Count == 0) return;
+            float big = labels.Max(l => l.Font.Size);
+            foreach (var l in labels)
+            {
+                l.BackColor = Color.Transparent;
+                l.ForeColor = l.Font.Size >= big - 0.1f ? AppTheme.TextPrimary : AppTheme.TextMuted;
+            }
+            band.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawLine(pen, 0, band.Height - 1, band.Width, band.Height - 1); };
+            band.Invalidate();
+        }
+        /// <summary>
+        /// Never cut a column title off ("Tot…", "De…"): give each column at least the width of its title. Use on tables that
+        /// can scroll sideways; the table then scrolls instead of squeezing the titles.
+        /// </summary>
+        public static void FitColumnHeaders(DataGridView g, bool includeCells = false)
+        {
+            void Fit()
+            {
+                try
+                {
+                    var f = g.ColumnHeadersDefaultCellStyle.Font ?? g.Font;
+                    int pad = (int)Math.Round(30 * g.DeviceDpi / 96f);
+                    int cap = (int)Math.Round(260 * g.DeviceDpi / 96f);
+                    foreach (DataGridViewColumn c in g.Columns)
+                    {
+                        if (!c.Visible || string.IsNullOrEmpty(c.HeaderText)) continue;
+                        int need = Math.Min(cap, TextRenderer.MeasureText(c.HeaderText, f).Width + pad);
+                        if (includeCells && g.Rows.Count > 0) need = Math.Max(need, Math.Min(cap, c.GetPreferredWidth(DataGridViewAutoSizeColumnMode.AllCells, true) + (int)Math.Round(8 * g.DeviceDpi / 96f)));
+                        if (c.MinimumWidth < need) c.MinimumWidth = need;
+                    }
+                }
+                catch (Exception ex) { ErrLog.Swallowed(ex); }
+            }
+            g.DataBindingComplete += (s, e) => Fit();
+            g.ColumnAdded += (s, e) => Fit();
+            g.HandleCreated += (s, e) => Fit();
+            Fit();
+        }
         public static void KeepOnScreen(Form form)
         {
             try

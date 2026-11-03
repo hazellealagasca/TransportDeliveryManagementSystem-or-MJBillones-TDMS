@@ -106,7 +106,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnBackup.ForeColor = System.Drawing.Color.White;
             this.btnBackup.Name = "btnBackup";
             this.btnBackup.TabIndex = 2;
-            this.btnBackup.Text = "💾  CREATE BACKUP SNAPSHOT";
+            this.btnBackup.Text = "💾  Create backup snapshot";
             this.btnBackup.UseVisualStyleBackColor = false;
             this.btnBackup.Click += new System.EventHandler(this.BtnBackup_Click);
 
@@ -150,7 +150,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnRestore.ForeColor = System.Drawing.Color.White;
             this.btnRestore.Name = "btnRestore";
             this.btnRestore.TabIndex = 2;
-            this.btnRestore.Text = "🔄  RESTORE FROM BACKUP FILE";
+            this.btnRestore.Text = "🔄  Restore from backup file";
             this.btnRestore.UseVisualStyleBackColor = false;
             this.btnRestore.Click += new System.EventHandler(this.BtnRestore_Click);
 

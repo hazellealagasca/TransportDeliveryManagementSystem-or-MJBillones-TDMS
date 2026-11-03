@@ -668,7 +668,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnSave.Name = "btnSave";
             btnSave.Size = new Size(196, 32);
             btnSave.TabIndex = 0;
-            btnSave.Text = "💾 SAVE DISPATCH";
+            btnSave.Text = "💾 Save dispatch";
             btnSave.UseVisualStyleBackColor = false;
             btnSave.Click += BtnSave_Click;
 
@@ -684,7 +684,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnUpdate.Name = "btnUpdate";
             btnUpdate.Size = new Size(196, 32);
             btnUpdate.TabIndex = 1;
-            btnUpdate.Text = "✏️ UPDATE DISPATCH";
+            btnUpdate.Text = "✏️ Update dispatch";
             btnUpdate.UseVisualStyleBackColor = false;
             btnUpdate.Click += BtnUpdate_Click;
 
@@ -701,7 +701,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnReschedule.Name = "btnReschedule";
             btnReschedule.Size = new Size(398, 28);
             btnReschedule.TabIndex = 2;
-            btnReschedule.Text = "📅 RESCHEDULE DISPATCH";
+            btnReschedule.Text = "📅 Reschedule dispatch";
             btnReschedule.UseVisualStyleBackColor = false;
             btnReschedule.Click += BtnReschedule_Click;
             btnReschedule.Visible = false;
@@ -719,7 +719,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnClear.Name = "btnClear";
             btnClear.Size = new Size(398, 28);
             btnClear.TabIndex = 3;
-            btnClear.Text = "\U0001f9f9 CLEAR FORM";
+            btnClear.Text = "\U0001f9f9 Clear form";
             btnClear.UseVisualStyleBackColor = false;
             btnClear.Click += BtnClear_Click;
 
@@ -869,7 +869,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnPrint.Name = "btnPrint";
             btnPrint.Size = new Size(160, 30);
             btnPrint.TabIndex = 2;
-            btnPrint.Text = "🖨️ Print Report";
+            btnPrint.Text = "🖨️ Print report";
             btnPrint.UseVisualStyleBackColor = false;
             btnPrint.Click += BtnPrint_Click;
 

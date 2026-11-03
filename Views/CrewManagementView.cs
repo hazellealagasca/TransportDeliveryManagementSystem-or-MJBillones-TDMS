@@ -83,8 +83,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnPrint.Visible = false;
             var menuActions = new ContextMenuStrip();
-            menuActions.Items.Add("📊 Export Table to CSV...", null, (s, e) => DataExportHelper.ExportToCsv(gridCrew, "Crew_Personnel", "Crew Personnel"));
-            menuActions.Items.Add("🖨️ Print Personnel Roster", null, BtnPrint_Click);
+            menuActions.Items.Add("📊 Export table to CSV...", null, (s, e) => DataExportHelper.ExportToCsv(gridCrew, "Crew_Personnel", "Crew Personnel"));
+            menuActions.Items.Add("🖨️ Print personnel roster", null, BtnPrint_Click);
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
                     InitFullPageForm();
@@ -107,7 +107,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             btnToggleForm = new Button
             {
-                Text = "📝 + New / Form ▾",
+                Text = "📝 + New / form ▾",
                 Size = new Size(150, 30),
                 BackColor = Pal.C(30, 41, 59),
                 ForeColor = Pal.White,

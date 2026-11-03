@@ -71,6 +71,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             parent.Controls.Add(newTop);
             parent.Controls.SetChildIndex(newTop, parent.Controls.Count - 1);
         }
+        /// <summary>
+        /// Older list pages put a "Total … | …" bar at the very bottom of the table, where it gets cut off and looks old.
+        /// Move it right under the table's title as one muted line (the screen keeps updating the same label).
+        /// </summary>
+        public static void SummaryUnderTitle(Control summaryPanel, Label summaryLabel, Control headerBar, Label title)
+        {
+            summaryPanel.Parent?.Controls.Remove(summaryPanel);
+            summaryPanel.Dock = DockStyle.Top;
+            summaryPanel.BackColor = Color.Transparent;
+            summaryPanel.Padding = new Padding(1, 0, 0, D(headerBar, 8));
+            summaryLabel.Dock = DockStyle.Fill;
+            summaryLabel.AutoSize = false;
+            summaryLabel.Font = new Font("Segoe UI", 9.5F);
+            summaryLabel.ForeColor = AppTheme.TextMuted;
+            summaryLabel.BackColor = Color.Transparent;
+            summaryLabel.TextAlign = ContentAlignment.MiddleLeft;
+            summaryLabel.UseMnemonic = false;
+            summaryPanel.Height = TextRenderer.MeasureText("Ag", summaryLabel.Font).Height + D(headerBar, 8);
+            headerBar.Controls.Add(summaryPanel);
+            // Docking order: the title (highest index) docks first, then this line, then the rest of the bar.
+            headerBar.Controls.SetChildIndex(summaryPanel, Math.Max(0, headerBar.Controls.GetChildIndex(title)));
+            title.Padding = new Padding(title.Padding.Left, title.Padding.Top, title.Padding.Right, D(headerBar, 2));
+        }
         /// <summary>A transparent spacer of a given height, docked top.</summary>
         public static Panel Gap(Control c, int height) => new Panel { Dock = DockStyle.Top, Height = D(c, height), BackColor = Color.Transparent };
     }

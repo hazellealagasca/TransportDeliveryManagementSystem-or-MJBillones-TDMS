@@ -140,7 +140,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnPrintOfficial = new Button
             {
-                Text = "🖨️ Print Official SOA",
+                Text = "🖨️ Print official SOA",
                 Size = new Size(160, 32),
                 BackColor = Pal.C(30, 58, 138),
                 ForeColor = Pal.White,
@@ -170,7 +170,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnViewInvoice = new Button
             {
-                Text = "🧾 View Linked Invoice",
+                Text = "🧾 View linked invoice",
                 Size = new Size(160, 32),
                 BackColor = Pal.C(241, 245, 249),
                 ForeColor = Pal.C(51, 65, 85),
@@ -183,22 +183,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnViewInvoice.Click += (s, e) => OpenLinkedInvoice();
             pnlGridActionsFlow.Controls.Add(btnViewInvoice);
 
-            var lblSearch = new Label { Text = "Search:", AutoSize = true, Margin = new Padding(8, 7, 4, 0), Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold) };
-            txtGridSearch = new TextBox { Width = 150, Margin = new Padding(0, 4, 12, 0) };
+            txtGridSearch = new TextBox { Width = Dpi(240), Margin = new Padding(Dpi(8), Dpi(3), Dpi(8), 0) };
+            PageKit.StyleSearch(txtGridSearch, "🔍 Search statement #, client…");
             txtGridSearch.TextChanged += (s, e) => FilterGridData();
 
-            var lblFilter = new Label { Text = "Client:", AutoSize = true, Margin = new Padding(0, 7, 4, 0), Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold) };
-            cbFilterClient = new ComboBox { Width = 170, DropDownStyle = ComboBoxStyle.DropDownList, Margin = new Padding(0, 4, 0, 0) };
+            cbFilterClient = new ComboBox { Width = Dpi(200), DropDownStyle = ComboBoxStyle.DropDownList, Margin = new Padding(0, Dpi(3), 0, 0) };
+            PageKit.StyleCombo(cbFilterClient);
             cbFilterClient.SelectedIndexChanged += (s, e) => FilterGridData();
 
-            pnlGridActionsFlow.Controls.Add(lblSearch);
+            new ToolTip().SetToolTip(cbFilterClient, "Show only one client's statements");
             pnlGridActionsFlow.Controls.Add(txtGridSearch);
-            pnlGridActionsFlow.Controls.Add(lblFilter);
             pnlGridActionsFlow.Controls.Add(cbFilterClient);
 
             pnlTopBar.Controls.Add(pnlGridActionsFlow);
             this.Controls.Add(pnlTopBar);
 
+            // Page title like the other list pages (Trucks, Crew, Order History).
+            var soaHeader = PageKit.Header("Statements of Account", "Statements sent to clients for a period of deliveries. Print the official SOA, export the list, or open the invoice it is linked to.");
+            var soaHeaderHost = new Panel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(Dpi(16), Dpi(14), Dpi(16), Dpi(6)), BackColor = Color.Transparent };
+            soaHeaderHost.Controls.Add(soaHeader);
+            this.Controls.Add(soaHeaderHost);
             tblMasterContent = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -748,7 +752,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DeliveryType", HeaderText = "Type", FillWeight = 50, MinimumWidth = 40, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter } });
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TotalSalesVatInc", HeaderText = "Gross Sales", FillWeight = 95, MinimumWidth = 80, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleRight, Format = "N2" } });
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TotalAmount", HeaderText = "Total Due (PHP)", FillWeight = 105, MinimumWidth = 85, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleRight, Format = "N2", Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold) } });
-            gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "SalesInvoiceNo", HeaderText = "SI NO.", FillWeight = 80, MinimumWidth = 65, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter, Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold) } });
+            gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "SalesInvoiceNo", HeaderText = "SI no.", FillWeight = 80, MinimumWidth = 65, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter, Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold) } });
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 75, MinimumWidth = 60, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter } });
         }
 
@@ -945,8 +949,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             cbClient.Items.Clear();
             cbFilterClient.Items.Clear();
-            cbFilterClient.Items.Add("All Clients");
-
+            cbFilterClient.Items.Add("All clients");
             foreach (var cl in clientSet.OrderBy(x => x))
             {
                 cbClient.Items.Add(cl);
@@ -998,11 +1001,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void FilterGridData()
         {
             string q = txtGridSearch?.Text.Trim().ToLower() ?? "";
-            string filterClient = cbFilterClient?.SelectedItem?.ToString() ?? "All Clients";
-
+            string filterClient = cbFilterClient?.SelectedItem?.ToString() ?? "All clients";
             var filtered = allSoas.Where(soa =>
             {
-                if (filterClient != "All Clients" && !soa.ClientName.Equals(filterClient, StringComparison.OrdinalIgnoreCase)) return false;
+                if (filterClient != "All clients" && !soa.ClientName.Equals(filterClient, StringComparison.OrdinalIgnoreCase)) return false;
                 if (!string.IsNullOrEmpty(q))
                 {
                     bool match = (soa.SoaNumber?.ToLower().Contains(q) ?? false) ||

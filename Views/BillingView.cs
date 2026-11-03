@@ -47,6 +47,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public BillingView()
         {
             InitializeComponent();
+            PageKit.SummaryUnderTitle(pnlSummary, lblSummary, pnlGridHeaderBar, lblGridHeader); // totals line under the title, not cut off at the bottom
             Pal.RemapTree(this);
             gridInvoices.BringToFront();
             SetupGridColumns();
@@ -66,9 +67,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnPrint.Visible = false;
 
             var menuActions = new ContextMenuStrip();
-            menuActions.Items.Add("🧾 Generate Statement of Account (SOA)", null, (s, e) => btnGenerateSoa.PerformClick());
-            menuActions.Items.Add("📊 Export Invoices to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridInvoices, "Billing_Invoices", "Invoices and Accounts Receivable"));
-            menuActions.Items.Add("🖨️ Print Invoice Register", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
+            menuActions.Items.Add("🧾 Generate statement of account (SOA)", null, (s, e) => BtnGenerateSoa_Click(this, EventArgs.Empty));
+            menuActions.Items.Add("📊 Export invoices to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridInvoices, "Billing_Invoices", "Invoices and Accounts Receivable"));
+            menuActions.Items.Add("🖨️ Print invoice register", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
 
@@ -102,7 +103,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             btnToggleForm = new Button
             {
-                Text = "📝 + New / Form ▾",
+                Text = "📝 + New / form ▾",
                 Size = new Size(150, 30),
                 BackColor = Pal.C(30, 41, 59),
                 ForeColor = Pal.White,
@@ -478,7 +479,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int paid = allInvoices.Count(i => i.Status == "Paid");
                 decimal totalNet = allInvoices.Sum(i => i.NetAmount);
 
-                lblSummary.Text = $"📊 Total Invoices: {allInvoices.Count:N0}  |  ⏳ Unpaid: {unpaid}  |  🟡 Partial: {partial}  |  🚨 Overdue: {overdue}  |  🟢 Paid: {paid}  |  💰 Total Billed: PHP {totalNet:N2}";
+                lblSummary.Text = $"{allInvoices.Count:N0} invoice{(allInvoices.Count == 1 ? "" : "s")}  ·  {unpaid} unpaid  ·  {partial} partly paid  ·  {overdue} overdue  ·  {paid} paid  ·  ₱{totalNet:N2} billed";
             }
             catch (Exception ex)
             { ErrLog.Error("BillingView", ex); 
@@ -737,9 +738,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridInvoices.DataSource = null;
             gridInvoices.DataSource = filtered;
             lblGridHeader.Text = string.IsNullOrEmpty(q) && filtered.Count == allInvoices.Count
-                ? $"Active Issued Invoices ({allInvoices.Count})"
-                : $"Active Issued Invoices ({filtered.Count} of {allInvoices.Count})";
-
+                ? $"Invoices ({allInvoices.Count})"
+                : $"Invoices ({filtered.Count} of {allInvoices.Count})";
             if (filtered.Count > 0)
             {
                 gridInvoices.ClearSelection();

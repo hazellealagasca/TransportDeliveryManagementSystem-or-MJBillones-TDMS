@@ -308,7 +308,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnAdd = new Button
             {
-                Text = "+ ADD NEW",
+                Text = "+ Add new",
                 Size = new Size(115, 32),
                 Margin = new Padding(0, 0, 6, 0),
                 BackColor = Pal.C(37, 99, 235),
@@ -322,7 +322,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnUpdate = new Button
             {
-                Text = "UPDATE",
+                Text = "Update",
                 Size = new Size(95, 32),
                 Margin = new Padding(0, 0, 6, 0),
                 BackColor = Pal.C(22, 163, 74),
@@ -336,7 +336,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnDelete = new Button
             {
-                Text = "DELETE",
+                Text = "Delete",
                 Size = new Size(90, 32),
                 Margin = new Padding(0, 0, 6, 0),
                 BackColor = Pal.C(220, 38, 38),
@@ -350,7 +350,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnClear = new Button
             {
-                Text = "CLEAR",
+                Text = "Clear",
                 Size = new Size(80, 32),
                 Margin = new Padding(0),
                 BackColor = Pal.C(241, 245, 249),
@@ -482,7 +482,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnToggleForm = new Button
             {
-                Text = "📝 + New / Form ▾",
+                Text = "📝 + New / form ▾",
                 Size = new Size(140, 30),
                 BackColor = Pal.C(30, 41, 59),
                 ForeColor = Pal.White,
@@ -636,7 +636,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnNewRoute = new Button
             {
-                Text = "+ New Route",
+                Text = "+ New route",
                 Dock = DockStyle.Fill,
                 BackColor = Pal.C(37, 99, 235),
                 ForeColor = Pal.White,
@@ -726,7 +726,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnAddStoreStop = new Button
             {
-                Text = "+ Add Stop",
+                Text = "+ Add stop",
                 Dock = DockStyle.Fill,
                 BackColor = Pal.C(37, 99, 235),
                 ForeColor = Pal.White,
@@ -779,7 +779,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnMoveStoreUp = new Button
             {
-                Text = "⬆️ Move Up",
+                Text = "⬆️ Move up",
                 Size = new Size(88, 28),
                 Margin = new Padding(0, 0, 6, 4),
                 BackColor = Pal.C(241, 245, 249),
@@ -794,7 +794,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnMoveStoreDown = new Button
             {
-                Text = "⬇️ Move Down",
+                Text = "⬇️ Move down",
                 Size = new Size(100, 28),
                 Margin = new Padding(0, 0, 6, 4),
                 BackColor = Pal.C(241, 245, 249),
@@ -824,7 +824,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnClearStores = new Button
             {
-                Text = "🧹 Clear Stops",
+                Text = "🧹 Clear stops",
                 Size = new Size(95, 28),
                 Margin = new Padding(0, 0, 0, 4),
                 BackColor = Pal.C(241, 245, 249),
@@ -853,7 +853,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnSaveRoute = new Button
             {
-                Text = "💾 Save Route & Stores",
+                Text = "💾 Save route & stores",
                 Size = new Size(160, 30),
                 Margin = new Padding(0, 0, 6, 0),
                 BackColor = Pal.C(22, 163, 74),
@@ -867,7 +867,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnDeleteRoute = new Button
             {
-                Text = "🗑️ Delete Route",
+                Text = "🗑️ Delete route",
                 Size = new Size(110, 30),
                 Margin = new Padding(0),
                 BackColor = Pal.C(220, 38, 38),
@@ -912,14 +912,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (isClient)
             {
                 lblVal.Text = "Client Company Name *:";
-                btnAdd.Text = "+ ADD CLIENT";
-                btnUpdate.Text = "UPDATE CLIENT";
+                btnAdd.Text = "+ Add client";
+                btnUpdate.Text = "Update client";
                 btnUpdate.Visible = true;
             }
             else
             {
                 lblVal.Text = $"{selectedCategory} Name *:";
-                btnAdd.Text = "+ ADD ENTRY";
+                btnAdd.Text = "+ Add entry";
                 btnUpdate.Visible = false;
             }
 

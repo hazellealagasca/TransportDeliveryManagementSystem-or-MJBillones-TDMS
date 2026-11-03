@@ -140,7 +140,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.chkMultiDest.Name = "chkMultiDest";
             this.chkMultiDest.Size = new System.Drawing.Size(225, 19);
             this.chkMultiDest.TabIndex = 2;
-            this.chkMultiDest.Text = "⚡ Apply to Multiple Destinations";
+            this.chkMultiDest.Text = "⚡ Apply to multiple destinations";
             this.chkMultiDest.UseVisualStyleBackColor = true;
 
             this.cbDestination.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
@@ -178,8 +178,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lnkSelectAllDest.Name = "lnkSelectAllDest";
             this.lnkSelectAllDest.Size = new System.Drawing.Size(55, 15);
             this.lnkSelectAllDest.TabIndex = 0;
-            this.lnkSelectAllDest.Text = "Select All";
-
+            this.lnkSelectAllDest.Text = "Select all";
             this.lnkClearAllDest.AutoSize = true;
             this.lnkClearAllDest.Font = new System.Drawing.Font("Segoe UI Semibold", 8.5F, System.Drawing.FontStyle.Bold);
             this.lnkClearAllDest.LinkColor = System.Drawing.Color.FromArgb(100, 116, 139);
@@ -187,8 +186,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lnkClearAllDest.Name = "lnkClearAllDest";
             this.lnkClearAllDest.Size = new System.Drawing.Size(51, 15);
             this.lnkClearAllDest.TabIndex = 1;
-            this.lnkClearAllDest.Text = "Clear All";
-
+            this.lnkClearAllDest.Text = "Clear all";
             this.lblMultiCount.AutoSize = true;
             this.lblMultiCount.Font = new System.Drawing.Font("Segoe UI Semibold", 8.5F, System.Drawing.FontStyle.Bold);
             this.lblMultiCount.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
@@ -323,7 +321,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(448, 42);
             this.btnSave.TabIndex = 10;
-            this.btnSave.Text = "➕ ADD RATE";
+            this.btnSave.Text = "➕ Add rate";
             this.btnSave.UseVisualStyleBackColor = false;
             this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
 
@@ -339,7 +337,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnUpdate.Name = "btnUpdate";
             this.btnUpdate.Size = new System.Drawing.Size(220, 40);
             this.btnUpdate.TabIndex = 11;
-            this.btnUpdate.Text = "✏️ UPDATE";
+            this.btnUpdate.Text = "✏️ Update";
             this.btnUpdate.UseVisualStyleBackColor = false;
             this.btnUpdate.Click += new System.EventHandler(this.BtnUpdate_Click);
 
@@ -355,7 +353,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnDelete.Name = "btnDelete";
             this.btnDelete.Size = new System.Drawing.Size(220, 40);
             this.btnDelete.TabIndex = 12;
-            this.btnDelete.Text = "🗑️ DELETE";
+            this.btnDelete.Text = "🗑️ Delete";
             this.btnDelete.UseVisualStyleBackColor = false;
             this.btnDelete.Click += new System.EventHandler(this.BtnDelete_Click);
 
@@ -370,7 +368,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnClear.Name = "btnClear";
             this.btnClear.Size = new System.Drawing.Size(448, 36);
             this.btnClear.TabIndex = 13;
-            this.btnClear.Text = "🧹 CLEAR";
+            this.btnClear.Text = "🧹 Clear";
             this.btnClear.UseVisualStyleBackColor = false;
             this.btnClear.Click += new System.EventHandler(this.BtnClear_Click);
 
@@ -496,7 +494,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnPrint.Name = "btnPrint";
             this.btnPrint.Size = new System.Drawing.Size(170, 28);
             this.btnPrint.TabIndex = 2;
-            this.btnPrint.Text = "🖨️ Print Report";
+            this.btnPrint.Text = "🖨️ Print report";
             this.btnPrint.UseVisualStyleBackColor = false;
             this.btnPrint.Click += new System.EventHandler(this.BtnPrint_Click);
 

@@ -162,7 +162,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnRemovePhoto.Name = "btnRemovePhoto";
             btnRemovePhoto.Size = new Size(276, 34);
             btnRemovePhoto.TabIndex = 2;
-            btnRemovePhoto.Text = "🗑 Remove Photo";
+            btnRemovePhoto.Text = "🗑 Remove photo";
             btnRemovePhoto.UseVisualStyleBackColor = true;
             btnRemovePhoto.Click += BtnRemovePhoto_Click;
             btnViewPhoto.Dock = DockStyle.Top;
@@ -172,7 +172,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnViewPhoto.Name = "btnViewPhoto";
             btnViewPhoto.Size = new Size(276, 34);
             btnViewPhoto.TabIndex = 1;
-            btnViewPhoto.Text = "🔍 View Full Photo";
+            btnViewPhoto.Text = "🔍 View full photo";
             btnViewPhoto.UseVisualStyleBackColor = true;
             btnViewPhoto.Click += BtnViewPhoto_Click;
             btnUploadPhoto.Dock = DockStyle.Top;
@@ -182,7 +182,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnUploadPhoto.Name = "btnUploadPhoto";
             btnUploadPhoto.Size = new Size(276, 34);
             btnUploadPhoto.TabIndex = 0;
-            btnUploadPhoto.Text = "📁 Upload Photo...";
+            btnUploadPhoto.Text = "📁 Upload photo...";
             btnUploadPhoto.UseVisualStyleBackColor = true;
             btnUploadPhoto.Click += BtnUploadPhoto_Click;
             lblPhoto.AutoSize = true;
@@ -388,7 +388,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnClear.Name = "btnClear";
             btnClear.Size = new Size(374, 28);
             btnClear.TabIndex = 1;
-            btnClear.Text = "\U0001f9f9 CLEAR FORM";
+            btnClear.Text = "\U0001f9f9 Clear form";
             btnClear.UseVisualStyleBackColor = false;
             btnClear.Click += BtnClear_Click;
             tblUpdateDelete.ColumnCount = 2;
@@ -416,7 +416,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnSave.Name = "btnSave";
             btnSave.Size = new Size(184, 32);
             btnSave.TabIndex = 0;
-            btnSave.Text = "💾 ADD PERSONNEL";
+            btnSave.Text = "💾 Add personnel";
             btnSave.UseVisualStyleBackColor = false;
             btnSave.Click += BtnSave_Click;
             btnUpdate.BackColor = Color.FromArgb(25, 135, 84);
@@ -431,7 +431,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnUpdate.Name = "btnUpdate";
             btnUpdate.Size = new Size(184, 32);
             btnUpdate.TabIndex = 1;
-            btnUpdate.Text = "✏️ UPDATE PERSONNEL";
+            btnUpdate.Text = "✏️ Update personnel";
             btnUpdate.UseVisualStyleBackColor = false;
             btnUpdate.Click += BtnUpdate_Click;
             pnlFormHeaderBar.BackColor = Color.FromArgb(248, 250, 252);
@@ -536,7 +536,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnPrint.Name = "btnPrint";
             btnPrint.Size = new Size(160, 28);
             btnPrint.TabIndex = 2;
-            btnPrint.Text = "🖨️ Print Roster";
+            btnPrint.Text = "🖨️ Print roster";
             btnPrint.UseVisualStyleBackColor = false;
             btnPrint.Click += BtnPrint_Click;
             lblGridHeader.AutoSize = true;

@@ -28,6 +28,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public IncidentReportView()
         {
             InitializeComponent();
+            PageKit.SummaryUnderTitle(pnlSummary, lblSummary, pnlGridHeaderBar, lblGridHeader); // totals line under the title, not cut off at the bottom
             Pal.RemapTree(this);
             gridIncidents.BringToFront();
             try { ProfileKit.Suggest(txtCause, "incident"); ProfileKit.Suggest(txtDescription, "incident-notes"); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
@@ -75,15 +76,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnPrint.Visible = false;
 
             var menuActions = new ContextMenuStrip();
-            menuActions.Items.Add("📊 Export Incident Logs to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridIncidents, "Incident_Reports", "Goods Damage and Incident Reports"));
-            menuActions.Items.Add("🖨️ Print Incident Investigation Report", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
+            menuActions.Items.Add("📊 Export incident logs to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridIncidents, "Incident_Reports", "Goods Damage and Incident Reports"));
+            menuActions.Items.Add("🖨️ Print incident investigation report", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
-            menuActions.Items.Add("🖨️ Print End-to-End Delivery Dossier", null, (s, e) => PrintSelectedDeliveryDossier());
+            menuActions.Items.Add("🖨️ Print end-to-end delivery dossier", null, (s, e) => PrintSelectedDeliveryDossier());
             pnlGridActionsFlow.Controls.Add(btnActions);
 
             var btnProceedTrip = new Button
             {
-                Text = "Proceed to Trip Reports ➔",
+                Text = "Proceed to trip reports ➔",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Size = new Size(190, 28),
                 BackColor = Pal.C(15, 23, 42),
@@ -128,7 +129,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             btnToggleForm = new Button
             {
-                Text = "📝 + New / Form ▾",
+                Text = "📝 + New / form ▾",
                 Size = new Size(150, 30),
                 BackColor = Pal.C(30, 41, 59),
                 ForeColor = Pal.White,
@@ -345,8 +346,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 int totalDamaged = allIncidents.Sum(i => i.DamagedQuantity);
                 decimal totalCost = allIncidents.Sum(i => i.EstimatedCost);
-                lblSummary.Text = $"📊 Total Incident Reports: {allIncidents.Count:N0}  |  📦 Total Damaged: {totalDamaged:N0} Units  |  ⚠️ Estimated Loss: PHP {totalCost:N2}";
-
+                lblSummary.Text = $"{allIncidents.Count:N0} report{(allIncidents.Count == 1 ? "" : "s")}  ·  {totalDamaged:N0} crates damaged or missing  ·  ₱{totalCost:N2} estimated loss";
                 ClearForm();
                 CheckAndPromptDraft();
             }
@@ -612,9 +612,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridIncidents.DataSource = null;
             gridIncidents.DataSource = filtered;
             lblGridHeader.Text = string.IsNullOrEmpty(q)
-                ? $"Active Incident & Damage Logs ({allIncidents.Count})"
-                : $"Active Incident & Damage Logs ({filtered.Count} of {allIncidents.Count})";
-
+                ? $"Incidents ({allIncidents.Count})"
+                : $"Incidents ({filtered.Count} of {allIncidents.Count})";
             if (pnlForm.Visible)
             {
                 // The form is open (new or edit): leave what is being typed alone.

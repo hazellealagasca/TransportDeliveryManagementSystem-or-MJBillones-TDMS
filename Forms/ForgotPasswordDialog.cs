@@ -21,6 +21,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public ForgotPasswordDialog(string initialUsername = "")
         {
+            UIThemeHelper.ScaleFixedLayout(this); // fixed 100%-scale layout: grow it to the screen's scaling
             this.Text = "🔑 Password Recovery & Account Reset";
             this.Size = new Size(480, 520);
             this.StartPosition = FormStartPosition.CenterParent;
@@ -98,7 +99,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnFindUser = new Button
             {
-                Text = "Verify User",
+                Text = "Verify user",
                 Dock = DockStyle.Fill,
                 BackColor = Pal.C(37, 99, 235),
                 ForeColor = Pal.White,
@@ -204,7 +205,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnResetPassword = new Button
             {
-                Text = "RESET PASSWORD",
+                Text = "Reset password",
                 Dock = DockStyle.Top,
                 Height = 38,
                 BackColor = Pal.C(185, 28, 28),

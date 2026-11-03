@@ -178,7 +178,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnPrintPaySlip.Name = "btnPrintPaySlip";
             this.btnPrintPaySlip.Size = new System.Drawing.Size(150, 32);
             this.btnPrintPaySlip.TabIndex = 8;
-            this.btnPrintPaySlip.Text = "📄 Print Pay Slip";
+            this.btnPrintPaySlip.Text = "📄 Print pay slip";
             this.btnPrintPaySlip.UseVisualStyleBackColor = false;
             this.btnPrintPaySlip.Click += new System.EventHandler(this.BtnPrintPaySlip_Click);
 
@@ -192,7 +192,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnPrint.Name = "btnPrint";
             this.btnPrint.Size = new System.Drawing.Size(140, 32);
             this.btnPrint.TabIndex = 6;
-            this.btnPrint.Text = "🖨️ Print Report";
+            this.btnPrint.Text = "🖨️ Print report";
             this.btnPrint.UseVisualStyleBackColor = false;
             this.btnPrint.Click += new System.EventHandler(this.BtnPrint_Click);
 

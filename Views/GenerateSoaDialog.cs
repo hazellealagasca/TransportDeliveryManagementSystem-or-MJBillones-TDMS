@@ -26,6 +26,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public GenerateSoaDialog()
         {
+            UIThemeHelper.ScaleFixedLayout(this); // fixed 100%-scale layout: grow it to the screen's scaling
             InitializeComponent();
             LoadClients();
             LoadInvoices();
@@ -33,7 +34,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void InitializeComponent()
         {
-            this.Text = "Statement of Account (SOA) Generator - M.J. Billones Transport Service";
+            this.Text = "Generate statement of account (SOA)";
             this.Size = new Size(980, 700);
             this.MinimumSize = new Size(860, 600);
             this.StartPosition = FormStartPosition.CenterParent;
@@ -53,7 +54,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblTitle = new Label
             {
-                Text = "STATEMENT OF ACCOUNT (SOA) BATCHING & BILLING",
+                Text = "Statement of Account (SOA): batch & bill",
                 Font = new Font("Segoe UI", 12F, FontStyle.Bold),
                 ForeColor = Pal.White,
                 Dock = DockStyle.Top,
@@ -86,45 +87,42 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 BackColor = Pal.White,
                 BorderStyle = BorderStyle.FixedSingle,
-                Padding = new Padding(14, 10, 14, 10),
-                Margin = new Padding(0, 0, 0, 12)
+                Padding = new Padding(14, 10, 14, 10)
             };
 
             FlowLayoutPanel flowFilters = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
                 Margin = new Padding(0)
             };
 
-            Panel pnlClientBlock = new Panel { AutoSize = true, Margin = new Padding(0, 0, 16, 4) };
-            Label lblClient = new Label { Text = "Client Company:", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold) };
-            cbClient = new ComboBox { Dock = DockStyle.Top, Width = 260, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9F) };
+            // Each filter is a small caption-over-field block that sizes itself.
+            TableLayoutPanel Field(string caption, Control input)
+            {
+                var t = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 1, RowCount = 2, Margin = new Padding(0, 0, 16, 4) };
+                t.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                t.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                t.Controls.Add(new Label { Text = caption, AutoSize = true, Margin = new Padding(0, 0, 0, 4), Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold) }, 0, 0);
+                input.Margin = new Padding(0);
+                t.Controls.Add(input, 0, 1);
+                return t;
+            }
+            cbClient = new ComboBox { Width = 280, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9F) };
             cbClient.SelectedIndexChanged += (s, e) => FilterInvoices();
-            pnlClientBlock.Controls.Add(cbClient);
-            pnlClientBlock.Controls.Add(lblClient);
-
-            Panel pnlStartBlock = new Panel { AutoSize = true, Margin = new Padding(0, 0, 12, 4) };
-            Label lblFrom = new Label { Text = "Period From:", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold) };
-            dtpStart = new DateTimePicker { Dock = DockStyle.Top, Width = 130, Format = DateTimePickerFormat.Short, Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1) };
+            dtpStart = new DateTimePicker { Width = 140, Format = DateTimePickerFormat.Short, Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1) };
             dtpStart.ValueChanged += (s, e) => FilterInvoices();
-            pnlStartBlock.Controls.Add(dtpStart);
-            pnlStartBlock.Controls.Add(lblFrom);
-
-            Panel pnlEndBlock = new Panel { AutoSize = true, Margin = new Padding(0, 0, 16, 4) };
-            Label lblTo = new Label { Text = "Period To:", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold) };
-            dtpEnd = new DateTimePicker { Dock = DockStyle.Top, Width = 130, Format = DateTimePickerFormat.Short, Value = DateTime.Today };
+            dtpEnd = new DateTimePicker { Width = 140, Format = DateTimePickerFormat.Short, Value = DateTime.Today };
             dtpEnd.ValueChanged += (s, e) => FilterInvoices();
-            pnlEndBlock.Controls.Add(dtpEnd);
-            pnlEndBlock.Controls.Add(lblTo);
-
-            Panel pnlBtnBlock = new Panel { AutoSize = true, Margin = new Padding(0, 16, 0, 4) };
+            FlowLayoutPanel pnlBtnBlock = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Margin = new Padding(0, 20, 0, 4) };
             Button btnSelectAll = new Button
             {
-                Text = "☑ Select All",
-                Size = new Size(110, 28),
+                Text = "☑ Select all",
+                AutoSize = true,
+                MinimumSize = new Size(110, 30),
                 Margin = new Padding(0, 0, 8, 0),
                 BackColor = Pal.C(241, 245, 249),
                 FlatStyle = FlatStyle.Flat,
@@ -136,9 +134,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Button btnUnselectAll = new Button
             {
-                Text = "☐ Unselect All",
-                Size = new Size(110, 28),
-                Location = new Point(118, 0),
+                Text = "☐ Unselect all",
+                AutoSize = true,
+                MinimumSize = new Size(110, 30),
+                Margin = new Padding(0),
                 BackColor = Pal.C(241, 245, 249),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
@@ -150,12 +149,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlBtnBlock.Controls.Add(btnSelectAll);
             pnlBtnBlock.Controls.Add(btnUnselectAll);
 
-            flowFilters.Controls.Add(pnlClientBlock);
-            flowFilters.Controls.Add(pnlStartBlock);
-            flowFilters.Controls.Add(pnlEndBlock);
+            flowFilters.Controls.Add(Field("Client company", cbClient));
+            flowFilters.Controls.Add(Field("Period from", dtpStart));
+            flowFilters.Controls.Add(Field("Period to", dtpEnd));
             flowFilters.Controls.Add(pnlBtnBlock);
             pnlFilter.Controls.Add(flowFilters);
 
+            Panel pnlGap1 = new Panel { Dock = DockStyle.Top, Height = 12, BackColor = Color.Transparent };
             Panel pnlGridCard = new Panel
             {
                 Dock = DockStyle.Fill,
@@ -184,108 +184,104 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var chkCol = new DataGridViewCheckBoxColumn { HeaderText = "Include", Width = 60, Name = "colInclude" };
             var invNumCol = new DataGridViewTextBoxColumn { HeaderText = "Invoice #", FillWeight = 18, MinimumWidth = 110, ReadOnly = true, DataPropertyName = "InvoiceNumber" };
-            var dateCol = new DataGridViewTextBoxColumn { HeaderText = "Issue Date", FillWeight = 13, MinimumWidth = 90, ReadOnly = true, DataPropertyName = "IssueDate", DefaultCellStyle = { Format = "MM/dd/yyyy" } };
-            var grossCol = new DataGridViewTextBoxColumn { HeaderText = "Gross Hauling", FillWeight = 16, MinimumWidth = 110, ReadOnly = true, DataPropertyName = "TotalAmount", DefaultCellStyle = { Format = "N2", Alignment = DataGridViewContentAlignment.MiddleRight } };
-            var dedCol = new DataGridViewTextBoxColumn { HeaderText = "Incident Deductions", FillWeight = 17, MinimumWidth = 110, ReadOnly = true, DataPropertyName = "Deductions", DefaultCellStyle = { Format = "N2", Alignment = DataGridViewContentAlignment.MiddleRight } };
-            var netCol = new DataGridViewTextBoxColumn { HeaderText = "Net Due", FillWeight = 16, MinimumWidth = 110, ReadOnly = true, DataPropertyName = "NetAmount", DefaultCellStyle = { Format = "N2", Alignment = DataGridViewContentAlignment.MiddleRight } };
+            var dateCol = new DataGridViewTextBoxColumn { HeaderText = "Issue date", FillWeight = 13, MinimumWidth = 90, ReadOnly = true, DataPropertyName = "IssueDate", DefaultCellStyle = { Format = "MM/dd/yyyy" } };
+            var grossCol = new DataGridViewTextBoxColumn { HeaderText = "Gross hauling", FillWeight = 16, MinimumWidth = 110, ReadOnly = true, DataPropertyName = "TotalAmount", DefaultCellStyle = { Format = "N2", Alignment = DataGridViewContentAlignment.MiddleRight } };
+            var dedCol = new DataGridViewTextBoxColumn { HeaderText = "Incident deductions", FillWeight = 17, MinimumWidth = 110, ReadOnly = true, DataPropertyName = "Deductions", DefaultCellStyle = { Format = "N2", Alignment = DataGridViewContentAlignment.MiddleRight } };
+            var netCol = new DataGridViewTextBoxColumn { HeaderText = "Net due", FillWeight = 16, MinimumWidth = 110, ReadOnly = true, DataPropertyName = "NetAmount", DefaultCellStyle = { Format = "N2", Alignment = DataGridViewContentAlignment.MiddleRight } };
             var statusCol = new DataGridViewTextBoxColumn { HeaderText = "Status", FillWeight = 10, MinimumWidth = 80, ReadOnly = true, DataPropertyName = "Status" };
-            var soaCol = new DataGridViewTextBoxColumn { HeaderText = "Billed In SOA", FillWeight = 10, MinimumWidth = 80, ReadOnly = true };
-
+            var soaCol = new DataGridViewTextBoxColumn { HeaderText = "Billed in SOA", FillWeight = 10, MinimumWidth = 80, ReadOnly = true };
             gridInvoices.Columns.AddRange(chkCol, invNumCol, dateCol, grossCol, dedCol, netCol, statusCol, soaCol);
             gridInvoices.CellValueChanged += (s, e) => { if (e.ColumnIndex == 0) CalculateTotals(); };
             gridInvoices.CurrentCellDirtyStateChanged += (s, e) => { if (gridInvoices.IsCurrentCellDirty) gridInvoices.CommitEdit(DataGridViewDataErrorContexts.Commit); };
 
             pnlGridCard.Controls.Add(gridInvoices);
 
+            Panel pnlGap2 = new Panel { Dock = DockStyle.Bottom, Height = 12, BackColor = Color.Transparent };
             Panel pnlSummary = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 105,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 BackColor = Pal.White,
                 BorderStyle = BorderStyle.FixedSingle,
-                Padding = new Padding(16, 10, 16, 10),
-                Margin = new Padding(0, 12, 0, 0)
+                Padding = new Padding(16, 10, 16, 10)
             };
 
             TableLayoutPanel tblSummaryLayout = new TableLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 2,
                 RowCount = 1
             };
-            tblSummaryLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tblSummaryLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tblSummaryLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-
-            Panel pnlTotals = new Panel { Dock = DockStyle.Fill };
-            lblSelectedCount = new Label { Text = "Selected Invoices: 0", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold) };
-            lblTotalGross = new Label { Text = "Gross Hauling: PHP 0.00", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI", 8.5F) };
-            lblTotalDeductions = new Label { Text = "Total Deductions: - PHP 0.00", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI", 8.5F), ForeColor = Pal.C(220, 38, 38) };
-            lblNetPayable = new Label { Text = "TOTAL NET PAYABLE: PHP 0.00", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Pal.C(153, 27, 27), Margin = new Padding(0, 4, 0, 0) };
-            pnlTotals.Controls.Add(lblNetPayable);
-            pnlTotals.Controls.Add(lblTotalDeductions);
-            pnlTotals.Controls.Add(lblTotalGross);
+            tblSummaryLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tblSummaryLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            tblSummaryLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            FlowLayoutPanel pnlTotals = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false, Dock = DockStyle.Fill, Margin = new Padding(0) };
+            lblSelectedCount = new Label { Text = "Selected invoices: 0", AutoSize = true, Margin = new Padding(0, 0, 0, 2), Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold) };
+            lblTotalGross = new Label { Text = "Gross hauling: PHP 0.00", AutoSize = true, Margin = new Padding(0, 0, 0, 2), Font = new Font("Segoe UI", 8.5F) };
+            lblTotalDeductions = new Label { Text = "Total deductions: - PHP 0.00", AutoSize = true, Margin = new Padding(0, 0, 0, 2), Font = new Font("Segoe UI", 8.5F), ForeColor = Pal.C(220, 38, 38) };
+            lblNetPayable = new Label { Text = "Total net payable: PHP 0.00", AutoSize = true, Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = Pal.C(153, 27, 27), Margin = new Padding(0, 4, 0, 0) };
             pnlTotals.Controls.Add(lblSelectedCount);
-
+            pnlTotals.Controls.Add(lblTotalGross);
+            pnlTotals.Controls.Add(lblTotalDeductions);
+            pnlTotals.Controls.Add(lblNetPayable);
             FlowLayoutPanel flowSummaryActions = new FlowLayoutPanel
             {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.RightToLeft,
-                WrapContents = true
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Anchor = AnchorStyles.Right | AnchorStyles.Bottom,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Margin = new Padding(12, 0, 0, 0)
             };
 
-            btnSaveAndPrint = new Button
+            Button MakeBtn(string text, Color back, Color fore, int minW)
             {
-                Text = "💾 SAVE & PRINT OFFICIAL SOA",
-                Size = new Size(240, 36),
-                Margin = new Padding(0, 0, 0, 6),
-                BackColor = Pal.C(153, 27, 27),
-                ForeColor = Pal.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            btnSaveAndPrint.FlatAppearance.BorderSize = 0;
+                var b = new Button
+                {
+                    Text = text,
+                    AutoSize = true,
+                    MinimumSize = new Size(minW, 38),
+                    Padding = new Padding(10, 0, 10, 0),
+                    Margin = new Padding(8, 0, 0, 0),
+                    BackColor = back,
+                    ForeColor = fore,
+                    FlatStyle = FlatStyle.Flat,
+                    Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
+                    Cursor = Cursors.Hand
+                };
+                b.FlatAppearance.BorderSize = 0;
+                return b;
+            }
+            btnClose = MakeBtn("Close", Pal.C(203, 213, 225), Pal.C(30, 41, 59), 100);
+            btnClose.Click += (s, e) => this.Close();
+            btnPrintPreview = MakeBtn("🖨️ Preview statement", Pal.C(71, 85, 105), Pal.White, 170);
+            btnPrintPreview.Click += BtnPrintPreview_Click;
+            btnSaveAndPrint = MakeBtn("💾 Save & print official SOA", Pal.C(153, 27, 27), Pal.White, 230);
             btnSaveAndPrint.Click += BtnSaveAndPrint_Click;
 
-            btnPrintPreview = new Button
-            {
-                Text = "🖨️ PREVIEW STATEMENT",
-                Size = new Size(160, 32),
-                Margin = new Padding(8, 0, 0, 0),
-                BackColor = Pal.C(71, 85, 105),
-                ForeColor = Pal.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            btnPrintPreview.FlatAppearance.BorderSize = 0;
-            btnPrintPreview.Click += BtnPrintPreview_Click;
-
-            btnClose = new Button
-            {
-                Text = "CLOSE",
-                Size = new Size(90, 32),
-                Margin = new Padding(0),
-                BackColor = Pal.C(203, 213, 225),
-                ForeColor = Pal.C(30, 41, 59),
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            btnClose.FlatAppearance.BorderSize = 0;
-            btnClose.Click += (s, e) => this.Close();
-
-            flowSummaryActions.Controls.Add(btnSaveAndPrint);
             flowSummaryActions.Controls.Add(btnClose);
             flowSummaryActions.Controls.Add(btnPrintPreview);
 
+            flowSummaryActions.Controls.Add(btnSaveAndPrint);
             tblSummaryLayout.Controls.Add(pnlTotals, 0, 0);
             tblSummaryLayout.Controls.Add(flowSummaryActions, 1, 0);
             pnlSummary.Controls.Add(tblSummaryLayout);
 
+            this.CancelButton = btnClose;
+            this.Shown += (s, e) =>
+            {
+                // The theme can restyle Close as a smaller secondary button; keep the three footer buttons the same height.
+                btnClose.AutoSize = false;
+                btnClose.Size = new Size(Math.Max(btnClose.Width, btnPrintPreview.Height * 2), btnPrintPreview.Height);
+                UIThemeHelper.FitColumnHeaders(gridInvoices);
+            };
             pnlMainContainer.Controls.Add(pnlGridCard);
+            pnlMainContainer.Controls.Add(pnlGap2);
             pnlMainContainer.Controls.Add(pnlSummary);
+            pnlMainContainer.Controls.Add(pnlGap1);
             pnlMainContainer.Controls.Add(pnlFilter);
 
             this.Controls.Add(pnlMainContainer);
@@ -367,10 +363,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             decimal deductions = selected.Sum(i => i.Deductions);
             decimal net = selected.Sum(i => i.NetAmount);
 
-            lblSelectedCount.Text = $"Selected Invoices: {selected.Count} / {gridInvoices.Rows.Count}";
-            lblTotalGross.Text = $"Gross Hauling: PHP {gross:N2}";
-            lblTotalDeductions.Text = $"Total Deductions: - PHP {deductions:N2}";
-            lblNetPayable.Text = $"TOTAL NET PAYABLE: PHP {net:N2}";
+            lblSelectedCount.Text = $"Selected invoices: {selected.Count} / {gridInvoices.Rows.Count}";
+            lblTotalGross.Text = $"Gross hauling: PHP {gross:N2}";
+            lblTotalDeductions.Text = $"Total deductions: - PHP {deductions:N2}";
+            lblNetPayable.Text = $"Total net payable: PHP {net:N2}";
         }
 
         private void BtnSaveAndPrint_Click(object? sender, EventArgs e)

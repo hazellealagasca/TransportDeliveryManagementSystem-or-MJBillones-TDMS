@@ -376,7 +376,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnApprove.Name = "btnApprove";
             this.btnApprove.Size = new System.Drawing.Size(432, 40);
             this.btnApprove.TabIndex = 12;
-            this.btnApprove.Text = "✅  APPROVE STAFF ACCOUNT";
+            this.btnApprove.Text = "✅  Approve staff account";
             this.btnApprove.UseVisualStyleBackColor = false;
             this.btnApprove.Visible = false;
             this.btnApprove.Click += new System.EventHandler(this.BtnApprove_Click);
@@ -393,7 +393,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(432, 42);
             this.btnSave.TabIndex = 13;
-            this.btnSave.Text = "Save User Account";
+            this.btnSave.Text = "Save user account";
             this.btnSave.UseVisualStyleBackColor = false;
             this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
 
@@ -456,7 +456,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnClear.Name = "btnClear";
             this.btnClear.Size = new System.Drawing.Size(432, 36);
             this.btnClear.TabIndex = 15;
-            this.btnClear.Text = "Clear Form";
+            this.btnClear.Text = "Clear form";
             this.btnClear.UseVisualStyleBackColor = false;
             this.btnClear.Click += new System.EventHandler(this.BtnClear_Click);
 
@@ -593,7 +593,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnPrint.Name = "btnPrint";
             this.btnPrint.Size = new System.Drawing.Size(170, 28);
             this.btnPrint.TabIndex = 2;
-            this.btnPrint.Text = "🖨️ Print Report";
+            this.btnPrint.Text = "🖨️ Print report";
             this.btnPrint.UseVisualStyleBackColor = false;
             this.btnPrint.Click += new System.EventHandler(this.BtnPrint_Click);
 

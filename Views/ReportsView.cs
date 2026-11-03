@@ -38,9 +38,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnExport.Visible = false;
             btnPrintPaySlip.Visible = false;
             var menuActions = new ContextMenuStrip();
-            menuActions.Items.Add("📊 Export Report to CSV...", null, BtnExport_Click);
-            menuActions.Items.Add("🖨️ Print Report", null, BtnPrint_Click);
-            menuActions.Items.Add("📄 Print Crew Pay Record", null, BtnPrintPaySlip_Click);
+            menuActions.Items.Add("📊 Export report to CSV...", null, BtnExport_Click);
+            menuActions.Items.Add("🖨️ Print report", null, BtnPrint_Click);
+            menuActions.Items.Add("📄 Print crew pay record", null, BtnPrintPaySlip_Click);
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             flowActions.Controls.Add(btnActions);
             RowMenu.AttachBasic(gridReport, "Report", "Report", () => BtnPrint_Click(this, EventArgs.Empty));

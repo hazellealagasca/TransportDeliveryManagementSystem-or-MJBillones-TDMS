@@ -33,6 +33,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public RegisterDialog(bool isAdminMode)
         {
+            UIThemeHelper.ScaleFixedLayout(this); // fixed 100%-scale layout: grow it to the screen's scaling
             this.isAdminMode = isAdminMode;
             InitializeComponent();
         }
@@ -241,7 +242,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblActions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65F));
             tblActions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35F));
 
-            btnSubmit.Text = "REGISTER ACCOUNT";
+            btnSubmit.Text = "Register account";
             btnSubmit.Dock = DockStyle.Fill;
             btnSubmit.BackColor = Pal.C(185, 28, 28);
             btnSubmit.ForeColor = Pal.White;
@@ -252,7 +253,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnSubmit.Margin = new Padding(0, 0, 6, 0);
             btnSubmit.Click += BtnSubmit_Click;
 
-            btnCancel.Text = "CANCEL";
+            btnCancel.Text = "Cancel";
             btnCancel.Dock = DockStyle.Fill;
             btnCancel.BackColor = Pal.C(241, 245, 249);
             btnCancel.ForeColor = Pal.C(51, 65, 85);
@@ -374,8 +375,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             btnSubmit.Enabled = false;
-            btnSubmit.Text = "SUBMITTING...";
-
+            btnSubmit.Text = "Submitting…";
             try
             {
                 var newUser = new User
@@ -410,7 +410,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 ShowError("Registration error: " + ex.Message);
                 btnSubmit.Enabled = true;
-                btnSubmit.Text = "REGISTER ACCOUNT";
+                btnSubmit.Text = "Register account";
             }
         }
 

@@ -23,11 +23,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Button btnExportCsv = null!;
         private Button btnRefresh = null!;
 
-        private Label lblKpiTotal = null!;
-        private Label lblKpiPending = null!;
-        private Label lblKpiInTransit = null!;
-        private Label lblKpiCompleted = null!;
-
+        private TileStrip tripTiles = null!;
+        private StatTile tAll = null!, tPending = null!, tTransit = null!, tDone = null!;
+        private bool syncingTiles;
+        private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
         private DataGridView gridSpecialTrips = null!;
         private List<SpecialTrip> allSpecialTrips = new List<SpecialTrip>();
 
@@ -49,73 +48,50 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.BackColor = Pal.C(248, 250, 252);
             this.Font = new Font("Segoe UI", 9F);
 
+            // Page title and summary tiles in the same style as Trucks, Crew and Order History.
             Panel pnlHeader = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 110,
-                BackColor = Pal.White,
-                Padding = new Padding(24, 16, 24, 12)
+                BackColor = Color.Transparent,
+                Padding = new Padding(D(24), D(16), D(24), D(12))
             };
 
-            TableLayoutPanel tblHeaderContent = new TableLayoutPanel
+            var pageHeader = PageKit.Header("Special Trip History", "Every special (non-crate) trip, its stops, crew and status. Double-click a row to open it.");
+            tripTiles = new TileStrip();
+            tAll = tripTiles.Add(new StatTile("All trips", AppTheme.Accent, "") { Clickable = true, Key = "" });
+            tPending = tripTiles.Add(new StatTile("Pending", AppTheme.Warning, "not on the road yet") { Clickable = true, Key = "Pending" });
+            tTransit = tripTiles.Add(new StatTile("In transit", AppTheme.Info, "on the road") { Clickable = true, Key = "In-Transit" });
+            tDone = tripTiles.Add(new StatTile("Completed", AppTheme.Success, "delivered") { Clickable = true, Key = "Completed" });
+            tripTiles.FilterChanged += t =>
             {
-                Dock = DockStyle.Fill,
-                ColumnCount = 2,
-                RowCount = 1
+                // A tile works like the Status filter: pick the matching status there (All trips = all statuses).
+                string key = t?.Key as string ?? "";
+                int idx = key.Length == 0 ? 0 : cbStatusFilter.Items.IndexOf(key);
+                syncingTiles = true;
+                cbStatusFilter.SelectedIndex = Math.Max(0, idx);
+                syncingTiles = false;
+                ApplyFilter();
             };
-            tblHeaderContent.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
-            tblHeaderContent.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55F));
-
-            Panel pnlTitleBlock = new Panel { Dock = DockStyle.Fill };
-            Label lblTitle = new Label
+            var tilesGap = new Panel { Dock = DockStyle.Top, Height = D(14), BackColor = Color.Transparent };
+            pnlHeader.Controls.Add(tripTiles);
+            pnlHeader.Controls.Add(tilesGap);
+            pnlHeader.Controls.Add(pageHeader);
+            // Fixed to its content (an auto-sizing panel with a tile row grows to fill the page and hides the list below).
+            void FitHeader()
             {
-                Text = "🌟  Special Trip History",
-                Font = new Font("Segoe UI", 15F, FontStyle.Bold),
-                ForeColor = Pal.C(15, 23, 42),
-                AutoSize = true,
-                Location = new Point(0, 4)
-            };
-            Label lblSubtitle = new Label
-            {
-                Text = "Every special (non-crate) trip, its stops, crew and status. Double-click a row to open it.",
-                Font = new Font("Segoe UI", 8.5F),
-                ForeColor = Pal.C(100, 116, 139),
-                AutoSize = true,
-                Location = new Point(2, 34)
-            };
-            pnlTitleBlock.Controls.Add(lblTitle);
-            pnlTitleBlock.Controls.Add(lblSubtitle);
-
-            // Keep the subtitle under the title at any text size (it used to overlap on larger displays).
-            void PlaceSub() { lblSubtitle.Top = lblTitle.Bottom + 2; if (pnlHeader.Height < lblSubtitle.Bottom + pnlHeader.Padding.Vertical + 6) pnlHeader.Height = lblSubtitle.Bottom + pnlHeader.Padding.Vertical + 6; }
-            lblTitle.SizeChanged += (s, e) => PlaceSub();
-            lblTitle.HandleCreated += (s, e) => PlaceSub();
-            FlowLayoutPanel flowKpis = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.RightToLeft,
-                WrapContents = false
-            };
-
-            Panel cardCompleted = CreateKpiCard("Completed", "0", Pal.C(16, 185, 129), out lblKpiCompleted);
-            Panel cardInTransit = CreateKpiCard("In-Transit", "0", Pal.C(14, 165, 233), out lblKpiInTransit);
-            Panel cardPending = CreateKpiCard("Pending", "0", Pal.C(245, 158, 11), out lblKpiPending);
-            Panel cardTotal = CreateKpiCard("Total Trips", "0", Pal.C(99, 102, 241), out lblKpiTotal);
-            flowKpis.Controls.Add(cardCompleted);
-            flowKpis.Controls.Add(cardInTransit);
-            flowKpis.Controls.Add(cardPending);
-            flowKpis.Controls.Add(cardTotal);
-
-            tblHeaderContent.Controls.Add(pnlTitleBlock, 0, 0);
-            tblHeaderContent.Controls.Add(flowKpis, 1, 0);
-            pnlHeader.Controls.Add(tblHeaderContent);
-
+                int w = Math.Max(D(200), pnlHeader.ClientSize.Width - pnlHeader.Padding.Horizontal);
+                int h = pnlHeader.Padding.Vertical + pageHeader.GetPreferredSize(new Size(w, 0)).Height + tilesGap.Height + tripTiles.Height;
+                if (pnlHeader.Height != h) pnlHeader.Height = h;
+            }
+            pnlHeader.Resize += (s, e) => FitHeader();
+            tripTiles.SizeChanged += (s, e) => FitHeader();
+            pnlHeader.HandleCreated += (s, e) => FitHeader();
             Panel pnlToolbar = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = (int)Math.Round(64 * DeviceDpi / 96f),
+                Height = (int)Math.Round(52 * DeviceDpi / 96f),
                 BackColor = Pal.C(241, 245, 249),
-                Padding = new Padding(24, 8, 24, 6)
+                Padding = new Padding(24, 8, 24, 4)
             };
 
             FlowLayoutPanel flowFilters = new FlowLayoutPanel
@@ -128,7 +104,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             txtSearch = new TextBox
             {
-                Width = 220,
+                Width = D(260),
                 Font = new Font("Segoe UI", 9.5F),
                 PlaceholderText = "🔍 Search ref, company, driver...",
                 Margin = new Padding(0, 2, 10, 0)
@@ -137,15 +113,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             cbStatusFilter = new ComboBox
             {
-                Width = 140,
+                Width = D(160),
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Font = new Font("Segoe UI", 9.5F),
                 Margin = new Padding(0, 2, 10, 0)
             };
-            cbStatusFilter.Items.AddRange(new object[] { "All Statuses", "Pending", "In-Transit", "Completed", "Cancelled" });
+            cbStatusFilter.Items.AddRange(new object[] { "All statuses", "Pending", "In-Transit", "Completed", "Cancelled" });
             cbStatusFilter.SelectedIndex = 0;
-            cbStatusFilter.SelectedIndexChanged += (s, e) => ApplyFilter();
-
+            PageKit.StyleCombo(cbStatusFilter);
+            cbStatusFilter.SelectedIndexChanged += (s, e) => { if (!syncingTiles) tripTiles?.ClearSelection(); ApplyFilter(); };
             Label lblFrom = new Label { Text = "From:", AutoSize = true, Margin = new Padding(0, 8, 4, 0), Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105) };
             dtpFrom = new DateTimePicker { Width = 110, Format = DateTimePickerFormat.Short, Value = DateTime.Today.AddDays(-60), Margin = new Padding(0, 2, 10, 0) };
             dtpFrom.ValueChanged += (s, e) => ApplyFilter();
@@ -169,7 +145,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnNewSpecialTrip = new Button
             {
-                Text = "✨ + New Special Trip",
+                Text = "✨ + New special trip",
                 BackColor = Pal.C(14, 116, 144),
                 ForeColor = Pal.White,
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
@@ -264,40 +240,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.Controls.Add(pnlHeader);
         }
 
-        private Panel CreateKpiCard(string title, string value, Color accent, out Label lblVal)
-        {
-            Panel card = new Panel
-            {
-                Size = new Size(115, 68),
-                BackColor = Pal.C(248, 250, 252),
-                BorderStyle = BorderStyle.FixedSingle,
-                Margin = new Padding(0, 0, 8, 0),
-                Padding = new Padding(8, 6, 8, 6)
-            };
-
-            Label lblT = new Label
-            {
-                Text = title,
-                Font = new Font("Segoe UI", 7.5F, FontStyle.Bold),
-                ForeColor = Pal.C(100, 116, 139),
-                Dock = DockStyle.Top,
-                Height = 16
-            };
-
-            lblVal = new Label
-            {
-                Text = value,
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                ForeColor = accent,
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-
-            card.Controls.Add(lblVal);
-            card.Controls.Add(lblT);
-            return card;
-        }
-
         private void SetupGridColumns()
         {
             gridSpecialTrips.Columns.Clear();
@@ -306,7 +248,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Name = "colRef",
                 HeaderText = "Order Reference",
-                Width = 145,
+                Width = D(145),
                 DefaultCellStyle = { Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Pal.C(14, 116, 144) }
             });
 
@@ -314,21 +256,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Name = "colDate",
                 HeaderText = "Dispatch Date",
-                Width = 105
+                Width = D(105)
             });
 
             gridSpecialTrips.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "colCompany",
                 HeaderText = "Company",
-                Width = 170
+                Width = D(170)
             });
 
             gridSpecialTrips.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "colAddress",
                 HeaderText = "Address / Route",
-                Width = 180,
+                Width = D(180),
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
             });
 
@@ -336,7 +278,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Name = "colServiceType",
                 HeaderText = "Service Type",
-                Width = 140,
+                Width = D(140),
                 Visible = false // Service Type is no longer asked on the form
             });
 
@@ -344,28 +286,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Name = "colTruck",
                 HeaderText = "Truck",
-                Width = 110
+                Width = D(110)
             });
 
             gridSpecialTrips.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "colDriver",
                 HeaderText = "Driver",
-                Width = 130
+                Width = D(130)
             });
 
             gridSpecialTrips.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "colAide",
                 HeaderText = "Aide",
-                Width = 120
+                Width = D(120)
             });
 
             gridSpecialTrips.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "colStops",
                 HeaderText = "Stops",
-                Width = 65,
+                Width = D(65),
                 DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });
 
@@ -373,7 +315,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Name = "colStatus",
                 HeaderText = "Status",
-                Width = 110,
+                Width = D(110),
                 DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter, Font = new Font("Segoe UI", 8.5F, FontStyle.Bold) }
             });
 
@@ -381,7 +323,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Name = "colPaymentFlags",
                 HeaderText = "Payment Setup",
-                Width = 150
+                Width = D(150)
             });
 
             DataGridViewButtonColumn colBtnView = new DataGridViewButtonColumn
@@ -390,7 +332,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 HeaderText = "",
                 Text = "👁️ View",
                 UseColumnTextForButtonValue = true,
-                Width = 70,
+                Width = D(70),
                 FlatStyle = FlatStyle.Flat
             };
 
@@ -400,7 +342,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 HeaderText = "",
                 Text = "📅 Resched",
                 UseColumnTextForButtonValue = true,
-                Width = 85,
+                Width = D(85),
                 FlatStyle = FlatStyle.Flat
             };
 
@@ -410,7 +352,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 HeaderText = "",
                 Text = "✅ Complete",
                 UseColumnTextForButtonValue = true,
-                Width = 90,
+                Width = D(90),
                 FlatStyle = FlatStyle.Flat
             };
 
@@ -420,11 +362,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 HeaderText = "",
                 Text = "🗑️",
                 UseColumnTextForButtonValue = true,
-                Width = 45,
+                Width = D(45),
                 FlatStyle = FlatStyle.Flat
             };
 
             gridSpecialTrips.Columns.AddRange(colBtnView, colBtnResched, colBtnComplete, colBtnDel);
+            UIThemeHelper.FitColumnHeaders(gridSpecialTrips);
         }
 
         private void LoadData()
@@ -445,21 +388,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int inTransit = allSpecialTrips.Count(t => t.Status.Equals("In-Transit", StringComparison.OrdinalIgnoreCase));
             int completed = allSpecialTrips.Count(t => t.Status.Equals("Completed", StringComparison.OrdinalIgnoreCase));
 
-            lblKpiTotal.Text = total.ToString();
-            lblKpiPending.Text = pending.ToString();
-            lblKpiInTransit.Text = inTransit.ToString();
-            lblKpiCompleted.Text = completed.ToString();
+            tAll.Value = total.ToString("N0");
+            tPending.Value = pending.ToString("N0");
+            tTransit.Value = inTransit.ToString("N0");
+            tDone.Value = completed.ToString("N0");
         }
 
         private void ApplyFilter()
         {
             string query = txtSearch.Text.Trim();
-            string status = cbStatusFilter.SelectedItem?.ToString() ?? "All Statuses";
+            string status = cbStatusFilter.SelectedItem?.ToString() ?? "All statuses";
             var range = dateChip?.Range ?? DateRange.All;
             var filtered = allSpecialTrips.Where(t =>
             {
                 if (!range.Contains(t.DispatchDate)) return false;
-                if (!status.Equals("All Statuses", StringComparison.OrdinalIgnoreCase) &&
+                if (!status.Equals("All statuses", StringComparison.OrdinalIgnoreCase) &&
                     !t.Status.Equals(status, StringComparison.OrdinalIgnoreCase))
                 {
                     return false;

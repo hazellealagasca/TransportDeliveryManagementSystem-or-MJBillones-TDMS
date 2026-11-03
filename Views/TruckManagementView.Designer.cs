@@ -108,7 +108,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnAdd.Name = "btnAdd";
             btnAdd.Size = new Size(190, 32);
             btnAdd.TabIndex = 0;
-            btnAdd.Text = "💾 REGISTER TRUCK";
+            btnAdd.Text = "💾 Register truck";
             btnAdd.UseVisualStyleBackColor = false;
             btnAdd.Click += BtnSave_Click;
 
@@ -138,7 +138,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnUpdate.Name = "btnUpdate";
             btnUpdate.Size = new Size(190, 32);
             btnUpdate.TabIndex = 1;
-            btnUpdate.Text = "✏️ UPDATE TRUCK";
+            btnUpdate.Text = "✏️ Update truck";
             btnUpdate.UseVisualStyleBackColor = false;
             btnUpdate.Click += BtnUpdate_Click;
 
@@ -166,7 +166,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnClear.Name = "btnClear";
             btnClear.Size = new Size(386, 28);
             btnClear.TabIndex = 1;
-            btnClear.Text = "🧹 CLEAR FORM";
+            btnClear.Text = "🧹 Clear form";
             btnClear.UseVisualStyleBackColor = false;
             btnClear.Click += BtnClear_Click;
             this.txtRemarks.Dock = DockStyle.Top;
@@ -443,7 +443,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnPrint.Name = "btnPrint";
             btnPrint.Size = new Size(180, 28);
             btnPrint.TabIndex = 2;
-            btnPrint.Text = "🖨 PRINT TRUCK REPORT";
+            btnPrint.Text = "🖨 Print truck report";
             btnPrint.UseVisualStyleBackColor = false;
             btnPrint.Click += BtnPrint_Click;
             lblGridHeader.AutoSize = true;

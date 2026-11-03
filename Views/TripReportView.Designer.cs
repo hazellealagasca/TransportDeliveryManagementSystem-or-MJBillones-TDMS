@@ -517,7 +517,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnLogIncident.Name = "btnLogIncident";
             this.btnLogIncident.Size = new System.Drawing.Size(436, 36);
             this.btnLogIncident.TabIndex = 10;
-            this.btnLogIncident.Text = "⚠️ LOG CARGO / CRATE INCIDENT";
+            this.btnLogIncident.Text = "⚠️ Log cargo / crate incident";
             this.btnLogIncident.UseVisualStyleBackColor = false;
             this.btnLogIncident.Visible = false;
             this.btnLogIncident.Click += new System.EventHandler(this.BtnLogIncident_Click);
@@ -548,7 +548,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(190, 32);
             this.btnSave.TabIndex = 0;
-            this.btnSave.Text = "💾 COMPLETE TRIP";
+            this.btnSave.Text = "💾 Complete trip";
             this.btnSave.UseVisualStyleBackColor = false;
             this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
 
@@ -564,7 +564,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnUpdate.Name = "btnUpdate";
             this.btnUpdate.Size = new System.Drawing.Size(190, 32);
             this.btnUpdate.TabIndex = 1;
-            this.btnUpdate.Text = "✏️ UPDATE REPORT";
+            this.btnUpdate.Text = "✏️ Update report";
             this.btnUpdate.UseVisualStyleBackColor = false;
             this.btnUpdate.Click += new System.EventHandler(this.BtnUpdate_Click);
 
@@ -592,7 +592,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnClear.Name = "btnClear";
             this.btnClear.Size = new System.Drawing.Size(386, 28);
             this.btnClear.TabIndex = 1;
-            this.btnClear.Text = "🧹 CLEAR FORM";
+            this.btnClear.Text = "🧹 Clear form";
             this.btnClear.UseVisualStyleBackColor = false;
             this.btnClear.Click += new System.EventHandler(this.BtnClear_Click);
 
@@ -709,7 +709,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnPrint.Name = "btnPrint";
             this.btnPrint.Size = new System.Drawing.Size(160, 30);
             this.btnPrint.TabIndex = 2;
-            this.btnPrint.Text = "🖨️ Print Log";
+            this.btnPrint.Text = "🖨️ Print log";
             this.btnPrint.UseVisualStyleBackColor = false;
             this.btnPrint.Click += new System.EventHandler(this.BtnPrint_Click);
 

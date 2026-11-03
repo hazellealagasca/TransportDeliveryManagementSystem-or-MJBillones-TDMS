@@ -23,6 +23,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public CollectionView()
         {
             InitializeComponent();
+            PageKit.SummaryUnderTitle(pnlSummary, lblSummary, pnlGridHeaderBar, lblGridHeader); // totals line under the title, not cut off at the bottom
             Pal.RemapTree(this);
             gridCollections.BringToFront();
             SetupGridColumns();
@@ -41,8 +42,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnPrint.Visible = false;
 
             var menuActions = new ContextMenuStrip();
-            menuActions.Items.Add("📊 Export Collections to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridCollections, "Collection_Receipts", "Collections and Payment Receipts"));
-            menuActions.Items.Add("🖨️ Print Collections Register", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
+            menuActions.Items.Add("📊 Export collections to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridCollections, "Collection_Receipts", "Collections and Payment Receipts"));
+            menuActions.Items.Add("🖨️ Print collections register", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
 
@@ -69,7 +70,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             btnToggleForm = new Button
             {
-                Text = "📝 + New / Form ▾",
+                Text = "📝 + New / form ▾",
                 Size = new Size(150, 30),
                 BackColor = Pal.C(30, 41, 59),
                 ForeColor = Pal.White,
@@ -177,7 +178,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else
             {
-                lblLinkedInvoiceInfo.Text = "📄 Linked Invoice: (None Selected)";
+                lblLinkedInvoiceInfo.Text = "📄 Linked invoice: (none selected)";
             }
         }
 
@@ -229,8 +230,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             selectedCollection = cr;
             lblFormHeader.Text = $"Receipt #{selectedCollection.ReceiptNumber}";
             lblLinkedInvoiceInfo.Text = !string.IsNullOrEmpty(selectedCollection.InvoiceNumber)
-                ? $"📄 Linked Invoice: {selectedCollection.InvoiceNumber}"
-                : "📄 Linked Invoice: (None)";
+                ? $"📄 Linked invoice: {selectedCollection.InvoiceNumber}"
+                : "📄 Linked invoice: (none)";
             var _amt = selectedCollection.AmountPaid;
             if (_amt > numAmountPaid.Maximum) numAmountPaid.Maximum = _amt * 2;
             numAmountPaid.Value = Math.Max(numAmountPaid.Minimum, Math.Min(numAmountPaid.Maximum, _amt));
@@ -263,7 +264,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var receipts = allReceipts;
 
                 decimal totalPaid = receipts.Sum(c => c.AmountPaid);
-                lblSummary.Text = $"📊 Total Collections: {receipts.Count:N0}  |  💵 Total Settled Payments: PHP {totalPaid:N2}";
+                lblSummary.Text = $"{receipts.Count:N0} receipt{(receipts.Count == 1 ? "" : "s")}  ·  ₱{totalPaid:N2} collected";
             }
             catch (Exception ex)
             { ErrLog.Error("CollectionView", ex); 
@@ -519,9 +520,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridCollections.DataSource = null;
             gridCollections.DataSource = filtered;
             lblGridHeader.Text = string.IsNullOrEmpty(q) && filtered.Count == allReceipts.Count
-                ? $"Payment Collections Register Log ({allReceipts.Count})"
-                : $"Payment Collections Register Log - Showing {filtered.Count} of {allReceipts.Count}";
-
+                ? $"Receipts ({allReceipts.Count})"
+                : $"Receipts ({filtered.Count} of {allReceipts.Count})";
             if (filtered.Count > 0)
             {
                 gridCollections.ClearSelection();
@@ -563,13 +563,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             selectedCollection = null;
             lblFormHeader.Text = "Record Payment Receipt";
-            lblLinkedInvoiceInfo.Text = "📄 Linked Invoice: (None Selected)";
+            lblLinkedInvoiceInfo.Text = "📄 Linked invoice: (none selected)";
             cbPaymentMethod.Text = "Cash";
             txtRefNo.Text = "";
             txtNotes.Text = "";
             if (cbInvoice.SelectedIndex >= 0)
             {
                 CbInvoice_SelectedIndexChanged(cbInvoice, EventArgs.Empty);
+            }
+            else
+            {
+                numAmountPaid.Value = numAmountPaid.Minimum; // no invoice picked yet: don't keep the last receipt's amount
             }
             SetButtonStates(false);
         }

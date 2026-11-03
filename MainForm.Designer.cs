@@ -305,7 +305,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnGlobalSearch.Name = "btnGlobalSearch";
             btnGlobalSearch.Size = new Size(75, 26);
             btnGlobalSearch.TabIndex = 4;
-            btnGlobalSearch.Text = "SEARCH";
+            btnGlobalSearch.Text = "Search";
             btnGlobalSearch.UseVisualStyleBackColor = false;
             btnGlobalSearch.Visible = false;
             btnGlobalSearch.Click += btnGlobalSearch_Click;
@@ -326,7 +326,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnHeaderSettings.Name = "btnHeaderSettings";
             btnHeaderSettings.Size = new Size(100, 26);
             btnHeaderSettings.TabIndex = 5;
-            btnHeaderSettings.Text = "⚙️ SETTINGS";
+            btnHeaderSettings.Text = "⚙️ Settings";
             btnHeaderSettings.UseVisualStyleBackColor = false;
             btnHeaderSettings.Click += btnNavSettings_Click;
             btnLogout.BackColor = Color.FromArgb(220, 38, 38);
@@ -339,7 +339,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnLogout.Name = "btnLogout";
             btnLogout.Size = new Size(72, 26);
             btnLogout.TabIndex = 2;
-            btnLogout.Text = "LOGOUT";
+            btnLogout.Text = "Log out";
             btnLogout.UseVisualStyleBackColor = false;
             btnLogout.Click += btnLogout_Click;
             panelMainContent.BackColor = Color.FromArgb(248, 250, 252);

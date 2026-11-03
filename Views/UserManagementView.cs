@@ -49,14 +49,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnPrint.Visible = false;
             var menuActions = new ContextMenuStrip();
-            menuActions.Items.Add("📊 Export Table to CSV...", null, (s, e) => DataExportHelper.ExportToCsv(gridUsers, "User_Accounts", "User Accounts"));
-            menuActions.Items.Add("🖨 Print User Directory", null, BtnPrint_Click);
+            menuActions.Items.Add("📊 Export table to CSV...", null, (s, e) => DataExportHelper.ExportToCsv(gridUsers, "User_Accounts", "User Accounts"));
+            menuActions.Items.Add("🖨 Print user directory", null, BtnPrint_Click);
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
 
             var btnRegisterStaff = new Button
             {
-                Text = "👤 Register Staff Account",
+                Text = "👤 Register staff account",
                 Size = new Size(185, 30),
                 BackColor = Pal.C(185, 28, 28),
                 ForeColor = Pal.White,
@@ -105,7 +105,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             btnToggleForm = new Button
             {
-                Text = "📝 Input Form ▾",
+                Text = "📝 Input form ▾",
                 Size = new Size(130, 30),
                 BackColor = Pal.C(30, 41, 59),
                 ForeColor = Pal.White,

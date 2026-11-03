@@ -77,7 +77,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             tblMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
-            Panel cardBranding = CreateCard("🏢 Business Profile & Invoice Branding", "Customize company information printed on delivery invoices, statements of account, and collection receipts.");
+            Panel cardBranding = CreateCard("🏢 Business profile & invoice branding", "Customize company information printed on delivery invoices, statements of account, and collection receipts.");
             TableLayoutPanel tblBranding = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
@@ -89,17 +89,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblBranding.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tblBranding.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
 
-            txtCompanyName = AddFormField(tblBranding, 0, 0, "Business Trading Name *:", "M.J. Billones Transport Service");
-            txtCompanyTagline = AddFormField(tblBranding, 0, 1, "Official Tagline / Subtitle:", "Reliable Cold Chain & Cargo Logistics");
-            txtCompanyContact = AddFormField(tblBranding, 1, 0, "Contact Telephone / Mobile *:", "0917-123-4567");
-            txtCompanyTin = AddFormField(tblBranding, 1, 1, "TIN / Tax Identification #:", "123-456-789-000");
-            txtCompanyAddress = AddFormField(tblBranding, 2, 0, "Principal Business Address *:", "Cavite / Batangas Operations Depot", true);
-            txtInvoiceFooter = AddFormField(tblBranding, 3, 0, "Standard Terms / Invoice Footer Note:", "Thank you for your business! All deliveries are subject to standard transport terms.", true);
-
+            txtCompanyName = AddFormField(tblBranding, 0, 0, "Business trading name *", "M.J. Billones Transport Service");
+            txtCompanyTagline = AddFormField(tblBranding, 0, 1, "Tagline / subtitle", "Reliable Cold Chain & Cargo Logistics");
+            txtCompanyContact = AddFormField(tblBranding, 1, 0, "Contact telephone / mobile *", "0917-123-4567");
+            txtCompanyTin = AddFormField(tblBranding, 1, 1, "TIN (tax identification no.)", "123-456-789-000");
+            txtCompanyAddress = AddFormField(tblBranding, 2, 0, "Business address *", "Cavite / Batangas Operations Depot", true);
+            txtInvoiceFooter = AddFormField(tblBranding, 3, 0, "Invoice footer note (terms)", "Thank you for your business! All deliveries are subject to standard transport terms.", true);
             AddLogoPicker(tblBranding, 8);
             cardBranding.Controls.Add(tblBranding);
 
-            Panel cardOps = CreateCard("🚚 Operations & Dispatch Workflow Preferences", "Configure delivery assignment behaviors, scheduling defaults, and automatic vehicle recommendations.");
+            Panel cardOps = CreateCard("🚚 Operations & dispatch preferences", "Configure delivery assignment behaviors, scheduling defaults, and automatic vehicle recommendations.");
             TableLayoutPanel tblOps = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
@@ -111,12 +110,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblOps.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tblOps.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
 
-            Label lblDep = new Label { Text = "Default Schedule Departure Time:", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 4, 0, 2) };
+            Label lblDep = new Label { Text = "Default departure time", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, Sc(8), 0, Sc(4)) };
             cbDefaultDeparture = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F), Margin = new Padding(0, 0, 12, 10) };
             cbDefaultDeparture.Items.AddRange(new object[] { "05:00 AM", "06:00 AM", "07:00 AM", "08:00 AM", "09:00 AM", "10:00 AM", "01:00 PM" });
             cbDefaultDeparture.SelectedIndex = 3;
 
-            Label lblRef = new Label { Text = "Automatic Grid Refresh Rate:", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 4, 0, 2) };
+            Label lblRef = new Label { Text = "Automatic list refresh", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, Sc(8), 0, Sc(4)) };
             cbRefreshInterval = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F), Margin = new Padding(0, 0, 0, 10) };
             cbRefreshInterval.Items.AddRange(new object[] { "Manual Refresh Only", "Every 30 Seconds", "Every 60 Seconds", "Every 5 Minutes" });
             cbRefreshInterval.SelectedIndex = 0;
@@ -128,7 +127,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             chkAllowMultiDest = new CheckBox
             {
-                Text = "Allow Multi-Drop Combined Destinations in 1 Dispatch Trip",
+                Text = "Allow several drop-offs in one dispatch trip",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
                 ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
@@ -139,7 +138,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             chkRequireCrates = new CheckBox
             {
-                Text = "Require Empty Crates Return Tracking on Trip Reports",
+                Text = "Require empty-crate returns on trip reports",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
                 ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
@@ -150,7 +149,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             chkAutoTruck = new CheckBox
             {
-                Text = "Automatically Recommend Optimal Vehicle from Active Trucks",
+                Text = "Suggest the best free truck automatically",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
                 ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
@@ -169,7 +168,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             chkAllowMultiDest.Visible = false; chkRequireCrates.Visible = false; chkAutoTruck.Visible = false;
             cardOps.Controls.Add(tblOps);
 
-            Panel cardDisplay = CreateCard("🎨 Display & Notification Preferences", "Configure localization formats, currency indicators, and application notification alerts.");
+            Panel cardDisplay = CreateCard("🎨 Display & notification preferences", "Configure localization formats, currency indicators, and application notification alerts.");
             TableLayoutPanel tblDisplay = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
@@ -181,19 +180,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblDisplay.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tblDisplay.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
 
-            Label lblCur = new Label { Text = "Currency Display Symbol:", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 4, 0, 2) };
+            Label lblCur = new Label { Text = "Currency symbol", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, Sc(8), 0, Sc(4)) };
             cbCurrency = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F), Margin = new Padding(0, 0, 12, 10) };
             cbCurrency.Items.AddRange(new object[] { "PHP (Philippine Peso)", "₱ (Peso Symbol)", "USD ($)" });
             cbCurrency.SelectedIndex = 0;
 
-            Label lblDate = new Label { Text = "Standard Date Display Format:", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 4, 0, 2) };
+            Label lblDate = new Label { Text = "Date format", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, Sc(8), 0, Sc(4)) };
             cbDateFormat = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F), Margin = new Padding(0, 0, 0, 10) };
             cbDateFormat.Items.AddRange(new object[] { "yyyy-MM-dd (ISO Standard)", "MM/dd/yyyy (US Standard)", "dd/MM/yyyy (UK Standard)", "MMMM dd, yyyy (Long Format)" });
             cbDateFormat.SelectedIndex = 0;
 
             chkEnableToasts = new CheckBox
             {
-                Text = "Enable Floating Notification Toasts for Business Events",
+                Text = "Show small notices for business events",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
                 ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
@@ -205,7 +204,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             chkStartCollapsed = new CheckBox
             {
-                Text = "Start Application with Navigation Sidebar Menu Collapsed",
+                Text = "Start with the sidebar collapsed",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
                 ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
@@ -217,7 +216,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             chkEnableProactiveAlerts = new CheckBox
             {
-                Text = "Automated Proactive Overdue Invoices && Trip Alerts",
+                Text = "Alert me about overdue invoices && trips",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
                 ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
@@ -229,7 +228,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             chkNotifyLowTrucks = new CheckBox
             {
-                Text = "Alert When Ready Available Trucks Fall to 1 Vehicle",
+                Text = "Alert me when only 1 truck is free",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
                 ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,
@@ -251,7 +250,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             cardDisplay.Controls.Add(tblDisplay);
 
-            Panel cardAccount = CreateCard("🔒 My Account Security & Recovery", "Manage secret recovery question and personal password security.");
+            Panel cardAccount = CreateCard("🔒 My account security & recovery", "Manage secret recovery question and personal password security.");
             FlowLayoutPanel flowAccount = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
@@ -262,7 +261,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnAccountSecurity = new Button
             {
-                Text = "🔑 Configure Security Question && Password...",
+                Text = "🔑 Configure security question & password...",
                 AutoSize = true,
                 Height = 36,
                 BackColor = Pal.C(15, 23, 42),
@@ -295,7 +294,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnSave = new Button
             {
-                Text = "💾 SAVE ALL CUSTOMIZATION PREFERENCES",
+                Text = "💾 Save preferences",
                 Dock = DockStyle.Left,
                 Width = 340,
                 Height = 44,
@@ -364,7 +363,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             Label lbl = new Label
             {
-                Text = "Company Logo:",
+                Text = "Company logo",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 ForeColor = Pal.C(51, 65, 85),
                 Dock = DockStyle.Top,
@@ -492,6 +491,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return card;
         }
 
+        private int Sc(int v) => (int)Math.Round(v * DeviceDpi / 96f);
         private TextBox AddFormField(TableLayoutPanel parent, int row, int col, string label, string defaultVal, bool spanTwo = false)
         {
             Label lbl = new Label
@@ -501,7 +501,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ForeColor = Pal.C(51, 65, 85),
                 Dock = DockStyle.Top,
                 AutoSize = true,
-                Margin = new Padding(0, 4, 0, 2)
+                Margin = new Padding(0, Sc(8), 0, Sc(4))
             };
 
             TextBox txt = new TextBox
@@ -509,7 +509,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Top,
                 Font = new Font("Segoe UI", 9.5F),
                 Text = defaultVal,
-                Margin = new Padding(0, 0, col == 0 && !spanTwo ? 12 : 0, 10),
+                Margin = new Padding(0, 0, col == 0 && !spanTwo ? Sc(16) : 0, Sc(10)),
                 MaxLength = 200
             };
 

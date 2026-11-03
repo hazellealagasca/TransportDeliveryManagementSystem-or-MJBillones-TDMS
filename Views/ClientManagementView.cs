@@ -35,8 +35,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Label lblListCount = null!;
         private DataGridView gridClients = null!;
 
-        private ComboBox cbStatusFilter = null!;
-        private ComboBox cbInactiveAfter = null!;
+        private ChoiceChip cbStatusFilter = null!;
+        private ChoiceChip cbInactiveAfter = null!;
         private const string InactiveAfterKey = "Clients.InactiveAfterDays";
         private int InactiveAfterDays => cbInactiveAfter?.SelectedIndex == 1 ? 180 : 90;
         // ------------------------------------------------------------------ Profile page
@@ -303,13 +303,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var card = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Surface, Padding = new Padding(Dpi(20), Dpi(16), Dpi(20), Dpi(16)) };
             card.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1); };
             card.Resize += (s, e) => card.Invalidate();
-            var header = new TableLayoutPanel { Dock = DockStyle.Top, Height = Dpi(52), ColumnCount = 6, RowCount = 1, BackColor = AppTheme.Surface };
+            // Two rows: title and count with the main buttons, then search and filters underneath (nothing gets squeezed or cut off).
+            var header = new TableLayoutPanel { Dock = DockStyle.Top, Height = Dpi(52) + Dpi(50), ColumnCount = 3, RowCount = 2, BackColor = AppTheme.Surface };
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Dpi(280)));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Dpi(140)));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Dpi(200)));
             header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            header.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(52)));
+            header.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(50)));
             var titleStack = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Surface };
             var lblTitle = new Label { Text = "Clients", Dock = DockStyle.Top, Height = Dpi(28), Font = new Font("Segoe UI Semibold", 14F), ForeColor = AppTheme.TextPrimary };
             lblListCount = new Label { Text = "", Dock = DockStyle.Top, Height = Dpi(20), Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted };
@@ -317,22 +317,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             titleStack.Controls.Add(lblTitle);
             txtSearchClient = new TextBox
             {
-                Dock = DockStyle.Fill,
+                Width = Dpi(320),
                 Font = new Font("Segoe UI", 10F),
                 PlaceholderText = "Search name, TIN, address or contact…",
-                Margin = new Padding(0, Dpi(10), Dpi(12), 0)
+                Margin = new Padding(0, Dpi(12), Dpi(12), 0)
             };
 
             txtSearchClient.TextChanged += (s, e) => FilterClients();
-            cbStatusFilter = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 10F), Margin = new Padding(0, Dpi(10), Dpi(10), 0) };
-            cbStatusFilter.Items.AddRange(new object[] { "All statuses", "Active", "Inactive" });
-            cbStatusFilter.SelectedIndex = 0;
-            cbStatusFilter.SelectedIndexChanged += (s, e) => FilterClients();
+            // The same filter buttons as the other list pages (Dispatch, Order History) instead of plain drop-downs.
+            cbStatusFilter = new ChoiceChip("Status", new[] { "All statuses", "Active", "Inactive" }) { Margin = new Padding(0, Dpi(6), Dpi(8), 0) };
+            cbStatusFilter.SelectionChanged += (s, e) => FilterClients();
             tips.SetToolTip(cbStatusFilter, "Show all clients, only active ones, or only inactive ones. With All statuses, inactive clients are listed last.");
-            cbInactiveAfter = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 10F), Margin = new Padding(0, Dpi(10), Dpi(12), 0) };
-            cbInactiveAfter.Items.AddRange(new object[] { "Inactive after 90 days", "Inactive after 180 days" });
-            cbInactiveAfter.SelectedIndex = MJdatabase.GetSystemSetting(InactiveAfterKey, "90") == "180" ? 1 : 0;
-            cbInactiveAfter.SelectedIndexChanged += (s, e) =>
+            cbInactiveAfter = new ChoiceChip("Inactive after", new[] { "90 days", "180 days" }) { Margin = new Padding(0, Dpi(6), Dpi(12), 0) };
+            cbInactiveAfter.SetQuietly(MJdatabase.GetSystemSetting(InactiveAfterKey, "90") == "180" ? 1 : 0);
+            cbInactiveAfter.SelectionChanged += (s, e) =>
             {
                 try { MJdatabase.SetSystemSetting(InactiveAfterKey, InactiveAfterDays.ToString(), "Days without orders or invoices before a client counts as inactive"); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 LoadClients();
@@ -345,12 +343,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnCustomizeList.Margin = new Padding(0, Dpi(8), Dpi(8), 0);
             btnCustomizeList.Click += (s, e) => CustomizeClientList();
             tips.SetToolTip(btnCustomizeList, "Choose, rename, reorder and resize the columns, or add your own (e.g. Region, Payment terms)");
+            var flowFilters = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, BackColor = AppTheme.Surface, Margin = new Padding(0) };
+            flowFilters.Controls.Add(txtSearchClient);
+            flowFilters.Controls.Add(cbStatusFilter);
+            flowFilters.Controls.Add(cbInactiveAfter);
             header.Controls.Add(titleStack, 0, 0);
-            header.Controls.Add(txtSearchClient, 1, 0);
-            header.Controls.Add(cbStatusFilter, 2, 0);
-            header.Controls.Add(cbInactiveAfter, 3, 0);
-            header.Controls.Add(btnCustomizeList, 4, 0);
-            header.Controls.Add(btnAddClient, 5, 0);
+            header.Controls.Add(btnCustomizeList, 1, 0);
+            header.Controls.Add(btnAddClient, 2, 0);
+            header.Controls.Add(flowFilters, 0, 1);
+            header.SetColumnSpan(flowFilters, 3);
             var gap = new Panel { Dock = DockStyle.Top, Height = Dpi(12), BackColor = AppTheme.Surface };
             gridClients = MakeGrid(readOnly: true);
             gridClients.Columns.Add(TextCol("CompanyName", "Company", 170, Dpi(160)));
@@ -359,9 +360,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridClients.Columns.Add(TextCol("Address", "Address", 160, Dpi(120)));
             gridClients.Columns.Add(TextCol("Contact", "Contact", 130, Dpi(110)));
             gridClients.Columns.Add(TextCol("Stores", "Stores", 55, Dpi(60), right: true));
-            gridClients.Columns.Add(TextCol("CompletedTrips", "Completed trips", 80, Dpi(90), right: true));
+            gridClients.Columns.Add(TextCol("CompletedTrips", "Trips", 80, Dpi(90), right: true));
             gridClients.Columns.Add(TextCol("LastTrip", "Last trip", 80, Dpi(90)));
-            gridClients.Columns.Add(TextCol("Unpaid", "Outstanding balance", 90, Dpi(100), right: true));
+            gridClients.Columns.Add(TextCol("Unpaid", "Balance due", 90, Dpi(100), right: true));
             gridClients.Columns["CompanyName"]!.DefaultCellStyle.Font = new Font("Segoe UI Semibold", 9.5F);
             gridClients.Cursor = Cursors.Hand;
             gridClients.DataBindingComplete += (s, e) => FillClientCustomCells();

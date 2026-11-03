@@ -106,7 +106,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Open
             m.Items.Add(Item("🔍  Open order details", () => RecordDetailsDialog.ShowDetails(this, d), "Enter"));
             m.Items.Add(Item("✎  Edit order", () => EditDeliveryOrder(d), "Ctrl+E", enabled: !cancelled));
-            m.Items.Add(Item("⧉  Duplicate as new order", () => DuplicateAsNewOrder(d)));
             m.Items.Add(new ToolStripSeparator());
             // What to do next, depending on where the order stands
             if (active)
@@ -262,7 +261,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     QuietBox.Show($"Dispatch {d.DispatchNumber} is already {d.Status.ToLowerInvariant()}.", "Cancel order", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
-                string? reason = CancellationReasonDialog.PromptCancellationReason(this.FindForm() ?? this.ParentForm!, "Dispatch Order", d.DispatchNumber);
+                string? reason = CancellationReasonDialog.PromptCancellationReason(this.FindForm() ?? this.ParentForm!, "Dispatch Order", d.DispatchNumber, d.ClientName);
                 if (string.IsNullOrEmpty(reason)) return;
                 d.Status = "Cancelled";
                 d.CancellationReason = reason;
@@ -274,35 +273,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             catch (Exception ex)
             { ErrLog.Error("DispatchManagementView.ContextMenu", ex); 
                 MessageBox.Show($"Failed to cancel dispatch order: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-        /// <summary>Opens the order form pre-filled from an existing order (client, route, stores, crates, truck and crew) as a new order.</summary>
-        private void DuplicateAsNewOrder(Delivery source)
-        {
-            try
-            {
-                var full = MJdatabase.GetDeliveryById(source.Id) ?? source;
-                SetFormVisibility(true);
-                BindDeliveryToForm(full);
-                selectedDelivery = null;
-                isBindingForm = true;
-                lastAutoDispatchNumber = AutoNumbers ? GenerateNextDispatchNumber() : "";
-                txtDispatchNumber.Text = lastAutoDispatchNumber;
-                txtDispatchNumber.Enabled = true;
-                txtDispatchNumber.ReadOnly = AutoNumbers;
-                DateTime day = DateTime.Today;
-                if (day >= dtpDispatchDate.MinDate && day <= dtpDispatchDate.MaxDate) dtpDispatchDate.Value = day;
-                if (cbStatus.Items.Contains("Scheduled")) cbStatus.SelectedItem = "Scheduled"; else cbStatus.Text = "Scheduled";
-                isBindingForm = false;
-                lblFormHeader.Text = $"New Dispatch Order  ·  copy of {full.DispatchNumber}";
-                SetButtonStates(false);
-                gridDispatch.ClearSelection();
-                ToastHelper.ShowToast(this, $"Copied {full.DispatchNumber}. Check the date, truck and crew, then save.", ToastType.Info);
-                dtpDispatchDate.Focus();
-            }
-            catch (Exception ex)
-            { ErrLog.Error("DispatchManagementView.ContextMenu", ex); 
-                MessageBox.Show($"Couldn't duplicate the order: {ex.Message}", "Duplicate order", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
     }

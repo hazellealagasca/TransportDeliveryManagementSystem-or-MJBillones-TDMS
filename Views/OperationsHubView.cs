@@ -143,20 +143,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     try { ToastHelper.ShowToast(FindForm() ?? (Control)this, "Dispatch draft saved. It will be offered when you open the order form again.", ToastType.Info); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 }
             }
-            else if (pnlContentHost.Controls.Count > 0 && pnlContentHost.Controls[0] is LoadingManagementView lvCurr)
-            {
-                if (lvCurr.HasUnsavedChanges())
-                {
-                    var owner = FindForm();
-                    if (owner != null) { if (owner.WindowState == FormWindowState.Minimized) owner.WindowState = FormWindowState.Normal; owner.Activate(); }
-                    var dr = MessageBox.Show(owner,
-                        "Unsaved inputs detected.\n\nDo you want to leave this tab?",
-                        "Unsaved Changes",
-                        MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Warning);
-                    return dr == DialogResult.Yes;
-                }
-            }
             return true;
         }
 

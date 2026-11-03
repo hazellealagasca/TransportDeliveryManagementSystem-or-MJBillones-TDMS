@@ -83,7 +83,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblSubtitle = new Label
             {
-                Text = "Configure dispatch rules, user account permissions, preferences & customization, and system backups.",
+                Text = "User accounts and permissions, appearance, preferences, features & pop-ups, change history and backups.",
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Pal.C(100, 116, 139),
                 AutoSize = true,
@@ -102,7 +102,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
-                Padding = new Padding(24, 10, 24, 10),
+                Padding = new Padding(16, 10, 16, 10),
                 BackColor = Pal.C(241, 245, 249),
                 Margin = new Padding(0)
             };
@@ -132,7 +132,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AddTabButton(flowTabs, "Features", "🔀  Features & Pop-ups", (s, e) => LoadChildView(new FeaturesSettingsView(), (Button)s!));
             if (isAdmin)
             {
-                AddTabButton(flowTabs, "SystemHistory", "📜  System Change History", (s, e) => LoadChildView(new ModuleHistoryView("Master System Change Tracking (Add, Update, Delete)", null, isAdminOnly: true), (Button)s!));
+                AddTabButton(flowTabs, "SystemHistory", "📜  Change History", (s, e) => LoadChildView(new ModuleHistoryView("Change history", null, isAdminOnly: true), (Button)s!));
                 AddTabButton(flowTabs, "Backup", "💾  Backup & Restore", (s, e) => LoadChildView(new BackupRestoreView(), (Button)s!));
                 AddTabButton(flowTabs, "Audit", "🛡️  Security Audit Logs", (s, e) => LoadChildView(new SecurityAuditView(), (Button)s!));
             }
@@ -158,9 +158,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Text = label,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowOnly,
-                MinimumSize = new Size(160, 36),
-                Padding = new Padding(12, 0, 12, 0),
-                Margin = new Padding(0, 0, 8, 6),
+                MinimumSize = new Size(0, 36),
+                Padding = new Padding(6, 0, 6, 0),
+                Margin = new Padding(0, 0, 4, 6),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 BackColor = Pal.White,

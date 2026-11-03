@@ -755,7 +755,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Button btnPrint = new Button
             {
-                Text = "🖨️ Print Summary",
+                Text = "🖨️ Print summary",
                 Height = 36,
                 Width = 140,
                 Location = new Point(16, 10),
@@ -770,7 +770,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Button btnUpdate = new Button
                 {
-                    Text = "✏️ Update Order",
+                    Text = "✏️ Update order",
                     Height = 36,
                     Width = 145,
                     Location = new Point(16, 10),
@@ -796,7 +796,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 Button btnCancelOrder = new Button
                 {
-                    Text = "🚫 Cancel Order",
+                    Text = "🚫 Cancel order",
                     Height = 36,
                     Width = 145,
                     Location = new Point(169, 10),
@@ -815,7 +815,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         return;
                     }
 
-                    string? reason = CancellationReasonDialog.PromptCancellationReason(dlg, "Dispatch Order", targetDel.DispatchNumber);
+                    string? reason = CancellationReasonDialog.PromptCancellationReason(dlg, "Dispatch Order", targetDel.DispatchNumber, targetDel.ClientName);
                     if (string.IsNullOrEmpty(reason)) return;
 
                     targetDel.Status = "Cancelled";

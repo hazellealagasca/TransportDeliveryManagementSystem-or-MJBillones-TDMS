@@ -14,6 +14,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public PhotoViewerDialog(string photoPath, string title = "Reference Photo Viewer")
         {
+            UIThemeHelper.ScaleFixedLayout(this, modernHeader: false); // fixed 100%-scale layout: grow it to the screen's scaling
             InitializeComponent(title);
             LoadPhoto(photoPath);
         }

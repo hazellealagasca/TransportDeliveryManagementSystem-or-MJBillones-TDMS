@@ -44,6 +44,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Panel pnlGridCard = null!;
         private DataGridView gridRoutes = null!;
         private TextBox txtGridSearch = null!;
+        private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
         private ComboBox cbStatusFilter = null!;
         private Label lblGridHeader = null!;
         private Button btnToggleForm = null!;
@@ -121,7 +122,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnBackToSourceForm = new Button
             {
-                Text = "⬅ Back to Dispatch",
+                Text = "⬅ Back to dispatch",
                 Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 Dock = DockStyle.Right,
                 Width = 140,
@@ -206,7 +207,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnAddPlace = new Button
             {
-                Text = "➕ Add Store",
+                Text = "➕ Add store",
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 BackColor = Pal.C(15, 23, 42),
@@ -239,11 +240,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 4, 0, 4)
             };
 
-            btnMoveUp = CreateSubButton("⬆ Move Up", () => MoveSelectedPlace(-1));
-            btnMoveDown = CreateSubButton("⬇ Move Down", () => MoveSelectedPlace(1));
+            btnMoveUp = CreateSubButton("⬆ Move up", () => MoveSelectedPlace(-1));
+            btnMoveDown = CreateSubButton("⬇ Move down", () => MoveSelectedPlace(1));
             btnRemovePlace = CreateSubButton("❌ Remove", RemoveSelectedPlace);
-            btnClearPlaces = CreateSubButton("🗑 Clear All", ClearAllPlaces);
-
+            btnClearPlaces = CreateSubButton("🗑 Clear all", ClearAllPlaces);
             pnlListButtons.Controls.Add(btnMoveUp);
             pnlListButtons.Controls.Add(btnMoveDown);
             pnlListButtons.Controls.Add(btnRemovePlace);
@@ -274,7 +274,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnSave = new Button
             {
-                Text = "💾 SAVE ROUTE",
+                Text = "💾 Save route",
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 BackColor = Pal.C(13, 110, 253),
@@ -288,7 +288,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnUpdate = new Button
             {
-                Text = "✏️ UPDATE",
+                Text = "✏️ Update",
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 BackColor = Pal.C(25, 135, 84),
@@ -302,7 +302,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnClear = new Button
             {
-                Text = "🔄 RESET",
+                Text = "🔄 Reset",
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 BackColor = Pal.C(241, 245, 249),
@@ -342,54 +342,60 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Padding = new Padding(16)
             };
 
+            // Sized for the screen's scaling: the title, then the tools on their own line (wrapping if the window is narrow).
             var pnlGridHeader = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 74,
-                Padding = new Padding(0, 0, 0, 8)
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Padding = new Padding(0, 0, 0, D(10))
             };
 
             lblGridHeader = new Label
             {
                 Dock = DockStyle.Top,
-                Height = 28,
-                Text = "Customizable Delivery Routes & Connected Stops",
-                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
-                ForeColor = Pal.C(15, 23, 42)
+                AutoSize = true,
+                Text = "Delivery routes",
+                Font = new Font("Segoe UI Semibold", 12F),
+                ForeColor = AppTheme.TextPrimary,
+                Padding = new Padding(0, 0, 0, D(8)),
+                UseMnemonic = false
             };
 
             var flowGridActions = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 36,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false
+                WrapContents = true
             };
 
             txtGridSearch = new TextBox
             {
                 PlaceholderText = "🔍 Search route name, code, or connected place...",
-                Size = new Size(270, 28),
-                Font = new Font("Segoe UI", 9F),
-                Margin = new Padding(0, 2, 6, 0)
+                Width = D(300),
+                Font = new Font("Segoe UI", 10F),
+                Margin = new Padding(0, D(3), D(8), D(4))
             };
             txtGridSearch.TextChanged += (s, e) => FilterGrid();
 
             cbStatusFilter = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Size = new Size(110, 28),
-                Font = new Font("Segoe UI", 9F),
-                Margin = new Padding(0, 2, 6, 0)
+                Width = D(150),
+                Font = new Font("Segoe UI", 10F),
+                Margin = new Padding(0, D(3), D(8), D(4))
             };
-            cbStatusFilter.Items.AddRange(new object[] { "All Status", "Active", "Inactive" });
+            cbStatusFilter.Items.AddRange(new object[] { "All statuses", "Active", "Inactive" });
             cbStatusFilter.SelectedIndex = 0;
             cbStatusFilter.SelectedIndexChanged += (s, e) => FilterGrid();
 
             btnToggleForm = new Button
             {
-                Text = "📝 + New Route ▾",
-                Size = new Size(140, 28),
+                Text = "📝 + New route ▾",
+                AutoSize = true,
+                MinimumSize = new Size(0, D(34)),
                 BackColor = Pal.C(15, 23, 42),
                 ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,
@@ -403,7 +409,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var btnExportCsv = new Button
             {
                 Text = "📊 Export CSV",
-                Size = new Size(100, 28),
+                AutoSize = true,
+                MinimumSize = new Size(0, D(34)),
                 BackColor = Pal.C(241, 245, 249),
                 ForeColor = Pal.C(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
@@ -416,8 +423,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var btnPrintGrid = new Button
             {
-                Text = "🖨️ Print Directory",
-                Size = new Size(130, 28),
+                Text = "🖨️ Print directory",
+                AutoSize = true,
+                MinimumSize = new Size(0, D(34)),
                 BackColor = Pal.C(241, 245, 249),
                 ForeColor = Pal.C(71, 85, 105),
                 FlatStyle = FlatStyle.Flat,
@@ -430,8 +438,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnBackToSourceGrid = new Button
             {
-                Text = "⬅ Back to Dispatch",
-                Size = new Size(150, 28),
+                Text = "⬅ Back to dispatch",
+                AutoSize = true,
+                MinimumSize = new Size(0, D(34)),
                 BackColor = Pal.C(241, 245, 249),
                 ForeColor = Pal.C(30, 41, 59),
                 FlatStyle = FlatStyle.Flat,
@@ -524,23 +533,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 DataPropertyName = "IsActive",
                 HeaderText = "Active",
-                Width = 65,
+                Width = D(70),
                 ReadOnly = true
             });
 
             gridRoutes.Columns.Add(new DataGridViewTextBoxColumn
             {
                 DataPropertyName = "RouteCode",
-                HeaderText = "Shortcut / Code",
-                Width = 95,
+                HeaderText = "Code",
+                Width = D(90),
                 DefaultCellStyle = { Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold) }
             });
 
             gridRoutes.Columns.Add(new DataGridViewTextBoxColumn
             {
                 DataPropertyName = "RouteName",
-                HeaderText = "Route Name",
-                Width = 140,
+                HeaderText = "Route name",
+                Width = D(170),
                 DefaultCellStyle = { Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold) }
             });
 
@@ -548,22 +557,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 DataPropertyName = "TotalStops",
                 HeaderText = "Stores",
-                Width = 75,
+                Width = D(80),
                 DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }
             });
 
             gridRoutes.Columns.Add(new DataGridViewTextBoxColumn
             {
                 DataPropertyName = "FormattedPlaces",
-                HeaderText = "Stores to Deliver (Sequence)",
-                Width = 360
+                HeaderText = "Stores to deliver (in order)",
+                Width = D(380)
             });
 
             gridRoutes.Columns.Add(new DataGridViewTextBoxColumn
             {
                 DataPropertyName = "Description",
-                HeaderText = "Description / Service Area",
-                Width = 180
+                HeaderText = "Description / service area",
+                Width = D(220)
             });
 
             gridRoutes.CellFormatting += (s, e) =>
@@ -638,8 +647,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void FilterGrid()
         {
             string q = txtGridSearch.Text.Trim().ToLowerInvariant();
-            string status = cbStatusFilter.SelectedItem?.ToString() ?? "All Status";
-
+            string status = cbStatusFilter.SelectedItem?.ToString() ?? "All statuses";
             var query = allRoutes.AsEnumerable();
 
             if (status == "Active") query = query.Where(r => r.IsActive);
@@ -657,9 +665,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var list = query.ToList();
             gridRoutes.DataSource = list;
 
-            lblGridHeader.Text = string.IsNullOrEmpty(q) && status == "All Status"
-                ? $"Configured Delivery Routes ({allRoutes.Count})"
-                : $"Configured Delivery Routes - Showing {list.Count} of {allRoutes.Count}";
+            lblGridHeader.Text = string.IsNullOrEmpty(q) && status == "All statuses"
+                ? $"Delivery routes ({allRoutes.Count})"
+                : $"Delivery routes ({list.Count} of {allRoutes.Count})";
         }
 
         private void GridRoutes_SelectionChanged(object? sender, EventArgs e)
@@ -819,7 +827,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             pnlForm.Visible = visible;
             tblMasterContent.ColumnStyles[0].Width = visible ? currentFormWidth : 0F;
-            btnToggleForm.Text = visible ? "📝 Hide Form ▴" : "📝 + New Route ▾";
+            btnToggleForm.Text = visible ? "📝 Hide form ▴" : "📝 + New route ▾";
         }
 
         private void ClearForm()

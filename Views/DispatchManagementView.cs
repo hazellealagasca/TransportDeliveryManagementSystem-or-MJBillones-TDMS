@@ -111,6 +111,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             lblFormHeader.UseMnemonic = false;
 
+            UIThemeHelper.FitColumnHeaders(gridDispatch); // "E-Crates", "G-Crates" etc. shown in full, not "E-Crat…"
+
             lblGridHeader.UseMnemonic = false;
 
             pnlForm.AutoScroll = false;
@@ -176,7 +178,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Button btnPrintLoadingSheet = new Button
             {
-                Text = "🖨️ Print Loading Sheet",
+                Text = "🖨️ Print loading sheet",
+
                 Size = new Size(162, 30),
                 BackColor = Pal.C(30, 58, 138),
 
@@ -193,9 +196,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             ContextMenuStrip menuActions = new ContextMenuStrip();
 
-            ToolStripMenuItem itemPrintOfficialSheet = new ToolStripMenuItem("🖨️ Print Official Loading Schedule Sheet", null, (s, e) => PrintOfficialLoadingSheetAction());
+            ToolStripMenuItem itemPrintOfficialSheet = new ToolStripMenuItem("🖨️ Print official loading schedule sheet", null, (s, e) => PrintOfficialLoadingSheetAction());
 
-            ToolStripMenuItem itemPrintTripReport = new ToolStripMenuItem("📋 Print Official Trip Report", null, (s, e) => {
+            ToolStripMenuItem itemPrintTripReport = new ToolStripMenuItem("📋 Print official trip report", null, (s, e) => {
+
                 if (selectedDelivery != null) PrintHelper.PrintOfficialTripReport(selectedDelivery.Id, selectedDelivery.DispatchNumber);
                 else QuietBox.Show("Please select a dispatch order first.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
@@ -203,7 +207,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             ToolStripMenuItem itemExport = new ToolStripMenuItem("📊 Export to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridDispatch, "Dispatch_Orders", "Active and Dispatched Trips"));
 
-            ToolStripMenuItem itemPrint = new ToolStripMenuItem("🖨️ Print Dispatch Summary", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
+            ToolStripMenuItem itemPrint = new ToolStripMenuItem("🖨️ Print dispatch summary", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
 
             menuActions.Items.Add(itemPrintOfficialSheet);
             menuActions.Items.Add(itemPrintTripReport);
@@ -729,7 +733,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                Text = "📝 + Add Order ▾",
+                Text = "📝 + Add order ▾",
 
                 Size = new Size(150, 30),
 
@@ -755,7 +759,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Button btnSpecialTrip = new Button
             {
-                Text = "✨ + Special Trip",
+                Text = "✨ + Special trip",
+
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowOnly,
                 MinimumSize = new Size(160, 30),
@@ -789,7 +794,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 Name = "btnCompleteOrder",
 
-                Text = "✔ Complete Order",
+                Text = "✔ Complete order",
 
                 AutoSize = true,
 
@@ -969,7 +974,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                btnToggleForm.Text = visible ? "✕ Hide Form ▴" : "📝 + Add Order ▾";
+                btnToggleForm.Text = visible ? "✕ Hide form ▴" : "📝 + Add order ▾";
 
                 btnToggleForm.BackColor = visible ? Pal.C(226, 232, 240) : Pal.C(185, 28, 28);
 
@@ -3792,7 +3797,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 tblFormButtons.RowStyles[2].Height = 30F;
                 pnlFormActionsBar.Height = Dpi(66);
 
-                btnClear.Text = "🧹 RESET FORM";
+                btnClear.Text = "🧹 Reset form";
+
             }
             else
             {
@@ -3829,7 +3835,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                btnClear.Text = "➕ NEW DISPATCH FORM";
+                btnClear.Text = "➕ New dispatch form";
+
             }
         }
 
@@ -4106,7 +4113,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             else
 
-                btnCompleteOrder.Text = "✔ Complete Order";
+                btnCompleteOrder.Text = "✔ Complete order";
 
             btnCompleteOrder.Invalidate();
 
@@ -5087,7 +5094,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    string? reason = CancellationReasonDialog.PromptCancellationReason(this.FindForm() ?? this.ParentForm!, "Dispatch Order", selectedDelivery.DispatchNumber);
+                    string? reason = CancellationReasonDialog.PromptCancellationReason(this.FindForm() ?? this.ParentForm!, "Dispatch Order", selectedDelivery.DispatchNumber, selectedDelivery.ClientName);
 
                     if (string.IsNullOrEmpty(reason)) return;
 

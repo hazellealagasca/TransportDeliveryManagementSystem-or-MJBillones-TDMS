@@ -283,6 +283,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public AnalogClockTimePickerDialog(string initialTime = "08:00 AM")
         {
+            UIThemeHelper.ScaleFixedLayout(this); // fixed 100%-scale layout: grow it to the screen's scaling
             InitializeComponent();
             ParseTimeString(initialTime);
             UpdateDisplayHeader();
@@ -311,7 +312,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void InitializeComponent()
         {
             this.Text = "Select Departure Time";
-            this.Size = new Size(340, 490);
+            this.Size = new Size(340, 520);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.StartPosition = FormStartPosition.CenterParent;
             this.MaximizeBox = false;
@@ -402,10 +403,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             FlowLayoutPanel pnlPresets = new FlowLayoutPanel
             {
                 Location = new Point(15, 362),
-                Size = new Size(295, 36),
+                Size = new Size(300, 64),
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                AutoScroll = true
+                WrapContents = true,
+                AutoScroll = false
             };
 
             string[] presets = { "06:00 AM", "08:00 AM", "10:00 AM", "01:00 PM", "04:00 PM", "08:00 PM" };
@@ -414,7 +415,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Button btnPreset = new Button
                 {
                     Text = pr,
-                    Size = new Size(68, 26),
+                    Size = new Size(94, 28),
                     FlatStyle = FlatStyle.Flat,
                     BackColor = Pal.C(241, 245, 249),
                     ForeColor = UITheme.TextPrimary,
@@ -423,18 +424,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     Cursor = Cursors.Hand
                 };
                 btnPreset.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
+                btnPreset.Click += (s, e) =>
                 {
                     ParseTimeString(pr);
                     UpdateDisplayHeader();
+                    UpdateAmPmButtons();
                 };
                 pnlPresets.Controls.Add(btnPreset);
             }
 
             Button btnCancel = new Button
             {
-                Text = "CANCEL",
+                Text = "Cancel",
                 DialogResult = DialogResult.Cancel,
-                Location = new Point(85, 405),
+                Location = new Point(85, 438),
                 Size = new Size(105, 36),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Pal.C(241, 245, 249),
@@ -446,9 +449,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Button btnOk = new Button
             {
-                Text = "SET TIME",
+                Text = "Set time",
                 DialogResult = DialogResult.OK,
-                Location = new Point(200, 405),
+                Location = new Point(200, 438),
                 Size = new Size(110, 36),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = UITheme.PrimaryAccent,
@@ -492,20 +495,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void UpdateAmPmButtons()
         {
-            if (isAm)
-            {
-                btnAm.BackColor = Pal.White;
-                btnAm.ForeColor = UITheme.PrimaryAccent;
-                btnPm.BackColor = Pal.C(30, 64, 175);
-                btnPm.ForeColor = Pal.C(224, 231, 255);
-            }
-            else
-            {
-                btnPm.BackColor = Pal.White;
-                btnPm.ForeColor = UITheme.PrimaryAccent;
-                btnAm.BackColor = Pal.C(30, 64, 175);
-                btnAm.ForeColor = Pal.C(224, 231, 255);
-            }
+            // The chosen half is filled with the accent colour so it clearly stands out in light and dark mode.
+            Button on = isAm ? btnAm : btnPm, off = isAm ? btnPm : btnAm;
+            on.BackColor = UITheme.PrimaryAccent;
+            on.ForeColor = Color.White;
+            on.FlatAppearance.BorderColor = UITheme.PrimaryAccent;
+            off.BackColor = AppTheme.SurfaceAlt;
+            off.ForeColor = UITheme.TextMuted;
+            off.FlatAppearance.BorderColor = AppTheme.SurfaceAlt;
         }
 
         public static string? ShowTimePicker(IWin32Window? owner, string currentTime = "08:00 AM")

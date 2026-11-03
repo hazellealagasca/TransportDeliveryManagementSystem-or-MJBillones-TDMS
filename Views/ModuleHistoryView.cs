@@ -30,7 +30,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             ["Trucks"] = "trucks", ["Crews"] = "crew", ["Invoices"] = "invoices", ["CollectionReceipts"] = "receipts",
             ["StatementsOfAccount"] = "statements of account", ["LookupCategories"] = "categories", ["Clients"] = "clients",
-            ["DeliveryRoutes"] = "delivery routes", ["LoadingSchedules"] = "loading orders", ["Deliveries"] = "dispatches"
+            ["DeliveryRoutes"] = "delivery routes", ["LoadingSchedules"] = "loading orders", ["Deliveries"] = "dispatches",
+            ["CrewRecords"] = "crew records", ["TruckMaintenance"] = "truck maintenance", ["ClientStores"] = "client stores", ["RateMatrix"] = "rates", ["SpecialTrips"] = "special trips"
         };
         private string Scope() => targetTables == null || targetTables.Length == 0 ? "every module"
             : string.Join(", ", targetTables.Select(t => FriendlyTable.TryGetValue(t, out var f) ? f : t));
@@ -140,18 +141,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnRefresh = PageKit.Action("↻  Refresh", "secondary", (s, e) => LoadLogs());
             header.AddActions(btnExport, btnRefresh);
             tiles = new TileStrip();
-            tAll = tiles.Add(new StatTile("All changes", AppTheme.Accent, "in the period") { Clickable = true, Key = "All Actions" });
+            tAll = tiles.Add(new StatTile("All changes", AppTheme.Accent, "in the period") { Clickable = true, Key = "All actions" });
             tAdd = tiles.Add(new StatTile("Added", AppTheme.Success, "new records") { Clickable = true, Key = "ADD" });
             tUpd = tiles.Add(new StatTile("Updated", AppTheme.Info, "edits and status changes") { Clickable = true, Key = "UPDATE" });
             tDel = tiles.Add(new StatTile("Deleted", AppTheme.Danger, "removed records") { Clickable = true, Key = "DELETE" });
             tOther = tiles.Add(new StatTile("Last change", AppTheme.TextMuted, ""));
             tiles.FilterChanged += t =>
             {
-                string key = t?.Key as string ?? "All Actions";
+                string key = t?.Key as string ?? "All actions";
                 if (cbActionFilter.Items.Contains(key)) cbActionFilter.SelectedItem = key; else cbActionFilter.SelectedIndex = 0;
             };
             cbActionFilter.DropDownStyle = ComboBoxStyle.DropDownList;
-            cbActionFilter.Items.AddRange(new object[] { "All Actions", "ADD", "UPDATE", "DELETE", "CANCEL", "RESCHEDULE" });
+            cbActionFilter.Items.AddRange(new object[] { "All actions", "ADD", "UPDATE", "DELETE", "CANCEL", "RESCHEDULE" });
             cbActionFilter.SelectedIndex = 0;
             cbActionFilter.SelectedIndexChanged += (s, e) => ApplyFilter();
             var filterCard = new TableLayoutPanel
@@ -160,8 +161,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ColumnCount = 3,
                 RowCount = 1,
                 BackColor = AppTheme.Surface,
-                Padding = new Padding(D(12), D(10), D(12), D(10)),
-                Height = D(58)
+                Padding = new Padding(D(10), D(8), D(10), D(6)),
+                Height = D(46)
             };
             filterCard.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             filterCard.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, D(170)));
@@ -178,7 +179,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbDateFilter.Dock = DockStyle.Fill;
             cbDateFilter.Margin = new Padding(0);
             cbDateFilter.DropDownStyle = ComboBoxStyle.DropDownList;
-            cbDateFilter.Items.AddRange(new object[] { "All Time", "Today", "Last 7 Days", "Last 30 Days" });
+            cbDateFilter.Items.AddRange(new object[] { "All time", "Today", "Last 7 days", "Last 30 days" });
             cbDateFilter.SelectedIndex = 0;
             cbDateFilter.SelectedIndexChanged += (s, e) => ApplyFilter();
 
@@ -200,13 +201,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             pnlGridCard.Controls.Add(lblCount);
             this.Controls.Add(pnlGridCard);
-            this.Controls.Add(PageKit.Gap(this, 12));
+            this.Controls.Add(PageKit.Gap(this, 8));
             this.Controls.Add(filterCard);
-            this.Controls.Add(PageKit.Gap(this, 12));
+            this.Controls.Add(PageKit.Gap(this, 8));
             this.Controls.Add(tiles);
             this.Controls.Add(PageKit.Gap(this, 14));
             this.Controls.Add(header);
-            this.HandleCreated += (s, e) => { tiles.Height = D(96); filterCard.Height = D(58); };
+            this.HandleCreated += (s, e) => { tiles.Height = D(96); filterCard.Height = D(46); };
         }
 
         private void SetupGridColumns()
@@ -223,10 +224,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridHistory.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             gridHistory.RowTemplate.Height = 32;
 
+            gridHistory.AutoGenerateColumns = false; // only the columns below (otherwise every raw field is added with its code name)
             gridHistory.Columns.Add(new DataGridViewTextBoxColumn
             {
                 DataPropertyName = "Timestamp",
-                HeaderText = "Timestamp",
+                HeaderText = "Date & time",
                 FillWeight = 14,
                 MinimumWidth = 125,
                 DefaultCellStyle = { Format = "yyyy-MM-dd HH:mm:ss" }
@@ -259,7 +261,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridHistory.Columns.Add(new DataGridViewTextBoxColumn
             {
                 DataPropertyName = "TableName",
-                HeaderText = "Module / Table",
+                HeaderText = "Module",
                 FillWeight = 13,
                 MinimumWidth = 100
             });
@@ -267,7 +269,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridHistory.Columns.Add(new DataGridViewTextBoxColumn
             {
                 DataPropertyName = "RecordIdentifier",
-                HeaderText = "Reference #",
+                HeaderText = "Record",
                 FillWeight = 14,
                 MinimumWidth = 110
             });
@@ -275,7 +277,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridHistory.Columns.Add(new DataGridViewTextBoxColumn
             {
                 DataPropertyName = "FieldName",
-                HeaderText = "Field Changed",
+                HeaderText = "Field",
                 FillWeight = 12,
                 MinimumWidth = 95
             });
@@ -283,7 +285,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridHistory.Columns.Add(new DataGridViewTextBoxColumn
             {
                 DataPropertyName = "NewValue",
-                HeaderText = "New Value",
+                HeaderText = "New value",
                 FillWeight = 12,
                 MinimumWidth = 95
             });
@@ -291,7 +293,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridHistory.Columns.Add(new DataGridViewTextBoxColumn
             {
                 DataPropertyName = "ReasonOrNotes",
-                HeaderText = "Activity Details",
+                HeaderText = "Details",
                 FillWeight = 26,
                 MinimumWidth = 160
             });
@@ -299,7 +301,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridHistory.Columns.Add(new DataGridViewTextBoxColumn
             {
                 DataPropertyName = "IpOrMachine",
-                HeaderText = "Workstation",
+                HeaderText = "Computer",
                 FillWeight = 10,
                 MinimumWidth = 85
             });
@@ -397,15 +399,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void ApplyFilter()
         {
             string q = (txtSearch.Text ?? "").Trim().ToLowerInvariant();
-            string selectedAction = cbActionFilter.SelectedItem?.ToString() ?? "All Actions";
-            string selectedDate = cbDateFilter.SelectedItem?.ToString() ?? "All Time";
-
+            string selectedAction = cbActionFilter.SelectedItem?.ToString() ?? "All actions";
+            string selectedDate = cbDateFilter.SelectedItem?.ToString() ?? "All time";
             DateTime now = DateTime.Now;
             DateTime? cutoff = selectedDate switch
             {
                 "Today" => DateTime.Today,
-                "Last 7 Days" => now.AddDays(-7),
-                "Last 30 Days" => now.AddDays(-30),
+                "Last 7 days" => now.AddDays(-7),
+                "Last 30 days" => now.AddDays(-30),
                 _ => null
             };
 
@@ -413,7 +414,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (cutoff.HasValue && log.Timestamp < cutoff.Value) return false;
 
-                if (!selectedAction.Equals("All Actions", StringComparison.OrdinalIgnoreCase))
+                if (!selectedAction.Equals("All actions", StringComparison.OrdinalIgnoreCase))
                 {
                     if (selectedAction == "ADD" && !(log.ActionType.Equals("ADD", StringComparison.OrdinalIgnoreCase) || log.ActionType.Contains("CREATE") || log.ActionType.Equals("INSERT", StringComparison.OrdinalIgnoreCase)))
                         return false;
@@ -448,7 +449,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 var inPeriod = rawLogs.Where(l => !cutoff.HasValue || l.Timestamp >= cutoff.Value).ToList();
                 tAll.Value = inPeriod.Count.ToString("N0");
-                tAll.Note = selectedDate == "All Time" ? "latest 1,000 kept here" : selectedDate.ToLowerInvariant();
+                tAll.Note = selectedDate == "All time" ? "latest 1,000 kept here" : selectedDate.ToLowerInvariant();
                 tAdd.Value = inPeriod.Count(l => l.ActionType.Equals("ADD", StringComparison.OrdinalIgnoreCase) || l.ActionType.Contains("CREATE") || l.ActionType.Equals("INSERT", StringComparison.OrdinalIgnoreCase)).ToString("N0");
                 tUpd.Value = inPeriod.Count(l => l.ActionType.Contains("UPDATE", StringComparison.OrdinalIgnoreCase)).ToString("N0");
                 tDel.Value = inPeriod.Count(l => l.ActionType.Equals("DELETE", StringComparison.OrdinalIgnoreCase)).ToString("N0");

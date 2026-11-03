@@ -239,6 +239,45 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             foreach (Control child in c.Controls) PolishInput(child);
             PolishInput(c);
+            PolishSpacing(c);
+        }
+        private static bool IsSimpleField(Control x) => x is Label || x is TextBox || x is ComboBox || x is NumericUpDown || x is DateTimePicker || x is CheckBox;
+        /// <summary>
+        /// Older forms list label and box pairs in tables with tight fixed row heights and "Name *:" captions, so labels touch the boxes.
+        /// Drop the trailing colon, let rows of simple fields size to their content, and give each box breathing room below it.
+        /// </summary>
+        private void PolishSpacing(Control c)
+        {
+            if (c is Label lb && !(c is LinkLabel) && lb.Text.EndsWith(":") && lb.Text.Length > 2 && !lb.Text.Contains("\n"))
+                lb.Text = lb.Text.Substring(0, lb.Text.Length - 1).TrimEnd();
+            if (c is TableLayoutPanel t)
+            {
+                bool changed = false;
+                foreach (var grp in t.Controls.Cast<Control>().GroupBy(x => t.GetRow(x)))
+                {
+                    int r = grp.Key;
+                    var cells = grp.ToList();
+                    if (r < 0 || !cells.All(IsSimpleField)) continue;
+                    if (r < t.RowStyles.Count)
+                    {
+                        if (t.RowStyles[r].SizeType == SizeType.Percent) continue;
+                        t.RowStyles[r].SizeType = SizeType.AutoSize;
+                    }
+                    foreach (var x in cells)
+                    {
+                        if (x is Label lab) { lab.AutoSize = true; lab.Margin = new Padding(lab.Margin.Left, D(6), lab.Margin.Right, D(4)); }
+                        else if (!(x is CheckBox)) x.Margin = new Padding(x.Margin.Left, 0, x.Margin.Right, D(10));
+                        changed = true;
+                    }
+                }
+                // A table written with a fixed height would clip the boxes once they get room; let it grow to fit them.
+                if (changed && t.Dock != DockStyle.Fill && t.RowStyles.Cast<RowStyle>().All(rs => rs.SizeType != SizeType.Percent))
+                {
+                    t.AutoSize = true;
+                    t.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+                }
+            }
+            foreach (Control child in c.Controls) PolishSpacing(child);
         }
         private static void PolishInput(Control c)
         {

@@ -348,7 +348,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnUploadPhoto.Name = "btnUploadPhoto";
             this.btnUploadPhoto.Size = new System.Drawing.Size(406, 37);
             this.btnUploadPhoto.TabIndex = 0;
-            this.btnUploadPhoto.Text = "🖼️ Upload Photo Evidence";
+            this.btnUploadPhoto.Text = "🖼️ Upload photo evidence";
             this.btnUploadPhoto.UseVisualStyleBackColor = false;
             this.btnUploadPhoto.Click += new System.EventHandler(this.BtnUploadPhoto_Click);
 
@@ -378,7 +378,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnViewPhoto.Name = "btnViewPhoto";
             this.btnViewPhoto.Size = new System.Drawing.Size(200, 37);
             this.btnViewPhoto.TabIndex = 0;
-            this.btnViewPhoto.Text = "👁️ View Full";
+            this.btnViewPhoto.Text = "👁️ View full";
             this.btnViewPhoto.UseVisualStyleBackColor = false;
             this.btnViewPhoto.Click += new System.EventHandler(this.BtnViewPhoto_Click);
 
@@ -424,7 +424,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(190, 32);
             this.btnSave.TabIndex = 0;
-            this.btnSave.Text = "💾 SUBMIT INCIDENT";
+            this.btnSave.Text = "💾 Submit incident";
             this.btnSave.UseVisualStyleBackColor = false;
             this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
 
@@ -440,7 +440,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnUpdate.Name = "btnUpdate";
             this.btnUpdate.Size = new System.Drawing.Size(190, 32);
             this.btnUpdate.TabIndex = 1;
-            this.btnUpdate.Text = "✏️ UPDATE INCIDENT";
+            this.btnUpdate.Text = "✏️ Update incident";
             this.btnUpdate.UseVisualStyleBackColor = false;
             this.btnUpdate.Click += new System.EventHandler(this.BtnUpdate_Click);
 
@@ -463,7 +463,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnClear.Name = "btnClear";
             this.btnClear.Size = new System.Drawing.Size(386, 28);
             this.btnClear.TabIndex = 1;
-            this.btnClear.Text = "🧹 CLEAR FORM";
+            this.btnClear.Text = "🧹 Clear form";
             this.btnClear.UseVisualStyleBackColor = false;
             this.btnClear.Click += new System.EventHandler(this.BtnClear_Click);
 
@@ -578,7 +578,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnPrint.Name = "btnPrint";
             this.btnPrint.Size = new System.Drawing.Size(170, 28);
             this.btnPrint.TabIndex = 2;
-            this.btnPrint.Text = "🖨️ Print Report";
+            this.btnPrint.Text = "🖨️ Print report";
             this.btnPrint.UseVisualStyleBackColor = false;
             this.btnPrint.Click += new System.EventHandler(this.BtnPrint_Click);
 

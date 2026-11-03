@@ -34,13 +34,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void InitClassification()
         {
             // Employment type first: seasonal / temporary
-            pnlEmployment = new Panel { Height = Dp(64), BackColor = AppTheme.Surface, Margin = new Padding(0, 0, 0, Dp(6)) };
+            pnlEmployment = new Panel { Height = Dp(48), BackColor = AppTheme.Surface, Margin = new Padding(0, 0, 0, Dp(2)) };
             chkIsSeasonal.Parent?.Controls.Remove(chkIsSeasonal);
             chkIsSeasonal.Text = "Seasonal / temporary crew member";
             chkIsSeasonal.AutoSize = true;
             chkIsSeasonal.Dock = DockStyle.Top;
             chkIsSeasonal.Font = new Font("Segoe UI Semibold", 10F);
-            var hint = new Label { Text = "Tick for crew hired only for peak season or as a temporary replacement. Leave unticked for regular crew.", Dock = DockStyle.Top, Height = Dp(36), Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.TextMuted, Padding = new Padding(Dp(20), 0, 0, 0) };
+            var hint = new Label { Text = "Tick for crew hired only for peak season or as a temporary replacement. Leave unticked for regular crew.", Dock = DockStyle.Top, Height = Dp(22), Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.TextMuted, Padding = new Padding(Dp(20), 0, 0, 0) };
             pnlEmployment.Controls.Add(hint);
             pnlEmployment.Controls.Add(chkIsSeasonal);
             // Pay and availability are not part of this form any more.
@@ -170,7 +170,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string duration = $"Valid {years:0.#} year(s) ({issued:MMM d, yyyy} – {exp:MMM d, yyyy})";
             if (exp <= issued) { lblLicenseStatus.Text = "⚠ Expiry must be after the issue date."; lblLicenseStatus.ForeColor = AppTheme.DangerText; }
             else if (years > 10.05) { lblLicenseStatus.Text = "⚠ Philippine licenses are valid for at most 10 years. " + duration; lblLicenseStatus.ForeColor = AppTheme.DangerText; }
-            else if (days < 0) { lblLicenseStatus.Text = $"⚠ EXPIRED {(-days)} day(s) ago. {duration}"; lblLicenseStatus.ForeColor = AppTheme.DangerText; }
+            else if (days < 0) { lblLicenseStatus.Text = $"⚠ Expired {(-days)} day(s) ago. {duration}"; lblLicenseStatus.ForeColor = AppTheme.DangerText; }
             else if (days <= 60) { lblLicenseStatus.Text = $"▲ Expires in {days} day(s) — remind them to renew. {duration}"; lblLicenseStatus.ForeColor = AppTheme.WarningText; }
             else { lblLicenseStatus.Text = $"✓ {duration} · {days / 365} yr {(days % 365) / 30} mo left"; lblLicenseStatus.ForeColor = AppTheme.SuccessText; }
         }

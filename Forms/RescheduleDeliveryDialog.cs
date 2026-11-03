@@ -95,7 +95,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string orderRef = isSpecialTrip ? specialTrip!.OrderReference : delivery!.DispatchNumber;
             string clientName = isSpecialTrip ? (specialTrip!.Company ?? "") : (delivery!.ClientName ?? "");
 
-            this.Text = isSpecialTrip ? $"Reschedule Special Trip: {orderRef}" : $"Reschedule Dispatch #{orderRef}";
+            this.Text = isSpecialTrip ? $"Reschedule special trip {orderRef}" : $"Reschedule dispatch #{orderRef}";
             // Laid out in 96-dpi pixels: let Windows scale the whole window on high-DPI screens so nothing is cut off.
             this.AutoScaleMode = AutoScaleMode.None;
             this.Size = new Size(740, 800);
@@ -136,7 +136,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblTitle = new Label
             {
-                Text = isSpecialTrip ? "📅 Reschedule Special Trip" : "📅 Reschedule Dispatch Order",
+                Text = isSpecialTrip ? "📅 Reschedule special trip" : "📅 Reschedule dispatch order",
                 Font = new Font("Segoe UI", 12F, FontStyle.Bold),
                 ForeColor = Pal.White,
                 Location = new Point(20, 12),
@@ -145,7 +145,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblSubtitle = new Label
             {
-                Text = $"Adjust target dispatch date, departure time, and resource assignments for {clientName}",
+                Text = $"Change the date, departure time, truck or crew for {clientName}.",
                 Font = new Font("Segoe UI", 8.5F),
                 ForeColor = Pal.C(148, 163, 184),
                 Location = new Point(20, 40),
@@ -214,7 +214,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblInfoCurDate = new Label
             {
-                Text = $"Current Scheduled: {curDate:MM/dd/yyyy} at {curTime}",
+                Text = $"Now scheduled: {curDate:MM/dd/yyyy} at {curTime}",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 ForeColor = Pal.C(194, 65, 12),
                 Location = new Point(14, 82),
@@ -229,7 +229,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblInfoStatus = new Label
             {
-                Text = $"Current Status: {curStatus}   |   Driver: {(!string.IsNullOrWhiteSpace(curDriver) ? curDriver : "Unassigned")}   |   Aide: {(!string.IsNullOrWhiteSpace(curAide) ? curAide : "Unassigned")}",
+                Text = $"Status: {curStatus}   |   Driver: {(!string.IsNullOrWhiteSpace(curDriver) ? curDriver : "Unassigned")}   |   Aide: {(!string.IsNullOrWhiteSpace(curAide) ? curAide : "Unassigned")}",
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Italic),
                 ForeColor = Pal.C(100, 116, 139),
                 Location = new Point(14, 108),
@@ -242,7 +242,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblNewDate = new Label
             {
-                Text = "New Scheduled Date: *",
+                Text = "New date *",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 ForeColor = Pal.C(30, 41, 59),
                 Location = new Point(24, 164),
@@ -260,7 +260,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblNewTime = new Label
             {
-                Text = "New Departure Time: *",
+                Text = "New departure time *",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 ForeColor = Pal.C(30, 41, 59),
                 Location = new Point(300, 164),
@@ -278,7 +278,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnPickTime = new Button
             {
-                Text = "⏰ Time Picker",
+                Text = "⏰ Time picker",
                 Location = new Point(570, 187),
                 Size = new Size(124, 30),
                 BackColor = Pal.C(30, 58, 138),
@@ -309,7 +309,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblResTitle = new Label
             {
-                Text = "🚚 Reassign Resources (Optional - Leave as '(Keep Current)' to preserve assignments)",
+                Text = "🚚 Truck and crew (optional: leave as “Keep current” to keep them)",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 ForeColor = Pal.C(30, 41, 59),
                 Location = new Point(12, 10),
@@ -318,7 +318,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblTrk = new Label
             {
-                Text = "Truck:",
+                Text = "Truck",
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
                 ForeColor = Pal.C(71, 85, 105),
                 Location = new Point(12, 38),
@@ -335,7 +335,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblDrv = new Label
             {
-                Text = "Driver:",
+                Text = "Driver",
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
                 ForeColor = Pal.C(71, 85, 105),
                 Location = new Point(230, 38),
@@ -352,7 +352,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblAid = new Label
             {
-                Text = "Aide / Crew:",
+                Text = "Aides",
                 Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
                 ForeColor = Pal.C(71, 85, 105),
                 Location = new Point(446, 38),
@@ -377,12 +377,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
 
             // Several aides can ride on one trip: a button opens a tick list instead of a single-choice box.
-            lblAid.Text = "Aides / Crew (one or more):";
+            lblAid.Text = "Aides (one or more)";
             cbAide.Visible = false;
             btnAides = new Button { Location = cbAide.Location, Size = new Size(cbAide.Width, cbAide.Height + 2), Text = "Keep current aides  ▾", TextAlign = ContentAlignment.MiddleLeft, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 9F), Cursor = Cursors.Hand, UseMnemonic = false, AutoEllipsis = true };
             btnAides.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
             btnAides.Click += (s, e) => ShowAidePicker();
-            lblResHint.Text = "Note: Selecting a specific truck, driver or aides will update that assignment upon confirmation.";
+            lblResHint.Text = "Picking another truck, driver or aides changes them when you confirm.";
             pnlResources.Controls.AddRange(new Control[]
             {
                 lblResTitle,
@@ -394,7 +394,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblReason = new Label
             {
-                Text = "Reason for Rescheduling: *",
+                Text = "Reason for rescheduling *",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 ForeColor = Pal.C(30, 41, 59),
                 Location = new Point(24, 376),
@@ -423,7 +423,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblNotes = new Label
             {
-                Text = "Detailed Remarks / Operational Notes:",
+                Text = "Remarks (optional)",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 ForeColor = Pal.C(30, 41, 59),
                 Location = new Point(24, 440),
@@ -479,7 +479,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnConfirm = new Button
             {
-                Text = "📅 Confirm Reschedule",
+                Text = "📅 Confirm reschedule",
                 Location = new Point(520, 14),
                 Size = new Size(174, 36),
                 BackColor = Pal.C(234, 88, 12),
@@ -506,9 +506,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 availableTrucks = MJdatabase.GetTrucks().Where(t => t.Status == "Active" || t.Status == "Available").ToList();
                 cbTruck.Items.Clear();
                 string curTrkText = isSpecialTrip
-                    ? (!string.IsNullOrWhiteSpace(specialTrip!.TruckPlate) ? $" (Current: {specialTrip.TruckPlate})" : "")
-                    : (!string.IsNullOrWhiteSpace(delivery!.TruckInfo) ? $" (Current: {delivery.TruckInfo})" : "");
-                cbTruck.Items.Add($"(Keep Current){curTrkText}");
+                    ? (!string.IsNullOrWhiteSpace(specialTrip!.TruckPlate) ? $" ({specialTrip.TruckPlate})" : "")
+                    : (!string.IsNullOrWhiteSpace(delivery!.TruckInfo) ? $" ({delivery.TruckInfo})" : "");
+                cbTruck.Items.Add($"Keep current{curTrkText}");
                 foreach (var trk in availableTrucks)
                 {
                     cbTruck.Items.Add($"{trk.PlateNumber} [{trk.TruckType}]");
@@ -521,9 +521,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 cbDriver.Items.Clear();
                 string curDrvText = isSpecialTrip
-                    ? (!string.IsNullOrWhiteSpace(specialTrip!.DriverName) ? $" (Current: {specialTrip.DriverName})" : "")
-                    : (!string.IsNullOrWhiteSpace(delivery!.DriverName) ? $" (Current: {delivery.DriverName})" : "");
-                cbDriver.Items.Add($"(Keep Current){curDrvText}");
+                    ? (!string.IsNullOrWhiteSpace(specialTrip!.DriverName) ? $" ({specialTrip.DriverName})" : "")
+                    : (!string.IsNullOrWhiteSpace(delivery!.DriverName) ? $" ({delivery.DriverName})" : "");
+                cbDriver.Items.Add($"Keep current{curDrvText}");
                 foreach (var d in availableDrivers)
                 {
                     cbDriver.Items.Add(d.FullName);
@@ -532,9 +532,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 cbAide.Items.Clear();
                 string curAideText = isSpecialTrip
-                    ? (!string.IsNullOrWhiteSpace(specialTrip!.AideName) ? $" (Current: {specialTrip.AideName})" : "")
-                    : (!string.IsNullOrWhiteSpace(delivery!.AideName) ? $" (Current: {delivery.AideName})" : "");
-                cbAide.Items.Add($"(Keep Current){curAideText}");
+                    ? (!string.IsNullOrWhiteSpace(specialTrip!.AideName) ? $" ({specialTrip.AideName})" : "")
+                    : (!string.IsNullOrWhiteSpace(delivery!.AideName) ? $" ({delivery.AideName})" : "");
+                cbAide.Items.Add($"Keep current{curAideText}");
                 foreach (var a in availableAides)
                 {
                     cbAide.Items.Add(a.FullName);

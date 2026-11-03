@@ -691,7 +691,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnHeaderSettings.Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold);
             btnHeaderSettings.Visible = SessionContext.IsAdmin;
 
-            btnLogout.Text = "\U0001f6aa LOGOUT";
+            btnLogout.Text = "\U0001f6aa Log out";
             btnLogout.Size = new Size(95, 30);
             btnLogout.Margin = new Padding(4, 0, 0, 0);
             btnLogout.BackColor = Pal.C(185, 28, 28);
@@ -1007,7 +1007,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Button btnClose = new Button
             {
-                Text = "GOT IT",
+                Text = "Got it",
                 Location = new Point(370, 335),
                 Size = new Size(115, 32),
                 BackColor = Pal.C(37, 99, 235),
@@ -1483,7 +1483,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Button btnOpen = new Button
             {
-                Text = "OPEN RECORD",
+                Text = "Open record",
                 BackColor = Pal.C(37, 99, 235),
                 ForeColor = Pal.White,
                 FlatStyle = FlatStyle.Flat,

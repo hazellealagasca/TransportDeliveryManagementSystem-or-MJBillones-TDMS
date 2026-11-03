@@ -18,12 +18,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 menu.Items.Add(new ToolStripSeparator());
             }
 
-            ToolStripMenuItem itemCsv = new ToolStripMenuItem("📊 Export Table to CSV...", null, (s, e) =>
+            ToolStripMenuItem itemCsv = new ToolStripMenuItem("📊 Export table to CSV...", null, (s, e) =>
             {
                 ExportToCsv(grid, defaultFileName, sheetTitle);
             });
 
-            ToolStripMenuItem itemExcel = new ToolStripMenuItem("📑 Export Table to Excel (.xml)...", null, (s, e) =>
+            ToolStripMenuItem itemExcel = new ToolStripMenuItem("📑 Export table to Excel (.xml)...", null, (s, e) =>
             {
                 ExportToExcelXml(grid, defaultFileName, sheetTitle);
             });

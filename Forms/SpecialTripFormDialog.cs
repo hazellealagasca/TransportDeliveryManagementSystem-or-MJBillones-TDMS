@@ -61,6 +61,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public SpecialTripFormDialog(int specialTripId = 0)
         {
+            UIThemeHelper.ScaleFixedLayout(this); // fixed 100%-scale layout: grow it to the screen's scaling
             this.currentTripId = specialTripId;
             this.currentColumns = SpecialTripTableEditorDialog.GetDefaultColumns();
             InitializeCustomComponent();
@@ -236,6 +237,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnClose.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
             btnClose.Click += (s, e) => this.Close();
 
+            // The theme shrinks "Close" buttons (meant for small panel close links); in this footer it must match Save and Clear.
+            this.Shown += (s, e) =>
+            {
+                btnClose.AutoSize = false;
+                btnClose.MinimumSize = Size.Empty;
+                btnClose.Font = btnClear.Font;
+                btnClose.Size = btnClear.Size;
+                btnClose.Padding = btnClear.Padding;
+                UIThemeHelper.SetButtonRole(btnClose, "secondary");
+            };
             flowActions.Controls.Add(btnSave);
             flowActions.Controls.Add(btnUpdate);
             flowActions.Controls.Add(btnReschedule);
@@ -1051,7 +1062,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnUpdate.Visible = true;
             btnReschedule.Visible = true;
-            btnSave.Text = "💾 Save Copy as New";
+            btnSave.Text = "💾 Save copy as new";
         }
 
         private void BtnSave_Click(object? sender, EventArgs e)

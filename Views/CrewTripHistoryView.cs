@@ -98,7 +98,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbCrew.SelectedIndexChanged += (s, e) => ApplyFilter();
 
             cbRole = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, Margin = new Padding(0, 0, D(8), 0) };
-            cbRole.Items.AddRange(new object[] { "All Roles", "Driver", "Aide", "Mechanic", "Fabricator" });
+            cbRole.Items.AddRange(new object[] { "All roles", "Driver", "Aide", "Mechanic", "Fabricator" });
             cbRole.SelectedIndex = 0;
             cbRole.SelectedIndexChanged += (s, e) => ApplyFilter();
 
@@ -515,7 +515,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedCrewId = cItem.CrewId;
             }
 
-            string roleFilter = cbRole.SelectedItem?.ToString() ?? "All Roles";
+            string roleFilter = cbRole.SelectedItem?.ToString() ?? "All roles";
             string dateFilter = cbDateFilter.SelectedItem?.ToString() ?? "All Time";
             string q = txtSearch?.Text?.Trim().ToLowerInvariant() ?? "";
             DateTime now = DateTime.Today;
@@ -527,7 +527,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 filtered = filtered.Where(r => r.CrewId == selectedCrewId);
             }
 
-            if (roleFilter != "All Roles")
+            if (roleFilter != "All roles")
             {
                 filtered = filtered.Where(r =>
                     r.CrewRole.IndexOf(roleFilter, StringComparison.OrdinalIgnoreCase) >= 0 ||

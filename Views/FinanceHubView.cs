@@ -47,7 +47,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             });
 
             AddTab("Collections", "💵  Collections & Receipts", () => new CollectionView());
-            AddTab("History", "📜  Finance History", () => new ModuleHistoryView("Billing & Collections History", new[] { "Invoices", "CollectionReceipts", "StatementsOfAccount" }, isAdminOnly: true));
+            AddTab("History", "📜  Finance History", () => new ModuleHistoryView("Billing & collections history", new[] { "Invoices", "CollectionReceipts", "StatementsOfAccount" }, isAdminOnly: true));
         }
 
         private void AddTab(string key, string title, Func<UserControl> viewFactory)

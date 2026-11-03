@@ -85,11 +85,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnPrint.Visible = false;
             var menuActions = new ContextMenuStrip();
-            menuActions.Items.Add("📊 Export Table to CSV...", null, (s, e) => {
+            menuActions.Items.Add("📊 Export table to CSV...", null, (s, e) => {
                 try { DataExportHelper.ExportToCsv(gridTrucks, "Truck_Vehicles", "Registered Trucks"); }
                 catch (Exception ex) { ErrLog.Error("TruckManagementView", ex);  MessageBox.Show($"Export error: {ex.Message}", "Export Failed", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             });
-            menuActions.Items.Add("🖨 Print Truck Report", null, BtnPrint_Click);
+            menuActions.Items.Add("🖨 Print truck report", null, BtnPrint_Click);
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
                     InitInlineCategories();
@@ -122,7 +122,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             btnToggleForm = new Button
             {
-                Text = "📝 + New / Form ▾",
+                Text = "📝 + New / form ▾",
                 Size = new Size(150, 30),
                 BackColor = Pal.C(30, 41, 59),
                 ForeColor = Pal.White,
@@ -966,7 +966,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnAddCat = new Button
             {
-                Text = "+ Add Category",
+                Text = "+ Add category",
                 Size = new Size(110, 32),
                 Margin = new Padding(0, 0, 6, 6),
                 BackColor = Pal.C(37, 99, 235),

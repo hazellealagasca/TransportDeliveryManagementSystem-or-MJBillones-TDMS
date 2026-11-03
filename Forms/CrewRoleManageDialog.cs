@@ -29,6 +29,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public CrewRoleManageDialog(string? initialRoleToSelect = null)
         {
+            UIThemeHelper.ScaleFixedLayout(this); // fixed 100%-scale layout: grow it to the screen's scaling
             this.SelectedRoleName = initialRoleToSelect;
             InitializeCustomComponent();
             LoadRoles();
@@ -161,7 +162,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnAdd = new Button
             {
-                Text = "+ Add Role",
+                Text = "+ Add role",
                 Size = new Size(110, 32),
                 Margin = new Padding(0, 0, 6, 6),
                 BackColor = Pal.C(37, 99, 235),

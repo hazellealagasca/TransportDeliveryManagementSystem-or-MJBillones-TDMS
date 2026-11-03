@@ -1113,7 +1113,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void CancelOrder()
         {
             if (!IsActiveOrder) return;
-            string? reason = CancellationReasonDialog.PromptCancellationReason(this, "Dispatch Order", del.DispatchNumber);
+            string? reason = CancellationReasonDialog.PromptCancellationReason(this, "Dispatch Order", del.DispatchNumber, del.ClientName);
             if (string.IsNullOrEmpty(reason)) return;
             try
             {

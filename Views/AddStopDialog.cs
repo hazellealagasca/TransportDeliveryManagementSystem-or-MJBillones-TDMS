@@ -28,6 +28,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public AddStopDialog(List<LoadingSchedule> schedules, int nextSequence = 1)
         {
+            UIThemeHelper.ScaleFixedLayout(this); // fixed 100%-scale layout: grow it to the screen's scaling
             availableSchedules = schedules ?? new List<LoadingSchedule>();
             InitializeComponent(nextSequence);
         }
@@ -213,7 +214,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnConfirm = new Button
             {
-                Text = "➕ Add Stop",
+                Text = "➕ Add stop",
                 Size = new Size(130, 36),
                 Dock = DockStyle.Right,
                 FlatStyle = FlatStyle.Flat,
