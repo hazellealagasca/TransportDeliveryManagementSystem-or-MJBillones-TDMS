@@ -10,7 +10,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 components.Dispose();
             }
-            base.Dispose(disposing);
+            if (disposing) Functions.DarkModeKit.StopAutoComplete(this);
+            Functions.DarkModeKit.RunWithoutFalseCrossThreadCheck(() => base.Dispose(disposing), "TruckManagementView");
         }
 
         #region Component Designer generated code

@@ -516,6 +516,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             OnNotificationsChanged?.Invoke();
         }
 
+        /// <summary>Paid, cancelled, void and draft invoices are never overdue.</summary>
+        private static bool IsClosedInvoice(string? status)
+        {
+            string st = (status ?? "").Trim();
+            return st.Equals("Paid", StringComparison.OrdinalIgnoreCase) || st.Equals("Cancelled", StringComparison.OrdinalIgnoreCase)
+                || st.Equals("Canceled", StringComparison.OrdinalIgnoreCase) || st.Equals("Void", StringComparison.OrdinalIgnoreCase) || st.Equals("Voided", StringComparison.OrdinalIgnoreCase) || st.Equals("Draft", StringComparison.OrdinalIgnoreCase);
+        }
         public static void ScanOperationalAlerts()
         {
             try
@@ -533,7 +540,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var invoices = MJdatabase.GetInvoices();
                 foreach (var inv in invoices)
                 {
-                    if (inv.Status != "Paid" && inv.DueDate.Date < DateTime.Today)
+                    if (!IsClosedInvoice(inv.Status) && inv.DueDate.Date < DateTime.Today)
                     {
                         int daysOverdue = (DateTime.Today - inv.DueDate.Date).Days;
                         if (!HasRecentAlert("Overdue Invoice Alert", inv.InvoiceNumber))

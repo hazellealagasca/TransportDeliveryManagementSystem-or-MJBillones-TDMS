@@ -47,13 +47,33 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// Disposes a closed dialog. While Visual Studio is debugging, Windows' auto-complete clean-up in TextBox.Dispose
         /// can raise a false "cross-thread operation" error on a window that is already gone; that one is logged and ignored.
         /// </summary>
-        public static void SafeDispose(Form f)
+        public static void SafeDispose(Form f) => DisposeQuietly(f);
+        /// <summary>
+        /// Disposes a window or screen that has type-ahead (auto-complete) boxes. Windows' auto-complete clean-up inside
+        /// TextBox.Dispose touches the box's handle in a way the debugger's cross-thread check wrongly reports as an error
+        /// ("Control '' accessed from a thread other than the thread it was created on"). The check is paused only for
+        /// this clean-up, on the UI thread, so the whole window is disposed properly; any other error is still raised.
+        /// </summary>
+        public static void DisposeQuietly(Control c)
         {
-            try { f.Dispose(); }
+            if (c == null || c.IsDisposed) return;
+            StopAutoComplete(c);
+            RunWithoutFalseCrossThreadCheck(() => c.Dispose(), c.GetType().Name);
+        }
+        /// <summary>Runs a Dispose(bool) body (from an override) with the same protection as <see cref="DisposeQuietly"/>.</summary>
+        public static void RunWithoutFalseCrossThreadCheck(Action dispose, string who)
+        {
+            bool old = Control.CheckForIllegalCrossThreadCalls;
+            try
+            {
+                Control.CheckForIllegalCrossThreadCalls = false;
+                dispose();
+            }
             catch (InvalidOperationException ex) when ((ex.StackTrace ?? "").Contains("AutoComplete"))
             {
-                AppLog.Error("SafeDispose(" + f.GetType().Name + ")", ex, "auto-complete clean-up, ignored");
+                AppLog.Error("DisposeQuietly(" + who + ")", ex, "auto-complete clean-up, ignored");
             }
+            finally { Control.CheckForIllegalCrossThreadCalls = old; }
         }
         public static void StopAutoComplete(Control root)
         {

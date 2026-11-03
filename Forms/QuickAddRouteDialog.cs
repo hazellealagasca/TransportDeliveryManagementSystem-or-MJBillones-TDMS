@@ -439,5 +439,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             DialogResult = DialogResult.OK;
             Close();
         }
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) DarkModeKit.StopAutoComplete(this);
+            DarkModeKit.RunWithoutFalseCrossThreadCheck(() => base.Dispose(disposing), nameof(QuickAddRouteDialog));
+        }
     }
 }

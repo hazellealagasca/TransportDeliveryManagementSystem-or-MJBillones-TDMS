@@ -1409,5 +1409,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 QuietBox.Show("Please select an issued Statement of Account with a linked Sales Invoice.", "Select SOA", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) DarkModeKit.StopAutoComplete(this);
+            DarkModeKit.RunWithoutFalseCrossThreadCheck(() => base.Dispose(disposing), nameof(StatementOfAccountView));
+        }
     }
 }
