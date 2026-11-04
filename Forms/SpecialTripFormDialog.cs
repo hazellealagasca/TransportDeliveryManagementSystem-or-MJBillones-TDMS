@@ -1131,6 +1131,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var early = MessageBox.Show($"This trip is dated {dtpDispatchDate.Value:MMMM d, yyyy}, which is still ahead. Save it as Completed anyway?", "Trip is in the future", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
                 if (early != DialogResult.Yes) return;
             }
+            bool cancelling = statusText.Equals("Cancelled", StringComparison.OrdinalIgnoreCase);
+            if (!cancelling && cbDriver.SelectedIndex > 0 && SelectedAides().Count == 0)
+            {
+                MessageBox.Show("Please tick at least 1 aide / helper. Every driver needs an aide.", "Aide required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                clbAides.Focus();
+                return;
+            }
             if (cbDriver.SelectedIndex > 0 && cbDriver.SelectedIndex - 1 < availableDrivers.Count
                 && SelectedAides().Any(a => a.Id == availableDrivers[cbDriver.SelectedIndex - 1].Id))
             {

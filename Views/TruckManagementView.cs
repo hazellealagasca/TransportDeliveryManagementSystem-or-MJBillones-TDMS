@@ -167,7 +167,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit.Build(new[]
             {
                 new FullPageFormKit.Section("Vehicle", "Plate number, type, cargo zone and status.", tblPlateType, tblCargoStatus),
-                new FullPageFormKit.Section("Capacity", "Fills in from the truck category above; change it for this truck if needed. A new category typed above is added when you save.", lblCap, numCapacity, lblCatHint, chkSaveCatDefault, lnkManageCats),
+                new FullPageFormKit.Section("Capacity", "Locked to the truck category and cargo type above.", lblCap, pnlCapRow, lblCatHint),
                 new FullPageFormKit.Section("Remarks", "Anything to note about this truck.", lblRemarks, txtRemarks, pnlRemarksSpacer)
             });
             if (btnToggleForm != null)
@@ -354,6 +354,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 numCapacity.Value = selectedTruck.CapacityCrates;
                 string curStatus = selectedTruck.Status;
                 if (curStatus.Equals("Available", StringComparison.OrdinalIgnoreCase)) curStatus = "Active";
+                if (curStatus.Equals("Inactive", StringComparison.OrdinalIgnoreCase)) curStatus = "Decommissioned";
                 cbStatus.SelectedItem = curStatus;
                 txtRemarks.Text = selectedTruck.Remarks;
                 lblFormHeader.Text = $"Truck: {selectedTruck.PlateNumber}";
@@ -375,7 +376,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ValidationHelper.ClearErrors(pnlForm);
 
                 if (!ValidationHelper.ValidateRequiredText(txtPlate, "Plate Number", valErrors)) firstInvalid ??= txtPlate;
-                if (string.IsNullOrWhiteSpace(cbType.Text)) { valErrors.Add("Truck category is required (pick one or type a new one)."); firstInvalid ??= cbType; }
+                if (string.IsNullOrWhiteSpace(cbType.Text)) { valErrors.Add("Truck category is required (pick one, or click + Add truck category)."); firstInvalid ??= cbType; }
                 if (!ValidationHelper.ValidatePositiveNumber(numCapacity, "Crate Capacity", valErrors)) firstInvalid ??= numCapacity;
 
                 if (!ValidationHelper.ShowValidationSummaryIfAny(this, valErrors, firstInvalid))
@@ -427,6 +428,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 string? truckType = CommitCategoryFromForm(capacity);
                 if (truckType == null) return;
+                capacity = MJdatabase.LockedCapacity(truckType, cbCargoType.SelectedItem?.ToString(), capacity);
                 Truck truck = new Truck
                 {
                     CargoType = cbCargoType.SelectedItem?.ToString() ?? "Cold / Chilled",
@@ -510,6 +512,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 string? truckType = CommitCategoryFromForm(capacity);
                 if (truckType == null) return;
+                string oldStatus = selectedTruck.Status ?? "";
+                bool statusChanged = !string.Equals(oldStatus.Trim(), newStatus.Trim(), StringComparison.OrdinalIgnoreCase);
+                string statusReason = "";
+                if (statusChanged && !AskStatusReason(selectedTruck, oldStatus, newStatus, out statusReason)) return;
+                capacity = MJdatabase.LockedCapacity(truckType, cbCargoType.SelectedItem?.ToString(), capacity);
                 selectedTruck.PlateNumber = plateNumber;
                 selectedTruck.TruckType = truckType;
                 selectedTruck.CapacityCrates = capacity;
@@ -518,7 +525,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedTruck.CargoType = cbCargoType.SelectedItem?.ToString() ?? "Cold / Chilled";
 
                 MJdatabase.SaveTruck(selectedTruck);
-                QuietBox.Show($"Truck '{plateNumber}' updated successfully! New capacity: {capacity} crates.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (statusChanged) { try { MJdatabase.LogTruckStatusChange(selectedTruck.Id, oldStatus, newStatus, statusReason); } catch (Exception lx) { ErrLog.Swallowed(lx); } }
+                QuietBox.Show($"Truck '{plateNumber}' updated successfully! Capacity: {capacity} crates.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadTrucks();
                 SetFormVisibility(false);
@@ -616,6 +624,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     break;
             }
 
+            // Decommissioned trucks always sink to the bottom (stable sort keeps the order chosen above).
+            filtered = filtered.OrderBy(t => MJdatabase.IsDecommissioned(t.Status) ? 1 : 0).ToList();
             foreach (DataGridViewColumn col in gridTrucks.Columns)
             {
                 string baseText = col.HeaderText.Replace(" ▲", "").Replace(" ▼", "");
@@ -723,13 +733,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (cbCargoType.Items.Count == 0)
                 {
-                    cbCargoType.Items.AddRange(new object[] { "Cold / Chilled", "Dry Goods", "Dry and Chilled Mix" });
+                    cbCargoType.Items.AddRange(new object[] { "Cold / Chilled", "Dry Goods", "Combi (Cold + Dry)" });
                 }
                 if (cbCargoType.SelectedIndex < 0) cbCargoType.SelectedIndex = 0;
 
                 if (cbStatus.Items.Count == 0)
                 {
-                    cbStatus.Items.AddRange(new object[] { "Active", "In Use", "Under Maintenance", "Inactive" });
+                    cbStatus.Items.AddRange(new object[] { "Active", "In Use", "Under Maintenance", "Decommissioned" });
                 }
                 if (cbStatus.SelectedIndex < 0) cbStatus.SelectedIndex = 0;
 
@@ -758,7 +768,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             if (selectedTruck.Status.Equals("Under Maintenance", StringComparison.OrdinalIgnoreCase) ||
-                selectedTruck.Status.Equals("Inactive", StringComparison.OrdinalIgnoreCase))
+                MJdatabase.IsDecommissioned(selectedTruck.Status))
             {
                 MessageBox.Show($"Cannot dispatch vehicle '{selectedTruck.PlateNumber}' because its current status is '{selectedTruck.Status}'.", "Vehicle Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
@@ -786,7 +796,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.Add(RowMenu.Sub("Set status",
                     RowMenu.Item("🟢  Active", () => SetTruckStatus(t, "Active"), "", !status.Equals("Active", StringComparison.OrdinalIgnoreCase)),
                     RowMenu.Item("🔧  Under maintenance", () => SetTruckStatus(t, "Under Maintenance"), "", !status.Equals("Under Maintenance", StringComparison.OrdinalIgnoreCase)),
-                    RowMenu.Item("⚪  Inactive", () => SetTruckStatus(t, "Inactive"), "", !status.Equals("Inactive", StringComparison.OrdinalIgnoreCase))));
+                    RowMenu.Item("⚪  Decommissioned", () => SetTruckStatus(t, "Decommissioned"), "", !MJdatabase.IsDecommissioned(status))));
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.CopySub(this, ("Plate number", t.PlateNumber), ("Truck type", t.TruckType),
                     ("Summary", $"{t.PlateNumber} — {t.TruckType}, {t.CapacityCrates} crates, {t.CargoType}, {status}")));
@@ -795,7 +805,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (SessionContext.IsAdmin)
                 {
                     m.Items.Add(RowMenu.Sep());
-                    m.Items.Add(RowMenu.Danger("Delete truck…", () => { selectedTruck = t; BtnDelete_Click(this, EventArgs.Empty); }, !onTrip));
+                    if (!MJdatabase.IsDecommissioned(status)) m.Items.Add(RowMenu.Danger("Decommission truck…", () => SetTruckStatus(t, "Decommissioned"), !onTrip));
+                    else m.Items.Add(RowMenu.Good("Reactivate truck…", () => SetTruckStatus(t, "Active")));
                 }
             });
         }
@@ -813,10 +824,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
             string old = t.Status;
+            if (!AskStatusReason(t, old, status, out string reason)) return;
             t.Status = status;
             try
             {
                 MJdatabase.SaveTruck(t);
+                try { MJdatabase.LogTruckStatusChange(t.Id, old, status, reason); } catch (Exception lx) { ErrLog.Swallowed(lx); }
                 ToastHelper.ShowToast(this, $"{t.PlateNumber} is now {status}", ToastType.Success);
             }
             catch (Exception ex)

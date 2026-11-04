@@ -250,7 +250,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbCargoType.DropDownStyle = ComboBoxStyle.DropDownList;
             cbCargoType.Font = new Font("Segoe UI", 9.5F);
             cbCargoType.FormattingEnabled = true;
-            cbCargoType.Items.AddRange(new object[] { "Cold / Chilled", "Dry Goods", "Dry and Chilled Mix" });
+            cbCargoType.Items.AddRange(new object[] { "Cold / Chilled", "Dry Goods", "Combi (Cold + Dry)" });
             cbCargoType.Location = new Point(0, 25);
             cbCargoType.Margin = new Padding(0, 2, 4, 6);
             cbCargoType.Name = "cbCargoType";
@@ -260,7 +260,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbStatus.DropDownStyle = ComboBoxStyle.DropDownList;
             cbStatus.Font = new Font("Segoe UI", 9.5F);
             cbStatus.FormattingEnabled = true;
-            cbStatus.Items.AddRange(new object[] { "Active", "In Use", "Under Maintenance", "Inactive" });
+            cbStatus.Items.AddRange(new object[] { "Active", "In Use", "Under Maintenance", "Decommissioned" });
             cbStatus.Location = new Point(222, 25);
             cbStatus.Margin = new Padding(4, 2, 0, 6);
             cbStatus.Name = "cbStatus";

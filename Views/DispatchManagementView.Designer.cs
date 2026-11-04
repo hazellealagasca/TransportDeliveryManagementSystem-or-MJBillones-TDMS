@@ -16,7 +16,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     components.Dispose();
                 }
             }
-            base.Dispose(disposing);
+            Functions.DarkModeKit.RunWithoutFalseCrossThreadCheck(() => base.Dispose(disposing), "DispatchManagementView");
         }
 
         #region Component Designer generated code
@@ -545,7 +545,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbCargoType.DropDownStyle = ComboBoxStyle.DropDownList;
             cbCargoType.Font = new Font("Segoe UI", 9F);
             cbCargoType.FormattingEnabled = true;
-            cbCargoType.Items.AddRange(new object[] { "Cold / Chilled", "Dry Goods", "Dry and Chilled Mix" });
+            cbCargoType.Items.AddRange(new object[] { "Cold / Chilled", "Dry Goods", "Combi (Cold + Dry)" });
             cbCargoType.Location = new Point(0, 22);
             cbCargoType.Margin = new Padding(0, 0, 2, 1);
             cbCargoType.Name = "cbCargoType";

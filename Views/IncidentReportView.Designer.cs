@@ -295,8 +295,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblPhoto.Name = "lblPhoto";
             this.lblPhoto.Size = new System.Drawing.Size(206, 17);
             this.lblPhoto.TabIndex = 9;
-            this.lblPhoto.Text = "Damage Photo / Proof Reference:";
-
+            this.lblPhoto.Text = "Damage photo (optional):";
             this.tblPhotoModule.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.tblPhotoModule.ColumnCount = 2;

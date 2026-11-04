@@ -26,7 +26,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tReady = truckTiles.Add(new StatTile("Ready to dispatch", AppTheme.Success, "active and not on a trip") { Clickable = true, Key = "ready" });
             tBusy = truckTiles.Add(new StatTile("On a dispatch", AppTheme.Info, "assigned to an open order") { Clickable = true, Key = "busy" });
             tMaint = truckTiles.Add(new StatTile("Under maintenance", AppTheme.Warning, "can't be dispatched") { Clickable = true, Key = "maint" });
-            tInactive = truckTiles.Add(new StatTile("Inactive", AppTheme.TextMuted, "retired or parked") { Clickable = true, Key = "inactive" });
+            tInactive = truckTiles.Add(new StatTile("Decommissioned", AppTheme.TextMuted, "retired — can be reactivated") { Clickable = true, Key = "inactive" });
             truckTiles.FilterChanged += t => { truckTileFilter = t?.Key as string == "all" ? null : t?.Key as string; FilterGridData(); };
             headerGap = PageKit.Gap(this, 12);
             tilesGap = PageKit.Gap(this, 14);
@@ -85,21 +85,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             "ready" => MJdatabase.IsTruckReadyStatus(t.Status) && !busyTruckIds.Contains(t.Id),
             "busy" => busyTruckIds.Contains(t.Id),
-            "maint" => MJdatabase.IsTruckBlockedStatus(t.Status) && !RowMenu.Is(t.Status, "Inactive"),
-            "inactive" => RowMenu.Is(t.Status, "Inactive"),
+            "maint" => MJdatabase.IsTruckBlockedStatus(t.Status) && !MJdatabase.IsDecommissioned(t.Status),
+            "inactive" => MJdatabase.IsDecommissioned(t.Status),
             _ => true
         };
         private void UpdateTruckTiles()
         {
             if (truckTiles == null) return;
             tAll!.Value = allTrucks.Count.ToString("N0");
-            tAll.Note = $"{allTrucks.Sum(t => t.CapacityCrates):N0} crates total capacity";
+            tAll.Note = "";
             tReady!.Value = allTrucks.Count(t => MJdatabase.IsTruckReadyStatus(t.Status) && !busyTruckIds.Contains(t.Id)).ToString("N0");
             tBusy!.Value = allTrucks.Count(t => busyTruckIds.Contains(t.Id)).ToString("N0");
-            int maint = allTrucks.Count(t => MJdatabase.IsTruckBlockedStatus(t.Status) && !RowMenu.Is(t.Status, "Inactive"));
+            int maint = allTrucks.Count(t => MJdatabase.IsTruckBlockedStatus(t.Status) && !MJdatabase.IsDecommissioned(t.Status));
             tMaint!.Value = maint.ToString("N0");
             tMaint.ValueColor = maint > 0 ? AppTheme.WarningText : null;
-            tInactive!.Value = allTrucks.Count(t => RowMenu.Is(t.Status, "Inactive")).ToString("N0");
+            tInactive!.Value = allTrucks.Count(t => MJdatabase.IsDecommissioned(t.Status)).ToString("N0");
         }
         public void FilterByText(string text)
         {

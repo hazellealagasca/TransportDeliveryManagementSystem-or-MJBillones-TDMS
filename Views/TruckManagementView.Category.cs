@@ -15,33 +15,48 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Label? lblCatHint;
         private CheckBox? chkSaveCatDefault;
         private LinkLabel? lnkManageCats;
+        private Panel? pnlCapRow;
         private void InitInlineCategories()
         {
             // The separate Categories page is folded into the truck form.
             pnlSubNavTabs.Visible = false;
             if (pnlCategoriesContainer != null) pnlCategoriesContainer.Visible = false;
-            cbType.DropDownStyle = ComboBoxStyle.DropDown;
-            cbType.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-            cbType.AutoCompleteSource = AutoCompleteSource.ListItems;
-            cbType.MaxLength = 60;
-            lblType.Text = "Truck category * (pick one or type a new one):";
-            lblCatHint = new Label { Dock = DockStyle.Top, AutoSize = false, Height = 36, Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.TextMuted, UseMnemonic = false, Margin = new Padding(0, 0, 0, 2) };
-            chkSaveCatDefault = new CheckBox { Dock = DockStyle.Top, AutoSize = false, Height = 26, Font = new Font("Segoe UI", 9F), Visible = false, Margin = new Padding(0, 0, 0, 6) };
-            chkSaveCatDefault.CheckedChanged += (s, e) => UpdateCategoryHint();
-            lnkManageCats = new LinkLabel { Dock = DockStyle.Top, AutoSize = false, Height = 24, Text = "Rename or remove categories…", Font = new Font("Segoe UI", 9F), LinkColor = AppTheme.Accent, ActiveLinkColor = AppTheme.AccentHover, Visible = SessionContext.IsAdmin };
-            lnkManageCats.LinkClicked += (s, e) => OpenCategoryManager();
-            cbType.TextChanged += (s, e) => { if (!isBindingForm) UpdateCategoryHint(); };
-            cbType.SelectedIndexChanged += (s, e) => UpdateCategoryHint();
-            cbType.Leave += (s, e) =>
+            // Categories are picked from the list; new ones are added with "+ Add truck category" (with their capacities).
+            cbType.DropDownStyle = ComboBoxStyle.DropDownList;
+            lblType.Text = "Truck category *:";
+            lblCap.Text = "Crate capacity (locked):";
+            lblCatHint = new Label { Dock = DockStyle.Top, AutoSize = false, Height = 40, Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.TextMuted, UseMnemonic = false, Margin = new Padding(0, 0, 0, 2) };
+            chkSaveCatDefault = new CheckBox { Dock = DockStyle.Top, AutoSize = false, Height = 0, Visible = false };
+            lnkManageCats = new LinkLabel { Visible = false };
+            // Capacity is locked: it comes from the category's matrix and the truck's cargo type.
+            numCapacity.ReadOnly = true;
+            numCapacity.Increment = 0;
+            numCapacity.InterceptArrowKeys = false;
+            numCapacity.TabStop = false;
+            numCapacity.MouseWheel += (s, e) => { if (e is HandledMouseEventArgs h) h.Handled = true; };
+            numCapacity.Minimum = 0;
+            if (numCapacity.Controls.Count > 0) numCapacity.Controls[0].Visible = false; // no up/down arrows on a locked number
+            // Category buttons sit beside the capacity box.
+            pnlCapRow = new Panel { Dock = DockStyle.Top, Height = 40, Margin = new Padding(0, 0, 0, 6) };
+            var flow = new FlowLayoutPanel { Dock = DockStyle.Right, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Padding = new Padding(8, 0, 0, 0) };
+            Button B(string t, string role, Action a)
             {
-                // Use the existing spelling when the typed name matches a category.
-                var match = MatchCategory(cbType.Text);
-                if (match == null) return;
-                if (match.CategoryName != cbType.Text.Trim()) cbType.Text = match.CategoryName;
-                if ((selectedTruck == null || selectedTruck.Id == 0) && match.CrateCapacity > 0) numCapacity.Value = Math.Min(numCapacity.Maximum, match.CrateCapacity);
-            };
-            numCapacity.ValueChanged += (s, e) => UpdateCategoryHint();
-            InputGuards.DigitsOnly(numCapacity);
+                var b = new Button { Text = t, AutoSize = true, MinimumSize = new Size(0, 32), FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Margin = new Padding(0, 0, 6, 0), Padding = new Padding(6, 0, 6, 0), Font = new Font("Segoe UI Semibold", 9F), UseMnemonic = false };
+                b.FlatAppearance.BorderSize = 0;
+                UIThemeHelper.SetButtonRole(b, role);
+                b.Click += (s, e) => a();
+                b.Visible = SessionContext.IsAdmin;
+                return b;
+            }
+            flow.Controls.Add(B("✏  Rename / remove category", "secondary", () => OpenCategoryManager(false)));
+            flow.Controls.Add(B("＋ Add truck category", "secondary", () => OpenCategoryManager(true)));
+            numCapacity.Parent?.Controls.Remove(numCapacity);
+            numCapacity.Dock = DockStyle.Fill;
+            numCapacity.Margin = Padding.Empty;
+            pnlCapRow.Controls.Add(numCapacity);
+            pnlCapRow.Controls.Add(flow);
+            cbType.SelectedIndexChanged += (s, e) => UpdateCategoryHint();
+            cbCargoType.SelectedIndexChanged += (s, e) => UpdateCategoryHint();
         }
         private TruckCategoryItem? MatchCategory(string? name)
         {
@@ -51,66 +66,72 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return allTruckCategories.FirstOrDefault(c => string.Equals(c.CategoryName.Trim(), n, StringComparison.OrdinalIgnoreCase));
         }
         private static string CleanCategoryName(string? s) => System.Text.RegularExpressions.Regex.Replace((s ?? "").Trim(), @"\s+", " ");
+        /// <summary>Shows the category's matrix and sets the locked capacity for the chosen cargo type.</summary>
         private void UpdateCategoryHint()
         {
-            if (lblCatHint == null || chkSaveCatDefault == null) return;
+            if (lblCatHint == null) return;
             string name = CleanCategoryName(cbType.Text);
-            int cap = (int)numCapacity.Value;
             if (name.Length == 0)
             {
-                lblCatHint.Text = "Choose a category to fill in its usual capacity.";
+                lblCatHint.Text = "Choose a category — its capacity fills in for the cargo type.";
                 lblCatHint.ForeColor = AppTheme.TextMuted;
-                chkSaveCatDefault.Visible = false;
                 return;
             }
-            var cat = MatchCategory(name);
-            if (cat == null)
+            TruckCapacity? m = null;
+            try { m = MJdatabase.GetCapacityFor(name); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            string cargo = MJdatabase.NormalizeCargo(cbCargoType.SelectedItem?.ToString());
+            if (m == null)
             {
-                lblCatHint.Text = $"\"{name}\" is a new category. It will be added with {cap:N0} crates as its usual capacity when you save.";
-                lblCatHint.ForeColor = AppTheme.InfoText;
-                chkSaveCatDefault.Visible = false;
-                return;
-            }
-            int trucks = cat.AssignedTrucksCount;
-            if (cat.CrateCapacity > 0 && cat.CrateCapacity != cap)
-            {
-                lblCatHint.Text = $"{cat.CategoryName} usually carries {cat.CrateCapacity:N0} crates ({trucks} truck{(trucks == 1 ? "" : "s")}). This truck will be saved with {cap:N0}.";
+                lblCatHint.Text = $"{name} has no capacities yet. Click \"Rename / remove category\" to set its Dry, Cold and Combi crates.";
                 lblCatHint.ForeColor = AppTheme.WarningText;
-                chkSaveCatDefault.Text = $"Also make {cap:N0} crates the usual capacity for {cat.CategoryName}";
-                chkSaveCatDefault.Visible = SessionContext.IsAdmin;
+                return;
             }
-            else
-            {
-                lblCatHint.Text = $"{cat.CategoryName}: usual capacity {cat.CrateCapacity:N0} crates · {trucks} truck{(trucks == 1 ? "" : "s")} in this category.";
-                lblCatHint.ForeColor = AppTheme.TextMuted;
-                chkSaveCatDefault.Visible = false;
-                chkSaveCatDefault.Checked = false;
-            }
+            int cap = MJdatabase.LockedCapacity(name, cargo, (int)numCapacity.Value);
+            bool was = isBindingForm;
+            isBindingForm = true;
+            try { numCapacity.Value = Math.Min(numCapacity.Maximum, Math.Max(numCapacity.Minimum, cap)); } finally { isBindingForm = was; }
+            string combi = m.CombiMax == 0 ? "Combi not set" : $"Combi {m.CombiColdMax} cold + {m.CombiDryMax} dry";
+            lblCatHint.Text = $"{m.CategoryName}: Dry {m.DryMax} · Cold {m.ColdMax} · {combi}. This truck ({cargo}) carries {cap:N0} crates.";
+            lblCatHint.ForeColor = AppTheme.TextMuted;
         }
-        /// <summary>Called on Save/Update: adds a new category, or updates its usual capacity when asked. Returns the name to store on the truck.</summary>
+        /// <summary>Called on Save/Update: the category must exist (new ones are added with "+ Add truck category").</summary>
         private string? CommitCategoryFromForm(int capacity)
         {
             string name = CleanCategoryName(cbType.Text);
             if (name.Length == 0) return null;
-            if (name.Length < 2 || !name.Any(char.IsLetterOrDigit))
-            {
-                MessageBox.Show(FindForm(), "Enter a proper truck category name, for example \"FORWARD 6 TONS\".", "Truck category", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                cbType.Focus();
-                return null;
-            }
             var cat = MatchCategory(name);
             if (cat == null)
             {
-                if (!MJdatabase.SaveTruckCategory(name, capacity)) throw new InvalidOperationException($"The new category \"{name}\" couldn't be saved.");
-                MJdatabase.NotifyCategoriesChanged();
-                return name;
-            }
-            if (chkSaveCatDefault != null && chkSaveCatDefault.Visible && chkSaveCatDefault.Checked && cat.CrateCapacity != capacity)
-            {
-                MJdatabase.SaveTruckCategory(cat.CategoryName, capacity, cat.CategoryName);
-                MJdatabase.NotifyCategoriesChanged();
+                MessageBox.Show(FindForm(), $"\"{name}\" is not a truck category yet. Click \"+ Add truck category\" to add it with its capacities first.", "Truck category", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                cbType.Focus();
+                return null;
             }
             return cat.CategoryName;
+        }
+        /// <summary>Asks for the reason when a truck goes to maintenance or is decommissioned, and confirms reactivation.</summary>
+        private bool AskStatusReason(Truck t, string oldStatus, string newStatus, out string reason)
+        {
+            reason = "";
+            var owner = FindForm();
+            bool toMaint = RowMenu.Is(newStatus, "Under Maintenance", "Maintenance", "Under Repair");
+            bool toDecom = MJdatabase.IsDecommissioned(newStatus);
+            bool fromDecom = MJdatabase.IsDecommissioned(oldStatus) && !toDecom;
+            if (toMaint || toDecom)
+            {
+                string? r = Forms.ReasonPrompt.Ask(owner, toDecom ? "Decommission truck" : "Truck under maintenance",
+                    toDecom ? $"Why is {t.PlateNumber} being decommissioned? It will no longer be offered for trips (it can be reactivated later)."
+                            : $"What maintenance is {t.PlateNumber} getting? It can't be dispatched until it is set back to Active.", required: true, okText: toDecom ? "Decommission" : "Save");
+                if (r == null) return false;
+                reason = r;
+                return true;
+            }
+            if (fromDecom)
+            {
+                if (MessageBox.Show(owner, $"Are you sure you want to reactivate {t.PlateNumber}?\n\nIt will be offered for trips again. Its decommission history is kept in the truck profile.", "Reactivate truck", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return false;
+                reason = Forms.ReasonPrompt.Ask(owner, "Reactivate truck", $"Note for reactivating {t.PlateNumber} (optional).", required: false, okText: "Reactivate") ?? "Reactivated";
+                if (reason.Length == 0) reason = "Reactivated";
+            }
+            return true;
         }
         private void ResetCategoryHint()
         {
@@ -118,39 +139,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try { allTruckCategories = MJdatabase.GetTruckCategories(); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
             UpdateCategoryHint();
         }
-        /// <summary>Rename or remove categories without leaving the truck form.</summary>
-        private void OpenCategoryManager()
+        /// <summary>Truck categories and their Dry / Cold / Combi capacities, without leaving the truck form.</summary>
+        private void OpenCategoryManager(bool startWithNew)
         {
-            if (pnlCategoriesContainer == null) return;
-            var owner = FindForm();
-            using var dlg = new Form
+            using var dlg = new Forms.TruckCategoryMatrixDialog(startWithNew);
+            dlg.ShowDialog(FindForm());
+            if (!dlg.Changed) return;
+            string typed = cbType.Text;
+            LoadTrucks();
+            BeginInvoke(new Action(() =>
             {
-                Text = "Truck categories & capacities",
-                StartPosition = FormStartPosition.CenterParent,
-                Size = new Size(PageKit.D(this, 980), PageKit.D(this, 620)),
-                MinimizeBox = false,
-                ShowInTaskbar = false,
-                BackColor = AppTheme.Canvas,
-                Font = Font
-            };
-            var oldParent = pnlCategoriesContainer.Parent;
-            var oldDock = pnlCategoriesContainer.Dock;
-            pnlCategoriesContainer.Parent = dlg;
-            pnlCategoriesContainer.Dock = DockStyle.Fill;
-            pnlCategoriesContainer.Visible = true;
-            LoadTruckCategories();
-            try { UIThemeHelper.ApplyTheme(dlg); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
-            try { dlg.ShowDialog(owner); }
-            finally
-            {
-                pnlCategoriesContainer.Visible = false;
-                pnlCategoriesContainer.Parent = oldParent;
-                pnlCategoriesContainer.Dock = oldDock;
-                string typed = cbType.Text;
-                LoadTrucks();
-                cbType.Text = typed;
+                int i = cbType.FindStringExact(typed);
+                if (i >= 0) cbType.SelectedIndex = i;
                 ResetCategoryHint();
-            }
+            }));
         }
     }
 }

@@ -1,625 +1,257 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
+using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Forms;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
 
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
 {
+    /// <summary>
+    /// Delivery routes as one editable table (the same way the client's "Stores &amp; branches" table works):
+    /// type straight into the cells, click the Stores cell to pick and order the client's stores, then Save changes.
+    /// New routes start completely blank, nothing is selected on its own, and routes are archived, never deleted.
+    /// </summary>
     public class DeliveryRoutesView : UserControl, IRefreshable
     {
-        private DeliveryRoute? selectedRoute = null;
-        private bool isBindingForm = false;
-        private List<DeliveryRoute> allRoutes = new List<DeliveryRoute>();
+        private sealed class RouteRow
+        {
+            public DeliveryRoute Route { get; }
+            public bool Dirty { get; set; }
+            public RouteRow(DeliveryRoute r, bool dirty = false) { Route = r; Dirty = dirty; }
+            public bool IsNew => Route.Id <= 0;
+        }
 
-        private TableLayoutPanel tblMasterContent = null!;
-        private Panel pnlForm = null!;
-        private Panel pnlFormHeaderBar = null!;
-        private Label lblFormHeader = null!;
-        private Button btnCloseForm = null!;
-        private Panel pnlFormBody = null!;
 
-        private TextBox txtRouteCode = null!;
-        private TextBox txtRouteName = null!;
-        private TextBox txtDescription = null!;
-        private CheckBox chkActive = null!;
 
-        private TextBox txtNewPlace = null!;
-        private Button btnAddPlace = null!;
-        private ListBox lstPlaces = null!;
-        private Button btnMoveUp = null!;
-        private Button btnMoveDown = null!;
-        private Button btnRemovePlace = null!;
-        private Button btnClearPlaces = null!;
-        private Label lblRoutePreview = null!;
-
-        private Button btnSave = null!;
-        private Button btnUpdate = null!;
-        private Button btnClear = null!;
-
-        private Panel pnlGridCard = null!;
+        private readonly List<RouteRow> rows = new List<RouteRow>();
+        private List<string> clientNames = new List<string>();
         private DataGridView gridRoutes = null!;
         private TextBox txtGridSearch = null!;
-        private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
-        private ComboBox cbStatusFilter = null!;
         private Label lblGridHeader = null!;
-        private Button btnToggleForm = null!;
-        private float currentFormWidth = 430F;
-        private bool isLoadingRoutes = false;
-        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
-        public Action? OnNavigateBack { get; set; }
-        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
-        public string ReturnTargetName { get; set; } = "Dispatch";
+        private Label lblStatus = null!;
+        private Button btnNewRoute = null!;
+        private Button btnSaveAll = null!;
         private Button btnBackToSourceGrid = null!;
-        private Button btnBackToSourceForm = null!;
+        private bool binding;
+        private bool isLoadingRoutes;
+        private readonly ToolTip tips = new ToolTip { InitialDelay = 400, ShowAlways = true };
+        private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
+
+
+
+        [System.ComponentModel.Browsable(false)][System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)] public Action? OnNavigateBack { get; set; }
+        [System.ComponentModel.Browsable(false)][System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)] public string ReturnTargetName { get; set; } = "Dispatch";
+
+
 
         public DeliveryRoutesView()
         {
             InitializeCustomComponents();
             UIThemeHelper.ApplyTheme(this);
-            gridRoutes.ShowCellToolTips = false;
+            StyleAfterTheme();
             SetupContextMenu();
             _ = LoadRoutesAsync();
         }
 
-        private void InitializeCustomComponents()
+
+
+
+        // ------------------------------------------------------------------ layout
+        private Button MakeButton(string text, string role)
         {
-            this.SuspendLayout();
-            this.Dock = DockStyle.Fill;
-            this.BackColor = Pal.C(241, 245, 249);
-            this.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
-
-            tblMasterContent = new TableLayoutPanel
+            var b = new Button
             {
-                Dock = DockStyle.Fill,
-                ColumnCount = 2,
-                RowCount = 1,
-                BackColor = Pal.C(241, 245, 249)
-            };
-            tblMasterContent.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, currentFormWidth));
-            tblMasterContent.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tblMasterContent.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-
-            pnlForm = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = Pal.White,
-                Margin = new Padding(0, 0, 12, 0)
-            };
-
-            pnlFormHeaderBar = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 38,
-                BackColor = Pal.C(248, 250, 252),
-                Padding = new Padding(12, 6, 12, 6)
-            };
-
-            lblFormHeader = new Label
-            {
-                Text = "Delivery Route Specification",
-                Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
-                ForeColor = Pal.C(15, 23, 42),
-                Dock = DockStyle.Left,
-                AutoSize = true
-            };
-
-            btnCloseForm = new Button
-            {
-                Text = "✕ Close",
-                Font = new Font("Segoe UI", 8.5F),
-                Dock = DockStyle.Right,
-                Width = 70,
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand
-            };
-            btnCloseForm.FlatAppearance.BorderSize = 0;
-            btnCloseForm.Click += (s, e) => SetFormVisibility(false);
-
-            btnBackToSourceForm = new Button
-            {
-                Text = "⬅ Back to dispatch",
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                Dock = DockStyle.Right,
-                Width = 140,
-                BackColor = Pal.C(241, 245, 249),
-                ForeColor = Pal.C(30, 41, 59),
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand,
-                Visible = false,
-                Margin = new Padding(0, 0, 4, 0)
-            };
-            btnBackToSourceForm.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
-            btnBackToSourceForm.Click += (s, e) => OnNavigateBack?.Invoke();
-
-            pnlFormHeaderBar.Controls.Add(lblFormHeader);
-            pnlFormHeaderBar.Controls.Add(btnBackToSourceForm);
-            pnlFormHeaderBar.Controls.Add(btnCloseForm);
-
-            pnlFormBody = new Panel
-            {
-                Dock = DockStyle.Fill,
-                AutoScroll = true,
-                Padding = new Padding(16, 10, 16, 10)
-            };
-
-            var lblCode = new Label { Text = "Route Shortcut / Code * (e.g. R1, R2):", Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105) };
-            txtRouteCode = new TextBox { Dock = DockStyle.Top, Height = 28, Font = new Font("Segoe UI", 9F), ReadOnly = false, BackColor = Pal.White };
-            txtRouteCode.TextChanged += (s, e) => { if (!isBindingForm) HandleRouteCodeInput(); };
-
-            var lblName = new Label { Text = "Route Name * (e.g. Route 1, Tarlac-Pampanga Loop):", Dock = DockStyle.Top, Height = 24, Padding = new Padding(0, 4, 0, 0), Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105) };
-            txtRouteName = new TextBox { Dock = DockStyle.Top, Height = 28, Font = new Font("Segoe UI", 9F) };
-
-            txtRouteCode.TextChanged += (s, e) => { if (!isBindingForm) LiveDuplicateCheck(); };
-            txtRouteName.TextChanged += (s, e) => { if (!isBindingForm) LiveDuplicateCheck(); };
-            var lblDesc = new Label { Text = "Description / Service Area:", Dock = DockStyle.Top, Height = 24, Padding = new Padding(0, 4, 0, 0), Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105) };
-            txtDescription = new TextBox { Dock = DockStyle.Top, Height = 28, Font = new Font("Segoe UI", 9F) };
-
-            chkActive = new CheckBox
-            {
-                Text = "Active Route (Available for dispatch & schedules)",
-                Dock = DockStyle.Top,
-                Height = 28,
-                Checked = true,
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                ForeColor = Pal.C(22, 101, 52)
-            };
-
-            var lblPlacesTitle = new Label
-            {
-                Text = "Stores to Deliver in this Route (Ordered Sequence) *:",
-                Dock = DockStyle.Top,
-                Height = 24,
-                Padding = new Padding(0, 6, 0, 0),
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                ForeColor = Pal.C(15, 23, 42)
-            };
-
-            var pnlAddPlaceBar = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                Height = 32,
-                ColumnCount = 2,
-                RowCount = 1,
-                Margin = new Padding(0, 0, 0, 4)
-            };
-            pnlAddPlaceBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            pnlAddPlaceBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 95F));
-
-            txtNewPlace = new TextBox
-            {
-                Dock = DockStyle.Fill,
-                PlaceholderText = "Type store name / branch...",
-                Font = new Font("Segoe UI", 9F)
-            };
-            txtNewPlace.KeyDown += (s, e) =>
-            {
-                if (e.KeyCode == Keys.Enter)
-                {
-                    e.SuppressKeyPress = true;
-                    InsertPlaceFromInput();
-                }
-            };
-
-            btnAddPlace = new Button
-            {
-                Text = "➕ Add store",
-                Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                BackColor = Pal.C(15, 23, 42),
-                ForeColor = Pal.White,
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand,
-                Margin = new Padding(4, 0, 0, 0)
-            };
-            btnAddPlace.FlatAppearance.BorderSize = 0;
-            btnAddPlace.Click += (s, e) => InsertPlaceFromInput();
-
-            pnlAddPlaceBar.Controls.Add(txtNewPlace, 0, 0);
-            pnlAddPlaceBar.Controls.Add(btnAddPlace, 1, 0);
-
-            lstPlaces = new ListBox
-            {
-                Dock = DockStyle.Top,
-                Height = 140,
-                Font = new Font("Segoe UI", 9F),
-                IntegralHeight = false,
-                BorderStyle = BorderStyle.FixedSingle
-            };
-
-            var pnlListButtons = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                Height = 32,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                Margin = new Padding(0, 4, 0, 4)
-            };
-
-            btnMoveUp = CreateSubButton("⬆ Move up", () => MoveSelectedPlace(-1));
-            btnMoveDown = CreateSubButton("⬇ Move down", () => MoveSelectedPlace(1));
-            btnRemovePlace = CreateSubButton("❌ Remove", RemoveSelectedPlace);
-            btnClearPlaces = CreateSubButton("🗑 Clear all", ClearAllPlaces);
-            pnlListButtons.Controls.Add(btnMoveUp);
-            pnlListButtons.Controls.Add(btnMoveDown);
-            pnlListButtons.Controls.Add(btnRemovePlace);
-            pnlListButtons.Controls.Add(btnClearPlaces);
-
-            lblRoutePreview = new Label
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                MaximumSize = new Size(390, 0),
-                Font = new Font("Segoe UI", 8F, FontStyle.Italic),
-                ForeColor = Pal.C(71, 85, 105),
-                Padding = new Padding(0, 4, 0, 8),
-                Text = "Route Sequence Preview: (None added yet)"
-            };
-
-            var pnlFormActions = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                Height = 36,
-                ColumnCount = 3,
-                RowCount = 1,
-                Margin = new Padding(0, 10, 0, 0)
-            };
-            pnlFormActions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35F));
-            pnlFormActions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35F));
-            pnlFormActions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
-
-            btnSave = new Button
-            {
-                Text = "💾 Save route",
-                Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                BackColor = Pal.C(13, 110, 253),
-                ForeColor = Pal.White,
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 0, 3, 0)
-            };
-            btnSave.FlatAppearance.BorderSize = 0;
-            btnSave.Click += (s, e) => SaveRoute();
-
-            btnUpdate = new Button
-            {
-                Text = "✏️ Update",
-                Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                BackColor = Pal.C(25, 135, 84),
-                ForeColor = Pal.White,
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand,
-                Margin = new Padding(3, 0, 3, 0)
-            };
-            btnUpdate.FlatAppearance.BorderSize = 0;
-            btnUpdate.Click += (s, e) => SaveRoute();
-
-            btnClear = new Button
-            {
-                Text = "🔄 Reset",
-                Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                BackColor = Pal.C(241, 245, 249),
-                ForeColor = Pal.C(71, 85, 105),
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand,
-                Margin = new Padding(3, 0, 0, 0)
-            };
-            btnClear.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
-            btnClear.Click += (s, e) => ClearForm();
-
-            pnlFormActions.Controls.Add(btnSave, 0, 0);
-            pnlFormActions.Controls.Add(btnUpdate, 1, 0);
-            pnlFormActions.Controls.Add(btnClear, 2, 0);
-
-            pnlFormBody.Controls.Add(pnlFormActions);
-            pnlFormBody.Controls.Add(lblRoutePreview);
-            pnlFormBody.Controls.Add(pnlListButtons);
-            pnlFormBody.Controls.Add(lstPlaces);
-            pnlFormBody.Controls.Add(pnlAddPlaceBar);
-            pnlFormBody.Controls.Add(lblPlacesTitle);
-            pnlFormBody.Controls.Add(chkActive);
-            pnlFormBody.Controls.Add(txtDescription);
-            pnlFormBody.Controls.Add(lblDesc);
-            pnlFormBody.Controls.Add(txtRouteName);
-            pnlFormBody.Controls.Add(lblName);
-            pnlFormBody.Controls.Add(txtRouteCode);
-            pnlFormBody.Controls.Add(lblCode);
-
-            pnlForm.Controls.Add(pnlFormBody);
-            pnlForm.Controls.Add(pnlFormHeaderBar);
-
-            pnlGridCard = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = Pal.White,
-                Padding = new Padding(16)
-            };
-
-            // Sized for the screen's scaling: the title, then the tools on their own line (wrapping if the window is narrow).
-            var pnlGridHeader = new Panel
-            {
-                Dock = DockStyle.Top,
+                Text = text,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Padding = new Padding(0, 0, 0, D(10))
+                MinimumSize = new Size(0, D(36)),
+                Padding = new Padding(D(12), 0, D(12), 0),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 9.5F),
+                Cursor = Cursors.Hand,
+                UseMnemonic = false,
+                Margin = new Padding(0, D(4), D(8), D(4))
             };
+            b.FlatAppearance.BorderSize = 0;
+            UIThemeHelper.SetButtonRole(b, role);
+            return b;
+        }
 
-            lblGridHeader = new Label
+
+
+        private void InitializeCustomComponents()
+        {
+            SuspendLayout();
+            Dock = DockStyle.Fill;
+            BackColor = AppTheme.Canvas;
+            Font = new Font("Segoe UI", 9.5F);
+            Padding = new Padding(D(12));
+
+
+
+            var card = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Surface, Padding = new Padding(D(20), D(16), D(20), D(16)) };
+            card.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1); };
+            card.Resize += (s, e) => card.Invalidate();
+
+
+
+            var header = new Panel { Dock = DockStyle.Top, Height = D(156), BackColor = AppTheme.Surface, Padding = new Padding(0, 0, 0, D(8)) };
+            lblGridHeader = new Label { Dock = DockStyle.Top, AutoSize = false, Height = D(36), Text = "Delivery routes", Font = new Font("Segoe UI Semibold", 14F), ForeColor = AppTheme.TextPrimary, UseMnemonic = false };
+            var lblSub = new Label
             {
                 Dock = DockStyle.Top,
-                AutoSize = true,
-                Text = "Delivery routes",
-                Font = new Font("Segoe UI Semibold", 12F),
-                ForeColor = AppTheme.TextPrimary,
-                Padding = new Padding(0, 0, 0, D(8)),
+                AutoSize = false,
+                Height = D(30),
+                AutoEllipsis = true,
+                Text = "Type straight into the table. Click a route's Stores cell to pick its stores from the client's master list and set the delivery order. Nothing is saved until you click Save changes.",
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = AppTheme.TextMuted,
+                Padding = new Padding(0, D(2), 0, D(8)),
                 UseMnemonic = false
             };
 
-            var flowGridActions = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = true
-            };
+            var flow = new FlowLayoutPanel { Dock = DockStyle.Top, Height = D(54), WrapContents = false, BackColor = AppTheme.Surface };
+            txtGridSearch = new TextBox { PlaceholderText = "🔍 Search code, route, client or store…", Width = D(300), Font = new Font("Segoe UI", 10F), Margin = new Padding(0, D(8), D(12), D(4)) };
+            txtGridSearch.TextChanged += (s, e) => ApplySearch();
+            btnNewRoute = MakeButton("➕  New route", "primary");
+            btnNewRoute.Click += (s, e) => AddNewRouteRow();
+            tips.SetToolTip(btnNewRoute, "Adds a blank row at the top. Fill in the client, code, route name and stores, then Save changes.");
+            btnSaveAll = MakeButton("💾  Save changes", "strong");
+            btnSaveAll.Click += (s, e) => SaveAllChanges();
+            tips.SetToolTip(btnSaveAll, "Checks every new or changed route and saves them.");
+            var btnExport = MakeButton("📊 Export CSV", "secondary");
+            btnExport.Click += (s, e) => DataExportHelper.ExportToCsv(gridRoutes, "Delivery_Routes", "Delivery routes");
+            var btnPrint = MakeButton("🖨️ Print", "secondary");
+            btnPrint.Click += (s, e) => PrintHelper.PrintGridReport("Delivery Route Directory", gridRoutes, "Delivery routes and the stores each one serves, in delivery order.");
+            btnBackToSourceGrid = MakeButton("⬅ Back to dispatch", "secondary");
+            btnBackToSourceGrid.Visible = false;
+            btnBackToSourceGrid.Click += (s, e) => { if (ConfirmLeave()) OnNavigateBack?.Invoke(); };
+            flow.Controls.Add(txtGridSearch);
+            flow.Controls.Add(btnNewRoute);
+            flow.Controls.Add(btnSaveAll);
+            flow.Controls.Add(btnBackToSourceGrid);
+            flow.Controls.Add(btnExport);
+            flow.Controls.Add(btnPrint);
+            lblStatus = new Label { Dock = DockStyle.Top, Height = D(22), Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, TextAlign = ContentAlignment.MiddleLeft, UseMnemonic = false };
+            header.Controls.Add(lblStatus);
+            header.Controls.Add(flow);
+            header.Controls.Add(lblSub);
+            header.Controls.Add(lblGridHeader);
 
-            txtGridSearch = new TextBox
-            {
-                PlaceholderText = "🔍 Search route name, code, or connected place...",
-                Width = D(300),
-                Font = new Font("Segoe UI", 10F),
-                Margin = new Padding(0, D(3), D(8), D(4))
-            };
-            txtGridSearch.TextChanged += (s, e) => FilterGrid();
 
-            cbStatusFilter = new ComboBox
-            {
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Width = D(150),
-                Font = new Font("Segoe UI", 10F),
-                Margin = new Padding(0, D(3), D(8), D(4))
-            };
-            cbStatusFilter.Items.AddRange(new object[] { "All statuses", "Active", "Inactive" });
-            cbStatusFilter.SelectedIndex = 0;
-            cbStatusFilter.SelectedIndexChanged += (s, e) => FilterGrid();
-
-            btnToggleForm = new Button
-            {
-                Text = "📝 + New route ▾",
-                AutoSize = true,
-                MinimumSize = new Size(0, D(34)),
-                BackColor = Pal.C(15, 23, 42),
-                ForeColor = Pal.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(4, 2, 6, 0)
-            };
-            btnToggleForm.FlatAppearance.BorderSize = 0;
-            btnToggleForm.Click += (s, e) => SetFormVisibility(!pnlForm.Visible);
-
-            var btnExportCsv = new Button
-            {
-                Text = "📊 Export CSV",
-                AutoSize = true,
-                MinimumSize = new Size(0, D(34)),
-                BackColor = Pal.C(241, 245, 249),
-                ForeColor = Pal.C(71, 85, 105),
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 2, 6, 0)
-            };
-            btnExportCsv.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
-            btnExportCsv.Click += (s, e) => DataExportHelper.ExportToCsv(gridRoutes, "Delivery_Routes", "Configured Delivery Routes");
-
-            var btnPrintGrid = new Button
-            {
-                Text = "🖨️ Print directory",
-                AutoSize = true,
-                MinimumSize = new Size(0, D(34)),
-                BackColor = Pal.C(241, 245, 249),
-                ForeColor = Pal.C(71, 85, 105),
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 2, 0, 0)
-            };
-            btnPrintGrid.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
-            btnPrintGrid.Click += (s, e) => PrintHelper.PrintGridReport("Delivery Route Directory", gridRoutes, "Official master list of customizable delivery routes and connected destination places.");
-
-            btnBackToSourceGrid = new Button
-            {
-                Text = "⬅ Back to dispatch",
-                AutoSize = true,
-                MinimumSize = new Size(0, D(34)),
-                BackColor = Pal.C(241, 245, 249),
-                ForeColor = Pal.C(30, 41, 59),
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Visible = false,
-                Margin = new Padding(0, 2, 6, 0)
-            };
-            btnBackToSourceGrid.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
-            btnBackToSourceGrid.Click += (s, e) => OnNavigateBack?.Invoke();
-
-            flowGridActions.Controls.Add(txtGridSearch);
-            flowGridActions.Controls.Add(cbStatusFilter);
-            flowGridActions.Controls.Add(btnToggleForm);
-            flowGridActions.Controls.Add(btnBackToSourceGrid);
-            flowGridActions.Controls.Add(btnExportCsv);
-            flowGridActions.Controls.Add(btnPrintGrid);
-
-            pnlGridHeader.Controls.Add(flowGridActions);
-            pnlGridHeader.Controls.Add(lblGridHeader);
 
             gridRoutes = new DataGridView
             {
                 Dock = DockStyle.Fill,
-                BackgroundColor = Pal.White,
-                BorderStyle = BorderStyle.None,
-                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
-                GridColor = Pal.C(241, 245, 249),
+                BackgroundColor = AppTheme.Surface,
+                BorderStyle = BorderStyle.FixedSingle,
                 RowHeadersVisible = false,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
                 AllowUserToResizeRows = false,
-                ReadOnly = true,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                SelectionMode = DataGridViewSelectionMode.CellSelect,
                 MultiSelect = false,
                 AutoGenerateColumns = false,
-                RowTemplate = { Height = 36 },
-                EnableHeadersVisualStyles = false
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+                ColumnHeadersHeight = D(38),
+                EditMode = DataGridViewEditMode.EditOnEnter,
+                Font = new Font("Segoe UI", 9.5F),
+                EnableHeadersVisualStyles = false,
+                ShowCellToolTips = true
             };
-            gridRoutes.ColumnHeadersDefaultCellStyle.BackColor = Pal.C(241, 245, 249);
-            gridRoutes.ColumnHeadersDefaultCellStyle.ForeColor = Pal.C(71, 85, 105);
-            gridRoutes.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
-            gridRoutes.ColumnHeadersDefaultCellStyle.Padding = new Padding(6, 4, 6, 4);
-            gridRoutes.ColumnHeadersHeight = 36;
-            gridRoutes.DefaultCellStyle.Font = new Font("Segoe UI", 9F);
-            gridRoutes.DefaultCellStyle.SelectionBackColor = Pal.C(224, 231, 255);
-            gridRoutes.DefaultCellStyle.SelectionForeColor = Pal.C(15, 23, 42);
-            SetupGridColumns();
-
-            gridRoutes.SelectionChanged += GridRoutes_SelectionChanged;
-
-            pnlGridCard.Controls.Add(gridRoutes);
-            pnlGridCard.Controls.Add(pnlGridHeader);
-
-            tblMasterContent.Controls.Add(pnlForm, 0, 0);
-            tblMasterContent.Controls.Add(pnlGridCard, 1, 0);
-
-            this.Controls.Add(tblMasterContent);
-            this.ResumeLayout(false);
-
-            SetButtonStates(false);
-            SetFormVisibility(false);
-        }
-
-        private Button CreateSubButton(string text, Action onClick)
-        {
-            var btn = new Button
+            gridRoutes.RowTemplate.Height = D(36);
+            gridRoutes.Columns.Add(new DataGridViewComboBoxColumn { Name = "colClient", HeaderText = "Client", FillWeight = 140, MinimumWidth = D(150), DisplayStyle = DataGridViewComboBoxDisplayStyle.DropDownButton, FlatStyle = FlatStyle.Flat });
+            gridRoutes.Columns.Add(new DataGridViewTextBoxColumn { Name = "colCode", HeaderText = "Route code", FillWeight = 60, MinimumWidth = D(90), MaxInputLength = 12, DefaultCellStyle = { Font = new Font("Segoe UI Semibold", 9.5F) } });
+            gridRoutes.Columns.Add(new DataGridViewTextBoxColumn { Name = "colName", HeaderText = "Route name / destination", FillWeight = 140, MinimumWidth = D(160) });
+            var colStores = new DataGridViewTextBoxColumn { Name = "colStores", HeaderText = "Stores (click to pick, in delivery order)", FillWeight = 260, MinimumWidth = D(220), ReadOnly = true };
+            gridRoutes.Columns.Add(colStores);
+            gridRoutes.Columns.Add(new DataGridViewTextBoxColumn { Name = "colDesc", HeaderText = "Description / service area", FillWeight = 140, MinimumWidth = D(140) });
+            var colArchive = new DataGridViewButtonColumn { Name = "colArchive", HeaderText = "", Text = "Archive", UseColumnTextForButtonValue = true, FillWeight = 45, MinimumWidth = D(84), FlatStyle = FlatStyle.Flat };
+            colArchive.DefaultCellStyle.ForeColor = AppTheme.TextSecondary;
+            colArchive.DefaultCellStyle.Font = new Font("Segoe UI Semibold", 9F);
+            gridRoutes.Columns.Add(colArchive);
+            gridRoutes.DataError += (s, e) => { e.ThrowException = false; };
+            gridRoutes.CurrentCellDirtyStateChanged += (s, e) =>
             {
-                Text = text,
-                AutoSize = true,
-                Height = 24,
-                Font = new Font("Segoe UI", 8F),
-                BackColor = Pal.C(241, 245, 249),
-                ForeColor = Pal.C(51, 65, 85),
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 2, 4, 2)
+                if (gridRoutes.IsCurrentCellDirty && gridRoutes.CurrentCell is DataGridViewComboBoxCell) gridRoutes.CommitEdit(DataGridViewDataErrorContexts.Commit);
             };
-            btn.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
-            btn.Click += (s, e) => onClick();
-            return btn;
-        }
-
-        private void SetupGridColumns()
-        {
-            gridRoutes.ShowCellToolTips = false;
-            gridRoutes.Columns.Clear();
-
-            gridRoutes.Columns.Add(new DataGridViewCheckBoxColumn
+            gridRoutes.CellValueChanged += Grid_CellValueChanged;
+            gridRoutes.CellClick += (s, e) =>
             {
-                DataPropertyName = "IsActive",
-                HeaderText = "Active",
-                Width = D(70),
-                ReadOnly = true
-            });
-
-            gridRoutes.Columns.Add(new DataGridViewTextBoxColumn
+                if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+                string col = gridRoutes.Columns[e.ColumnIndex].Name;
+                if (col == "colStores") EditStores(e.RowIndex);
+            };
+            gridRoutes.CellContentClick += (s, e) =>
             {
-                DataPropertyName = "RouteCode",
-                HeaderText = "Code",
-                Width = D(90),
-                DefaultCellStyle = { Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold) }
-            });
-
-            gridRoutes.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                DataPropertyName = "RouteName",
-                HeaderText = "Route name",
-                Width = D(170),
-                DefaultCellStyle = { Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold) }
-            });
-
-            gridRoutes.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                DataPropertyName = "TotalStops",
-                HeaderText = "Stores",
-                Width = D(80),
-                DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }
-            });
-
-            gridRoutes.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                DataPropertyName = "FormattedPlaces",
-                HeaderText = "Stores to deliver (in order)",
-                Width = D(380)
-            });
-
-            gridRoutes.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                DataPropertyName = "Description",
-                HeaderText = "Description / service area",
-                Width = D(220)
-            });
-
+                if (e.RowIndex >= 0 && e.ColumnIndex >= 0 && gridRoutes.Columns[e.ColumnIndex].Name == "colArchive") ArchiveRow(e.RowIndex);
+            };
             gridRoutes.CellFormatting += (s, e) =>
             {
-                if (e.RowIndex >= 0 && gridRoutes.Rows[e.RowIndex].DataBoundItem is DeliveryRoute r && !r.IsActive)
+                if (e.RowIndex < 0 || e.CellStyle == null || gridRoutes.Rows[e.RowIndex].Tag is not RouteRow rr) return;
+                if (rr.Dirty && gridRoutes.Columns[e.ColumnIndex].Name != "colArchive") e.CellStyle.BackColor = AppTheme.WarningSoft;
+            };
+            gridRoutes.CellEndEdit += (s, e) => { if (e.RowIndex >= 0) gridRoutes.Rows[e.RowIndex].ErrorText = ""; };
+            gridRoutes.EditingControlShowing += (s, e) =>
+            {
+                if (e.Control is TextBox tb && gridRoutes.CurrentCell?.OwningColumn?.Name == "colCode")
                 {
-                    e.CellStyle.ForeColor = Pal.C(148, 163, 184);
+                    tb.CharacterCasing = CharacterCasing.Upper;
+                    tb.KeyPress -= CodeKeyPress;
+                    tb.KeyPress += CodeKeyPress;
+                }
+                else if (e.Control is TextBox other)
+                {
+                    other.CharacterCasing = CharacterCasing.Normal;
+                    other.KeyPress -= CodeKeyPress;
                 }
             };
+
+
+
+            card.Controls.Add(gridRoutes);
+            card.Controls.Add(header);
+            Controls.Add(card);
+            ResumeLayout(false);
         }
 
-        private void SetupContextMenu()
+
+
+
+        private static void CodeKeyPress(object? sender, KeyPressEventArgs e)
         {
-            RowMenu.Attach(gridRoutes, (m, rows) =>
-            {
-                if (rows[0].DataBoundItem is not DeliveryRoute r) return;
-                if (selectedRoute?.Id != r.Id) BindRouteToForm(r);
-                string owner = string.IsNullOrWhiteSpace(r.ClientCompanyName) ? "no client" : r.ClientCompanyName;
-                m.Items.AddRange(RowMenu.Header($"🗺️  {r.RouteCode} - {r.RouteName}", $"{RowMenu.Short(owner, 26)} · {r.TotalStops} store(s) · {r.StatusDisplay}"));
-                m.Items.Add(RowMenu.Item("Edit route", () => { SetFormVisibility(true); txtRouteName.Focus(); }));
-                m.Items.Add(r.IsActive
-                    ? RowMenu.Item("Deactivate route (hide from new orders)", () => SetRouteActive(r, false))
-                    : RowMenu.Good("Activate route", () => SetRouteActive(r, true)));
-                m.Items.Add(RowMenu.Item("Open client profile", () => MainForm.Instance?.OpenClientProfile(r.ClientCompanyName), "", !string.IsNullOrWhiteSpace(r.ClientCompanyName)));
-                m.Items.Add(RowMenu.Sep());
-                m.Items.Add(RowMenu.CopySub(this, ("Route code", r.RouteCode), ("Route name", r.RouteName), ("Stores in order", r.FormattedPlaces),
-                    ("Stores, one per line", string.Join(Environment.NewLine, r.PlacesList.Select((p, i) => $"{i + 1}. {p}")))));
-                m.Items.Add(RowMenu.Item("Other routes of this client", () => RowMenu.Search(txtGridSearch, r.ClientCompanyName), "", !string.IsNullOrWhiteSpace(r.ClientCompanyName)));
-                m.Items.Add(RowMenu.ExportSub(gridRoutes, "Delivery_Routes", "Delivery Routes", () => PrintHelper.PrintGridReport("Delivery Routes", gridRoutes, "Configured delivery routes and their stores.")));
-                m.Items.Add(RowMenu.Sep());
-                m.Items.Add(RowMenu.Danger("Delete route…", () => DeleteSelectedRoute()));
-            });
-
+            if (!char.IsControl(e.KeyChar) && !char.IsLetterOrDigit(e.KeyChar) && e.KeyChar != '-') e.Handled = true;
         }
-        private void SetRouteActive(DeliveryRoute r, bool active)
+
+
+
+        private void StyleAfterTheme()
         {
-            MJdatabase.ToggleDeliveryRouteActive(r.Id, active);
-            r.IsActive = active;
-            gridRoutes.Refresh();
-            if (selectedRoute?.Id == r.Id) { isBindingForm = true; try { chkActive.Checked = active; } finally { isBindingForm = false; } }
-            ToastHelper.ShowToast(this, $"{r.RouteName} is now {(active ? "active" : "inactive")}", ToastType.Success);
+            UIThemeHelper.SetButtonRole(btnNewRoute, "primary");
+            UIThemeHelper.SetButtonRole(btnSaveAll, "strong");
+            gridRoutes.ColumnHeadersDefaultCellStyle.BackColor = AppTheme.SurfaceAlt;
+            gridRoutes.ColumnHeadersDefaultCellStyle.ForeColor = AppTheme.TextSecondary;
+            gridRoutes.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI Semibold", 9F);
         }
 
+
+
+
+        // ------------------------------------------------------------------ data
         public async void RefreshData()
         {
+            // Don't throw away routes that are being typed in.
+            if (rows.Any(r => r.Dirty)) return;
             await LoadRoutesAsync();
         }
+
+
+
 
         public async System.Threading.Tasks.Task LoadRoutesAsync()
         {
@@ -627,395 +259,361 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             isLoadingRoutes = true;
             try
             {
-                allRoutes = await MJdatabase.GetDeliveryRoutesAsync();
-                FilterGrid();
-                if (string.IsNullOrWhiteSpace(txtRouteCode.Text))
-                {
-                    txtRouteCode.Text = MJdatabase.GenerateNextRouteCode();
-                }
+                var all = await MJdatabase.GetDeliveryRoutesAsync();
+                try { clientNames = MJdatabase.GetClients().Where(c => c.IsActive).Select(c => c.CompanyName).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList(); }
+                catch { clientNames = new List<string>(); }
+                rows.Clear();
+                // Archived routes are listed in Master Data → Archive.
+                foreach (var r in all.Where(r => r.IsActive).OrderBy(r => r.ClientCompanyName, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.RouteCode, StringComparer.OrdinalIgnoreCase))
+                    rows.Add(new RouteRow(r));
+                BindGrid();
             }
             catch (Exception ex)
-            { ErrLog.Error("DeliveryRoutesView", ex); 
-                MessageBox.Show("Failed to load delivery routes: " + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
             {
-                isLoadingRoutes = false;
+                ErrLog.Error("DeliveryRoutesView", ex);
+                MessageBox.Show("Failed to load delivery routes: " + ex.Message, "Database error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally { isLoadingRoutes = false; }
+        }
+
+
+
+        private void BindGrid()
+        {
+            binding = true;
+            try
+            {
+                if (gridRoutes.Columns["colClient"] is DataGridViewComboBoxColumn cc)
+                {
+                    cc.Items.Clear();
+                    cc.Items.Add("");
+                    foreach (var n in clientNames) cc.Items.Add(n);
+                    foreach (var r in rows)
+                        if (!string.IsNullOrWhiteSpace(r.Route.ClientCompanyName) && !cc.Items.Contains(r.Route.ClientCompanyName)) cc.Items.Add(r.Route.ClientCompanyName);
+                }
+                gridRoutes.Rows.Clear();
+                foreach (var rr in rows)
+                {
+                    int i = gridRoutes.Rows.Add(rr.Route.ClientCompanyName ?? "", rr.Route.RouteCode, rr.Route.RouteName, StoresText(rr.Route), rr.Route.Description, "Archive");
+                    gridRoutes.Rows[i].Tag = rr;
+                    gridRoutes.Rows[i].Cells["colStores"].ToolTipText = rr.Route.PlacesList.Count == 0 ? "Click to pick this route's stores" : string.Join(Environment.NewLine, rr.Route.PlacesList.Select((p, n) => $"{n + 1}. {p}"));
+                }
+                // Nothing is picked on its own.
+                gridRoutes.ClearSelection();
+                gridRoutes.CurrentCell = null;
+            }
+            finally { binding = false; }
+            ApplySearch();
+            UpdateCounts();
+        }
+
+
+
+        private static string StoresText(DeliveryRoute r)
+        {
+            var p = r.PlacesList;
+            return p.Count == 0 ? "＋ Pick stores…" : $"{p.Count} · {string.Join(" ➔ ", p)}";
+        }
+
+
+
+        private void ApplySearch()
+        {
+            string q = (txtGridSearch.Text ?? "").Trim();
+            if (gridRoutes.IsCurrentCellInEditMode) gridRoutes.EndEdit();
+            gridRoutes.CurrentCell = null;
+            foreach (DataGridViewRow row in gridRoutes.Rows)
+            {
+                if (row.Tag is not RouteRow rr) continue;
+                var r = rr.Route;
+                bool show = rr.IsNew || rr.Dirty || q.Length == 0 ||
+                    (r.RouteCode ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                    (r.RouteName ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                    (r.ClientCompanyName ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                    (r.Description ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                    (r.ConnectedPlaces ?? "").Contains(q, StringComparison.OrdinalIgnoreCase);
+                row.Visible = show;
+            }
+            UpdateCounts();
+        }
+
+
+
+        private void UpdateCounts()
+        {
+            int saved = rows.Count(r => !r.IsNew);
+            int shown = gridRoutes.Rows.Cast<DataGridViewRow>().Count(r => r.Visible && r.Tag is RouteRow rr && !rr.IsNew);
+            lblGridHeader.Text = shown == saved ? $"Delivery routes ({saved})" : $"Delivery routes ({shown} of {saved})";
+            int pending = rows.Count(r => r.Dirty);
+            lblStatus.Text = pending == 0 ? "All changes saved." : $"● {pending} route{(pending == 1 ? "" : "s")} not saved yet — click Save changes.";
+            lblStatus.ForeColor = pending == 0 ? AppTheme.TextMuted : AppTheme.WarningText;
+        }
+
+
+
+        private void Grid_CellValueChanged(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (binding || e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (gridRoutes.Rows[e.RowIndex].Tag is not RouteRow rr) return;
+            string col = gridRoutes.Columns[e.ColumnIndex].Name;
+            string v = (gridRoutes.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString() ?? "").Trim();
+            switch (col)
+            {
+                case "colClient": rr.Route.ClientCompanyName = v; break;
+                case "colCode": rr.Route.RouteCode = v.ToUpperInvariant(); break;
+                case "colName": rr.Route.RouteName = System.Text.RegularExpressions.Regex.Replace(v, @"\s+", " "); break;
+                case "colDesc": rr.Route.Description = v; break;
+                default: return;
+            }
+            rr.Dirty = true;
+            gridRoutes.InvalidateRow(e.RowIndex);
+            UpdateCounts();
+        }
+
+
+
+        // ------------------------------------------------------------------ actions
+        private void AddNewRouteRow(string? presetCode = null)
+        {
+            if (gridRoutes.IsCurrentCellInEditMode) gridRoutes.EndEdit();
+            // Re-use an untouched blank row instead of stacking empty ones.
+            var blank = rows.FirstOrDefault(r => r.IsNew && string.IsNullOrWhiteSpace(r.Route.RouteCode) && string.IsNullOrWhiteSpace(r.Route.RouteName) && r.Route.PlacesList.Count == 0);
+            if (blank == null)
+            {
+                // Completely blank: no client, code or stores are filled in for you.
+                blank = new RouteRow(new DeliveryRoute { ClientCompanyName = "", RouteCode = presetCode ?? "", RouteName = "", Description = "", ConnectedPlaces = "", IsActive = true }, dirty: true);
+                rows.Insert(0, blank);
+                BindGrid();
+            }
+            for (int i = 0; i < gridRoutes.Rows.Count; i++)
+            {
+                if (ReferenceEquals(gridRoutes.Rows[i].Tag, blank))
+                {
+                    gridRoutes.Rows[i].Visible = true;
+                    gridRoutes.FirstDisplayedScrollingRowIndex = i;
+                    gridRoutes.CurrentCell = gridRoutes.Rows[i].Cells["colClient"];
+                    gridRoutes.BeginEdit(true);
+                    break;
+                }
             }
         }
 
-        private void FilterGrid()
+
+
+        private void EditStores(int rowIndex)
         {
-            string q = txtGridSearch.Text.Trim().ToLowerInvariant();
-            string status = cbStatusFilter.SelectedItem?.ToString() ?? "All statuses";
-            var query = allRoutes.AsEnumerable();
-
-            if (status == "Active") query = query.Where(r => r.IsActive);
-            else if (status == "Inactive") query = query.Where(r => !r.IsActive);
-
-            if (!string.IsNullOrEmpty(q))
+            if (rowIndex < 0 || gridRoutes.Rows[rowIndex].Tag is not RouteRow rr) return;
+            if (gridRoutes.IsCurrentCellInEditMode) gridRoutes.EndEdit();
+            string client = (rr.Route.ClientCompanyName ?? "").Trim();
+            if (client.Length == 0)
             {
-                query = query.Where(r =>
-                    r.RouteCode.ToLowerInvariant().Contains(q) ||
-                    r.RouteName.ToLowerInvariant().Contains(q) ||
-                    r.Description.ToLowerInvariant().Contains(q) ||
-                    r.ConnectedPlaces.ToLowerInvariant().Contains(q));
+                QuietBox.Show("Pick the route's client first. Its stores come from that client's Stores & branches list.", "Pick a client", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                gridRoutes.CurrentCell = gridRoutes.Rows[rowIndex].Cells["colClient"];
+                gridRoutes.BeginEdit(true);
+                return;
             }
-
-            var list = query.ToList();
-            gridRoutes.DataSource = list;
-
-            lblGridHeader.Text = string.IsNullOrEmpty(q) && status == "All statuses"
-                ? $"Delivery routes ({allRoutes.Count})"
-                : $"Delivery routes ({list.Count} of {allRoutes.Count})";
+            var others = rows.Where(o => !ReferenceEquals(o, rr) && string.Equals((o.Route.ClientCompanyName ?? "").Trim(), client, StringComparison.OrdinalIgnoreCase)).Select(o => o.Route).ToList();
+            using var dlg = new RouteStoresDialog(client, string.IsNullOrWhiteSpace(rr.Route.RouteName) ? (rr.Route.RouteCode ?? "New route") : rr.Route.RouteName, rr.Route.PlacesList, others);
+            if (dlg.ShowDialog(FindForm()) != DialogResult.OK) return;
+            string joined = string.Join("; ", dlg.Places);
+            if (joined == (rr.Route.ConnectedPlaces ?? "")) return;
+            rr.Route.ConnectedPlaces = joined;
+            rr.Dirty = true;
+            binding = true;
+            try
+            {
+                gridRoutes.Rows[rowIndex].Cells["colStores"].Value = StoresText(rr.Route);
+                gridRoutes.Rows[rowIndex].Cells["colStores"].ToolTipText = string.Join(Environment.NewLine, rr.Route.PlacesList.Select((p, n) => $"{n + 1}. {p}"));
+            }
+            finally { binding = false; }
+            gridRoutes.InvalidateRow(rowIndex);
+            UpdateCounts();
         }
 
-        private void GridRoutes_SelectionChanged(object? sender, EventArgs e)
-        {
-            if (isBindingForm) return;
 
-            if (gridRoutes.SelectedRows.Count > 0 && gridRoutes.SelectedRows[0].DataBoundItem is DeliveryRoute r)
+
+        private void ArchiveRow(int rowIndex)
+        {
+            if (rowIndex < 0 || gridRoutes.Rows[rowIndex].Tag is not RouteRow rr) return;
+            if (rr.IsNew)
             {
-                BindRouteToForm(r);
+                rows.Remove(rr);
+                BindGrid();
+                return;
+            }
+            string label = $"{rr.Route.RouteCode} - {rr.Route.RouteName}";
+            if (MessageBox.Show($"Are you sure you want to archive route \"{label}\"?\n\n{MJdatabase.DeletePolicyNote("DeliveryRoutes")}\nYou can restore it from Master Data → Archive.", "Archive route", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+            try
+            {
+                MJdatabase.ArchiveDeliveryRoute(rr.Route.Id, label);
+                rows.Remove(rr);
+                BindGrid();
+                ToastHelper.ShowToast(this, $"Route {rr.Route.RouteCode} archived — kept for past orders", ToastType.Info);
+            }
+            catch (Exception ex)
+            {
+                ErrLog.Error("DeliveryRoutesView", ex);
+                MessageBox.Show("Couldn't archive the route: " + ex.Message, "Archive route", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private void HandleRouteCodeInput()
+
+
+
+        /// <summary>Save is always available; it checks every new or changed route and lists what still needs fixing.</summary>
+        private void SaveAllChanges()
         {
-            string code = txtRouteCode.Text.Trim();
-            if (string.IsNullOrWhiteSpace(code))
+            if (gridRoutes.IsCurrentCellInEditMode) gridRoutes.EndEdit();
+            gridRoutes.CommitEdit(DataGridViewDataErrorContexts.Commit);
+            foreach (DataGridViewRow row in gridRoutes.Rows) row.ErrorText = "";
+            var pending = rows.Where(r => r.Dirty).ToList();
+            if (pending.Count == 0)
             {
-                selectedRoute = null;
-                lblFormHeader.Text = "Delivery Route Specification";
-                SetButtonStates(false);
+                QuietBox.Show("There are no new or changed routes to save.\n\nClick ➕ New route to add one, or type in the table to change a route.", "Save changes", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            var matched = allRoutes.FirstOrDefault(r => !string.IsNullOrWhiteSpace(r.RouteCode) && r.RouteCode.Equals(code, StringComparison.OrdinalIgnoreCase));
-            if (matched != null)
+            var problems = new List<string>();
+            (int row, string col)? first = null;
+            int RowOf(RouteRow rr) { for (int i = 0; i < gridRoutes.Rows.Count; i++) if (ReferenceEquals(gridRoutes.Rows[i].Tag, rr)) return i; return -1; }
+            void Flag(RouteRow rr, string col, string msg)
             {
-                BindRouteToForm(matched);
-                for (int i = 0; i < gridRoutes.Rows.Count; i++)
+                int i = RowOf(rr);
+                string who = string.IsNullOrWhiteSpace(rr.Route.RouteCode) ? (rr.IsNew ? "New route" : "Route") : rr.Route.RouteCode;
+                problems.Add($"• {who}: {msg}");
+                if (i >= 0)
                 {
-                    if (gridRoutes.Rows[i].DataBoundItem is DeliveryRoute rowR && rowR.Id == matched.Id)
-                    {
-                        gridRoutes.ClearSelection();
-                        gridRoutes.Rows[i].Selected = true;
-                        break;
-                    }
+                    gridRoutes.Rows[i].ErrorText = string.IsNullOrEmpty(gridRoutes.Rows[i].ErrorText) ? msg : gridRoutes.Rows[i].ErrorText;
+                    gridRoutes.Rows[i].Visible = true;
+                    first ??= (i, col);
                 }
             }
-            else
+            foreach (var rr in pending)
             {
-                selectedRoute = null;
-                lblFormHeader.Text = $"Route: {code} (New)";
-                SetButtonStates(false);
+                var r = rr.Route;
+                if (string.IsNullOrWhiteSpace(r.ClientCompanyName)) Flag(rr, "colClient", "pick the client.");
+                if (string.IsNullOrWhiteSpace(r.RouteCode)) Flag(rr, "colCode", "type a route code (e.g. R5).");
+                else if (rows.Any(o => !ReferenceEquals(o, rr) && string.Equals((o.Route.RouteCode ?? "").Trim(), r.RouteCode.Trim(), StringComparison.OrdinalIgnoreCase)))
+                    Flag(rr, "colCode", $"route code {r.RouteCode} is already used by another route.");
+                if (string.IsNullOrWhiteSpace(r.RouteName)) Flag(rr, "colName", "type the route name / destination.");
+                else if (rows.Any(o => !ReferenceEquals(o, rr) && string.Equals((o.Route.RouteName ?? "").Trim(), r.RouteName.Trim(), StringComparison.OrdinalIgnoreCase) && string.Equals((o.Route.ClientCompanyName ?? "").Trim(), (r.ClientCompanyName ?? "").Trim(), StringComparison.OrdinalIgnoreCase)))
+                    Flag(rr, "colName", $"{r.ClientCompanyName} already has a route named \"{r.RouteName}\".");
+                if (r.PlacesList.Count == 0) Flag(rr, "colStores", "pick at least one store (click the Stores cell).");
             }
-        }
-
-        private void BindRouteToForm(DeliveryRoute r)
-        {
-            isBindingForm = true;
-            try
+            if (problems.Count > 0)
             {
-                selectedRoute = r;
-                txtRouteCode.Text = r.RouteCode;
-                txtRouteName.Text = r.RouteName;
-                txtDescription.Text = r.Description;
-                chkActive.Checked = r.IsActive;
-
-                lstPlaces.Items.Clear();
-                foreach (var p in r.PlacesList)
+                QuietBox.Show("These routes can't be saved yet:\n\n" + string.Join("\n", problems.Take(12)) + (problems.Count > 12 ? $"\n…and {problems.Count - 12} more" : ""), "Please check the routes", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                if (first.HasValue)
                 {
-                    lstPlaces.Items.Add(p);
+                    gridRoutes.CurrentCell = gridRoutes.Rows[first.Value.row].Cells[first.Value.col];
+                    if (first.Value.col == "colStores") EditStores(first.Value.row);
+                    else gridRoutes.BeginEdit(true);
                 }
 
-                UpdatePlacesPreview();
-                lblFormHeader.Text = $"Route: {r.RouteName} ({r.RouteCode})";
+                return;
             }
-            finally
-            {
-                isBindingForm = false;
-            }
-            SetButtonStates(true);
-        }
-
-        private void InsertPlaceFromInput()
-        {
-            string place = txtNewPlace.Text.Trim();
-            if (string.IsNullOrWhiteSpace(place)) return;
-
-            var items = place.Split(new[] { ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            foreach (var item in items)
-            {
-                if (!string.IsNullOrWhiteSpace(item) && !lstPlaces.Items.Contains(item))
-                {
-                    lstPlaces.Items.Add(item);
-                }
-            }
-
-            txtNewPlace.Clear();
-            txtNewPlace.Focus();
-            UpdatePlacesPreview();
-        }
-
-        private void MoveSelectedPlace(int direction)
-        {
-            int idx = lstPlaces.SelectedIndex;
-            if (idx < 0) return;
-
-            int targetIdx = idx + direction;
-            if (targetIdx < 0 || targetIdx >= lstPlaces.Items.Count) return;
-
-            object item = lstPlaces.Items[idx];
-            lstPlaces.Items.RemoveAt(idx);
-            lstPlaces.Items.Insert(targetIdx, item);
-            lstPlaces.SelectedIndex = targetIdx;
-            UpdatePlacesPreview();
-        }
-
-        private void RemoveSelectedPlace()
-        {
-            int idx = lstPlaces.SelectedIndex;
-            if (idx >= 0)
-            {
-                lstPlaces.Items.RemoveAt(idx);
-                if (idx < lstPlaces.Items.Count) lstPlaces.SelectedIndex = idx;
-                else if (lstPlaces.Items.Count > 0) lstPlaces.SelectedIndex = lstPlaces.Items.Count - 1;
-                UpdatePlacesPreview();
-            }
-        }
-
-        private void ClearAllPlaces()
-        {
-            lstPlaces.Items.Clear();
-            UpdatePlacesPreview();
-        }
-
-        private void UpdatePlacesPreview()
-        {
-            if (lstPlaces.Items.Count == 0)
-            {
-                lblRoutePreview.Text = "Route Sequence Preview: (None added yet)";
-            }
-            else
-            {
-                var places = lstPlaces.Items.Cast<object>().Select(o => o.ToString() ?? "").ToList();
-                lblRoutePreview.Text = $"Route Sequence ({places.Count} stops): {string.Join(" ➔ ", places)}";
-            }
-        }
-
-        private void SetButtonStates(bool isEditing)
-        {
-            string code = txtRouteCode.Text.Trim();
-            var matched = !string.IsNullOrWhiteSpace(code)
-                ? allRoutes.FirstOrDefault(r => !string.IsNullOrWhiteSpace(r.RouteCode) && r.RouteCode.Equals(code, StringComparison.OrdinalIgnoreCase))
-                : null;
-            bool exists = (selectedRoute != null || matched != null) && !string.IsNullOrWhiteSpace(code);
-
-            btnSave.Enabled = !exists;
-            btnSave.Visible = !exists;
-            btnSave.BackColor = !exists ? Pal.C(13, 110, 253) : Pal.C(226, 232, 240);
-            btnSave.ForeColor = !exists ? Pal.White : Pal.C(148, 163, 184);
-            btnUpdate.Enabled = exists;
-            btnUpdate.Visible = exists;
-            btnUpdate.BackColor = exists ? Pal.C(25, 135, 84) : Pal.C(226, 232, 240);
-            btnUpdate.ForeColor = exists ? Pal.White : Pal.C(148, 163, 184);
-        }
-
-        private void SetFormVisibility(bool visible)
-        {
-            pnlForm.Visible = visible;
-            tblMasterContent.ColumnStyles[0].Width = visible ? currentFormWidth : 0F;
-            btnToggleForm.Text = visible ? "📝 Hide form ▴" : "📝 + New route ▾";
-        }
-
-        private void ClearForm()
-        {
-            selectedRoute = null;
-            txtRouteCode.Text = "";
-            txtRouteName.Text = "";
-            txtDescription.Text = "";
-            chkActive.Checked = true;
-            txtNewPlace.Text = "";
-            lstPlaces.Items.Clear();
-            UpdatePlacesPreview();
-            lblFormHeader.Text = "Delivery Route Specification";
-            SetButtonStates(false);
-            gridRoutes.ClearSelection();
-        }
-
-        private void SaveRoute()
-        {
-            try
-            {
-                var valErrors = new List<string>();
-                Control? firstInvalid = null;
-                ValidationHelper.ClearErrors(this);
-
-                if (!ValidationHelper.ValidateRequiredText(txtRouteName, "Route Name", valErrors)) firstInvalid ??= txtRouteName;
-                if (lstPlaces.Items.Count == 0)
-                {
-                    valErrors.Add("At least one connected store/destination must be added to this route.");
-                    firstInvalid ??= txtNewPlace;
-                }
-
-                if (!ValidationHelper.ShowValidationSummaryIfAny(this, valErrors, firstInvalid))
-                {
-                    return;
-                }
-
-                string name = txtRouteName.Text.Trim();
-                if (string.IsNullOrWhiteSpace(name))
-                {
-                    MessageBox.Show("Please enter a Route Name (e.g. Route 1).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtRouteName.Focus();
-                    return;
-                }
-
-                if (lstPlaces.Items.Count == 0)
-                {
-                    MessageBox.Show("Please add at least one connected place / destination to this route.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtNewPlace.Focus();
-                    return;
-                }
-
-                var placesList = lstPlaces.Items.Cast<object>().Select(o => o.ToString() ?? "").Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
-                var dupPlace = placesList.GroupBy(x => x.Trim(), StringComparer.OrdinalIgnoreCase).FirstOrDefault(g => g.Count() > 1);
-                if (dupPlace != null)
-                {
-                    MessageBox.Show($"'{dupPlace.Key}' is in this route more than once. Remove the extra entry.", "Duplicate store", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    lstPlaces.Focus();
-                    return;
-                }
-                int selfId = selectedRoute?.Id ?? 0;
-                string typedCode = txtRouteCode.Text.Trim();
-                var codeClash = string.IsNullOrWhiteSpace(typedCode) ? null : allRoutes.FirstOrDefault(x => x.Id != selfId && x.RouteCode.Equals(typedCode, StringComparison.OrdinalIgnoreCase));
-                if (codeClash != null)
-                {
-                    MessageBox.Show($"Route code '{typedCode}' is already used by '{codeClash.RouteName}'{(string.IsNullOrWhiteSpace(codeClash.ClientCompanyName) ? "" : $" ({codeClash.ClientCompanyName})")}. Use a different code.", "Duplicate route code", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtRouteCode.Focus();
-                    return;
-                }
-                string owner = selectedRoute?.ClientCompanyName ?? "";
-                var nameClash = allRoutes.FirstOrDefault(x => x.Id != selfId && x.RouteName.Equals(name, StringComparison.OrdinalIgnoreCase) && string.Equals(x.ClientCompanyName ?? "", owner, StringComparison.OrdinalIgnoreCase));
-                if (nameClash != null)
-                {
-                    MessageBox.Show($"{(owner.Length > 0 ? owner : "Another route")} already has a route named '{name}' ({nameClash.RouteCode}). Use a different name.", "Duplicate route name", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtRouteName.Focus();
-                    return;
-                }
-                string connected = string.Join("; ", placesList);
-
-                DeliveryRoute route = selectedRoute ?? new DeliveryRoute();
-                route.RouteCode = !string.IsNullOrWhiteSpace(txtRouteCode.Text) ? txtRouteCode.Text.Trim() : MJdatabase.GenerateNextRouteCode();
-                route.RouteName = name;
-                route.Description = txtDescription.Text.Trim();
-                route.ConnectedPlaces = connected;
-                route.IsActive = chkActive.Checked;
-
-                bool success = MJdatabase.SaveDeliveryRoute(route);
-                if (success)
-                {
-                    ToastHelper.ShowToast(this, $"Route '{route.RouteName}' saved successfully ✓");
-                    _ = LoadRoutesAsync();
-                    ClearForm();
-                }
-            }
-            catch (Exception ex)
-            { ErrLog.Error("DeliveryRoutesView", ex); 
-                MessageBox.Show("Failed to save delivery route: " + ex.Message, "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private readonly ErrorProvider dupErrors = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink };
-        /// <summary>Flags a route code or name that is already taken while it is being typed.</summary>
-        private void LiveDuplicateCheck()
-        {
-            int selfId = selectedRoute?.Id ?? 0;
-            string code = txtRouteCode.Text.Trim();
-            var codeClash = code.Length == 0 ? null : allRoutes.FirstOrDefault(x => x.Id != selfId && x.RouteCode.Trim().Equals(code, StringComparison.OrdinalIgnoreCase));
-            dupErrors.SetError(txtRouteCode, codeClash == null ? "" : $"Route code '{code}' is already used by '{codeClash.RouteName}'.");
-            txtRouteCode.BackColor = codeClash == null ? Pal.White : AppTheme.DangerSoft;
-            string name = System.Text.RegularExpressions.Regex.Replace(txtRouteName.Text.Trim(), @"\s+", " ");
-            string owner = selectedRoute?.ClientCompanyName ?? "";
-            var nameClash = name.Length == 0 ? null : allRoutes.FirstOrDefault(x => x.Id != selfId && x.RouteName.Trim().Equals(name, StringComparison.OrdinalIgnoreCase) && string.Equals(x.ClientCompanyName ?? "", owner, StringComparison.OrdinalIgnoreCase));
-            dupErrors.SetError(txtRouteName, nameClash == null ? "" : $"A route named '{name}' already exists ({nameClash.RouteCode}).");
-            txtRouteName.BackColor = nameClash == null ? Pal.White : AppTheme.DangerSoft;
-        }
-        private void DeleteSelectedRoute()
-        {
-            if (selectedRoute == null) return;
-
-            var confirm = MessageBox.Show($"Are you sure you want to remove delivery route '{selectedRoute.RouteName}' ({selectedRoute.RouteCode})?\n\n" + MJdatabase.DeletePolicyNote("DeliveryRoutes"), "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
-            if (confirm == DialogResult.Yes)
+            int news = pending.Count(p => p.IsNew), changes = pending.Count - news;
+            string what = string.Join(" and ", new[] { news > 0 ? $"{news} new route{(news == 1 ? "" : "s")}" : "", changes > 0 ? $"{changes} changed route{(changes == 1 ? "" : "s")}" : "" }.Where(x => x.Length > 0));
+            if (MessageBox.Show($"Are you sure you want to save {what}?", "Save changes", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            int saved = 0;
+            var failures = new List<string>();
+            foreach (var rr in pending)
             {
                 try
                 {
-                    bool deleted = MJdatabase.DeleteDeliveryRoute(selectedRoute.Id);
-                    if (deleted)
-                    {
-                        ToastHelper.ShowToast(this, "Route deactivated — kept for past orders ✓");
-                        _ = LoadRoutesAsync();
-                        ClearForm();
-                    }
+                    rr.Route.RouteCode = rr.Route.RouteCode.Trim();
+                    rr.Route.RouteName = rr.Route.RouteName.Trim();
+                    rr.Route.IsActive = true;
+                    if (MJdatabase.SaveDeliveryRoute(rr.Route)) { rr.Dirty = false; saved++; }
                 }
                 catch (Exception ex)
-                { ErrLog.Error("DeliveryRoutesView", ex); 
-                    MessageBox.Show("Failed to delete route: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                {
+                    ErrLog.Error("DeliveryRoutesView", ex);
+                    failures.Add($"• {rr.Route.RouteCode}: {ex.Message}");
                 }
             }
+            if (failures.Count > 0)
+                MessageBox.Show("Some routes were not saved:\n\n" + string.Join("\n", failures), "Save changes", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            if (saved > 0) ToastHelper.ShowToast(this, $"{saved} route{(saved == 1 ? "" : "s")} saved ✓", ToastType.Success);
+            if (failures.Count == 0) _ = LoadRoutesAsync();
+            else { BindGrid(); }
         }
 
+
+
+
+        private bool ConfirmLeave()
+        {
+            if (!rows.Any(r => r.Dirty)) return true;
+            var res = MessageBox.Show("Some routes are not saved yet. Leave anyway and lose those changes?", "Unsaved routes", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+            if (res != DialogResult.Yes) return false;
+            foreach (var r in rows) r.Dirty = false;
+            _ = LoadRoutesAsync();
+            return true;
+        }
+
+
+
+        private void SetupContextMenu()
+        {
+            RowMenu.Attach(gridRoutes, (m, sel) =>
+            {
+                if (sel[0].Tag is not RouteRow rr) return;
+                var r = rr.Route;
+                int idx = sel[0].Index;
+                string owner = string.IsNullOrWhiteSpace(r.ClientCompanyName) ? "no client" : r.ClientCompanyName;
+                m.Items.AddRange(RowMenu.Header($"🗺️  {(string.IsNullOrWhiteSpace(r.RouteCode) ? "New route" : r.RouteCode)} {(string.IsNullOrWhiteSpace(r.RouteName) ? "" : "- " + r.RouteName)}", $"{RowMenu.Short(owner, 26)} · {r.TotalStops} store(s)"));
+                m.Items.Add(RowMenu.Item("Pick / order stores…", () => EditStores(idx)));
+                m.Items.Add(RowMenu.Item("Open client profile", () => { if (ConfirmLeave()) MainForm.Instance?.OpenClientProfile(r.ClientCompanyName); }, "", !string.IsNullOrWhiteSpace(r.ClientCompanyName)));
+                m.Items.Add(RowMenu.Sep());
+                m.Items.Add(RowMenu.CopySub(this, ("Route code", r.RouteCode), ("Route name", r.RouteName), ("Stores in order", r.FormattedPlaces),
+                    ("Stores, one per line", string.Join(Environment.NewLine, r.PlacesList.Select((p, i) => $"{i + 1}. {p}")))));
+                m.Items.Add(RowMenu.Item("Other routes of this client", () => RowMenu.Search(txtGridSearch, r.ClientCompanyName), "", !string.IsNullOrWhiteSpace(r.ClientCompanyName)));
+                m.Items.Add(RowMenu.Sep());
+                m.Items.Add(RowMenu.Danger(rr.IsNew ? "Remove this blank row" : "Archive route…", () => ArchiveRow(idx)));
+            });
+        }
+
+
+
+        // ------------------------------------------------------------------ navigation from other screens
         public void OpenForShortcut(string? routeCode, bool isNewRoute = false, string returnTarget = "Dispatch", Action? backAction = null)
         {
             ReturnTargetName = returnTarget;
             OnNavigateBack = backAction;
-            string backText = $"⬅ Back to {returnTarget}";
-            btnBackToSourceGrid.Text = backText;
-            btnBackToSourceGrid.Visible = (backAction != null);
-            btnBackToSourceForm.Text = backText;
-            btnBackToSourceForm.Visible = (backAction != null);
-
-            SetFormVisibility(true);
-
+            btnBackToSourceGrid.Text = $"⬅ Back to {returnTarget}";
+            btnBackToSourceGrid.Visible = backAction != null;
             if (isNewRoute)
             {
-                ClearForm();
-                txtRouteCode.Text = MJdatabase.GenerateNextRouteCode();
-                txtRouteName.Focus();
+                txtGridSearch.Text = "";
+                AddNewRouteRow();
             }
             else if (!string.IsNullOrWhiteSpace(routeCode))
             {
-                txtGridSearch.Text = routeCode.Trim();
-                var match = allRoutes.FirstOrDefault(r =>
-                    string.Equals(r.RouteCode, routeCode.Trim(), StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(r.RouteName, routeCode.Trim(), StringComparison.OrdinalIgnoreCase) ||
-                    (r.RouteCode != null && routeCode.Trim().StartsWith(r.RouteCode, StringComparison.OrdinalIgnoreCase)));
+                string key = routeCode.Trim();
+                var match = rows.FirstOrDefault(r =>
+                    string.Equals(r.Route.RouteCode, key, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(r.Route.RouteName, key, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrWhiteSpace(r.Route.RouteCode) && key.StartsWith(r.Route.RouteCode + " ", StringComparison.OrdinalIgnoreCase)));
                 if (match != null)
                 {
-                    BindRouteToForm(match);
-                    txtNewPlace.Focus();
+                    txtGridSearch.Text = match.Route.RouteCode;
+                    for (int i = 0; i < gridRoutes.Rows.Count; i++)
+                        if (ReferenceEquals(gridRoutes.Rows[i].Tag, match)) { gridRoutes.CurrentCell = gridRoutes.Rows[i].Cells["colName"]; break; }
                 }
-                else
-                {
-                    ClearForm();
-                    txtRouteCode.Text = routeCode.Trim();
-                    txtNewPlace.Focus();
-                }
+                else txtGridSearch.Text = key;
             }
-            else
-            {
-                txtGridSearch.Text = "";
-            }
+            else txtGridSearch.Text = "";
         }
+
+
+
 
         public void ResetNavigationBack()
         {
             OnNavigateBack = null;
             ReturnTargetName = "Dispatch";
             btnBackToSourceGrid.Visible = false;
-            btnBackToSourceForm.Visible = false;
         }
     }
 }

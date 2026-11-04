@@ -579,6 +579,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
 
+            string currentAides = isSpecialTrip ? (specialTrip!.AideName ?? "") : (delivery!.AideName ?? "");
+            bool hasCurrentAide = !string.IsNullOrWhiteSpace(currentAides) && !currentAides.Trim().Equals("None", StringComparison.OrdinalIgnoreCase) && !currentAides.Trim().Equals("Unassigned", StringComparison.OrdinalIgnoreCase);
+            if (chosenAides.Count == 0 && !hasCurrentAide && cbAide.SelectedIndex <= 0)
+            {
+                MessageBox.Show("This trip has no aide yet. Please pick at least 1 aide / helper. Every driver needs an aide.", "Aide required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                btnAides?.Focus();
+                return;
+            }
             int? newTruckId = null;
             string? newTruckInfo = null;
             string? newTruckPlate = null;

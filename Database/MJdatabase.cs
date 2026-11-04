@@ -54,7 +54,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public const string ActiveSpecialTripStatusesSql = "('Pending', 'Scheduled', 'In Transit', 'Rescheduled')";
 
-        public const string BlockedTruckStatusesSql = "('Under Maintenance', 'Maintenance', 'Under Repair', 'Inactive')";
+        public const string BlockedTruckStatusesSql = "('Under Maintenance', 'Maintenance', 'Under Repair', 'Inactive', 'Decommissioned')";
 
         public static bool IsTruckBlockedStatus(string? status)
 
@@ -70,7 +70,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                    s.Equals("Under Repair", StringComparison.OrdinalIgnoreCase) ||
 
-                   s.Equals("Inactive", StringComparison.OrdinalIgnoreCase);
+                   s.Equals("Inactive", StringComparison.OrdinalIgnoreCase) ||
+
+                   s.Equals("Decommissioned", StringComparison.OrdinalIgnoreCase);
 
         }
 
@@ -1959,6 +1961,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     "ALTER TABLE ClientStores ADD COLUMN ExtraFieldsJson TEXT DEFAULT '';",
 
+                    "ALTER TABLE ClientStores ADD COLUMN IsArchived INTEGER DEFAULT 0;",
+
+                    "ALTER TABLE ClientStores ADD COLUMN ArchivedAt TEXT DEFAULT '';",
+
                     "CREATE TABLE IF NOT EXISTS ClientStores (Id INTEGER PRIMARY KEY AUTOINCREMENT, ClientId INTEGER NOT NULL DEFAULT 0, ClientCompanyName TEXT NOT NULL DEFAULT '', StoreCode TEXT NOT NULL DEFAULT '', StoreName TEXT NOT NULL DEFAULT '', DestinationRoute TEXT NOT NULL DEFAULT '', CreatedAt TEXT DEFAULT CURRENT_TIMESTAMP);",
 
                     "ALTER TABLE TripReports ADD COLUMN StoreManagerLastName TEXT DEFAULT '';",
@@ -2350,6 +2356,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             try { NormalizeClientRecords(); } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] NormalizeClientRecords: {ex.Message}"); ErrLog.Swallowed(ex); }
+
+            try { MigrateAutoStoreCodes(); } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] MigrateAutoStoreCodes: {ex.Message}"); ErrLog.Swallowed(ex); }
 
             try { ReconcileAllRouteStores(); } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] ReconcileAllRouteStores: {ex.Message}"); ErrLog.Swallowed(ex); }
 
@@ -11484,9 +11492,63 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
+        /// <summary>Empty when the statement can be edited; otherwise the reason (cancelled, or its invoice already has payments).</summary>
+
+        public static string WhySoaCannotBeEdited(StatementOfAccount soa)
+
+        {
+
+            if (soa == null) return "Statement not found.";
+
+            string st = (soa.Status ?? "").Trim();
+
+            if (st.Equals("Cancelled", StringComparison.OrdinalIgnoreCase) || st.Equals("Void", StringComparison.OrdinalIgnoreCase))
+
+                return $"Statement {soa.SoaNumber} is {st.ToLowerInvariant()}, so it can't be edited. Make a new statement instead.";
+
+            try
+
+            {
+
+                using var conn = new SqliteConnection(connectionString);
+
+                conn.Open();
+
+                using var cmd = conn.CreateCommand();
+
+                cmd.CommandText = @"SELECT COALESCE(SUM(cr.AmountPaid),0) FROM CollectionReceipts cr JOIN Invoices i ON i.Id = cr.InvoiceId
+
+                                    WHERE i.SoaId = @sid AND COALESCE(cr.IsVoid,0) = 0";
+
+                cmd.Parameters.AddWithValue("@sid", soa.Id);
+
+                decimal paid = Convert.ToDecimal(cmd.ExecuteScalar() ?? 0m);
+
+                if (paid > 0)
+
+                    return $"Statement {soa.SoaNumber} can't be edited because its invoice already has payments (PHP {paid:N2}). Void the receipt in Collections first if the statement must change.";
+
+            }
+
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+
+            return "";
+
+        }
+
         public static int SaveStatementOfAccount(StatementOfAccount soa, List<StatementOfAccountItem> items)
 
         {
+
+            if (soa.Id > 0)
+
+            {
+
+                string why = WhySoaCannotBeEdited(soa);
+
+                if (why.Length > 0) throw new InvalidOperationException(why);
+
+            }
 
             // Never create or update an invoice for nothing (or for a negative amount).
 
@@ -11794,7 +11856,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         }
 
+                        bool wasEdit = cmd.CommandText.TrimStart().StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase);
+
                         tx.Commit();
+
+                        try { LogAuditTrail(wasEdit ? "UPDATE" : "ADD", "StatementsOfAccount", soaId, soa.SoaNumber, "TotalAmount", "", soa.TotalAmount.ToString("N2"), $"Statement {soa.SoaNumber} for {soa.ClientName} {(wasEdit ? "edited" : "created")}: {items?.Count ?? 0} line(s), PHP {soa.TotalAmount:N2}"); } catch (Exception swxA) { ErrLog.Swallowed(swxA); }
 
                         try
 
@@ -12993,7 +13059,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
 
-        public static List<ClientStore> GetClientStores(string clientName)
+        public static List<ClientStore> GetClientStores(string clientName, bool includeArchived = false)
+
         {
             var list = new List<ClientStore>();
             if (string.IsNullOrWhiteSpace(clientName)) return list;
@@ -13001,7 +13068,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 conn.Open();
                 var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT Id, ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, CreatedAt, COALESCE(ExtraFieldsJson, '') FROM ClientStores WHERE LOWER(TRIM(ClientCompanyName)) = LOWER(TRIM(@cl)) ORDER BY StoreCode ASC";
+                cmd.CommandText = "SELECT Id, ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, CreatedAt, COALESCE(ExtraFieldsJson, '') FROM ClientStores WHERE LOWER(TRIM(ClientCompanyName)) = LOWER(TRIM(@cl)) " + (includeArchived ? "" : " AND COALESCE(IsArchived, 0) = 0") + " ORDER BY StoreCode ASC";
 
                 cmd.Parameters.AddWithValue("@cl", clientName.Trim());
                 using (var reader = cmd.ExecuteReader())
@@ -13024,38 +13091,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
             }
-            if (list.Count == 0)
-            {
-                // Only routes explicitly assigned to this client: unassigned routes must not invent stores for a new client.
+            // No stores are invented here: a client's store list starts blank and is filled in from Master Data.
 
-                var routes = GetDeliveryRoutesByClient(clientName, activeOnly: false)
-
-                    .Where(r => string.Equals((r.ClientCompanyName ?? "").Trim(), clientName.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
-
-                foreach (var r in routes)
-                {
-                    if (string.IsNullOrWhiteSpace(r.ConnectedPlaces)) continue;
-                    var parts = r.ConnectedPlaces.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries);
-                    int idx = 1;
-                    foreach (var p in parts)
-                    {
-                        string storeName = p.Trim();
-                        if (string.IsNullOrWhiteSpace(storeName)) continue;
-                        string code = $"{r.RouteCode}-S{idx:D2}";
-                        var cs = new ClientStore
-                        {
-                            ClientId = 0,
-                            ClientCompanyName = clientName,
-                            StoreCode = code,
-                            StoreName = storeName,
-                            DestinationRoute = $"{r.RouteCode} - {r.RouteName}"
-                        };
-                        SaveClientStore(cs);
-                        list.Add(cs);
-                        idx++;
-                    }
-                }
-            }
             return list;
         }
 
@@ -13324,7 +13361,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             string label = RouteLabel(route);
 
-            var stores = GetClientStores(client);
+            var stores = GetClientStores(client, includeArchived: true);
 
             int clientId = GetClientByCompanyName(client)?.Id ?? 0;
 
@@ -13374,8 +13411,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var places = route.PlacesList;
 
-            int seq = stores.Count(OnThisRoute);
-
             foreach (var place in places)
 
             {
@@ -13392,9 +13427,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                string code;
+                // No made-up store codes: use the code written in the place ("203077 - RR-Laoag"), otherwise leave it blank for the user.
 
-                do { seq++; code = $"{route.RouteCode}-S{seq:D2}"; } while (stores.Any(x => string.Equals(x.StoreCode, code, StringComparison.OrdinalIgnoreCase)));
+                string code = DeliveryRoute.SplitStoreCodeAndName(place).StoreCode;
+
+                if (code.Length > 0 && stores.Any(x => string.Equals(x.StoreCode, code, StringComparison.OrdinalIgnoreCase))) code = "";
 
                 Exec("INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute) VALUES (@cid, @cl, @sc, @sn, @l)",
 

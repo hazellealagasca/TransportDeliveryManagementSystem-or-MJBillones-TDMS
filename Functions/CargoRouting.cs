@@ -12,7 +12,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     {
         public const string SpecialOption = "Non-crate / specialized cargo → Special Trip";
         /// <summary>Crate cargo types a regular dispatch or loading order can carry.</summary>
-        public static readonly string[] CrateCargoTypes = { "Cold / Chilled", "Dry Goods", "Dry and Chilled Mix" };
+        public static readonly string[] CrateCargoTypes = { "Cold / Chilled", "Dry Goods", "Combi (Cold + Dry)" };
         private static readonly string[] SpecialWords = { "non-crate", "noncrate", "special", "bulk", "equipment", "oversize", "fragile", "furniture", "machinery", "appliance", "box", "pallet", "loose" };
         /// <summary>False when Special trips are turned off in Settings → Features &amp; Pop-ups.</summary>
         public static bool Enabled => Features.On(Features.SpecialTrips);

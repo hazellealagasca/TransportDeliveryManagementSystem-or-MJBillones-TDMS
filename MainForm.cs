@@ -407,8 +407,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         ("🚛  Trucks", () => NavigateToResources("Trucks")),
                         ("👨‍✈️  Crew Management", () => NavigateToResources("Crew")),
-                        ("📋  Crew Trip History", () => NavigateToResources("CrewHistory")),
-                        ("📜  Resource History", () => NavigateToResources("History"))
+                        ("📋  Crew Trip History", () => NavigateToResources("CrewHistory"))
                     }
                 ),
                 (
@@ -429,6 +428,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         ("🏢  Clients", () => NavigateToMasterData("Clients")),
                         ("🗺️  Delivery Routes", () => NavigateToMasterData("Routes")),
+                        ("🗄️  Archive", () => NavigateToMasterData("Archive")),
                         ("📜  Master Data History", () => NavigateToMasterData("History"))
                     }
                 )

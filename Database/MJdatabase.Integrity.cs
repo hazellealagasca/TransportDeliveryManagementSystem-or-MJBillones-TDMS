@@ -36,9 +36,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             "SpecialTrips" => "The special trip is not erased: it is marked Cancelled and stays in the history.",
             "Users" => "The account is not erased: it is deactivated so it can no longer sign in. Its history stays.",
             "Crews" => "The crew member is not erased: they are set to inactive and no longer offered for new trips. Their trip history stays.",
-            "Trucks" => "The truck is not erased: it is set to Inactive and no longer offered for new trips. Its trip history stays.",
-            "Clients" => "The client is not erased: it is deactivated and hidden from new orders. Its orders, invoices and payments stay.",
-            "DeliveryRoutes" => "The route is not erased: it is deactivated and no longer offered for new orders.",
+            "Trucks" => "The truck is not erased: it is set to Decommissioned and no longer offered for new trips. Its trip history stays, and it can be reactivated later.",
+            "Clients" => "The client is not erased: it moves to Master Data → Archive and is hidden from new orders. Its orders, invoices and payments stay.",
+            "DeliveryRoutes" => "The route is not erased: it moves to Master Data → Archive and is no longer offered for new orders.",
+            "ClientStores" => "The store is not erased: it moves to Master Data → Archive, leaves its route and is no longer offered for new orders. Past orders keep its name.",
             _ => "This can't be undone."
         };
         /// <summary>Soft delete for history tables. Returns null when the table is not handled here.</summary>
@@ -175,9 +176,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 case "Trucks":
                     {
                         ident = Scalar("SELECT PlateNumber FROM Trucks WHERE Id = @id");
-                        Exec("UPDATE Trucks SET Status = 'Inactive' WHERE Id = @id");
-                        action = "DEACTIVATE";
-                        LastDeleteSummary = $"Truck {ident} was set to Inactive and won't be offered for new trips. Its trip history stays.";
+                        Exec("UPDATE Trucks SET Status = 'Decommissioned' WHERE Id = @id");
+                        action = "DECOMMISSION";
+                        LastDeleteSummary = $"Truck {ident} was set to Decommissioned and won't be offered for new trips. Its trip history stays.";
                         break;
                     }
                 default:
@@ -203,7 +204,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.ExecuteNonQuery();
             }
             NotifyCategoriesChanged();
-            LogAuditTrail(active ? "REACTIVATE" : "DEACTIVATE", "Clients", 0, companyName.Trim(), "IsActive", active ? "0" : "1", active ? "1" : "0", active ? "Client reactivated" : "Client deactivated (soft delete)");
+            LogAuditTrail(active ? "RESTORE" : "ARCHIVE", "Clients", 0, companyName.Trim(), "IsActive", active ? "0" : "1", active ? "1" : "0", active ? "Client restored from the archive" : "Client archived (history is kept)");
         }
         /// <summary>Last activity date per client (newest dispatch, loading order or invoice), keyed case-insensitively.</summary>
         public static Dictionary<string, DateTime> GetClientLastActivity()
@@ -318,6 +319,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             MigrateLicenseNumbers(conn);
             try { EnsureProfileTables(); } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] profile tables: {ex.Message}"); ErrLog.Swallowed(ex); }
+            try { EnsureCapacitySchema(); } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] capacity matrix: {ex.Message}"); ErrLog.Swallowed(ex); }
             Try("client created", "UPDATE Clients SET CreatedAt = datetime('now') WHERE CreatedAt IS NULL OR TRIM(CreatedAt) = ''");
             Try("client active", "UPDATE Clients SET IsActive = 1 WHERE IsActive IS NULL");
             // One-time clean-up: stores that were invented for a client from other clients' / unassigned routes.

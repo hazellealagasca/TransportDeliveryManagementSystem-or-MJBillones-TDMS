@@ -50,7 +50,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             });
 
             AddTab("CrewHistory", "📋  Crew Trip History", () => new CrewTripHistoryView());
-            AddTab("History", "📜  Resource History", () => new ModuleHistoryView("Trucks & crew history", new[] { "Trucks", "Crews", "CrewRecords", "TruckMaintenance", "LookupCategories" }, isAdminOnly: true));
+            // Resource History tab hidden on request (changes are still logged in Settings → Audit trail).
+            // AddTab("History", "📜  Resource History", () => new ModuleHistoryView("Trucks & crew history", new[] { "Trucks", "Crews", "CrewRecords", "TruckMaintenance", "LookupCategories" }, isAdminOnly: true));
         }
 
         private void AddTab(string key, string title, Func<UserControl> viewFactory)

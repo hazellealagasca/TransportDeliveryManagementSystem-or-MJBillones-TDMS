@@ -613,7 +613,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             o.Sections = new List<PrintChoice> { new("head", "Trip details (driver, route, plate…)"), new("stores", "Stores table"), new("totals", "Totals row"), new("signoff", "Plant gate & sign-off box"), new("remarks_box", "Trip remarks") };
             AddCommon(o);
             o.Sections.First(s => s.Key == "printed").On = false;
-            o.Columns = new List<PrintChoice> { new("no", "No."), new("code", "Store code"), new("store", "Store name & DR"), new("in", "Store in"), new("out", "Store out"), new("rep", "Store representative"), new("le", "Loaded E-crates"), new("lg", "Loaded G-crates"), new("box", "Box"), new("pf", "P.Foods"), new("mi", "M.I."), new("re", "Returned E-crates"), new("rg", "Returned G-crates"), new("remarks", "Remarks") };
+            o.Columns = new List<PrintChoice> { new("no", "No."), new("code", "Store code"), new("store", "Store name & DR"), new("in", "Store in"), new("out", "Store out"), new("rep", "Store representative"), new("le", "Loaded E-crates"), new("lg", "Loaded G-crates"), new("re", "Returned E-crates"), new("rg", "Returned G-crates"), new("remarks", "No. Drops") };
             o.Signatures = new List<PrintSig> { new PrintSig("Driver", d.DriverName, "Signature over printed name", true, false), new PrintSig("Checked by", "", "Plant checker", false, false) };
             var def = new PrintFormDef { Key = o.FormKey, Name = "Trip report", FileName = $"TripReport_{d.DispatchNumber}", Defaults = o };
             def.Body = opt =>
@@ -626,12 +626,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     int Le(DispatchStop s) => s.DeliveredECrates > 0 || s.DeliveredGCrates > 0 ? s.DeliveredECrates : s.ECrate;
                     int Lg(DispatchStop s) => s.DeliveredECrates > 0 || s.DeliveredGCrates > 0 ? s.DeliveredGCrates : s.GCrate;
                     var rows = stops.Select(s => Row(("no", ++n), ("code", $"<b>{Esc(s.StoreCode)}</b>"), ("store", $"<b>{Esc(s.Destination)}</b>{(string.IsNullOrWhiteSpace(s.DrNumbers) ? "" : "<br/>DR# " + Esc(s.DrNumbers))}"),
-                        ("in", s.ArrivalTime), ("out", s.DepartureTime), ("rep", s.StoreManagerName), ("le", Le(s)), ("lg", Lg(s)), ("box", s.OthersBox), ("pf", s.OthersPfoods), ("mi", s.OthersMi),
+                        ("in", s.ArrivalTime), ("out", s.DepartureTime), ("rep", s.StoreManagerName), ("le", Le(s)), ("lg", Lg(s)),
                         ("re", s.ReturnedECrates), ("rg", s.ReturnedGCrates), ("remarks", s.Remarks))).ToList();
                     var totals = opt.On("totals") ? new Dictionary<string, string> { ["store"] = "TOTAL", ["le"] = stops.Sum(Le).ToString(), ["lg"] = stops.Sum(Lg).ToString(), ["re"] = stops.Sum(s => s.ReturnedECrates).ToString(), ["rg"] = stops.Sum(s => s.ReturnedGCrates).ToString() } : null;
                     sb.Append(SectionTitle("Stores"));
                     sb.Append(Table(opt, new[] { ("no", "No", "center"), ("code", "Store code", "center"), ("store", "Store name & DR / invoice #", ""), ("in", "Store in", "center"), ("out", "Store out", "center"), ("rep", "Store representative (sign over printed name)", ""),
-                        ("le", "Loaded E", "center"), ("lg", "Loaded G", "center"), ("box", "Box", "center"), ("pf", "P.Foods", "center"), ("mi", "M.I.", "center"), ("re", "Returned E", "center"), ("rg", "Returned G", "center"), ("remarks", "Remarks", "") },
+                        ("le", "Loaded E", "center"), ("lg", "Loaded G", "center"), ("re", "Returned E", "center"), ("rg", "Returned G", "center"), ("remarks", "No. Drops", "center") },
                         rows, totals, Math.Max(0, opt.BlankRows - stops.Count)));
                 }
                 if (opt.On("remarks_box") && !string.IsNullOrWhiteSpace(opt.F("remarks"))) sb.Append(FieldGrid(opt, 1, "remarks"));

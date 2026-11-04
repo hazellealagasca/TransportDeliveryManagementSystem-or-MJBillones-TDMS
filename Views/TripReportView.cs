@@ -224,13 +224,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnAddTripStoreRow.Click += (s, e) =>
             {
                 if (gridStores == null) return;
-                int nextIdx = gridStores.Rows.Count + 1;
-                int rIdx = gridStores.Rows.Add($"ST-{nextIdx:00}", $"Store {nextIdx}", "", "08:00 AM", "08:30 AM", "", 0, 0, "", "", "", 0, 0, "");
+                // The new row starts completely empty; its details are entered in the store window.
+                int rIdx = gridStores.Rows.Add();
                 SizeStoreTable(gridStores.Rows.Count);
-                if (rIdx >= 0 && gridStores.Columns.Contains("colStore"))
+                if (rIdx >= 0 && !OpenStoreDetails(rIdx))
                 {
-                    gridStores.CurrentCell = gridStores.Rows[rIdx].Cells["colStore"];
-                    gridStores.BeginEdit(true);
+                    var r = gridStores.Rows[rIdx];
+                    bool empty = r.Cells.Cast<DataGridViewCell>().All(c => string.IsNullOrWhiteSpace(c.Value?.ToString()));
+                    if (empty) { gridStores.Rows.RemoveAt(rIdx); SizeStoreTable(gridStores.Rows.Count); }
                 }
             };
 
@@ -239,6 +240,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlMultiDropHeaderBar.Controls.Add(lblMultiDropDetails, 0, 0);
             pnlMultiDropHeaderBar.Controls.Add(btnAddTripStoreRow, 1, 0);
             pnlMultiDropHeaderBar.Controls.Add(btnEditTripStoreTable, 2, 0);
+            btnEditTripStoreTable.Visible = false; // the free table editor would bypass the locked crate cells
             var lblStoresHint = new Label
             {
                 Dock = DockStyle.Top,
@@ -247,7 +249,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Font = new Font("Segoe UI", 8.75F),
                 ForeColor = AppTheme.TextMuted,
                 AutoEllipsis = true,
-                Text = "Yellow cells can be edited. Changes here apply to this trip report only; the crate totals below add up automatically."
+                Text = "Click a store name to enter its DR numbers and returned crates. Delivered crates come from the dispatch and can't be changed."
             };
             gridStores = new DataGridView
             {
@@ -262,8 +264,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 EditMode = DataGridViewEditMode.EditOnEnter,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                 ScrollBars = ScrollBars.Both,
+                // Headers wrap onto two lines so "Delivered E" etc. are never cut off.
                 ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
-                ColumnHeadersHeight = Dpi(34),
+                ColumnHeadersHeight = Dpi(46),
                 RowTemplate = { Height = Dpi(30) },
                 Font = new Font("Segoe UI", 9F),
                 EnableHeadersVisualStyles = false
@@ -271,26 +274,36 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridStores.ColumnHeadersDefaultCellStyle.BackColor = Pal.C(219, 234, 254);
             gridStores.ColumnHeadersDefaultCellStyle.ForeColor = Pal.C(30, 58, 138);
             gridStores.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI Semibold", 8.5F);
+            gridStores.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.True;
             var roStyle = new DataGridViewCellStyle { BackColor = Pal.C(248, 250, 252), ForeColor = Pal.C(15, 23, 42) };
             var editStyle = new DataGridViewCellStyle { BackColor = Pal.C(254, 252, 232), ForeColor = Pal.C(15, 23, 42) };
             var editNumStyle = new DataGridViewCellStyle { BackColor = Pal.C(254, 252, 232), ForeColor = Pal.C(15, 23, 42), Alignment = DataGridViewContentAlignment.MiddleRight };
             DataGridViewTextBoxColumn Col(string name, string header, int weight, DataGridViewCellStyle style, int min = 48) =>
                 new DataGridViewTextBoxColumn { Name = name, HeaderText = header, FillWeight = weight, MinimumWidth = Dpi(min), ReadOnly = false, DefaultCellStyle = new DataGridViewCellStyle(style) };
-            gridStores.Columns.Add(Col("colCode", "Store code", 72, editStyle, 60));
+            // Store, DR and crate cells are locked: click the store to open its details (several DRs, returned crates).
+            var roNumStyle = new DataGridViewCellStyle(roStyle) { Alignment = DataGridViewContentAlignment.MiddleRight };
+            var linkStyle = new DataGridViewCellStyle(roStyle) { ForeColor = AppTheme.Accent, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Underline) };
+            DataGridViewTextBoxColumn Locked(string name, string header, int weight, DataGridViewCellStyle style, int min = 48)
+            { var c = Col(name, header, weight, style, min); c.ReadOnly = true; return c; }
+            gridStores.Columns.Add(Locked("colCode", "Store code", 72, roStyle, 60));
             gridStores.Columns["colCode"]!.DefaultCellStyle.Font = new Font("Segoe UI Semibold", 9F);
-            gridStores.Columns.Add(Col("colStore", "Store name", 150, editStyle, 110));
-            gridStores.Columns.Add(Col("colDr", "DR / Inv #", 90, editStyle, 70));
+            gridStores.Columns.Add(Locked("colStore", "Store name (click)", 150, linkStyle, 110));
+            gridStores.Columns.Add(Locked("colDr", "DR numbers", 100, roStyle, 70));
             gridStores.Columns.Add(Col("colIn", "Store in", 66, editStyle, 58));
             gridStores.Columns.Add(Col("colOut", "Store out", 66, editStyle, 58));
             gridStores.Columns.Add(Col("colRep", "Representative", 120, editStyle, 90));
-            gridStores.Columns.Add(Col("colLoadE", "Load E", 56, editNumStyle));
-            gridStores.Columns.Add(Col("colLoadG", "Load G", 56, editNumStyle));
-            gridStores.Columns.Add(Col("colBox", "Box", 44, editStyle, 40));
-            gridStores.Columns.Add(Col("colPfoods", "PFOODS", 56, editStyle, 48));
-            gridStores.Columns.Add(Col("colMi", "M.I", 44, editStyle, 40));
-            gridStores.Columns.Add(Col("colRetE", "Ret E", 56, editNumStyle));
-            gridStores.Columns.Add(Col("colRetG", "Ret G", 56, editNumStyle));
-            gridStores.Columns.Add(Col("colRem", "Remarks", 110, editStyle, 80));
+            gridStores.Columns.Add(Locked("colLoadE", "Delivered E", 66, roNumStyle, 62));
+            gridStores.Columns.Add(Locked("colLoadG", "Delivered G", 66, roNumStyle, 62));
+            gridStores.Columns.Add(Locked("colRetE", "Returned E", 66, roNumStyle, 62));
+            gridStores.Columns.Add(Locked("colRetG", "Returned G", 66, roNumStyle, 62));
+            gridStores.Columns.Add(Col("colRem", "No. Drops", 60, editNumStyle, 56));
+            InputGuards.DigitsOnlyColumns(gridStores, "colRem");
+            gridStores.CellClick += (s, e) =>
+            {
+                if (e.RowIndex < 0 || e.ColumnIndex < 0 || isBindingForm) return;
+                string cn = gridStores.Columns[e.ColumnIndex].Name;
+                if (cn is "colStore" or "colCode" or "colDr" or "colLoadE" or "colLoadG" or "colRetE" or "colRetG") OpenStoreDetails(e.RowIndex);
+            };
             gridStores.CellValueChanged += (s, e) =>
             {
                 if (isBindingForm || isUpdatingStoreGrid || e.RowIndex < 0) return;
@@ -431,12 +444,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         s.StoreManagerName,
                         loadE,
                         loadG,
-                        s.OthersBox,
-                        s.OthersPfoods,
-                        s.OthersMi,
                         retE,
                         retG,
-                        s.Remarks
+                        DropsFromRemarks(s.Remarks)
                     );
                     gridStores.Rows[rIdx].Tag = s;
                 }
@@ -527,6 +537,72 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 RecalculateTotalsFromStoreGrid();
             }
+        }
+        /// <summary>Opens the store window for one row; returns true when the user applied changes.</summary>
+        /// <summary>The store's Remarks now hold its number of drops. Older reports stored "Stop 1", "Stop 2"… there
+        /// (the stop's position, not a count), so those show as blank instead of a wrong number.</summary>
+        private static string DropsFromRemarks(string? remarks)
+        {
+            string r = (remarks ?? "").Trim();
+            return System.Text.RegularExpressions.Regex.IsMatch(r, @"^\d{1,3}$") ? r : "";
+        }
+        private bool OpenStoreDetails(int rowIndex)
+        {
+            if (gridStores == null || rowIndex < 0 || rowIndex >= gridStores.Rows.Count) return false;
+            gridStores.EndEdit();
+            var row = gridStores.Rows[rowIndex];
+            string V(string col) => gridStores.Columns.Contains(col) ? (row.Cells[col].Value?.ToString() ?? "").Trim() : "";
+            int N(string col) => int.TryParse(V(col), out int n) ? Math.Max(0, n) : 0;
+            bool fromDispatch = row.Tag is DispatchStop;
+            using var dlg = new TripStoreDialog(V("colCode"), V("colStore"), !fromDispatch, N("colLoadG"), N("colLoadE"), N("colRetG"), N("colRetE"),
+                                                V("colDr"), V("colRem"), V("colIn"), V("colOut"), V("colRep"));
+            if (dlg.ShowDialog(this.FindForm()) != DialogResult.OK) return false;
+            row.Cells["colCode"].Value = dlg.StoreCode;
+            row.Cells["colStore"].Value = dlg.StoreName;
+            row.Cells["colDr"].Value = dlg.DrNumbers;
+            row.Cells["colRetG"].Value = dlg.ReturnedG;
+            row.Cells["colRetE"].Value = dlg.ReturnedE;
+            if (!fromDispatch)
+            {
+                if (string.IsNullOrWhiteSpace(V("colLoadE"))) row.Cells["colLoadE"].Value = 0;
+                if (string.IsNullOrWhiteSpace(V("colLoadG"))) row.Cells["colLoadG"].Value = 0;
+            }
+            row.Cells["colRem"].Value = dlg.Drops;
+            row.Cells["colIn"].Value = dlg.TimeIn;
+            row.Cells["colOut"].Value = dlg.TimeOut;
+            row.Cells["colRep"].Value = dlg.Representative;
+            RecalculateTotalsFromStoreGrid();
+            return true;
+        }
+        /// <summary>Stores whose returned crates don't match what was delivered, e.g. "RR-Agoo: G short by 2".</summary>
+        private List<string> IncompleteStores()
+        {
+            var list = new List<string>();
+            if (gridStores == null) return list;
+            foreach (DataGridViewRow row in gridStores.Rows)
+            {
+                if (row.IsNewRow) continue;
+                int I(string c) => int.TryParse(row.Cells[c].Value?.ToString(), out int n) ? Math.Max(0, n) : 0;
+                int dg = I("colRetG") - I("colLoadG"), de = I("colRetE") - I("colLoadE");
+                if (dg == 0 && de == 0) continue;
+                var p = new List<string>();
+                if (dg != 0) p.Add($"G {(dg < 0 ? "short by " + (-dg) : "over by " + dg)}");
+                if (de != 0) p.Add($"E {(de < 0 ? "short by " + (-de) : "over by " + de)}");
+                string nm = (row.Cells["colStore"].Value?.ToString() ?? "").Trim();
+                list.Add($"{(nm.Length > 0 ? nm : "Row " + (row.Index + 1))}: {string.Join(", ", p)}");
+            }
+            return list;
+        }
+        /// <summary>Double warning before a report with incomplete returned crates is saved.</summary>
+        private bool ConfirmIncompleteStoresTwice()
+        {
+            var inc = IncompleteStores();
+            if (inc.Count == 0) return true;
+            string list = string.Join("\n", inc.Take(10)) + (inc.Count > 10 ? $"\n… and {inc.Count - 10} more" : "");
+            if (MessageBox.Show(this.FindForm(), $"Returned crates don't match the delivered crates for {inc.Count} store(s):\n\n{list}\n\nSave the trip report anyway?",
+                    "Incomplete crates (1 of 2)", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return false;
+            return MessageBox.Show(this.FindForm(), "Please confirm again: the crate counts above are correct and should be saved as they are?",
+                    "Confirm incomplete crates (2 of 2)", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
         }
 
         private void RecalculateTotalsFromStoreGrid()
@@ -626,9 +702,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     DeliveredECrates = le,
                     DeliveredGCrates = lg,
                     DeliveredCrates = le + lg,
-                    OthersBox = row.Cells["colBox"].Value?.ToString()?.Trim() ?? "",
-                    OthersPfoods = row.Cells["colPfoods"].Value?.ToString()?.Trim() ?? "",
-                    OthersMi = row.Cells["colMi"].Value?.ToString()?.Trim() ?? "",
+                    // Box / PFOODS / M.I. are no longer entered; any old values are kept as they were.
+                    OthersBox = orig?.OthersBox ?? "",
+                    OthersPfoods = orig?.OthersPfoods ?? "",
+                    OthersMi = orig?.OthersMi ?? "",
                     ReturnedECrates = re,
                     ReturnedGCrates = rg,
                     ReturnedCrates = re + rg,
@@ -921,6 +998,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                if (!ConfirmIncompleteStoresTwice()) return;
                 var stopsToSave = CollectStopsFromGrid(selDel);
                 string smLastName = txtStoreManagerLastName.Text.Trim();
                 string smFirstName = txtStoreManagerFirstName.Text.Trim();
@@ -1116,6 +1194,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
 
                 var selDel = allDeliveries.FirstOrDefault(d => d.Id == selectedTripReport.DeliveryId || d.DispatchNumber == selectedTripReport.DispatchNumber);
+                if (!ConfirmIncompleteStoresTwice()) return;
                 var stopsToSave = selDel != null ? CollectStopsFromGrid(selDel) : new List<DispatchStop>();
                 string smLastName = txtStoreManagerLastName.Text.Trim();
                 string smFirstName = txtStoreManagerFirstName.Text.Trim();

@@ -546,7 +546,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var busyCrew = new HashSet<int>();
             foreach (var d in dels.Where(d => Active(d.Status))) foreach (var (id, _) in MJdatabase.GetDeliveryCrewIds(d)) busyCrew.Add(id);
             int ready = data.Trucks.Count(t => MJdatabase.IsTruckReadyStatus(t.Status) && !busyTrucks.Contains(t.Id));
-            int maint = data.Trucks.Count(t => MJdatabase.IsTruckBlockedStatus(t.Status) && !RowMenu.Is(t.Status, "Inactive"));
+            int maint = data.Trucks.Count(t => MJdatabase.IsTruckBlockedStatus(t.Status) && !MJdatabase.IsDecommissioned(t.Status));
             tTrucks.Value = $"{ready} of {data.Trucks.Count}";
             tTrucks.Note = $"{data.Trucks.Count(t => busyTrucks.Contains(t.Id))} on dispatches · {maint} in maintenance";
             tTrucks.ValueColor = ready == 0 && data.Trucks.Count > 0 ? AppTheme.DangerText : null;
@@ -633,7 +633,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     items.Add(new ActionList.Item(AppTheme.Info, $"{drafts} draft invoice(s) to finish", "From completed special trips — add the amount to issue them", "Open", () => MainForm.Instance?.ShowFinanceRecords("Billing", "Draft"), "Billing", 2, null, drafts));
             }
             if (CanRes && maint > 0)
-                items.Add(new ActionList.Item(AppTheme.TextMuted, $"{maint} truck(s) under maintenance", string.Join(", ", data.Trucks.Where(t => MJdatabase.IsTruckBlockedStatus(t.Status) && !RowMenu.Is(t.Status, "Inactive")).Select(t => t.PlateNumber).Take(5)), "Trucks", () => MainForm.Instance?.NavigateToResources("Trucks"), "Trucks", 2, null, maint));
+                items.Add(new ActionList.Item(AppTheme.TextMuted, $"{maint} truck(s) under maintenance", string.Join(", ", data.Trucks.Where(t => MJdatabase.IsTruckBlockedStatus(t.Status) && !MJdatabase.IsDecommissioned(t.Status)).Select(t => t.PlateNumber).Take(5)), "Trucks", () => MainForm.Instance?.NavigateToResources("Trucks"), "Trucks", 2, null, maint));
             // Drivers whose licence can't be checked (no expiry date on file), has expired, or expires within 30 days.
             if (CanRes)
             {
@@ -687,7 +687,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ("Available", ready, AppTheme.Success),
                 ("On dispatches", data.Trucks.Count(t => busyTrucks.Contains(t.Id)), AppTheme.Info),
                 ("Maintenance", maint, AppTheme.Warning),
-                ("Inactive", data.Trucks.Count(t => RowMenu.Is(t.Status, "Inactive")), AppTheme.BorderStrong)
+                ("Decommissioned", data.Trucks.Count(t => MJdatabase.IsDecommissioned(t.Status)), AppTheme.BorderStrong)
             });
             // Last 7 days
             var days = Enumerable.Range(0, 7).Select(i => DateTime.Today.AddDays(i - 6)).ToList();

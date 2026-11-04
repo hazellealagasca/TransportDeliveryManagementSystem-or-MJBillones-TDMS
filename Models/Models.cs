@@ -678,6 +678,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public int AssignedTrucksCount { get; set; }
     }
 
+    /// <summary>Load-planning matrix for one truck category (crates). TruckMax = DryMax is the hard ceiling.</summary>
+    public class TruckCapacity
+    {
+        public string CategoryName { get; set; } = string.Empty;
+        public int DryMax { get; set; }
+        public int ColdMax { get; set; }
+        public int CombiColdMax { get; set; }
+        public int CombiDryMax { get; set; }
+        public int CombiMax => CombiColdMax + CombiDryMax;
+        public int TruckMax => DryMax;
+    }
     public class CrewRoleItem
     {
         public int Id { get; set; }

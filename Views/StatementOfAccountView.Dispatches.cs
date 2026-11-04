@@ -293,7 +293,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     var trk = trucks.FirstOrDefault(t => t.Id == del.TruckId);
                     string plate = trk != null ? trk.PlateNumber : del.TruckInfo;
-                    string tonnage = trk != null ? (trk.CapacityCrates >= 400 ? "8T" : (trk.CapacityCrates >= 240 ? "6T" : "4T")) : "6T";
+                    string tonnage = trk != null ? MJdatabase.TonnageLabel(trk) : "6T";
                     string driverHelper = $"{del.DriverName} / {del.AideDisplay}".Trim(' ', '/');
                     var stops = MJdatabase.GetOrBuildTripStopsForDelivery(del);
                     int dropCount = stops.Count > 0 ? stops.Count : (del.TotalStopsCount > 0 ? del.TotalStopsCount : 1);

@@ -194,7 +194,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblPhoto.Padding = new Padding(0, 4, 0, 2);
             lblPhoto.Size = new Size(193, 27);
             lblPhoto.TabIndex = 9;
-            lblPhoto.Text = "Official ID / Driver Photo:";
+            lblPhoto.Text = "ID / driver photo (optional):";
             tblCheckboxes.ColumnCount = 2;
             tblCheckboxes.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tblCheckboxes.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));

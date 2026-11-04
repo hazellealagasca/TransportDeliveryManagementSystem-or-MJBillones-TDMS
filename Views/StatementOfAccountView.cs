@@ -112,17 +112,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlTopBar = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = Dpi(56),
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, Dpi(56)),
                 BackColor = Pal.White,
                 Padding = new Padding(12, 8, 12, 4)
             };
 
+            // The buttons wrap onto a second line on narrow windows instead of hiding behind a scrollbar.
             pnlGridActionsFlow = new FlowLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                AutoScroll = true
+                WrapContents = true,
+                AutoScroll = false
             };
 
             btnToggleForm = new Button
@@ -183,6 +188,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnViewInvoice.Click += (s, e) => OpenLinkedInvoice();
             pnlGridActionsFlow.Controls.Add(btnViewInvoice);
 
+            // Fix a saved statement (wrong amounts, forgotten trips); each line can open its dispatch.
+            var btnEditSoa = new Button
+            {
+                Text = "✏️ Edit statement",
+                Size = new Size(140, 32),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 1, 12, 0)
+            };
+            UIThemeHelper.SetButtonRole(btnEditSoa, "secondary");
+            btnEditSoa.Click += (s, e) =>
+            {
+                var soa = gridSoa.CurrentRow?.DataBoundItem as StatementOfAccount ?? selectedSoa;
+                if (soa == null) { QuietBox.Show("Select a statement in the list first.", "Edit statement", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+                OpenEditStatement(soa);
+            };
+            pnlGridActionsFlow.Controls.Add(btnEditSoa);
             txtGridSearch = new TextBox { Width = Dpi(240), Margin = new Padding(Dpi(8), Dpi(3), Dpi(8), 0) };
             PageKit.StyleSearch(txtGridSearch, "🔍 Search statement #, client…");
             txtGridSearch.TextChanged += (s, e) => FilterGridData();
@@ -460,9 +483,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ("Statement date", dtpIssueDate), ("Period covered", pnlDates),
                 ("Quick period", flowPeriodPresets), ("Import trips", btnPopulateTrips));
             // ---------------- Trips & stores grid
-            var bar = new TableLayoutPanel { Height = Dpi(46), ColumnCount = 6, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
+            var bar = new TableLayoutPanel { Height = Dpi(46), ColumnCount = 7, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            for (int i = 0; i < 5; i++) bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            for (int i = 0; i < 6; i++) bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             lblItemsTitle = new Label { Dock = DockStyle.Fill, Text = "🧾 Trips & stores on this statement", Font = new Font("Segoe UI Semibold", 10.5F), ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
             btnAddRow = MakeFormButton("➕ Add row", "secondary");
             btnAddRow.Click += (s, e) => AddBlankGridRow();
@@ -480,7 +503,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bar.Controls.Add(btnBulkEdit, 2, 0);
             bar.Controls.Add(btnDeleteRow, 3, 0);
             bar.Controls.Add(btnEditSoaTable, 4, 0);
-            bar.Controls.Add(btnRecalc, 5, 0);
+            bar.Controls.Add(btnRecalc, 6, 0);
+            // Go back to the dispatch behind the selected line (to check a forgotten store or a wrong amount).
+            var btnOpenDispatch = MakeFormButton("🔗 Open dispatch", "secondary");
+            btnOpenDispatch.Click += (s, e) =>
+            {
+                var row = gridItems.CurrentRow;
+                int did = row != null && gridItems.Columns.Contains("colDeliveryId") && int.TryParse(row.Cells["colDeliveryId"].Value?.ToString(), out int d) ? d : 0;
+                if (did <= 0) { QuietBox.Show("Select a line that came from a dispatch (imported trips), then click Open dispatch.", "Open dispatch", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+                RowMenu.OpenDispatch(this, did, null);
+            };
+            bar.Controls.Add(btnOpenDispatch, 5, 0);
             var lblItemsHint = new Label
             {
                 Height = Dpi(24),
@@ -724,6 +757,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void OpenEditStatement(StatementOfAccount soa)
         {
+            string why = MJdatabase.WhySoaCannotBeEdited(soa);
+            if (why.Length > 0)
+            {
+                MessageBox.Show(this.FindForm(), why, "Edit statement", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
             selectedSoa = soa;
             BindSoaToDrawer(soa);
             isEditingExisting = true;
@@ -1118,13 +1157,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void AddBlankGridRow()
         {
-            int nextTrip = 1;
-            if (gridItems.Rows.Count > 0)
-            {
-                var lastVal = gridItems.Rows[gridItems.Rows.Count - 1].Cells[0].Value?.ToString();
-                if (int.TryParse(lastVal, out int lastNum)) nextTrip = lastNum + 1;
-            }
-            gridItems.Rows.Add(nextTrip, DateTime.Today.ToString("yyyy-MM-dd"), "", "", "", cbDeliveryType.Text, "", "6T", 1, 0m, 0m, "", "");
+            // A new line starts completely blank (system rule: no pre-filled rows).
+            int r = gridItems.Rows.Add();
+            if (r >= 0 && gridItems.Columns.Count > 0) { gridItems.CurrentCell = gridItems.Rows[r].Cells[0]; }
             RecalculateTaxes(manualOverride: false);
         }
 
@@ -1205,7 +1240,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (DataGridViewRow row in gridItems.Rows)
             {
                 if (row.IsNewRow) continue;
-                int tripNo = int.TryParse(row.Cells[0].Value?.ToString(), out int t) ? t : 1;
+                // A line left completely blank is ignored.
+                bool blank = true;
+                for (int ci = 0; ci <= Math.Min(11, row.Cells.Count - 1); ci++)
+                    if (!string.IsNullOrWhiteSpace(row.Cells[ci].Value?.ToString())) { blank = false; break; }
+                if (blank) continue;
+                int tripNo = int.TryParse(row.Cells[0].Value?.ToString(), out int t) ? t : list.Count + 1;
                 string dtRecv = row.Cells[1].Value?.ToString() ?? "";
                 string zone = row.Cells[2].Value?.ToString() ?? "";
                 string dr = row.Cells[3].Value?.ToString() ?? "";

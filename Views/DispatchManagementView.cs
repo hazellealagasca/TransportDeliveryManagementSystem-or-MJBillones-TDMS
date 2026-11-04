@@ -1533,6 +1533,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+            UpdateCombiSplitUi(total);
+
+            if (lnkCapDetails != null) lnkCapDetails.Visible = false;
+
             if (total == 0)
 
             {
@@ -1561,53 +1565,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                string reqTemp = !string.IsNullOrEmpty(cbCargoType.Text) ? cbCargoType.Text : "Cold / Chilled";
+                // Same check as Save (CapacityValidator): temperature, Dry / Cold / Combi matrix and truck maximum.
 
-                string truckTemp = !string.IsNullOrEmpty(selTruck.CargoType) ? selTruck.CargoType : "Cold / Chilled";
-
-                bool tempMismatch = (reqTemp.Contains("Cold", StringComparison.OrdinalIgnoreCase) || reqTemp.Contains("Mix", StringComparison.OrdinalIgnoreCase)) && truckTemp.Equals("Dry Goods", StringComparison.OrdinalIgnoreCase);
-
-
-
-                if (tempMismatch)
-
-                {
-
-                    pnlRec.BackColor = Pal.C(254, 242, 242);
-
-                    lblRec.ForeColor = Pal.C(185, 28, 28);
-
-                    lblRec.Text = $"⚠️ Temperature Mismatch: Order requires '{reqTemp}', but {selTruck.PlateNumber} is configured for '{truckTemp}'! Use a refrigerated vehicle.";
-
-                }
-
-                else if (selTruck.CapacityCrates >= total)
-
-                {
-
-                    double utilization = Math.Round(((double)total / selTruck.CapacityCrates) * 100.0, 1);
-
-                    pnlRec.BackColor = Pal.C(240, 253, 244);
-
-                    lblRec.ForeColor = Pal.C(22, 101, 52);
-
-                    lblRec.Text = $"✓ Optimal Match: {selTruck.PlateNumber} ({truckTemp} - {selTruck.CapacityCrates} crates) handles {total} crates ({utilization}% utilized).";
-
-                }
-
-                else
-
-                {
-
-                    int deficit = total - selTruck.CapacityCrates;
-
-                    pnlRec.BackColor = Pal.C(254, 242, 242);
-
-                    lblRec.ForeColor = Pal.C(185, 28, 28);
-
-                    lblRec.Text = $"⚠️ Overload Warning: Selected truck {selTruck.PlateNumber} (max {selTruck.CapacityCrates} crates) is exceeded by {deficit} crates. Choose a larger vehicle.";
-
-                }
+                ApplyLiveCapacityStatus(selTruck, total);
 
             }
 
@@ -1962,7 +1922,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 ForeColor = Pal.C(100, 116, 139),
 
-                Text = "Changes here apply to this order only. To change the route itself, go to Master Data → Delivery Routes.",
+                Text = "Click Add, then pick or type the store name. Its code fills in from Master Data. New stores: Open client.",
 
                 AutoEllipsis = true
 
@@ -1978,6 +1938,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
                 AllowUserToResizeRows = false,
+                ScrollBars = ScrollBars.Horizontal,
+
                 SelectionMode = DataGridViewSelectionMode.CellSelect,
                 EditMode = DataGridViewEditMode.EditOnEnter,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
@@ -1996,7 +1958,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             InputGuards.DigitsOnlyColumns(gridRouteStores, "colECrate", "colGCrate");
 
-            InputGuards.UniqueColumn(gridRouteStores, "colStoreCode", "Store code", CheckStoreCodeForClient);
+            gridRouteStores.EditingControlShowing += StoreGrid_EditingControlShowing;
+
+            gridRouteStores.CellEndEdit += StoreGrid_CellEndEdit;
+
+            gridRouteStores.RowsAdded += (s, e) => SizeStoreBreakdown(gridRouteStores.Rows.Count);
+
+            gridRouteStores.RowsRemoved += (s, e) => SizeStoreBreakdown(gridRouteStores.Rows.Count);
 
             gridRouteStores.CellValueChanged += (s, e) =>
             {
@@ -2083,7 +2051,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (var colDef in storeGridColumns)
             {
                 bool isNumeric = colDef.Key == "colECrate" || colDef.Key == "colGCrate" || colDef.Key == "colStoreTotal";
-                bool isTotal = colDef.Key == "colStoreTotal";
+                // Store code comes from Master Data only (it can't be typed); the total is calculated.
+
+                bool isTotal = colDef.Key == "colStoreTotal" || colDef.Key == "colStoreCode";
+
                 var col = new DataGridViewTextBoxColumn
                 {
                     Name = colDef.Key,
@@ -2163,21 +2134,348 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlRouteStoresBreakdown.Visible = true;
             gridRouteStores.EndEdit();
 
-            int nextIdx = gridRouteStores.Rows.Count + 1;
-            int rIdx = gridRouteStores.Rows.Add();
-            var row = gridRouteStores.Rows[rIdx];
-            if (gridRouteStores.Columns.Contains("colStoreCode")) row.Cells["colStoreCode"].Value = $"S{nextIdx:D2}";
-            if (gridRouteStores.Columns.Contains("colStoreName")) row.Cells["colStoreName"].Value = $"Store Stop {nextIdx}";
-            if (gridRouteStores.Columns.Contains("colECrate")) row.Cells["colECrate"].Value = "0";
-            if (gridRouteStores.Columns.Contains("colGCrate")) row.Cells["colGCrate"].Value = "0";
-            if (gridRouteStores.Columns.Contains("colStoreTotal")) row.Cells["colStoreTotal"].Value = "0";
-            if (gridRouteStores.Columns.Contains("colDrNumbers")) row.Cells["colDrNumbers"].Value = "";
+            // A new row is completely empty: pick or type the store name, the store code fills in from Master Data.
 
+            int rIdx = gridRouteStores.Rows.Add();
             SizeStoreBreakdown(gridRouteStores.Rows.Count);
+
+            if (rIdx >= 0 && gridRouteStores.Columns.Contains("colStoreName"))
+
+            {
+
+                try
+
+                {
+
+                    gridRouteStores.CurrentCell = gridRouteStores.Rows[rIdx].Cells["colStoreName"];
+
+                    gridRouteStores.BeginEdit(true);
+
+                }
+
+                catch (Exception ex) { ErrLog.Swallowed(ex); }
+
+            }
 
         }
 
         /// <summary>Gives the store breakdown table room for its rows (bigger now that the form is full page).</summary>
+
+        public const string UnknownStoreMessage = "Store does not exist yet in this client. Please add to master data by clicking open client before adding it to loading schedule.";
+
+        private List<ClientStore> storeLookupCache = new List<ClientStore>();
+
+        private string storeLookupClient = "";
+
+        /// <summary>The client's stores from Master Data (cached per client while the form is open).</summary>
+
+        private List<ClientStore> ClientStoresForLookup()
+
+        {
+
+            string client = cbClient.Text.Trim();
+
+            if (!string.Equals(client, storeLookupClient, StringComparison.OrdinalIgnoreCase))
+
+            {
+
+                storeLookupClient = client;
+
+                try { storeLookupCache = client.Length == 0 ? new List<ClientStore>() : MJdatabase.GetClientStores(client); }
+
+                catch (Exception ex) { ErrLog.Swallowed(ex); storeLookupCache = new List<ClientStore>(); }
+
+            }
+
+            return storeLookupCache;
+
+        }
+
+        /// <summary>Finds a store of this client by name, by code, or by "code - name".</summary>
+
+        private ClientStore? FindClientStore(string typed)
+
+        {
+
+            string t = System.Text.RegularExpressions.Regex.Replace((typed ?? "").Trim(), @"\s+", " ");
+
+            if (t.Length == 0) return null;
+
+            var stores = ClientStoresForLookup();
+
+            string Norm(string? x) => System.Text.RegularExpressions.Regex.Replace((x ?? "").Trim(), @"\s+", " ");
+
+            var hit = stores.FirstOrDefault(st => Norm(st.StoreName).Equals(t, StringComparison.OrdinalIgnoreCase))
+
+                   ?? stores.FirstOrDefault(st => Norm(st.StoreCode).Equals(t, StringComparison.OrdinalIgnoreCase))
+
+                   ?? stores.FirstOrDefault(st => $"{Norm(st.StoreCode)} - {Norm(st.StoreName)}".Equals(t, StringComparison.OrdinalIgnoreCase));
+
+            if (hit == null)
+
+            {
+
+                var (code, name) = DeliveryRoute.SplitStoreCodeAndName(t);
+
+                if (!string.IsNullOrWhiteSpace(code))
+
+                    hit = stores.FirstOrDefault(st => Norm(st.StoreCode).Equals(code.Trim(), StringComparison.OrdinalIgnoreCase));
+
+                if (hit == null && !string.IsNullOrWhiteSpace(name))
+
+                    hit = stores.FirstOrDefault(st => Norm(st.StoreName).Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            }
+
+            return hit;
+
+        }
+
+        private void StoreGrid_EditingControlShowing(object? sender, DataGridViewEditingControlShowingEventArgs e)
+
+        {
+
+            if (gridRouteStores == null || e.Control is not TextBox tb) return;
+
+            var col = gridRouteStores.CurrentCell?.OwningColumn;
+
+            if (col != null && col.Name == "colStoreName")
+
+            {
+
+                // Type-ahead from the client's stores in Master Data.
+
+                var src = new AutoCompleteStringCollection();
+
+                foreach (var st in ClientStoresForLookup())
+
+                {
+
+                    if (!string.IsNullOrWhiteSpace(st.StoreName)) src.Add(st.StoreName.Trim());
+
+                }
+
+                tb.AutoCompleteCustomSource = src;
+
+                tb.AutoCompleteSource = AutoCompleteSource.CustomSource;
+
+                tb.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+
+            }
+
+            else
+
+            {
+
+                tb.AutoCompleteMode = AutoCompleteMode.None;
+
+            }
+
+        }
+
+        private bool resolvingStoreName;
+
+        /// <summary>After a store name is typed: fill its code from Master Data, or explain how to add a new store.</summary>
+
+        private void StoreGrid_CellEndEdit(object? sender, DataGridViewCellEventArgs e)
+
+        {
+
+            if (gridRouteStores == null || resolvingStoreName || isBindingForm || isUpdatingRouteStores || e.RowIndex < 0) return;
+
+            if (gridRouteStores.Columns[e.ColumnIndex].Name != "colStoreName") return;
+
+            var row = gridRouteStores.Rows[e.RowIndex];
+
+            string typed = (row.Cells["colStoreName"].Value?.ToString() ?? "").Trim();
+
+            bool hasCode = gridRouteStores.Columns.Contains("colStoreCode");
+
+            resolvingStoreName = true;
+
+            try
+
+            {
+
+                if (typed.Length == 0)
+
+                {
+
+                    if (hasCode) row.Cells["colStoreCode"].Value = null;
+
+                    return;
+
+                }
+
+                var store = FindClientStore(typed);
+
+                if (store == null)
+
+                {
+
+                    if (hasCode) row.Cells["colStoreCode"].Value = null;
+
+                    row.Cells["colStoreName"].Value = null;
+
+                    MessageBox.Show(this.FindForm(), UnknownStoreMessage, "Store not found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+                    return;
+
+                }
+
+                // The same store only once per order.
+
+                foreach (DataGridViewRow other in gridRouteStores.Rows)
+
+                {
+
+                    if (other.Index == e.RowIndex || other.IsNewRow) continue;
+
+                    string oc = hasCode ? (other.Cells["colStoreCode"].Value?.ToString() ?? "").Trim() : "";
+
+                    string on = (other.Cells["colStoreName"].Value?.ToString() ?? "").Trim();
+
+                    bool same = (oc.Length > 0 && oc.Equals((store.StoreCode ?? "").Trim(), StringComparison.OrdinalIgnoreCase))
+
+                                || on.Equals((store.StoreName ?? "").Trim(), StringComparison.OrdinalIgnoreCase);
+
+                    if (same)
+
+                    {
+
+                        row.Cells["colStoreName"].Value = null;
+
+                        if (hasCode) row.Cells["colStoreCode"].Value = null;
+
+                        MessageBox.Show(this.FindForm(), $"\"{store.StoreName}\" is already in this order (row {other.Index + 1}). Change its crates there instead.", "Store already added", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                        return;
+
+                    }
+
+                }
+
+                row.Cells["colStoreName"].Value = (store.StoreName ?? "").Trim();
+
+                if (hasCode) row.Cells["colStoreCode"].Value = (store.StoreCode ?? "").Trim();
+
+            }
+
+            finally
+
+            {
+
+                resolvingStoreName = false;
+
+                UpdateSaveStoresToRouteButton();
+
+            }
+
+        }
+
+        /// <summary>
+
+        /// The route of this order, worked out from the stores in the table (the route box is no longer shown).
+
+        /// Picks the client's route that contains the most of these stores; otherwise describes the stops.
+
+        /// </summary>
+
+        private string ResolveDestinationFromStores(string current)
+
+        {
+
+            var stores = GetGridStoreList();
+
+            if (stores.Count == 0) return current;
+
+            string client = cbClient.Text.Trim();
+
+            try
+
+            {
+
+                var routes = client.Length == 0 ? new List<DeliveryRoute>() : MJdatabase.GetDeliveryRoutesByClient(client, activeOnly: false);
+
+                DeliveryRoute? best = null;
+
+                int bestHits = 0;
+
+                foreach (var r in routes)
+
+                {
+
+                    var keys = r.PlacesList.Select(p => { var (c, n) = DeliveryRoute.SplitStoreCodeAndName(p); return (C: (c ?? "").Trim(), N: (n ?? "").Trim()); }).ToList();
+
+                    int hits = stores.Count(st => keys.Any(k => (k.C.Length > 0 && k.C.Equals(st.Code, StringComparison.OrdinalIgnoreCase)) || (k.N.Length > 0 && k.N.Equals(st.Name, StringComparison.OrdinalIgnoreCase))));
+
+                    if (hits > bestHits) { best = r; bestHits = hits; }
+
+                }
+
+                if (best != null && bestHits * 2 >= stores.Count) return $"{best.RouteCode} - {best.RouteName}";
+
+            }
+
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+
+            string first = stores[0].Name.Length > 0 ? stores[0].Name : stores[0].Code;
+
+            return stores.Count == 1 ? first : $"{first} (+{stores.Count - 1} stop{(stores.Count - 1 == 1 ? "" : "s")})";
+
+        }
+
+        /// <summary>Every store row must be a known store of the client (picked from Master Data).</summary>
+
+        private bool ValidateStoreRows()
+
+        {
+
+            if (gridRouteStores == null || !gridRouteStores.Columns.Contains("colStoreName")) return true;
+
+            gridRouteStores.EndEdit();
+
+            bool hasCode = gridRouteStores.Columns.Contains("colStoreCode");
+
+            foreach (DataGridViewRow row in gridRouteStores.Rows)
+
+            {
+
+                if (row.IsNewRow) continue;
+
+                string name = (row.Cells["colStoreName"].Value?.ToString() ?? "").Trim();
+
+                string code = hasCode ? (row.Cells["colStoreCode"].Value?.ToString() ?? "").Trim() : "";
+
+                int.TryParse(gridRouteStores.Columns.Contains("colECrate") ? row.Cells["colECrate"].Value?.ToString() : "0", out int ec);
+
+                int.TryParse(gridRouteStores.Columns.Contains("colGCrate") ? row.Cells["colGCrate"].Value?.ToString() : "0", out int gc);
+
+                if (name.Length == 0 && code.Length == 0 && ec == 0 && gc == 0) continue; // an empty row is ignored
+
+                var known = name.Length > 0 ? (FindClientStore(name) ?? (code.Length > 0 ? FindClientStore(code) : null)) : null;
+
+                if (known == null)
+
+                {
+
+                    MessageBox.Show(this.FindForm(), UnknownStoreMessage + $"\n\n(Row {row.Index + 1}{(name.Length > 0 ? ": " + name : "")})", "Store not found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+                    try { gridRouteStores.CurrentCell = row.Cells["colStoreName"]; } catch { }
+
+                    return false;
+
+                }
+
+                if (hasCode && !string.Equals(code, (known.StoreCode ?? "").Trim(), StringComparison.OrdinalIgnoreCase))
+
+                    row.Cells["colStoreCode"].Value = (known.StoreCode ?? "").Trim();
+
+            }
+
+            return true;
+
+        }
 
         private void SizeStoreBreakdown(int rows)
 
@@ -2185,11 +2483,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (pnlRouteStoresBreakdown == null || gridRouteStores == null) return;
 
-            int chrome = Dpi(64);
+            // The table grows with its rows and the whole form scrolls (no second scrollbar inside the table).
 
-            int want = chrome + gridRouteStores.ColumnHeadersHeight + Math.Max(3, rows) * gridRouteStores.RowTemplate.Height;
+            int chrome = pnlRouteStoresBreakdown.Padding.Vertical + Dpi(46) + Dpi(22) + Dpi(12);
 
-            pnlRouteStoresBreakdown.Height = Math.Clamp(want, Dpi(260), Dpi(560));
+            int rowH = gridRouteStores.RowTemplate.Height;
+
+            int want = chrome + gridRouteStores.ColumnHeadersHeight + Math.Max(2, rows) * rowH + rowH / 2;
+
+            pnlRouteStoresBreakdown.Height = Math.Max(Dpi(180), want);
 
         }
 
@@ -2328,10 +2630,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlCargoContainer.Controls.Add(cbCargoType);
             pnlCargoContainer.Controls.Add(chkIsPeak);
 
+            // The route is worked out from the stores entered, so its box and the "+ New route" button aren't shown;
+
+            // their place holds the Combi cold / dry split (shown only for Combi cargo).
+
+            InitCapacityUi();
+
             var pnlRowRouteCargo = CreateTwoColumnRow(
-                lblDest, pnlRouteContainer,
-                lblCargoType, pnlCargoContainer
+                lblCargoType, pnlCargoContainer,
+
+                lblCombiSplit, pnlCombiSplit
+
             );
+
+            var hiddenRouteHolder = new Panel { Visible = false };
+
+            hiddenRouteHolder.Controls.Add(lblDest);
+
+            hiddenRouteHolder.Controls.Add(pnlRouteContainer);
+
+            lblDest.Visible = false;
+
+            pnlRouteContainer.Visible = false;
 
             var pnlRowTruckDriver = CreateTwoColumnRow(
                 lblTr, cbTruck,
@@ -3385,6 +3705,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             string propName = gridDispatch.Columns[e.ColumnIndex].DataPropertyName;
 
+            FormatOverCapacityBadge(e, propName);
+
             if (propName == "GCrate" || propName == "ECrate" || propName == "TotalCrates" || propName == "DispatchDate" || propName == "DepartureTime" || propName == "Status" || propName == "RouteTypeDisplay")
 
             {
@@ -3636,6 +3958,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
 
                 allDispatches = await MJdatabase.GetDeliveriesAsync();
+
+                RefreshOverCapacityMap();
 
                 if (this.IsDisposed || !this.IsHandleCreated) return;
 
@@ -4318,6 +4642,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbStatus.Text = string.IsNullOrEmpty(selectedDelivery.Status) ? "Scheduled" : selectedDelivery.Status;
                 numGCrate.Value = Math.Max(0, selectedDelivery.GCrate);
                 numECrate.Value = Math.Max(0, selectedDelivery.ECrate);
+                numCombiCold.Value = Math.Min(numCombiCold.Maximum, Math.Max(0, MJdatabase.GetDeliveryCapacityInfo(selectedDelivery.Id).Cold));
+
                 var savedStops = MJdatabase.GetOrBuildTripStopsForDelivery(selectedDelivery);
                 PopulateRouteStoresGrid(matchedDspRoute, savedStops);
                 CalculateCratesAndRecommendation();
@@ -4456,7 +4782,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 string clientName = cbClient.Text.Trim();
 
-                string destination = cbDestination.Text.Trim();
+                if (!ValidateStoreRows()) return;
+
+                string destination = ResolveDestinationFromStores(cbDestination.Text.Trim());
+
+                if (destination.Length > 0 && !string.Equals(cbDestination.Text.Trim(), destination, StringComparison.Ordinal))
+
+                    WhileBinding(() => cbDestination.Text = destination);
 
                 var matchedRoute = MJdatabase.FindRouteByNameOrCode(destination);
 
@@ -4490,7 +4822,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        MessageBox.Show("Please select or enter a Delivery Destination.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show("Please add at least one store to this order (Stores & crates → Add).", "Store required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                         cbDestination.Focus();
 
@@ -4571,6 +4903,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var (aideIdsForSave, aideNamesForSave) = GetSelectedAides();
 
 
+
+                if (aideIdsForSave.Count == 0)
+
+                {
+
+                    MessageBox.Show("Please assign at least 1 aide / helper to this trip. Every driver needs an aide.", "Aide required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+                    return;
+
+                }
 
                 int primaryAideId = aideIdsForSave.Count > 0 ? aideIdsForSave[0] : 0;
 
@@ -4678,15 +5020,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                if (selTr != null && selTr.CapacityCrates > 0 && total > selTr.CapacityCrates)
+                int capCold = 0, capDry = 0, capOver = 0;
 
-                {
+                string capReason = "";
 
-                    MessageBox.Show($"TRUCK CAPACITY EXCEEDED:\nTotal crates ({total:N0}) exceeds maximum vehicle capacity of {selTr.CapacityCrates:N0} crates for {selTr.PlateNumber} ({selTr.TruckType}).\n\nPlease reduce crates or assign a higher capacity vehicle.", "Capacity Overload", MessageBoxButtons.OK, MessageBoxIcon.Stop);
-
-                    return;
-
-                }
+                if (selTr != null && !PassCapacityGate(selTr, total, out capCold, out capDry, out capOver, out capReason)) return;
 
                 bool isDuplicate = MJdatabase.GetDeliveries().Any(x => x.DispatchNumber.Equals(dspNum, StringComparison.OrdinalIgnoreCase));
 
@@ -4798,6 +5136,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
                 MJdatabase.SaveDelivery(d);
+
+                try { MJdatabase.SetDeliveryCapacityInfo(d.Id, d.DispatchNumber, capCold, capDry, capOver, capReason); } catch (Exception cx) { ErrLog.Swallowed(cx); }
 
                 MJdatabase.ClearFormDraft("Dispatch", SessionContext.CurrentUsername);
 
@@ -4932,7 +5272,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 string clientName = cbClient.Text.Trim();
 
-                string destination = cbDestination.Text.Trim();
+                string statusForStores = cbStatus.SelectedItem?.ToString() ?? "Scheduled";
+
+                if (statusForStores != "Cancelled" && statusForStores != "Completed" && !ValidateStoreRows()) return;
+
+                string destination = ResolveDestinationFromStores(cbDestination.Text.Trim());
+
+                if (destination.Length > 0 && !string.Equals(cbDestination.Text.Trim(), destination, StringComparison.Ordinal))
+
+                    WhileBinding(() => cbDestination.Text = destination);
 
                 var matchedRoute = MJdatabase.FindRouteByNameOrCode(destination);
 
@@ -4966,7 +5314,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        MessageBox.Show("Please select or enter a Delivery Destination.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show("Please add at least one store to this order (Stores & crates → Add).", "Store required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                         cbDestination.Focus();
 
@@ -5042,6 +5390,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 var (aideIdsForUpdate, aideNamesForUpdate) = GetSelectedAides();
 
+                string statusForAide = cbStatus.SelectedItem?.ToString() ?? "Scheduled";
+
+                if (aideIdsForUpdate.Count == 0 && statusForAide != "Cancelled" && statusForAide != "Completed")
+
+                {
+
+                    MessageBox.Show("Please assign at least 1 aide / helper to this trip. Every driver needs an aide.", "Aide required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+                    return;
+
+                }
+
                 int primaryAideId = aideIdsForUpdate.Count > 0 ? aideIdsForUpdate[0] : 0;
 
                 string primaryAideName = aideNamesForUpdate.Count > 0 ? aideNamesForUpdate[0] : "None";
@@ -5100,15 +5460,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                if (selTr != null && selTr.CapacityCrates > 0 && total > selTr.CapacityCrates)
+                int capCold = 0, capDry = 0, capOver = 0;
 
-                {
+                string capReason = "";
 
-                    MessageBox.Show($"TRUCK CAPACITY EXCEEDED:\nTotal crates ({total:N0}) exceeds maximum vehicle capacity of {selTr.CapacityCrates:N0} crates for {selTr.PlateNumber} ({selTr.TruckType}).\n\nPlease reduce crates or assign a higher capacity vehicle.", "Capacity Overload", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                // Closing an old trip (Cancelled / Completed) doesn't re-check the truck's capacity.
 
-                    return;
+                if (!closingTrip && selTr != null && !PassCapacityGate(selTr, total, out capCold, out capDry, out capOver, out capReason)) return;
 
-                }
+                if (closingTrip) { var keep = MJdatabase.GetDeliveryCapacityInfo(selectedDelivery.Id); (capCold, capDry, capOver, capReason) = (keep.Cold, keep.Dry, keep.Over, keep.Reason); }
 
                 bool isDuplicateUpdate = MJdatabase.GetDeliveries().Any(x => x.DispatchNumber.Equals(dspNum, StringComparison.OrdinalIgnoreCase) && x.Id != selectedDelivery.Id);
 
@@ -5215,6 +5575,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
                 MJdatabase.SaveDelivery(selectedDelivery);
+
+                try { MJdatabase.SetDeliveryCapacityInfo(selectedDelivery.Id, selectedDelivery.DispatchNumber, capCold, capDry, capOver, capReason); } catch (Exception cx) { ErrLog.Swallowed(cx); }
 
                 QuietBox.Show("Dispatch & Loading Order updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
@@ -5723,6 +6085,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 selectedDelivery = null;
+                if (numCombiCold != null) numCombiCold.Value = 0;
+
                 txtDispatchNumber.Text = "";
                 cbClient.SelectedIndex = -1;
                 cbClient.Text = "";
@@ -5749,7 +6113,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 storeListRoute = null;
 
                 if (gridRouteStores != null) gridRouteStores.Rows.Clear();
-                if (pnlRouteStoresBreakdown != null) pnlRouteStoresBreakdown.Visible = false;
+                // The store table is always shown: the route box is gone, so stores are added here directly.
+
+                if (pnlRouteStoresBreakdown != null) { pnlRouteStoresBreakdown.Visible = true; SizeStoreBreakdown(0); }
+
                 UpdateSaveStoresToRouteButton();
 
                 lblRec.Text = "Select route and crates to view recommendation...";

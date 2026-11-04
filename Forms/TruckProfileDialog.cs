@@ -154,7 +154,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Fact("Remarks", truck.Remarks);
             var leftWrap = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Canvas, Padding = new Padding(0, 0, D(10), 0) };
             var leftCard = ProfileKit.Card(facts, D(10));
+            // Maintenance / decommission / reactivation reasons, newest first (kept even after reactivation).
+            var history = MJdatabase.GetTruckStatusHistory(truck.Id);
+            var lvHist = new ListView { View = View.Details, FullRowSelect = true, BorderStyle = BorderStyle.None, BackColor = AppTheme.Surface, ForeColor = AppTheme.TextPrimary, Font = new Font("Segoe UI", 9F), HeaderStyle = ColumnHeaderStyle.None, ShowItemToolTips = true };
+            lvHist.Columns.Add("Date", D(110));
+            lvHist.Columns.Add("Status", D(150));
+            lvHist.Columns.Add("Reason", D(220));
+            foreach (var h in history)
+                lvHist.Items.Add(new ListViewItem(new[] { h.At == DateTime.MinValue ? "—" : h.At.ToString("MMM d, yyyy"), $"{(string.IsNullOrWhiteSpace(h.OldStatus) ? "" : h.OldStatus + " → ")}{h.NewStatus}", string.IsNullOrWhiteSpace(h.Reason) ? "—" : h.Reason }) { ToolTipText = $"{h.At:MMM d, yyyy h:mm tt} by {h.By}\n{h.Reason}", ForeColor = AppTheme.TextPrimary });
+            if (history.Count == 0) lvHist.Items.Add(new ListViewItem(new[] { "—", "No status changes recorded yet", "" }) { ForeColor = AppTheme.TextMuted });
+            var histHost = new Panel { Dock = DockStyle.Bottom, Height = D(150), BackColor = AppTheme.Canvas, Padding = new Padding(0, D(10), 0, 0) };
+            histHost.Controls.Add(ProfileKit.Card(lvHist, D(8)));
+            histHost.Controls.Add(ProfileKit.Section("Status history", "maintenance and decommission reasons"));
             leftWrap.Controls.Add(leftCard);
+            leftWrap.Controls.Add(histHost);
             leftWrap.Controls.Add(ProfileKit.Section("Fleet record", "edit with \"Edit truck details\""));
             // Right: editable specs
             var form = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 9, AutoScroll = true, BackColor = AppTheme.Surface, Padding = new Padding(D(4)) };

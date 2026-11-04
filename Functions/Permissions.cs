@@ -25,7 +25,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             new("Resources", "Trucks", "Trucks", "The fleet list and truck profiles."),
             new("Resources", "Crew", "Crew management", "Drivers and aides."),
             new("Resources", "CrewHistory", "Crew trip history", "Which trips each crew member made."),
-            new("Resources", "History", "Resource history", "Changes made to trucks and crew."),
             new("Payments", "StatementOfAccount", "Statements of account", "Monthly statements for clients."),
             new("Payments", "Billing", "Billing invoices", "Create and manage invoices."),
             new("Payments", "Collections", "Collections & receipts", "Record payments received."),
@@ -33,6 +32,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             new("MasterData", "Clients", "Clients", "Client companies, their stores and details."),
             new("MasterData", "Routes", "Delivery routes", "Routes and the stores on them."),
             new("MasterData", "Rates", "Rate Matrix", "The price list by route and truck type."),
+            new("MasterData", "Archive", "Archive", "Archived clients, stores and routes, and restoring them."),
             new("MasterData", "History", "Master data history", "Changes made to clients, routes and rates."),
         };
         public static readonly (string Module, string Label)[] Modules =

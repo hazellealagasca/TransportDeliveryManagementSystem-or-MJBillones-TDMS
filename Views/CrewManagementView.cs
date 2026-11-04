@@ -154,7 +154,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 new FullPageFormKit.Section("Employment type", "Regular crew, or seasonal / temporary.", pnlEmployment),
                 new FullPageFormKit.Section("Role & personal details", "Driver or delivery aide / helper, name and contact number.", lblRole, cbRole, lblRoleRequirements, tblNameFields, lblContact, txtContact),
                 new FullPageFormKit.Section("Driver's license", "Classification and validity only — the license number is not stored.", pnlLicense),
-                new FullPageFormKit.Section("Photo", "ID photo of the crew member.", lblPhoto, tblPhoto, pnlPhotoSpacer)
+                new FullPageFormKit.Section("Photo (optional)", "ID photo of the crew member. You can save without one.", lblPhoto, tblPhoto, pnlPhotoSpacer)
             });
             // Pay is set per trip after the trip is completed, and availability follows the trips — neither is edited here.
             tblPayFields.Visible = false;

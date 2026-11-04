@@ -68,7 +68,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             header = PageKit.Header("Crew trip history", "Every trip each driver and aide was assigned to — truck, client, crates and status.");
             header.AddActions(
                 PageKit.Action("🖨  Print crew dossier", "primary", (s, e) => PrintCrewDossier()),
-                PageKit.Action("📄  Delivery dossier", "secondary", (s, e) => PrintSelectedDeliveryDossier()),
+                // "Delivery dossier" button hidden on request; it is still in the row right-click menu.
                 PageKit.Action("↻  Refresh", "secondary", (s, e) => RefreshData()));
             // 2. Summary tiles (the last three are quick filters)
             tiles = new TileStrip();

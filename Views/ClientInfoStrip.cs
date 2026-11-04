@@ -13,7 +13,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     public sealed class ClientInfoStrip : Panel
     {
         private readonly Label lbl;
-        private readonly LinkLabel link;
+        private readonly Button link;
         private readonly System.Windows.Forms.Timer debounce = new System.Windows.Forms.Timer { Interval = 250 };
         private string pendingName = "";
         private string shownName = "";
@@ -24,7 +24,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public ClientInfoStrip()
         {
             Dock = DockStyle.Top;
-            Height = D(30);
+            Height = D(44);
             Padding = new Padding(D(10), 0, D(10), 0);
             Margin = new Padding(0, 0, 0, D(6));
             BackColor = AppTheme.SurfaceAlt;
@@ -39,21 +39,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 UseMnemonic = false,
                 BackColor = Color.Transparent
             };
-            link = new LinkLabel
+            // A real button with strong contrast (white on the accent colour) so "Open client" is easy to read and hit.
+            link = new Button
             {
-                Dock = DockStyle.Right,
                 AutoSize = true,
-                TextAlign = ContentAlignment.MiddleRight,
-                Font = new Font("Segoe UI Semibold", 9F),
-                LinkColor = AppTheme.Accent,
-                ActiveLinkColor = AppTheme.AccentHover,
-                LinkBehavior = LinkBehavior.HoverUnderline,
-                Padding = new Padding(0, D(6), 0, 0),
-                BackColor = Color.Transparent
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(D(140), D(32)),
+                Padding = new Padding(D(12), 0, D(12), 0),
+                Font = new Font("Segoe UI Semibold", 10F),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                UseMnemonic = false,
+                BackColor = AppTheme.Accent,
+                ForeColor = Color.White,
+                Anchor = AnchorStyles.Right
             };
-            link.LinkClicked += (s, e) => OnLink();
+            link.FlatAppearance.BorderSize = 0;
+            link.FlatAppearance.MouseOverBackColor = AppTheme.AccentHover;
+            link.Click += (s, e) => OnLink();
+            var right = new FlowLayoutPanel { Dock = DockStyle.Right, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, BackColor = Color.Transparent, Padding = new Padding(0, D(6), 0, 0), Margin = new Padding(0) };
+            link.Margin = new Padding(D(8), 0, 0, 0);
+            right.Controls.Add(link);
             Controls.Add(lbl);
-            Controls.Add(link);
+            Controls.Add(right);
             debounce.Tick += (s, e) => { debounce.Stop(); Render(pendingName); };
             Disposed += (s, e) => debounce.Dispose();
         }
@@ -91,20 +99,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 else
                 {
-                    var routes = MJdatabase.GetDeliveryRoutesByClient(cl.CompanyName, activeOnly: true)
-                        .Count(r => string.Equals((r.ClientCompanyName ?? "").Trim(), cl.CompanyName.Trim(), StringComparison.OrdinalIgnoreCase));
                     int stores = MJdatabase.GetClientStores(cl.CompanyName).Count;
                     var parts = new System.Collections.Generic.List<string>();
                     if (!string.IsNullOrWhiteSpace(cl.TIN)) parts.Add($"TIN {cl.TIN}");
                     string contact = string.Join(" ", new[] { cl.ContactPerson, cl.ContactNumber }.Where(x => !string.IsNullOrWhiteSpace(x)));
                     if (contact.Length > 0) parts.Add($"📞 {contact}");
-                    parts.Add($"{routes} route{(routes == 1 ? "" : "s")}");
                     parts.Add($"{stores} store{(stores == 1 ? "" : "s")}");
                     if (!string.IsNullOrWhiteSpace(cl.Address)) parts.Add(cl.Address.Replace("\r", " ").Replace("\n", " "));
                     lbl.Text = "🏢  " + string.Join("   ·   ", parts);
                     lbl.ForeColor = AppTheme.TextSecondary;
                     BackColor = AppTheme.SurfaceAlt;
-                    link.Text = "Open client ›";
+                    link.Text = "Open client  ›";
                 }
                 Visible = true;
             }

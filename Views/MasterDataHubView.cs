@@ -29,6 +29,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             AddTab("Clients", "🏢  Clients", () => new ClientManagementView());
             AddTab("Routes", "🗺️  Delivery Routes", () => new DeliveryRoutesView());
             AddTab("Rates", "🏷️  Rate Matrix", () => new RateMatrixView());
+            AddTab("Archive", "🗄️  Archive", () => new MasterDataArchiveView());
             AddTab("History", "📜  Master Data History", () => new ModuleHistoryView("Master data history", new[] { "Clients", "DeliveryRoutes", "ClientStores", "RateMatrix" }, isAdminOnly: true));
             // Settings → Features & Pop-ups can hide the Rate Matrix; its rates stay saved for when it is turned back on.
             Features.Bind(this, () =>

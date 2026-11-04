@@ -56,6 +56,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (var n in new[] { numDeliveredGCrates, numDeliveredECrates, numReturnedGCrates, numReturnedECrates })
             {
                 n.Font = new Font("Segoe UI", 10F);
+                // Totals add up from the stores: they can't be typed or spun here (open a store to change its returned crates).
+                n.ReadOnly = true;
+                n.InterceptArrowKeys = false;
+                n.TabStop = false;
+                n.Increment = 0;
+                if (n.Controls.Count > 0) n.Controls[0].Visible = false; // hide the up/down arrows
+                n.MouseWheel += (s, e) => { if (e is HandledMouseEventArgs h) h.Handled = true; };
             }
             tblDeliveredCrates.Dock = DockStyle.Fill;
             tblReturnedCrates.Dock = DockStyle.Fill;

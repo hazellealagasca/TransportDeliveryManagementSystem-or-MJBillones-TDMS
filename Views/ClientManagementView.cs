@@ -335,7 +335,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try { MJdatabase.SetSystemSetting(InactiveAfterKey, InactiveAfterDays.ToString(), "Days without orders or invoices before a client counts as inactive"); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 LoadClients();
             };
-            tips.SetToolTip(cbInactiveAfter, "A client with no dispatch, loading order, special trip or invoice in this many days is shown as Inactive. Deactivated clients are always Inactive.");
+            tips.SetToolTip(cbInactiveAfter, "A client with no dispatch, loading order, special trip or invoice in this many days is shown as Inactive. Archived clients are listed under Master Data → Archive.");
             btnAddClient = MakeButton("＋  New client", "primary");
             btnAddClient.Margin = new Padding(0, Dpi(8), 0, 0);
             btnAddClient.Click += (s, e) => OpenNewClient();
@@ -383,8 +383,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var c = r.Client;
                 m.Items.AddRange(RowMenu.Header($"🏢  {c.CompanyName}", $"{r.Stores} store(s) · {r.CompletedTrips} completed trip(s) · last trip {r.LastTrip} · outstanding {r.Unpaid}"));
                 m.Items.Add(RowMenu.Item("Open client profile", () => OpenClient(c), "Enter"));
-                if (c.IsActive) m.Items.Add(RowMenu.Danger("Deactivate client…", () => SetClientActive(c, false)));
-                else m.Items.Add(RowMenu.Good("Reactivate client", () => SetClientActive(c, true)));
+                if (c.IsActive) m.Items.Add(RowMenu.Danger("Archive client…", () => SetClientActive(c, false)));
+                else m.Items.Add(RowMenu.Good("Restore client", () => SetClientActive(c, true)));
                 m.Items.Add(RowMenu.Item("Delivery routes", () => MainForm.Instance?.NavigateToMasterData("Routes")));
                 m.Items.Add(RowMenu.Sub("📂  Show records",
                     RowMenu.Item("Loading schedules & dispatches", () => MainForm.Instance?.NavigateToOperations("Dispatch")),
@@ -427,7 +427,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnSave.Height = Dpi(40);
             btnSave.Click += (s, e) => SaveClient();
             tips.SetToolTip(btnSave, "Save the company details (Ctrl+S)");
-            btnDelete = MakeButton("Deactivate client", "danger", Dpi(170));
+            btnDelete = MakeButton("🗄  Archive client", "danger", Dpi(170));
             btnDelete.Height = Dpi(40);
             btnDelete.Margin = new Padding(Dpi(10), 0, 0, 0);
             btnDelete.Click += (s, e) => DeleteClient();
@@ -496,7 +496,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 DataPropertyName = "DestinationRoute",
                 Name = "DestinationRoute",
-                HeaderText = "Delivery route",
+                HeaderText = "Destination",
                 FillWeight = 150,
                 MinimumWidth = Dpi(150),
                 DisplayStyle = DataGridViewComboBoxDisplayStyle.DropDownButton,
@@ -506,14 +506,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Name = "Actions",
                 HeaderText = "",
-                Text = "Delete",
+                Text = "Archive",
                 UseColumnTextForButtonValue = true,
                 FillWeight = 40,
                 MinimumWidth = Dpi(80),
                 FlatStyle = FlatStyle.Flat
             };
 
-            colActions.DefaultCellStyle.ForeColor = AppTheme.DangerText;
+            colActions.DefaultCellStyle.ForeColor = AppTheme.TextSecondary;
             colActions.DefaultCellStyle.Font = new Font("Segoe UI Semibold", 9F);
             gridBranches.Columns.Add(colActions);
             gridBranches.DataError += (s, e) => { e.ThrowException = false; };
@@ -540,12 +540,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (isBinding || e.RowIndex < 0 || e.RowIndex >= currentStores.Count) return;
                 string col = gridBranches.Columns[e.ColumnIndex].Name;
                 if (col != "StoreCode" && col != "StoreName") return;
+                bool unsavedRow = currentStores[e.RowIndex].Id <= 0;
                 string typed = (e.FormattedValue?.ToString() ?? "").Trim();
                 gridBranches.Rows[e.RowIndex].ErrorText = "";
                 if (typed.Length == 0)
                 {
                     gridBranches.Rows[e.RowIndex].ErrorText = col == "StoreCode" ? "Store code is required" : "Store name is required";
-                    e.Cancel = true;
+                    if (!unsavedRow) e.Cancel = true; // a new blank row may be left half-filled; it saves once both are typed
                     return;
                 }
                 if (col == "StoreCode")
@@ -561,7 +562,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridBranches.CellEndEdit += (s, e) => { if (e.RowIndex >= 0 && e.RowIndex < gridBranches.Rows.Count) gridBranches.Rows[e.RowIndex].ErrorText = ""; };
             gridBranches.CellContentClick += (s, e) =>
             {
-                if (e.RowIndex >= 0 && gridBranches.Columns[e.ColumnIndex].Name == "Actions") DeleteBranchRow(e.RowIndex);
+                if (e.RowIndex >= 0 && gridBranches.Columns[e.ColumnIndex].Name == "Actions") ArchiveBranchRow(e.RowIndex);
             };
             pnlBranchesHost.Controls.Add(gridBranches);
             pnlStoresCard = CreateSectionCard(2, "Stores & branches", "The client's stores and the delivery route each one is on.", bar, lblStoresHint, pnlBranchesHost);
@@ -687,7 +688,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var lastActivity = MJdatabase.GetClientLastActivity();
             int window = InactiveAfterDays;
             bool Same(string? a, string b) => string.Equals((a ?? "").Trim(), b.Trim(), StringComparison.OrdinalIgnoreCase);
-            allRows = allClients.Select(c =>
+            // Archived clients live in Master Data → Archive, not in this list.
+            allRows = allClients.Where(c => c.IsActive).Select(c =>
             {
                 var mine = deliveries.Where(d => Same(d.ClientName, c.CompanyName)).ToList();
                 var done = mine.Where(d => string.Equals(d.Status, "Completed", StringComparison.OrdinalIgnoreCase)).ToList();
@@ -698,12 +700,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string status = "Active", note;
                 lastActivity.TryGetValue(c.CompanyName.Trim(), out var lastAct);
                 DateTime? since = lastAct == default ? c.CreatedAt : (c.CreatedAt.HasValue && c.CreatedAt > lastAct ? c.CreatedAt : lastAct);
-                if (!c.IsActive)
-                {
-                    status = "Inactive";
-                    note = c.DeactivatedAt.HasValue ? $"Deactivated on {c.DeactivatedAt:MMM d, yyyy}" : "Deactivated";
-                }
-                else if (since.HasValue && (DateTime.Today - since.Value.Date).TotalDays > window)
+                if (since.HasValue && (DateTime.Today - since.Value.Date).TotalDays > window)
                 {
                     status = "Inactive";
                     note = $"No orders or invoices in {(int)(DateTime.Today - since.Value.Date).TotalDays} days (last activity {since:MMM d, yyyy}; limit {window} days)";
@@ -805,10 +802,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void ApplyProfileMode()
         {
-            lblProfileTitle.Text = isNewClient ? "New client" : (selectedClient?.CompanyName ?? "Client") + (selectedClient != null && !selectedClient.IsActive ? "   ·  Deactivated" : "");
+            lblProfileTitle.Text = isNewClient ? "New client" : (selectedClient?.CompanyName ?? "Client") + (selectedClient != null && !selectedClient.IsActive ? "   ·  Archived" : "");
             btnDelete.Visible = !isNewClient;
             bool deactivated = selectedClient != null && !selectedClient.IsActive;
-            btnDelete.Text = deactivated ? "Reactivate client" : "Deactivate client";
+            btnDelete.Text = deactivated ? "↩  Restore client" : "🗄  Archive client";
             UIThemeHelper.SetButtonRole(btnDelete, deactivated ? "secondary" : "danger");
             btnSave.Text = isNewClient ? "💾  Create client" : "💾  Save changes";
             bool hasClient = !isNewClient && selectedClient != null;
@@ -816,7 +813,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlTripsCard.Visible = hasClient;
             pnlBillingCard.Visible = hasClient;
             lblStoresHint.Text = hasClient
-                ? "These are the same stores the delivery routes use: picking a route adds the store to it, and a route's stores show up here. Changes save automatically."
+                ? "Type each store's own code and name (nothing is filled in for you). Picking a destination adds the store to that delivery route. Changes save automatically."
                 : "Create the client first, then add its stores here.";
             UpdateSaveState();
         }
@@ -975,7 +972,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var clash = allClients.FirstOrDefault(c => string.Equals(System.Text.RegularExpressions.Regex.Replace(c.CompanyName.Trim(), @"\s+", " "), name, StringComparison.OrdinalIgnoreCase) && (isNewClient || selectedClient == null || c.Id != selectedClient.Id));
             if (clash != null)
             {
-                MessageBox.Show($"A client named \"{clash.CompanyName}\" already exists{(clash.IsActive ? "" : " (deactivated — reactivate it instead)")}. Open that client instead, or use a different name.", "Duplicate client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show($"A client named \"{clash.CompanyName}\" already exists{(clash.IsActive ? "" : " (archived — restore it from Master Data → Archive instead)")}. Open that client instead, or use a different name.", "Duplicate client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtClientName.Focus();
                 return false;
             }
@@ -1029,21 +1026,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (selectedClient == null || isNewClient) return;
             SetClientActive(selectedClient, !selectedClient.IsActive);
         }
-        /// <summary>Soft delete for clients: deactivating hides them from new orders but keeps every store, order, invoice and payment.</summary>
+        /// <summary>Archive for clients: hides them from new orders but keeps every store, order, invoice and payment.</summary>
         private void SetClientActive(ClientCompany client, bool active)
         {
             string name = client.CompanyName;
             string msg = active
-                ? $"Are you sure you want to reactivate \"{name}\"?\n\nIt will be offered again for new loading orders and dispatches."
-                : $"Are you sure you want to deactivate \"{name}\"?\n\n{MJdatabase.DeletePolicyNote("Clients")}\nYou can reactivate it at any time.";
-            if (MessageBox.Show(msg, active ? "Reactivate client" : "Deactivate client", MessageBoxButtons.YesNo, active ? MessageBoxIcon.Question : MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+                ? $"Are you sure you want to restore \"{name}\"?\n\nIt will be offered again for new loading orders and dispatches."
+                : $"Are you sure you want to archive \"{name}\"?\n\n{MJdatabase.DeletePolicyNote("Clients")}\nYou can restore it at any time.";
+            if (MessageBox.Show(msg, active ? "Restore client" : "Archive client", MessageBoxButtons.YesNo, active ? MessageBoxIcon.Question : MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
             try
             {
                 MJdatabase.SetClientActive(name, active);
                 LoadClients();
                 var fresh = allClients.FirstOrDefault(c => string.Equals(c.CompanyName, name, StringComparison.OrdinalIgnoreCase));
                 if (pnlProfilePage.Visible && fresh != null && selectedClient != null && string.Equals(selectedClient.CompanyName, name, StringComparison.OrdinalIgnoreCase)) BindClient(fresh);
-                ToastHelper.ShowToast(this, active ? $"\"{name}\" is active again" : $"\"{name}\" deactivated — its history is kept", active ? ToastType.Success : ToastType.Info);
+                ToastHelper.ShowToast(this, active ? $"\"{name}\" restored" : $"\"{name}\" archived — its history is kept", active ? ToastType.Success : ToastType.Info);
             }
             catch (Exception ex)
             { ErrLog.Error("ClientManagementView", ex); 
@@ -1099,46 +1096,51 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
 
-            if (MessageBox.Show($"Are you sure you want to add a new store to \"{selectedClient.CompanyName}\"?", "Add store", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
-            int count = currentStores.Count + 1;
-            string code;
-            do { code = $"S{count:D2}"; count++; } while (currentStores.Any(s => string.Equals(s.StoreCode, code, StringComparison.OrdinalIgnoreCase)));
-            // New stores start without a route; picking one in the "Delivery route" column adds the store to that route.
-            string defaultDest = "";
-            var newStore = new ClientStore
+            // A blank row: nothing is saved (and no code is made up) until both the store code and the store name are typed.
+            var blank = currentStores.FirstOrDefault(st => st.Id <= 0 && string.IsNullOrWhiteSpace(st.StoreCode) && string.IsNullOrWhiteSpace(st.StoreName));
+            if (blank == null)
             {
-                ClientId = selectedClient.Id,
-                ClientCompanyName = selectedClient.CompanyName,
-                StoreCode = code,
-                StoreName = "New store",
-                DestinationRoute = defaultDest
-            };
-
-            MJdatabase.SaveClientStore(newStore);
-            LoadClientBranches(selectedClient.CompanyName);
-            int idx = currentStores.FindIndex(s => s.Id == newStore.Id);
-            if (idx < 0) idx = gridBranches.Rows.Count - 1;
+                blank = new ClientStore { ClientId = selectedClient.Id, ClientCompanyName = selectedClient.CompanyName, StoreCode = "", StoreName = "", DestinationRoute = "" };
+                currentStores.Add(blank);
+                isBinding = true;
+                gridBranches.DataSource = null;
+                gridBranches.DataSource = currentStores;
+                FillStoreCustomCells();
+                isBinding = false;
+                SizeStoresGrid();
+            }
+            int idx = currentStores.IndexOf(blank);
             if (idx >= 0 && idx < gridBranches.Rows.Count)
             {
-                gridBranches.CurrentCell = gridBranches.Rows[idx].Cells["StoreName"];
+                gridBranches.CurrentCell = gridBranches.Rows[idx].Cells["StoreCode"];
                 gridBranches.BeginEdit(true);
             }
+            lblSaveState.Text = "New store: type its code and name — it saves when both are filled in";
+            lblSaveState.ForeColor = AppTheme.TextMuted;
         }
 
-        private void DeleteBranchRow(int rowIndex)
+        /// <summary>Archives a store (never deletes it): it leaves this list and its route, and past orders keep its name.</summary>
+        private void ArchiveBranchRow(int rowIndex)
         {
             if (rowIndex < 0 || rowIndex >= currentStores.Count || selectedClient == null) return;
             var store = currentStores[rowIndex];
 
-            if (MJdatabase.IsClientStoreInUse(store, out var usedOn))
+            if (store.Id <= 0)
             {
-                QuietBox.Show($"Store \"{store.StoreCode} - {store.StoreName}\" appears on a past {usedOn}, so it can't be removed without breaking that history.\n\nIf the store changed, rename it instead.", "Store is part of history", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // A new row that was never saved: just take it away.
+                currentStores.RemoveAt(rowIndex);
+                LoadClientBranches(selectedClient.CompanyName);
                 return;
             }
-            var res = MessageBox.Show($"Are you sure you want to delete store \"{store.StoreCode} - {store.StoreName}\"?\n\nIt has never been used on an order, so nothing in the history refers to it.", "Delete store", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+            string label = string.IsNullOrWhiteSpace(store.StoreCode) ? store.StoreName : $"{store.StoreCode} - {store.StoreName}";
+            var res = MessageBox.Show($"Are you sure you want to archive store \"{label}\"?\n\n{MJdatabase.DeletePolicyNote("ClientStores")}\nYou can restore it from Master Data → Archive.", "Archive store", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
             if (res != DialogResult.Yes) return;
-            try { MJdatabase.DeleteClientStore(store.Id); }
-            catch (Exception ex) { ErrLog.Error("ClientManagementView", ex);  MessageBox.Show(ex.Message, "Delete store", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+            try
+            {
+                MJdatabase.ArchiveClientStore(store.Id);
+                ToastHelper.ShowToast(this, $"\"{store.StoreName}\" archived", ToastType.Info);
+            }
+            catch (Exception ex) { ErrLog.Error("ClientManagementView", ex); MessageBox.Show(ex.Message, "Archive store", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
             LoadClientBranches(selectedClient.CompanyName);
         }
 
