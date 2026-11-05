@@ -46,11 +46,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit.AddStrip(collStrip);
             collStepper = new WorkflowStepper("Trip report completed", "Invoice issued", "Payment filled", "Review", "Validated & ready");
             collHelp = new HelpDrawer("How this works",
-                "1. A payment is always recorded against an issued invoice (from a statement of account or a direct invoice). Only invoices with a balance are listed.\n" +
-                "2. The amount is filled with the balance; it can be less (partial payment) but never more than the balance.\n" +
+                "1. One receipt pays a whole statement of account (all its service invoices) or one service invoice that is not on a statement. Only those with nothing paid yet are listed.\n" +
+                "2. Type the Collection Receipt No. from the printed receipt: 4 to 8 digits, never used before. The amount is always the full amount due (no partial payments).\n" +
                 "3. Cash needs no reference. Cheque, bank transfer, online and other payments need the cheque / transaction number, and the same number can't be recorded twice.\n" +
                 "4. The payment date is today, which is always on or after the invoice date.\n" +
-                "5. All checks must be green before Save. The invoice turns Partial or Paid by itself.");
+                "5. All checks must be green before Save. Every invoice it pays turns Paid.");
             collChecklist = new ValidationChecklist();
             formKit.AddBodyTop(new Panel { Height = Dpi(8), BackColor = AppTheme.Canvas });
             formKit.AddBodyTop(collHelp);
@@ -101,12 +101,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     var target = inv;
                     items.Add(($"{inv.InvoiceNumber}  ·  {inv.ClientName}  ·  ₱{bal:N2} due{(inv.DueDate.Date < DateTime.Today ? " (overdue)" : "")}   ▸ Record payment",
                         $"Opens a new receipt for invoice {inv.InvoiceNumber} with the balance filled in. Nothing is saved until you save it.",
-                        (Action)(() => PrefillForInvoice(target))));
+                        (Action)(() => OpenTarget(target))));
                 }
             }
             catch (Exception ex) { ErrLog.Swallowed(ex); }
             collReady.SetItems($"{items.Count} invoice{(items.Count == 1 ? "" : "s")} with a balance to collect:",
-                "No invoices are waiting for payment. Invoices come from statements of account (with an SI no.) and from Billing.", items, 4);
+                "Nothing is waiting for payment. Statements of account and service invoices (Billing) with nothing paid yet are listed here.", items, 4);
         }
         private IEnumerable<LookupItem> ReceiptSuggestions(string q)
         {
@@ -124,7 +124,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>The invoice being paid and what other receipts already paid on it (reloaded when the invoice or receipt changes).</summary>
         private void ReloadCollInvoice()
         {
-            int key = selectedCollection != null ? -selectedCollection.Id : (cbInvoice.SelectedIndex >= 0 && cbInvoice.SelectedIndex < unpaidInvoices.Count ? unpaidInvoices[cbInvoice.SelectedIndex].Id : 0);
+            int key = selectedCollection != null ? -selectedCollection.Id : (cbInvoice.SelectedIndex >= 0 && cbInvoice.SelectedIndex < unpaidInvoices.Count ? 1 + cbInvoice.SelectedIndex : 0);
             if (key == collGuideKey) return;
             collGuideKey = key;
             collInvoice = null; collPaidOthers = 0;
@@ -132,13 +132,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (selectedCollection != null)
                 {
-                    collInvoice = MJdatabase.GetInvoices().FirstOrDefault(i => i.Id == selectedCollection.InvoiceId);
-                    if (collInvoice != null) collPaidOthers = MJdatabase.GetTotalCollectedForInvoice(collInvoice.Id) - selectedCollection.AmountPaid;
+                    collInvoice = editTargetInvoice ?? EditInvoiceFor(selectedCollection);
+                    if (collInvoice != null) collPaidOthers = Math.Max(0, collInvoice.NetAmount - selectedCollection.AmountPaid);
                 }
                 else if (key > 0)
                 {
                     collInvoice = unpaidInvoices[cbInvoice.SelectedIndex];
-                    collPaidOthers = MJdatabase.GetTotalCollectedForInvoice(collInvoice.Id);
+                    collPaidOthers = 0; // only statements / invoices with nothing paid are listed
                 }
             }
             catch (Exception ex) { ErrLog.Swallowed(ex); }
@@ -151,7 +151,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (numAmountPaid.Value > cap) numAmountPaid.Value = cap;
                     numAmountPaid.Maximum = cap;
                 }
-                lblCollCap.Text = $"Most you can record: ₱{cap:N2} (the invoice balance)";
+                lblCollCap.Text = $"Amount: ₱{cap:N2}, the full amount due (one receipt pays it all)";
             }
             else
             {
@@ -164,7 +164,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var checks = new List<PaymentCheck>();
             bool editing = selectedCollection != null;
             var inv = collInvoice;
-            checks.Add(new PaymentCheck(inv == null ? (editing ? "The invoice of this receipt was not found" : "Pick the invoice being paid") : $"Invoice {inv.InvoiceNumber} · {inv.ClientName}", inv != null));
+            checks.Add(new PaymentCheck(inv == null ? (editing ? "The invoice of this receipt was not found" : "Pick the statement or invoice being paid") : $"Invoice {inv.InvoiceNumber} · {inv.ClientName}", inv != null));
+            var rnWhy = MJdatabase.CheckReceiptNumber(txtReceiptNo?.Text, editing ? selectedCollection?.ReceiptNumber : null); // Nov 6
+            checks.Add(new PaymentCheck(rnWhy ?? $"Receipt No. {txtReceiptNo?.Text.Trim()} is free", rnWhy == null));
             decimal amt = numAmountPaid.Value;
             if (inv != null)
             {

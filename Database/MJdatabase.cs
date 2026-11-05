@@ -12411,7 +12411,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 var cmd = conn.CreateCommand();
 
-                cmd.CommandText = "SELECT Id, ReceiptNumber, InvoiceId, InvoiceNumber, PaymentDate, AmountPaid, PaymentMethod, ReferenceNumber, Notes FROM CollectionReceipts WHERE COALESCE(IsVoid,0) = 0 ORDER BY Id DESC";
+                EnsureReceiptSoaColumn();
+                cmd.CommandText = "SELECT Id, ReceiptNumber, InvoiceId, InvoiceNumber, PaymentDate, AmountPaid, PaymentMethod, ReferenceNumber, Notes, COALESCE(SoaId,0) FROM CollectionReceipts WHERE COALESCE(IsVoid,0) = 0 ORDER BY Id DESC";
 
                 using (var reader = cmd.ExecuteReader())
 
@@ -12443,7 +12444,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             ReferenceNumber = reader.IsDBNull(7) ? "" : reader.GetString(7),
 
-                            Notes = reader.IsDBNull(8) ? "" : reader.GetString(8)
+                            Notes = reader.IsDBNull(8) ? "" : reader.GetString(8),
+                            SoaId = reader.FieldCount > 9 && !reader.IsDBNull(9) ? Convert.ToInt32(reader.GetValue(9)) : 0
 
                         });
 
@@ -12586,7 +12588,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         {
 
-                            cr.ReceiptNumber = $"CR-{DateTime.Now:yyyyMMdd-HHmmss}-{DateTime.Now.Millisecond:D3}{Random.Shared.Next(10, 99)}";
+                            { var rnWhy = CheckReceiptNumber(cr.ReceiptNumber); if (rnWhy != null) throw new InvalidOperationException(rnWhy); } // Nov 6: typed, never made by the system
 
                             cmd.CommandText = @"INSERT INTO CollectionReceipts (ReceiptNumber, InvoiceId, InvoiceNumber, PaymentDate, AmountPaid, PaymentMethod, ReferenceNumber, Notes)
 

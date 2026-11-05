@@ -107,11 +107,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         // =====================================================================================================
         public static PrintFormDef CollectionReceipt(CollectionReceipt cr)
         {
-            var inv = MJdatabase.GetInvoices().Find(i => i.Id == cr.InvoiceId || (!string.IsNullOrEmpty(cr.InvoiceNumber) && i.InvoiceNumber.Equals(cr.InvoiceNumber, StringComparison.OrdinalIgnoreCase)));
+            // Nov 6: one receipt can pay a whole statement (one row per invoice in the database); the slip shows each invoice and the totals.
+            var rcRows = MJdatabase.GetReceiptRows(cr.ReceiptNumber);
+            if (rcRows.Count == 0) rcRows.Add(cr);
+            var allInv = MJdatabase.GetInvoices();
+            var paidInvs = rcRows.Select(r => (Row: r, Inv: allInv.Find(i => i.Id == r.InvoiceId))).ToList();
+            var inv = paidInvs[0].Inv ?? allInv.Find(i => !string.IsNullOrEmpty(cr.InvoiceNumber) && i.InvoiceNumber.Equals(cr.InvoiceNumber, StringComparison.OrdinalIgnoreCase));
+            decimal rcTotal = rcRows.Sum(r => r.AmountPaid);
+            var rcSoa = cr.SoaId > 0 || rcRows.Any(r => r.SoaId > 0) ? MJdatabase.GetStatementsOfAccount().FirstOrDefault(s => s.Id == (cr.SoaId > 0 ? cr.SoaId : rcRows.First(r => r.SoaId > 0).SoaId)) : null;
             var client = inv == null ? null : MJdatabase.GetClients().FirstOrDefault(c => c.CompanyName.Equals(inv.ClientName, StringComparison.OrdinalIgnoreCase));
-            decimal gross = inv?.TotalAmount ?? cr.AmountPaid, ded = inv?.Deductions ?? 0, net = inv?.NetAmount ?? cr.AmountPaid;
-            decimal collected = inv != null ? MJdatabase.GetTotalCollectedForInvoice(inv.Id) : cr.AmountPaid;
-            decimal balance = inv != null ? Math.Max(0, inv.NetAmount - collected) : 0;
+            decimal gross = paidInvs.Sum(x => x.Inv?.TotalAmount ?? x.Row.AmountPaid), ded = paidInvs.Sum(x => x.Inv?.Deductions ?? 0), net = paidInvs.Sum(x => x.Inv?.NetAmount ?? x.Row.AmountPaid);
+            decimal collected = paidInvs.Sum(x => x.Inv != null ? MJdatabase.GetTotalCollectedForInvoice(x.Inv.Id) : x.Row.AmountPaid);
+            decimal balance = Math.Max(0, net - collected);
             string method = string.IsNullOrWhiteSpace(cr.PaymentMethod) ? "Cash" : cr.PaymentMethod;
             var o = NewOptions("OfficialReceipt", "Collection Receipt", $"No. {cr.ReceiptNumber}");
             o.CopyLabel = "Original";
@@ -122,9 +129,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 new PrintField("received_from", "Received from", inv?.ClientName ?? ""),
                 new PrintField("address", "Address", client?.Address ?? ""),
                 new PrintField("client_tin", "TIN", client?.TIN ?? ""),
-                new PrintField("for", "In payment of", inv != null ? $"Service Invoice {inv.InvoiceNumber}{(string.IsNullOrWhiteSpace(inv.DispatchNumber) ? "" : " · dispatch " + inv.DispatchNumber)}" : "Hauling & delivery services"),
-                new PrintField("amount", "Amount", Money(cr.AmountPaid)),
-                new PrintField("amount_words", "Amount in words", AmountInWords(cr.AmountPaid)),
+                new PrintField("for", "In payment of", rcSoa != null ? $"Statement of Account {rcSoa.SoaNumber}: Service Invoice{(paidInvs.Count == 1 ? "" : "s")} {string.Join(", ", paidInvs.Select(x => x.Row.InvoiceNumber))}" : inv != null ? $"Service Invoice {inv.InvoiceNumber}{(string.IsNullOrWhiteSpace(inv.DispatchNumber) ? "" : " (dispatch " + inv.DispatchNumber + ")")}" : "Hauling & delivery services"),
+                new PrintField("amount", "Amount", Money(rcTotal)),
+                new PrintField("amount_words", "Amount in words", AmountInWords(rcTotal)),
                 new PrintField("method", "Payment method", method),
                 new PrintField("reference", "Reference / check no.", cr.ReferenceNumber),
                 new PrintField("remarks", "Remarks", cr.Notes, true, true, true),
@@ -163,9 +170,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     sb.Append(SectionTitle("Applied to"));
                     sb.Append(Table(opt, new[] { ("inv", "Invoice #", ""), ("gross", "Gross", "num"), ("ded", "Deductions", "num"), ("net", "Net due", "num"), ("paid", "Amount paid", "num"), ("bal", "Balance", "num") },
-                        new[] { Row(("inv", inv?.InvoiceNumber ?? cr.InvoiceNumber), ("gross", Money(gross)), ("ded", ded > 0 ? "- " + Money(ded) : Money(0)), ("net", Money(net)), ("paid", $"<b>{Esc(Money(cr.AmountPaid))}</b>"), ("bal", balance > 0 ? Money(balance) : "Fully paid")) }));
+                        paidInvs.Select(x => Row(("inv", (x.Inv?.InvoiceNumber ?? x.Row.InvoiceNumber) + (string.IsNullOrWhiteSpace(x.Inv?.DispatchNumber) ? "" : " (trip " + x.Inv!.DispatchNumber + ")")), ("gross", Money(x.Inv?.TotalAmount ?? x.Row.AmountPaid)), ("ded", (x.Inv?.Deductions ?? 0) > 0 ? "- " + Money(x.Inv!.Deductions) : Money(0)), ("net", Money(x.Inv?.NetAmount ?? x.Row.AmountPaid)), ("paid", $"<b>{Esc(Money(x.Row.AmountPaid))}</b>"), ("bal", Math.Max(0, (x.Inv?.NetAmount ?? x.Row.AmountPaid) - x.Row.AmountPaid) > 0 ? Money(Math.Max(0, (x.Inv?.NetAmount ?? 0) - x.Row.AmountPaid)) : "Fully paid"))).ToArray()));
                 }
-                if (opt.On("balance") && inv != null) sb.Append(Summary(new[] { ("Net invoice amount", Money(net)), ("Total paid to date", Money(collected)), ("Remaining balance", Money(balance)) }));
+                if (opt.On("balance")) sb.Append(Summary(new[] { ("Invoices paid", paidInvs.Count.ToString()), ("Gross", Money(gross)), ("Deductions", "- " + Money(ded)), ("Net amount", Money(net)), ("Amount received", Money(rcTotal)), ("Method / reference", method + (string.IsNullOrWhiteSpace(cr.ReferenceNumber) ? "" : " · " + cr.ReferenceNumber)) }));
                 sb.Append(FieldGrid(opt, 1, "remarks"));
                 if (opt.FOn("atp") && !string.IsNullOrWhiteSpace(opt.F("atp"))) sb.Append($"<div style='margin-top:10px;font-size:.78em;text-align:center;color:#333'>{Multi(opt.F("atp"))}</div>");
                 return sb.ToString();

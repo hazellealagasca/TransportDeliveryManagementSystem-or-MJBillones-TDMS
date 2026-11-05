@@ -195,6 +195,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             TrimOrdersToTwoAidesOnce();
             RecomputeAllStoreRouteLabels();
             ClearSavedDraftsOnce();
+            // Nov 6: one receipt per statement (receipts table allows the shared number), then the agreed cleanup of older records.
+            try { EnsureReceiptSchemaForSoa(); RunPaymentCleanupOnce(); } catch (Exception ex) { ErrLog.Error("RunOneTimeMigrations.Payments", ex); }
         }
 
     }

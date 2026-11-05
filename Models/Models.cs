@@ -636,6 +636,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string PaymentMethod { get; set; } = "Cash";
         public string ReferenceNumber { get; set; } = string.Empty;
         public string Notes { get; set; } = string.Empty;
+        /// <summary>The statement this receipt pays (0 = a lone invoice). Nov 6: one receipt per statement.</summary>
+        public int SoaId { get; set; }
     }
 
     public class TruckRecommendation
