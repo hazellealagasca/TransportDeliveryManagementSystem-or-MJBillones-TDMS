@@ -60,6 +60,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             InitializeComponent();
             MJdatabase.InitializeDatabase();
+            try { MJdatabase.RunOneTimeMigrations(); } catch (Exception mex) { ErrLog.Error("LoginForm.Migrations", mex); }
 
             this.FormBorderStyle = FormBorderStyle.None;
             this.StartPosition = FormStartPosition.Manual;

@@ -8339,6 +8339,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static void SaveDelivery(Delivery d)
 
         {
+            // Rule 16b: at most 2 aides per order.
+            if (AideIdList(d.AideIds).Count > MaxAidesPerOrder)
+                throw new InvalidOperationException($"Maximum of {MaxAidesPerOrder} Aides allowed per Loading Schedule. Remove an aide and save again. Nothing was saved.");
 
             try { EnsureClientExists(d.ClientName); } catch (System.Exception swx45) { ErrLog.Swallowed(swx45); }
 

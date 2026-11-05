@@ -6253,131 +6253,140 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+        // Rule 16b: two explicit aide slots (max 2), each a large searchable list that hides the other slot's pick.
+        private ComboBox? cbAideSlot1, cbAideSlot2;
+        private Label? lblAideCount;
+        private Panel? pnlAideSlots;
+        private bool renderingAides;
+        private sealed class AideItem
+        {
+            public Crew Aide { get; }
+            public string Label { get; }
+            public AideItem(Crew a, string status) { Aide = a; Label = $"{a.FullName}  |  Status: {status}"; }
+            public override string ToString() => Label;
+        }
+        private List<int> AideSlots() => selectedAideIds.Take(MJdatabase.MaxAidesPerOrder).ToList();
+        private void SetAideSlots(int a1, int a2)
+        {
+            selectedAideIds.Clear();
+            if (a1 > 0) selectedAideIds.Add(a1);
+            if (a2 > 0 && a2 != a1) selectedAideIds.Add(a2);
+        }
+        private ComboBox MakeAideSlot()
+        {
+            var cb = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDown,
+                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+                AutoCompleteSource = AutoCompleteSource.ListItems,
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                Width = Dpi(330),
+                Margin = new Padding(0, 0, Dpi(6), 0),
+                IntegralHeight = false,
+                MaxDropDownItems = 12
+            };
+            // Typed text must match a listed aide; anything else snaps back to the slot's current aide.
+            cb.Leave += (s, e) => { if (!renderingAides && cb.SelectedItem == null && cb.Text.Trim().Length > 0) BeginInvoke(new Action(RenderAidesModule)); };
+            cb.SelectionChangeCommitted += (s, e) => BeginInvoke(new Action(() => OnAideSlotPicked(cb)));
+            return cb;
+        }
+        private void OnAideSlotPicked(ComboBox cb)
+        {
+            if (renderingAides) return;
+            var slots = AideSlots();
+            int a1 = slots.Count > 0 ? slots[0] : 0, a2 = slots.Count > 1 ? slots[1] : 0;
+            int pick = (cb.SelectedItem as AideItem)?.Aide.Id ?? 0;
+            if (cb == cbAideSlot1) a1 = pick; else a2 = pick;
+            if (a1 == 0 && a2 > 0) { a1 = a2; a2 = 0; } // keep Aide 1 filled first
+            SetAideSlots(a1, a2);
+            RenderAidesModule();
+        }
+        private void BuildAideSlotsPanel()
+        {
+            if (pnlAideSlots != null) return;
+            pnlAideSlots = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 3, RowCount = 3, Margin = new Padding(0), Padding = new Padding(0, Dpi(2), 0, Dpi(4)) };
+            var t = (TableLayoutPanel)pnlAideSlots;
+            t.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            t.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            t.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            Label Cap(string text) => new Label { Text = text, AutoSize = true, Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold), ForeColor = AppTheme.TextSecondary, Margin = new Padding(0, Dpi(6), Dpi(8), 0), UseMnemonic = false };
+            Button Clear(Func<ComboBox?> slot) {
+                var b = new Button { Text = "✕ Clear", AutoSize = true, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold), Cursor = Cursors.Hand, Margin = new Padding(0, Dpi(2), 0, 0), MinimumSize = new Size(0, Dpi(36)) };
+                b.FlatAppearance.BorderColor = AppTheme.BorderStrong;
+                b.Click += (s, e) => {
+                    var slots = AideSlots();
+                    int a1 = slots.Count > 0 ? slots[0] : 0, a2 = slots.Count > 1 ? slots[1] : 0;
+                    if (slot() == cbAideSlot1) { a1 = a2; a2 = 0; } else a2 = 0;
+                    SetAideSlots(a1, a2);
+                    RenderAidesModule();
+                };
+                return b;
+            }
+            cbAideSlot1 = MakeAideSlot();
+            cbAideSlot2 = MakeAideSlot();
+            lblAideCount = new Label { AutoSize = true, Font = new Font("Segoe UI", 12F, FontStyle.Bold), Padding = new Padding(Dpi(10), Dpi(6), Dpi(10), Dpi(6)), Margin = new Padding(0, Dpi(8), 0, 0), UseMnemonic = false };
+            var auto = new Button { Text = "⚡ Pick 2 free aides", AutoSize = true, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold), Cursor = Cursors.Hand, Margin = new Padding(Dpi(10), Dpi(8), 0, 0), MinimumSize = new Size(0, Dpi(36)) };
+            auto.FlatAppearance.BorderColor = AppTheme.BorderStrong;
+            tipRouteStores.SetToolTip(auto, "Picks the 2 free aides with the fewest trips");
+            auto.Click += (s, e) =>
+            {
+                var best = aides.Where(a => CrewFree(a)).OrderBy(a => GetCrewTripCount(a.Id, false)).ThenBy(a => a.FullName).Take(MJdatabase.MaxAidesPerOrder).Select(a => a.Id).ToList();
+                SetAideSlots(best.Count > 0 ? best[0] : 0, best.Count > 1 ? best[1] : 0);
+                RenderAidesModule();
+            };
+            t.Controls.Add(Cap("Aide 1 (Primary Helper)"), 0, 0); t.Controls.Add(cbAideSlot1, 1, 0); t.Controls.Add(Clear(() => cbAideSlot1), 2, 0);
+            t.Controls.Add(Cap("Aide 2 (Second Helper)"), 0, 1); t.Controls.Add(cbAideSlot2, 1, 1); t.Controls.Add(Clear(() => cbAideSlot2), 2, 1);
+            var badgeRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0) };
+            badgeRow.Controls.Add(lblAideCount); badgeRow.Controls.Add(auto);
+            t.Controls.Add(badgeRow, 0, 2); t.SetColumnSpan(badgeRow, 3);
+            // The old pill list and search row are replaced by the two slots.
+            pnlAidesSearchRow.Visible = false;
+            flowAidesModule.Visible = false;
+            var host = flowAidesModule.Parent;
+            if (host != null) { host.Controls.Add(pnlAideSlots); host.Controls.SetChildIndex(pnlAideSlots, host.Controls.GetChildIndex(flowAidesModule)); }
+        }
+        private void FillAideSlot(ComboBox cb, int current, int other)
+        {
+            cb.BeginUpdate();
+            cb.Items.Clear();
+            // Only active, available aides (or the one already on this order), never the other slot's aide.
+            foreach (var a in aides.Where(a => a.Id != other && (CrewFree(a) || a.Id == current)).OrderBy(a => a.FullName))
+                cb.Items.Add(new AideItem(a, a.Id == current && !CrewFree(a) ? "On this order" : "Available"));
+            cb.SelectedItem = cb.Items.Cast<AideItem>().FirstOrDefault(i => i.Aide.Id == current);
+            if (cb.SelectedItem == null) cb.Text = "";
+            cb.EndUpdate();
+        }
         private void RenderAidesModule()
         {
-            flowAidesModule.SuspendLayout();
-            flowAidesModule.Controls.Clear();
-            string q = txtSearchAides.Text.Trim().ToLowerInvariant();
-
-            var visibleAides = aides.Where(a =>
-                (CrewFree(a) || selectedAideIds.Contains(a.Id)) &&
-
-                (string.IsNullOrEmpty(q) || a.FullName.ToLowerInvariant().Contains(q))
-            )
-            .OrderByDescending(a => selectedAideIds.Contains(a.Id))
-            .ThenBy(a => GetCrewTripCount(a.Id, false))
-            .ThenBy(a => a.FullName)
-            .ToList();
-
-            foreach (var a in visibleAides)
+            if (renderingAides) return;
+            renderingAides = true;
+            try
             {
-                bool isSelected = selectedAideIds.Contains(a.Id);
-                string prefix = isSelected ? "✓ " : "+ 🟢 ";
-                int aideTrips = GetCrewTripCount(a.Id, false);
-
-                Button pill = new Button
-                {
-                    Text = $"{prefix}{a.FullName} ({aideTrips})",
-                    AutoSize = true,
-                    Height = 28,
-                    Margin = new Padding(3),
-                    FlatStyle = FlatStyle.Flat,
-                    Font = new Font("Segoe UI Semibold", 8.5F, isSelected ? FontStyle.Bold : FontStyle.Regular),
-                    Cursor = Cursors.Hand
-                };
-
-
-
-                if (isSelected)
-
-                {
-
-                    pill.BackColor = Pal.C(15, 23, 42);
-
-                    pill.ForeColor = Pal.White;
-
-                    pill.FlatAppearance.BorderSize = 0;
-
-                }
-
-                else
-
-                {
-
-                    pill.BackColor = Pal.C(240, 253, 244);
-
-                    pill.ForeColor = Pal.C(22, 101, 52);
-
-                    pill.FlatAppearance.BorderColor = Pal.C(187, 247, 208);
-
-                }
-
-
-
-                pill.Click += (s, e) =>
-
-                {
-
-                    if (selectedAideIds.Contains(a.Id))
-
-                        selectedAideIds.Remove(a.Id);
-
-                    else
-
-                        selectedAideIds.Add(a.Id);
-
-
-
-                    RenderAidesModule();
-
-                };
-
-
-
-                flowAidesModule.Controls.Add(pill);
-
+                BuildAideSlotsPanel();
+                var slots = AideSlots();
+                int a1 = slots.Count > 0 ? slots[0] : 0, a2 = slots.Count > 1 ? slots[1] : 0;
+                if (selectedAideIds.Count > MJdatabase.MaxAidesPerOrder) SetAideSlots(a1, a2);
+                FillAideSlot(cbAideSlot1!, a1, a2);
+                FillAideSlot(cbAideSlot2!, a2, a1);
+                cbAideSlot2!.Enabled = a1 > 0; // fill Aide 1 first
             }
-
-
-
-            flowAidesModule.ResumeLayout();
-
+            finally { renderingAides = false; }
             UpdateAidesSummary();
-
         }
-
-
-
         private void UpdateAidesSummary()
-
         {
-
+            int n = Math.Min(selectedAideIds.Count, MJdatabase.MaxAidesPerOrder);
             var selNames = aides.Where(a => selectedAideIds.Contains(a.Id)).Select(a => a.FullName).ToList();
-
-            if (selNames.Count == 0)
-
+            if (lblAideCount != null)
             {
-
-                lblAidesSummary.Text = "✓ 0 Aides Selected (Click pills above to select)";
-
-                lblAidesSummary.ForeColor = Pal.C(100, 116, 139);
-
+                bool max = n >= MJdatabase.MaxAidesPerOrder;
+                lblAideCount.Text = max ? $"{n} / {MJdatabase.MaxAidesPerOrder} Aides Assigned — MAX LIMIT REACHED" : $"{n} / {MJdatabase.MaxAidesPerOrder} Aides Assigned";
+                lblAideCount.BackColor = n == 0 ? AppTheme.SurfaceAlt : max ? AppTheme.Success : AppTheme.Info;
+                lblAideCount.ForeColor = n == 0 ? AppTheme.TextSecondary : AppTheme.BestTextOn(lblAideCount.BackColor);
             }
-
-            else
-
-            {
-
-                lblAidesSummary.Text = $"✓ {selNames.Count} Aide(s) Selected: {string.Join(", ", selNames)}";
-
-                lblAidesSummary.ForeColor = Pal.C(22, 101, 52);
-
-            }
-
+            lblAidesSummary.Text = selNames.Count == 0 ? "No aides assigned yet" : $"Aides: {string.Join(", ", selNames)}";
+            lblAidesSummary.ForeColor = selNames.Count == 0 ? AppTheme.TextMuted : AppTheme.SuccessText;
         }
-
-
-
         private void DrawStatusComboBoxItem(ComboBox cb, DrawItemEventArgs e)
 
         {

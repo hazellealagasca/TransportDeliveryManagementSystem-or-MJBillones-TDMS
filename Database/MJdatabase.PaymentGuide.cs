@@ -132,5 +132,68 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return map;
         }
 
+            /// <summary>Rule 16b: an order (loading schedule / dispatch) carries at most this many aides.</summary>
+        public const int MaxAidesPerOrder = 2;
+        /// <summary>The aide ids stored in a comma list, in their saved order.</summary>
+        public static List<int> AideIdList(string? aideIds) =>
+            (aideIds ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => int.TryParse(x.Trim(), out var v) ? v : 0).Where(v => v > 0).Distinct().ToList();
+        /// <summary>
+        /// One-time cleanup (rule 16b, approved Nov 6, 2026): orders saved with more than 2 aides keep the first 2.
+        /// A database backup is made first and each trimmed order is written to the audit trail. Crew pay rows are not touched.
+        /// </summary>
+        public static int TrimOrdersToTwoAidesOnce()
+        {
+            const string key = "Migration_TrimAidesToTwo";
+            if (GetSystemSetting(key, "") == "done") return 0;
+            var targets = new List<(int Id, string No, string Ids, string Names)>();
+            using (var conn = new SqliteConnection(connectionString))
+            {
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT Id, DispatchNumber, COALESCE(AideIds,''), COALESCE(AideNames,'') FROM Deliveries";
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    string ids = r.GetString(2);
+                    if (AideIdList(ids).Count > MaxAidesPerOrder) targets.Add((r.GetInt32(0), r.IsDBNull(1) ? "" : r.GetString(1), ids, r.GetString(3)));
+                }
+            }
+            if (targets.Count > 0)
+            {
+                string backup = System.IO.Path.Combine(Functions.AppPaths.Backups, $"BeforeAideTrim_{DateTime.Now:yyyyMMdd_HHmmss}.bak");
+                System.IO.Directory.CreateDirectory(Functions.AppPaths.Backups);
+                if (!BackupDatabase(backup)) return -1; // no backup, no change
+                using var conn = new SqliteConnection(connectionString);
+                conn.Open();
+                using var tx = conn.BeginTransaction();
+                foreach (var t in targets)
+                {
+                    var keepIds = AideIdList(t.Ids).Take(MaxAidesPerOrder).ToList();
+                    var names = t.Names.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).Where(x => x.Length > 0).Take(MaxAidesPerOrder).ToList();
+                    using var u = conn.CreateCommand();
+                    u.Transaction = tx;
+                    u.CommandText = "UPDATE Deliveries SET AideIds = @i, AideNames = @n, AideId = @a1 WHERE Id = @id";
+                    u.Parameters.AddWithValue("@i", string.Join(",", keepIds));
+                    u.Parameters.AddWithValue("@n", string.Join(", ", names));
+                    u.Parameters.AddWithValue("@a1", keepIds.Count > 0 ? keepIds[0] : 0);
+                    u.Parameters.AddWithValue("@id", t.Id);
+                    u.ExecuteNonQuery();
+                }
+                tx.Commit();
+                foreach (var t in targets)
+                    try { LogAuditTrail("UPDATE", "Deliveries", t.Id, t.No, "AideIds", t.Ids, string.Join(",", AideIdList(t.Ids).Take(MaxAidesPerOrder)), "Rule 16b: trimmed to 2 aides (one-time cleanup)"); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            }
+            SetSystemSetting(key, "done", "Orders with more than 2 aides were trimmed to the first 2");
+            return targets.Count;
+        }
+
+            /// <summary>Schema additions and one-time data cleanups, run once at start-up (each step is safe to repeat).</summary>
+        public static void RunOneTimeMigrations()
+        {
+            EnsureAdjustmentColumns();
+            TrimOrdersToTwoAidesOnce();
+        }
+
     }
 }

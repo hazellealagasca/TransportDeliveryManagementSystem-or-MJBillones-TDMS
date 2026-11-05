@@ -332,7 +332,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblTripDetails.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
             Panel pnlDest = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8) };
             Label lblDest = new Label { Text = "Destination Address *  (where the truck goes)", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Dock = DockStyle.Top, Height = 20 };
-            txtDestination = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 10F), Height = 30, MaxLength = 300, PlaceholderText = "Street, barangay, town / city, province" };
+            // Rule 16a: wide, high-visibility destination box (14 pt semibold, ~40 px).
+            txtDestination = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI Semibold", 14F), MaxLength = 300, PlaceholderText = "Street, barangay, town / city, province" };
             pnlDest.Controls.Add(txtDestination);
             pnlDest.Controls.Add(lblDest);
             tblTripDetails.Controls.Add(pnlDest, 0, 0);
@@ -455,7 +456,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Top,
                 ColumnCount = 2,
                 RowCount = 1,
-                Height = 340,
+                Height = 430, // room for the large checklist cards (rule 16a)
                 Padding = new Padding(0, 10, 0, 0)
             };
             tblBottomSections.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -483,27 +484,56 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
 
             // Checklist: what the system does with this trip when it is saved (any combination).
-            CheckBox Check(string text, int y) => new CheckBox { Text = text, Font = new Font("Segoe UI", 10.5F, FontStyle.Bold), ForeColor = Pal.C(15, 23, 42), Location = new Point(14, y), AutoSize = true, Cursor = Cursors.Hand };
+            // Rule 16a: each option is a large toggle card (44 px, 13 pt bold, 2 px border): slate with [   ] when off, emerald with [ ✔ ] when on.
+            CheckBox Check(string text, int y)
+            {
+                var cb = new CheckBox { Tag = text, Appearance = Appearance.Button, FlatStyle = FlatStyle.Flat, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 13F, FontStyle.Bold), Location = new Point(12, y), Size = new Size(394, 44), Cursor = Cursors.Hand, UseMnemonic = false, Padding = new Padding(8, 0, 0, 0) };
+                cb.FlatAppearance.BorderSize = 2;
+                void Paint()
+                {
+                    bool on = cb.Checked;
+                    cb.Text = (on ? "[ ✔ ]  " : "[    ]  ") + (string)cb.Tag!;
+                    cb.BackColor = on ? AppTheme.Success : AppTheme.SurfaceAlt;
+                    cb.ForeColor = on ? AppTheme.BestTextOn(AppTheme.Success) : AppTheme.TextPrimary;
+                    cb.FlatAppearance.BorderColor = on ? AppTheme.SuccessText : AppTheme.BorderStrong;
+                    cb.FlatAppearance.CheckedBackColor = AppTheme.Success;
+                    cb.FlatAppearance.MouseOverBackColor = on ? AppTheme.Success : AppTheme.SurfaceHover;
+                }
+                cb.CheckedChanged += (s, e) => Paint();
+                // The theme sweep restyles check boxes after creation: repaint the card when it is shown.
+                cb.HandleCreated += (s, e) => Paint();
+                cb.VisibleChanged += (s, e) => Paint();
+                Paint();
+                return cb;
+            }
             chkPaymentWithReport = Check("With Trip Report", 34);
-            chkWithSOA = Check("With SOA", 66);
-            chkWithInvoice = Check("With Service Invoice", 98);
-            chkWithCollection = Check("With Collection", 130);
+            chkWithSOA = Check("With SOA", 84);
+            chkWithInvoice = Check("With Service Invoice", 134);
+            chkWithCollection = Check("With Collection Receipt", 184);
             var tips = new ToolTip();
             tips.SetToolTip(chkPaymentWithReport, "Listed in Trip Reports until a trip report is made for this trip.");
             tips.SetToolTip(chkWithSOA, "Offered in the client's Statement of Account so its charge can be billed there.");
             tips.SetToolTip(chkWithInvoice, "A service invoice for the trip charge is made in Billing Invoices.");
             tips.SetToolTip(chkWithCollection, "Shown as a pending collection until its payment is recorded in Collections & Receipts.");
             pnlPaymentBox.Location = new Point(0, 125);
-            pnlPaymentBox.Size = new Size(420, 200);
+            pnlPaymentBox.Size = new Size(420, 272);
             pnlPaymentBox.BackColor = Pal.C(239, 246, 255);
             pnlPaymentBox.Padding = new Padding(12, 8, 12, 8);
             var lblChecklist = new Label { Text = "Checklist — what the system does when you save", Font = new Font("Segoe UI", 9.5F, FontStyle.Bold), ForeColor = Pal.C(30, 58, 138), Location = new Point(12, 8), AutoSize = true };
-            lblChecklistNote = new Label { Text = "", Font = new Font("Segoe UI", 8.5F), ForeColor = Pal.C(71, 85, 105), Location = new Point(12, 162), Size = new Size(392, 32), AutoEllipsis = true };
+            lblChecklistNote = new Label { Text = "", Font = new Font("Segoe UI", 8.5F), ForeColor = Pal.C(71, 85, 105), Location = new Point(12, 232), Size = new Size(392, 34), AutoEllipsis = true };
             pnlPaymentBox.Controls.AddRange(new Control[] { lblChecklist, chkPaymentWithReport, chkWithSOA, chkWithInvoice, chkWithCollection, lblChecklistNote });
             foreach (var cb in new[] { chkPaymentWithReport, chkWithSOA, chkWithInvoice, chkWithCollection }) cb.CheckedChanged += (s, e) => UpdateChecklistNote();
             // Mode of Payment: one of the four choices, picked from the list (no typing). Service Type is no longer asked.
             Label lblPay = new Label { Text = "Mode of Payment *", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Location = new Point(0, 65), AutoSize = true };
-            cbPayment = new ComboBox { Location = new Point(0, 85), Size = new Size(420, 28), DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F) };
+            // Rule 16a: Mode of Payment in 14 pt bold with tall items (owner-drawn) for easy picking.
+            cbPayment = new ComboBox { Location = new Point(0, 85), Size = new Size(420, 34), DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 14F, FontStyle.Bold), DrawMode = DrawMode.OwnerDrawFixed, ItemHeight = 34 };
+            cbPayment.DrawItem += (s, e) =>
+            {
+                if (e.Index < 0) return;
+                bool sel = (e.State & DrawItemState.Selected) != 0;
+                using (var b = new SolidBrush(sel ? AppTheme.AccentSoftStrong : AppTheme.InputBack)) e.Graphics.FillRectangle(b, e.Bounds);
+                TextRenderer.DrawText(e.Graphics, cbPayment.Items[e.Index]?.ToString() ?? "", cbPayment.Font, new Rectangle(e.Bounds.X + 8, e.Bounds.Y, e.Bounds.Width - 8, e.Bounds.Height), AppTheme.TextPrimary, TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+            };
             cbPayment.Items.AddRange(PaymentModes.Cast<object>().ToArray());
             cbPayment.SelectedIndex = -1;
             cbPayment.SelectedIndexChanged += (s, e) => UpdateChecklistNote();
