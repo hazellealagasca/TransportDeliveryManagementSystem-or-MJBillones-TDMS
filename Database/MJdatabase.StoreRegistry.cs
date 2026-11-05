@@ -77,12 +77,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             client = CleanStoreText(client);
             string cleanCode = CleanStoreCode(code), cleanName = CleanStoreText(name), label = CleanStoreText(routeLabel);
             if (client.Length == 0) return "Choose the client company first.";
-            if (label.Length == 0) return "Choose the route this store is on.";
+            // Rule 16c: the route is optional; a store can be registered to the client's pool first and put on routes later.
             if (cleanCode.Length == 0) return "Enter the store code (letters, numbers and hyphens).";
             if (cleanName.Length == 0) return "Enter the store name.";
             if (cleanName.Length > StoreNameMaxLength) return $"The store name is too long (at most {StoreNameMaxLength} characters).";
+            if (label.Length == 0)
+            {
+                var codeOwner0 = FindStoreByCodeAnyClient(cleanCode);
+                if (codeOwner0 != null) return $"Record Already Exists: store code {cleanCode} belongs to \"{codeOwner0.StoreName}\" of {codeOwner0.ClientCompanyName}.";
+                var same0 = GetClientStores(client, includeArchived: true).FirstOrDefault(st => string.Equals(CleanStoreText(st.StoreName), cleanName, StringComparison.OrdinalIgnoreCase));
+                if (same0 != null) return $"Record Already Exists: \"{same0.StoreName}\" is already one of {client}'s stores (code {same0.StoreCode}).";
+                return null;
+            }
             var routes = GetDeliveryRoutesByClient(client, activeOnly: false)
-                .Where(r => string.Equals(CleanStoreText(r.ClientCompanyName), client, StringComparison.OrdinalIgnoreCase)).ToList();
+            .Where(r => string.Equals(CleanStoreText(r.ClientCompanyName), client, StringComparison.OrdinalIgnoreCase)).ToList();
             route = routes.FirstOrDefault(r => string.Equals(RouteLabel(r), label, StringComparison.OrdinalIgnoreCase))
                  ?? routes.FirstOrDefault(r => string.Equals(r.RouteCode, label, StringComparison.OrdinalIgnoreCase));
             if (route == null) return $"\"{label}\" is not one of {client}'s routes. Pick a route from the list.";
@@ -106,7 +114,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static ClientStore RegisterClientStore(string client, string code, string name, string routeLabel)
         {
             string? problem = CheckNewStore(client, code, name, routeLabel, out var route);
-            if (problem != null || route == null) throw new InvalidOperationException(problem ?? "The route was not found.");
+            if (problem != null) throw new InvalidOperationException(problem);
+            if (route == null) return RegisterCompanyStore(client, code, name); // no route chosen: company store pool only (rule 16c)
             client = CleanStoreText(client);
             string cleanCode = CleanStoreCode(code), cleanName = CleanStoreText(name), label = RouteLabel(route);
             int clientId = GetClientByCompanyName(client)?.Id ?? 0;
@@ -158,6 +167,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             try { LogAuditTrail("ADD", "ClientStores", store.Id, $"{cleanCode} - {cleanName}", "DestinationRoute", "", label, $"Registered store {cleanCode} - {cleanName} for {client} on route {label}"); }
             catch (Exception ax) { ErrLog.Swallowed(ax); }
+            try { RecomputeStoreRouteLabels(client); } catch (Exception rex) { ErrLog.Swallowed(rex); }
+            AppEvents.Raise(AppDataKind.Stores);
             return store;
         }
     }

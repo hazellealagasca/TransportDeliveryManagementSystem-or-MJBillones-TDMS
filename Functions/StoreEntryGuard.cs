@@ -52,6 +52,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly HashSet<TextBox> hookedBoxes = new HashSet<TextBox>();
         private List<ClientStore> cache = new List<ClientStore>();
         private string cacheClient = "\0";
+        private int cacheVersion = -1;
         private string beginValue = "";
         private bool syncing;
         private Form? hookedForm;
@@ -95,9 +96,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public List<ClientStore> Stores()
         {
             string c = Client;
-            if (!string.Equals(c, cacheClient, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(c, cacheClient, StringComparison.OrdinalIgnoreCase) || cacheVersion != AppEvents.Version) // rule 16e: reload after any store/route change
             {
                 cacheClient = c;
+                cacheVersion = AppEvents.Version;
                 try { cache = c.Length == 0 ? new List<ClientStore>() : MJdatabase.GetClientStores(c); }
                 catch (Exception ex) { ErrLog.Swallowed(ex); cache = new List<ClientStore>(); }
             }
@@ -563,6 +565,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly StoreLookupPopup popup = new StoreLookupPopup();
         private List<ClientStore> cache = new List<ClientStore>();
         private string cacheClient = "\0";
+        private int cacheVersion = -1;
         private bool filling;
         private TextBox? listFor;
         public TextBoxStoreLookup(TextBox codeBox, TextBox nameBox, Func<string> clientName, Func<string?> defaultRouteLabel)
@@ -601,9 +604,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private List<ClientStore> Stores()
         {
             string c = StoreDirectory.Norm(client());
-            if (!string.Equals(c, cacheClient, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(c, cacheClient, StringComparison.OrdinalIgnoreCase) || cacheVersion != AppEvents.Version) // rule 16e: reload after any store/route change
             {
                 cacheClient = c;
+                cacheVersion = AppEvents.Version;
                 try { cache = c.Length == 0 ? new List<ClientStore>() : MJdatabase.GetClientStores(c); }
                 catch (Exception ex) { ErrLog.Swallowed(ex); cache = new List<ClientStore>(); }
             }

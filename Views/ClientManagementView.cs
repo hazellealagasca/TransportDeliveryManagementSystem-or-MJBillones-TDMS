@@ -62,6 +62,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Button btnCustomizeTable = null!;
         private Panel pnlBranchesHost = null!;
         private DataGridView gridBranches = null!;
+        private ClientStoresRoutesPanel? storesRoutes;
 
         private Panel pnlTripsCard = null!;
         private FlowLayoutPanel flowTripTiles = null!;
@@ -568,7 +569,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (e.RowIndex >= 0 && gridBranches.Columns[e.ColumnIndex].Name == "Actions") ArchiveBranchRow(e.RowIndex);
             };
             pnlBranchesHost.Controls.Add(gridBranches);
-            pnlStoresCard = CreateSectionCard(2, "Stores & branches", "The client's stores and the delivery route each one is on.", bar, lblStoresHint, pnlBranchesHost);
+            // Rule 16c: two large tabs, company stores (code + name, no route) and the split-pane route builder.
+            storesRoutes = new ClientStoresRoutesPanel(() => selectedClient?.CompanyName ?? "", gridBranches, () => { if (selectedClient != null) LoadClientBranches(selectedClient.CompanyName); });
+            if (gridBranches.Columns["DestinationRoute"] is DataGridViewColumn destCol) destCol.Visible = false;
+            pnlStoresCard = CreateSectionCard(2, "Stores & delivery routes", "The client's stores (code and name), and which of its routes each store is on.", bar, lblStoresHint, storesRoutes);
             // Card 3: trips
             flowTripTiles = new FlowLayoutPanel { Height = Dpi(94), WrapContents = false, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             pnlTripsHost = new Panel { Height = Dpi(240), BackColor = AppTheme.Surface };
@@ -874,9 +878,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             FillStoreCustomCells();
             isBinding = false;
             SizeStoresGrid();
-        }
-
-        private void SizeStoresGrid()
+            storesRoutes?.RefreshForClient();
+            }
+            private void SizeStoresGrid()
         {
             int rows = currentStores.Count;
             int h = Dpi(38) + Math.Max(3, rows) * Dpi(36) + Dpi(4);

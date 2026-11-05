@@ -13612,6 +13612,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             tx.Commit();
+            try { RecomputeStoreRouteLabels(client); } catch (Exception rex) { ErrLog.Swallowed(rex); } // rule 16c: a store can be on several routes
 
         }
 
