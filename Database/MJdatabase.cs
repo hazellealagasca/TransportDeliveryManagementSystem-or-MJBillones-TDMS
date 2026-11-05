@@ -11869,8 +11869,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         }
 
                         string invoiceLog = "";
+                        // Nov 6: a statement groups its trips' service invoices. Only statements saved before (with their own SI invoice) keep making one.
+                        bool legacyOwnInvoice = SoaHasOwnInvoice(conn, tx, soaId);
+                        if (!legacyOwnInvoice) LinkTripInvoicesToSoa(conn, tx, soa, soaId, items ?? new List<StatementOfAccountItem>());
 
-                        if (!string.IsNullOrWhiteSpace(soa.SalesInvoiceNo))
+                        if (legacyOwnInvoice && !string.IsNullOrWhiteSpace(soa.SalesInvoiceNo))
 
                         {
 

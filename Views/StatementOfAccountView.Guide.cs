@@ -34,6 +34,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Dictionary<int, string> guideBilled = new Dictionary<int, string>();
         private HashSet<int> guideReported = new HashSet<int>();
         private Dictionary<int, string> guideDirect = new Dictionary<int, string>();
+        private List<TripInvoice> guideTripInvoices = new List<TripInvoice>();
         private List<Invoice> guideInvoices = new List<Invoice>();
         private Dictionary<int, SpecialTrip> guideSpecials = new Dictionary<int, SpecialTrip>();
         private decimal guidePaid;
@@ -147,7 +148,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 guideReports = MJdatabase.GetTripReportsByDelivery();
                 guideReported = MJdatabase.GetTripReportDeliveryIds();
                 guideBilled = MJdatabase.GetBilledDeliveryIds(CurrentSoaId);
-                guideDirect = MJdatabase.GetDirectlyInvoicedDeliveryIds();
+                guideDirect = new Dictionary<int, string>(); // Nov 6: a trip's own invoice is required, not a block
+                guideTripInvoices = MJdatabase.GetTripInvoices();
                 guideInvoices = MJdatabase.GetInvoices();
                 guideSpecials = MJdatabase.GetSpecialTrips().GroupBy(t => t.Id).ToDictionary(g => g.Key, g => g.First());
                 guideReadyClients = ReadyClients();
@@ -224,8 +226,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var dels = MJdatabase.GetDeliveries();
                 var reported = MJdatabase.GetTripReportDeliveryIds();
                 var billed = MJdatabase.GetBilledDeliveryIds(0);
-                var directlyInvoiced = MJdatabase.GetDirectlyInvoicedDeliveryIds();
-                foreach (var g in dels.Where(d => DispatchGate.IsCompleted(d.Status) && reported.Contains(d.Id) && !billed.ContainsKey(d.Id) && !directlyInvoiced.ContainsKey(d.Id) && !string.IsNullOrWhiteSpace(d.ClientName))
+                var openInvoiceTrips = new HashSet<int>(MJdatabase.GetTripInvoices().Where(i => i.Open && i.SoaId == 0 && i.DeliveryId > 0).Select(i => i.DeliveryId)); // Nov 6: needs its service invoice
+                foreach (var g in dels.Where(d => DispatchGate.IsCompleted(d.Status) && reported.Contains(d.Id) && !billed.ContainsKey(d.Id) && openInvoiceTrips.Contains(d.Id) && !string.IsNullOrWhiteSpace(d.ClientName))
                                       .GroupBy(d => d.ClientName.Trim(), StringComparer.OrdinalIgnoreCase))
                     list.Add((g.Key, g.Count(), g.Min(d => d.DispatchDate.Date), g.Max(d => d.DispatchDate.Date)));
             }
@@ -317,7 +319,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (!guideDeliveries.TryGetValue(did, out var d)) { unlinked++; continue; }
                     if (!DispatchGate.IsCompleted(d.Status) || !guideReported.Contains(did)) notDone++;
                     if (client.Length > 0 && !string.Equals(d.ClientName?.Trim(), client, StringComparison.OrdinalIgnoreCase)) { otherClient++; otherNames.Add(d.ClientName ?? ""); }
-                    if (guideBilled.ContainsKey(did) || guideDirect.ContainsKey(did)) billedElsewhere++;
+                    if (guideBilled.ContainsKey(did)) billedElsewhere++;
                     if (d.DispatchDate.Date > dtpIssueDate.Value.Date) dateOrder++;
                     if (guideReports.TryGetValue(did, out var tr))
                     {
@@ -338,7 +340,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     : new PaymentCheck($"{unlinked} line(s) not linked to a trip report" + (unlinkedBlocks ? " — add trips from step 2 instead of typing them" : " (older lines, saved before linking)"), !unlinkedBlocks, Warning: !unlinkedBlocks));
                 checks.Add(new PaymentCheck(notDone == 0 ? "All trips completed with a saved trip report" : $"{notDone} line(s) whose trip is not completed or whose report was voided", notDone == 0));
                 checks.Add(new PaymentCheck(otherClient == 0 ? $"All trips belong to {(client.Length > 0 ? client : "the client")}" : $"{otherClient} line(s) belong to {string.Join(", ", otherNames)} — not {client}", otherClient == 0));
-                checks.Add(new PaymentCheck(billedElsewhere == 0 ? "No trip is billed on another statement or invoice" : $"{billedElsewhere} line(s) already billed on another statement or invoice", billedElsewhere == 0));
+                checks.Add(new PaymentCheck(billedElsewhere == 0 ? "No trip is on another statement" : $"{billedElsewhere} line(s) already billed on another statement or invoice", billedElsewhere == 0));
                 checks.Add(new PaymentCheck(dateOrder == 0 ? "Dates in order: dispatch ≤ trip report ≤ statement date" : $"{dateOrder} trip date(s) are after the statement date ({dtpIssueDate.Value:MMM d, yyyy})", dateOrder == 0));
                 if (reportBeforeDispatch > 0) checks.Add(new PaymentCheck($"{reportBeforeDispatch} trip report(s) dated before their dispatch — check the report dates", true, Warning: true));
                 // Each trip priced; DRs not repeated on the statement.
@@ -366,7 +368,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 bool hasReason = txtSoaAdjustReason.Text.Trim().Length >= MinAdjustReasonLength;
                 checks.Add(new PaymentCheck(hasReason ? $"Adjustment reason given (₱{entered - expected:+#,##0.00;-#,##0.00})" : "Totals changed by hand — write the adjustment reason", hasReason));
             }
-            // Sales invoice no.: blank = no invoice yet (allowed, flagged); used elsewhere = blocked.
+            if (!IsLegacySoa()) { AddInvoiceChecks(checks, rows); return checks; } // Nov 6: the statement groups its trips' service invoices
+            // Statements saved before Nov 6 (their own SI invoice): the old checks.
             string si = txtSalesInvoiceNo.Text.Trim();
             if (si.Length == 0) checks.Add(new PaymentCheck("No SI no. yet — no billing invoice will be made until it is added", true, Warning: true));
             else

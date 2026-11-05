@@ -694,12 +694,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             taxLayout.Controls.Add(taxFields, 0, 0);
             taxLayout.Controls.Add(totalBox, 1, 0);
             // ---------------- Sign-off
-            txtSalesInvoiceNo = new TextBox { Font = new Font("Segoe UI Semibold", 10F), Text = "" };
+            txtSalesInvoiceNo = new TextBox { Font = new Font("Segoe UI Semibold", 10F), Text = "", ReadOnly = true, PlaceholderText = "Filled from the trips' service invoices" }; // Nov 6: not typed here any more
             txtPreparedBy = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };
             txtReceivedBy1 = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };
             txtReceivedBy2 = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };
             var gridSign = CreateFieldGrid(2,
-                ("Sales invoice no. (SI no.)", txtSalesInvoiceNo), ("Prepared by (billing officer)", txtPreparedBy),
+                ("Service invoices on this statement (from Billing)", txtSalesInvoiceNo), ("Prepared by (billing officer)", txtPreparedBy),
                 ("Received by 1 (client accountant)", txtReceivedBy1), ("Received by 2 (client accountant)", txtReceivedBy2));
             var lblSiHint = new Label
             {
@@ -929,7 +929,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!r.IsNewRow && int.TryParse(r.Cells["colDeliveryId"].Value?.ToString(), out int id) && id > 0) ids.Add(id);
             if (ids.Count == 0) return true;
             var billed = MJdatabase.GetBilledDeliveryIds(isEditingExisting && selectedSoa != null ? selectedSoa.Id : 0);
-            foreach (var kv in MJdatabase.GetDirectlyInvoicedDeliveryIds()) billed.TryAdd(kv.Key, "invoice " + kv.Value); // billed directly: can't go on a statement too
+            // Nov 6: a trip's own service invoice is now required before it goes on a statement (it is no longer "billed directly").
             var reported = MJdatabase.GetTripReportDeliveryIds();
             var problems = new List<string>();
             foreach (int id in ids)
@@ -1457,6 +1457,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!CheckSpecialTripsBeforeSave()) return;
                 if (!CheckSalesInvoiceNoBeforeSave()) return;
                 if (!CheckRepeatedDrsBeforeSave()) return;
+                if (!IsLegacySoa() && !UseInvoiceTotals()) return; // Nov 6: the statement's total is its invoices' total
                 var items = CollectItemsFromGrid();
                 string period = $"{dtpPeriodFrom.Value:yyyy-MM-dd} to {dtpPeriodTo.Value:yyyy-MM-dd}";
 
@@ -1492,9 +1493,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 string siNo = soa.SalesInvoiceNo.Trim();
                 string siInv = siNo.StartsWith("SI", StringComparison.OrdinalIgnoreCase) ? siNo : $"SI-{siNo}";
-                QuietBox.Show(siNo.Length > 0
-                        ? $"Statement of Account #{soa.SoaNumber} is saved.\n\nBilling invoice {siInv} for PHP {soa.TotalAmount:N2} is linked to it (see Billing Invoices)."
-                        : $"Statement of Account #{soa.SoaNumber} is saved.\n\nNo billing invoice was created because the sales invoice no. is blank. Use Edit statement to add the SI no. when it is issued.",
+                QuietBox.Show(IsLegacySoa(savedId)
+                        ? (siNo.Length > 0 ? $"Statement of Account #{soa.SoaNumber} is saved.\n\nBilling invoice {siInv} for PHP {soa.TotalAmount:N2} is linked to it (see Billing Invoices)." : $"Statement of Account #{soa.SoaNumber} is saved.")
+                        : $"Statement of Account #{soa.SoaNumber} is saved with its service invoice(s): {soa.SalesInvoiceNo}.\n\nCollect it in Collections with ONE receipt for PHP {soa.TotalAmount:N2}.",
                     "SOA saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadData();
                 SetFormVisibility(false);
@@ -1517,6 +1518,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// </summary>
         private bool CheckSalesInvoiceNoBeforeSave()
         {
+            if (!IsLegacySoa()) return true; // Nov 6: the statement uses its trips' service invoices (typed in Billing)
             string raw = txtSalesInvoiceNo.Text.Trim();
             if (raw.Length == 0)
             {

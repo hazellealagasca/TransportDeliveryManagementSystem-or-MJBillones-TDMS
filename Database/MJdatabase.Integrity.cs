@@ -105,6 +105,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         ident = Scalar("SELECT InvoiceNumber FROM Invoices WHERE Id = @id");
                         if (Scalar("SELECT COUNT(*) FROM CollectionReceipts WHERE InvoiceId = @id AND COALESCE(IsVoid,0) = 0") is var n && n != "0" && n != "")
                             throw new InvalidOperationException($"Invoice {ident} has payments recorded. Void its collection receipts first.");
+                        // Nov 6: a trip's service invoice on a statement is part of the statement's total: take the trip off the statement first.
+                        string onSoa = Scalar("SELECT COALESCE(s.SoaNumber,'') FROM Invoices v JOIN StatementsOfAccount s ON s.Id = v.SoaId WHERE v.Id = @id AND COALESCE(s.Status,'') <> 'Cancelled' AND (COALESCE(v.DeliveryId,0) > 0 OR COALESCE(v.SpecialTripId,0) > 0)");
+                        if (!string.IsNullOrEmpty(onSoa))
+                            throw new InvalidOperationException($"Invoice {ident} is on statement {onSoa}. Take its trip off that statement (or cancel the statement) first.");
                         Exec("UPDATE Invoices SET Status = 'Cancelled' WHERE Id = @id");
                         action = "CANCEL";
                         LastDeleteSummary = $"Invoice {ident} was cancelled. It stays in the billing history and no longer counts as outstanding.";
@@ -138,6 +142,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 case "StatementsOfAccount":
                     {
+                        EnsureSpecialTripColumns();
                         ident = Scalar("SELECT SoaNumber FROM StatementsOfAccount WHERE Id = @id");
                         // Guard: money already came in on this statement's invoice. Cancelling now would leave a paid invoice with no statement.
                         string paidCount = Scalar("SELECT COUNT(*) FROM CollectionReceipts r JOIN Invoices v ON v.Id = r.InvoiceId WHERE v.SoaId = @id AND COALESCE(r.IsVoid,0) = 0");
@@ -146,10 +151,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         Exec("UPDATE StatementsOfAccount SET Status = 'Cancelled' WHERE Id = @id");
                         // The statement's own invoice is cancelled with it (same transaction), so it can't be collected on or block its trips as a direct invoice.
                         // The SoaId link is kept for the history.
-                        int invCancelled = Exec("UPDATE Invoices SET Status = 'Cancelled' WHERE SoaId = @id AND Status <> 'Cancelled'");
+                        // Nov 6: only a statement's OWN invoice (made before Nov 6) is cancelled with it; its trips' service invoices are freed for a new statement.
+                        int invCancelled = Exec("UPDATE Invoices SET Status = 'Cancelled' WHERE SoaId = @id AND Status <> 'Cancelled' AND COALESCE(DeliveryId,0) = 0 AND COALESCE(SpecialTripId,0) = 0");
+                        int invFreed = Exec("UPDATE Invoices SET SoaId = 0 WHERE SoaId = @id AND Status <> 'Cancelled'");
                         action = "CANCEL";
                         LastDeleteSummary = invCancelled > 0
                             ? $"Statement {ident} and its invoice were cancelled. Its trips are free to go on a new statement."
+                            : invFreed > 0 ? $"Statement {ident} was cancelled. Its {invFreed} service invoice(s) are free to go on a new statement or be collected on their own."
                             : $"Statement {ident} was cancelled. Its trips are free to go on a new statement.";
                         break;
                     }

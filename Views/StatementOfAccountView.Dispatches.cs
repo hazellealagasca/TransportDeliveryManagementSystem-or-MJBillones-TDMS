@@ -29,7 +29,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private bool pickerReady = false;
         /// <summary>Completed trips in the period that still have no trip report (not listed; shown in the heading).</summary>
         private int pickerNeedReport;
-        private enum PickState { Ready, OnThisStatement, BilledElsewhere }
+        private enum PickState { Ready, OnThisStatement, BilledElsewhere, NoInvoice }
         private sealed class PickRow
         {
             public Delivery Delivery = null!;
@@ -252,8 +252,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string client = chkPickerAllClients.Checked ? "" : cbClient.Text.Trim();
             DateTime from = dtpPeriodFrom.Value.Date, to = dtpPeriodTo.Value.Date;
             var billed = MJdatabase.GetBilledDeliveryIds(isEditingExisting && selectedSoa != null ? selectedSoa.Id : 0);
-            foreach (var kv in MJdatabase.GetDirectlyInvoicedDeliveryIds()) billed.TryAdd(kv.Key, "invoice " + kv.Value); // billed directly: can't go on a statement too
+            // Nov 6: a trip's own service invoice is now required before it goes on a statement (it is no longer "billed directly").
             var inTable = DeliveryIdsInTable();
+            var tripInvoices = MJdatabase.GetTripInvoices(); // Nov 6: a trip goes on a statement through its service invoice
             var completed = deliveryCache
                 .Where(d => string.Equals(d.Status, "Completed", StringComparison.OrdinalIgnoreCase)
                             && d.DispatchDate.Date >= from && d.DispatchDate.Date <= to && ClientMatches(d, client))
@@ -265,8 +266,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     Delivery = d,
                     Report = reports[d.Id],
-                    State = inTable.Contains(d.Id) ? PickState.OnThisStatement : billed.ContainsKey(d.Id) ? PickState.BilledElsewhere : PickState.Ready,
-                    BilledOn = billed.TryGetValue(d.Id, out var soaNo) ? soaNo : ""
+                    State = inTable.Contains(d.Id) ? PickState.OnThisStatement : billed.ContainsKey(d.Id) ? PickState.BilledElsewhere
+                          : MJdatabase.WhyTripNotReadyForSoa(MJdatabase.TripInvoiceFor(tripInvoices, d.Id, 0), CurrentSoaId) != null ? PickState.NoInvoice : PickState.Ready,
+                    BilledOn = billed.TryGetValue(d.Id, out var soaNo) ? soaNo : MJdatabase.WhyTripNotReadyForSoa(MJdatabase.TripInvoiceFor(tripInvoices, d.Id, 0), CurrentSoaId) ?? ""
                 }).ToList();
             var ticked = new HashSet<int>(gridPicker.Rows.Cast<DataGridViewRow>().Where(r => r.Cells["pkPick"].Value is true && r.Tag is PickRow).Select(r => ((PickRow)r.Tag!).Delivery.Id));
             gridPicker.SuspendLayout();
@@ -283,6 +285,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     PickState.OnThisStatement => "✓ On this statement",
                     PickState.BilledElsewhere => $"Billed on {pr.BilledOn}",
+                    PickState.NoInvoice => pr.BilledOn,
                     _ => "Ready to bill"
                 };
                 int i = gridPicker.Rows.Add(pr.State == PickState.Ready && ticked.Contains(d.Id), tr.TripReportNumber, d.DispatchDate.ToString("MMM d, yyyy"), d.DispatchNumber, d.ClientName, d.TruckInfo, stores,
@@ -321,14 +324,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         Special = t,
                         Delivery = new Delivery { Id = -t.Id, DispatchNumber = t.OrderReference, ClientName = t.Company, DispatchDate = t.DispatchDate },
                         State = inTableSpecial.Contains(t.Id) ? PickState.OnThisStatement
-                              : (l.OnSoa && !string.Equals(l.SoaNumber, thisSoa, StringComparison.OrdinalIgnoreCase)) ? PickState.BilledElsewhere : PickState.Ready,
-                        BilledOn = l.SoaNumber
+                              : (l.OnSoa && !string.Equals(l.SoaNumber, thisSoa, StringComparison.OrdinalIgnoreCase)) ? PickState.BilledElsewhere
+                              : MJdatabase.WhyTripNotReadyForSoa(MJdatabase.TripInvoiceFor(tripInvoices, 0, t.Id), CurrentSoaId) != null ? PickState.NoInvoice : PickState.Ready,
+                        BilledOn = l.OnSoa ? l.SoaNumber : MJdatabase.WhyTripNotReadyForSoa(MJdatabase.TripInvoiceFor(tripInvoices, 0, t.Id), CurrentSoaId) ?? ""
                     };
                     bool canTick = pr.State == PickState.Ready && done && t.TripCharge > 0;
                     string state = pr.State switch
                     {
                         PickState.OnThisStatement => "✓ On this statement",
                         PickState.BilledElsewhere => $"Billed on {pr.BilledOn}",
+                    PickState.NoInvoice => pr.BilledOn,
                         _ => !done ? $"Special trip · {t.Status} (not completed yet)" : t.TripCharge <= 0 ? "Special trip · no trip charge" : "Special trip · ready to bill"
                     };
                     int i = gridPicker.Rows.Add(canTick && ticked.Contains(-t.Id), l.HasReport ? l.TripReportNumber : "Special trip", t.DispatchDate.ToString("MMM d, yyyy"), t.OrderReference, t.Company,
@@ -677,7 +682,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
             var billed = MJdatabase.GetBilledDeliveryIds(isEditingExisting && selectedSoa != null ? selectedSoa.Id : 0);
-            foreach (var kv in MJdatabase.GetDirectlyInvoicedDeliveryIds()) billed.TryAdd(kv.Key, "invoice " + kv.Value); // billed directly: can't go on a statement too
+            // Nov 6: a trip's own service invoice is now required before it goes on a statement (it is no longer "billed directly").
             if (billed.TryGetValue(del.Id, out var soaNo))
             {
                 lblAddDispatchResult.Text = $"{del.DispatchNumber} is already billed on {soaNo} — it can't be billed twice.";
@@ -691,6 +696,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblAddDispatchResult.ForeColor = AppTheme.WarningText;
                 return;
             }
+            // Nov 6: the trip needs its own service invoice (typed SI No. in Billing) before it goes on a statement.
+            var tiWhy = MJdatabase.WhyTripNotReadyForSoa(MJdatabase.TripInvoiceFor(MJdatabase.GetTripInvoices(), del.Id, 0), CurrentSoaId);
+            if (tiWhy != null) { lblAddDispatchResult.Text = $"{del.DispatchNumber}: {tiWhy}."; lblAddDispatchResult.ForeColor = AppTheme.WarningText; return; }
             var issues = new List<string>();
             string client = cbClient.Text.Trim();
             if (client.Length > 0 && !ClientMatches(del, client))
