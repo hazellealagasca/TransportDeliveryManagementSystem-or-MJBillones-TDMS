@@ -54,7 +54,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pageKit.Build(sections.Select(s => new FullPageFormKit.Section(s.Title, s.Subtitle, s.Block)), new Control[] { actions });
             flowBar = BuildFlowBar();
             foreach (var cb in new[] { chkPaymentWithReport, chkWithInvoice, chkWithSOA, chkWithCollection }) cb.CheckedChanged += (s, e) => RefreshFlowBar();
-            pageKit.AddStrip(flowBar);
+            pageKit.AddBodyTop(new Panel { Dock = DockStyle.Top, Height = Px(10), BackColor = AppTheme.Canvas });
+            pageKit.AddBodyTop(flowBar); // Nov 6: scrolls with the form, so the whole page scrolls as one
             Controls.Add(tblFull);
             tblFull.BringToFront();
             pageKit.Show(true);
@@ -63,7 +64,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         // ------------------------------------------------------------------ Flow bar
         private TableLayoutPanel BuildFlowBar()
         {
-            var t = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 5, RowCount = 1, Height = Px(80), BackColor = AppTheme.Canvas, Margin = new Padding(0) };
+            var t = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 5, RowCount = 1, Height = Px(64), BackColor = AppTheme.Canvas, Margin = new Padding(0) };
             for (int i = 0; i < 5; i++) t.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
             t.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             return t;
@@ -131,12 +132,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             for (int i = 0; i < steps.Count; i++)
             {
                 var s = steps[i];
-                var cell = new Panel { Dock = DockStyle.Fill, Margin = new Padding(i == 0 ? 0 : Px(4), Px(6), i == steps.Count - 1 ? 0 : Px(4), Px(8)), Padding = new Padding(Px(10), Px(6), Px(10), Px(6)),
+                var cell = new Panel { Dock = DockStyle.Fill, Margin = new Padding(i == 0 ? 0 : Px(4), Px(2), i == steps.Count - 1 ? 0 : Px(4), Px(2)), Padding = new Padding(Px(10), Px(4), Px(10), Px(4)),
                     BackColor = s.Done ? AppTheme.SuccessSoft : s.Next ? AppTheme.AccentSoft : AppTheme.Surface };
                 var border = s.Done ? AppTheme.Success : s.Next ? AppTheme.Accent : AppTheme.Border;
                 cell.Paint += (o, e) => { using var pen = new Pen(border); e.Graphics.DrawRectangle(pen, 0, 0, cell.Width - 1, cell.Height - 1); };
                 var title = new Label { Text = s.Title, Dock = DockStyle.Top, Height = Px(20), Font = FontCache.Get("Segoe UI Semibold", 9.5F, FontStyle.Regular), ForeColor = AppTheme.TextPrimary, UseMnemonic = false, AutoEllipsis = true, BackColor = Color.Transparent };
-                var status = new Label { Text = s.Status, Dock = DockStyle.Top, Height = Px(22), Font = FontCache.Get("Segoe UI", 8.75F, FontStyle.Regular), ForeColor = s.Done ? AppTheme.SuccessText : AppTheme.TextSecondary, UseMnemonic = false, AutoEllipsis = true, BackColor = Color.Transparent };
+                var status = new Label { Text = s.Status, Dock = DockStyle.Top, Height = Px(18), Font = FontCache.Get("Segoe UI", 8.75F, FontStyle.Regular), ForeColor = s.Done ? AppTheme.SuccessText : AppTheme.TextSecondary, UseMnemonic = false, AutoEllipsis = true, BackColor = Color.Transparent };
                 new ToolTip().SetToolTip(status, s.Status);
                 if (s.ActionText != null && s.Action != null)
                 {

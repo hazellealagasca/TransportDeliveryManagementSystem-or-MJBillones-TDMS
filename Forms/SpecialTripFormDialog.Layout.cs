@@ -72,12 +72,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var r3 = Row1(FieldLabel("Destination address *  (where the truck goes)"), txtDestination);
             var r4 = Row2("Trip charge (PHP) *", numTripCharge, "Mode of payment *", cbPayment);
             // 2 Stops: the flexible table as it was, a little taller.
-            tableSection.Height = Px(300);
+            tableSection.Height = Px(210);
             tableSection.Padding = new Padding(0, 0, 0, Px(4));
             // 3 Truck & crew
             var r5 = Row2("Truck", cbTruck, "Driver", cbDriver);
             var lblAides = lblAidesRef ?? FieldLabel("Aides");
-            var r6 = Row1(lblAides, clbAides, Px(150));
+            var r6 = Row1(lblAides, clbAides, Px(110));
             // 4 Schedule & status
             var r7 = Row2("Dispatch date *", dtpDispatchDate, "Departure time *", cbDepartureTime);
             var r8 = Row2("Status", cbStatus);

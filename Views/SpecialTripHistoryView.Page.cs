@@ -11,6 +11,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     public partial class SpecialTripHistoryView
     {
         private SpecialTripFormDialog? pageForm;
+        private readonly System.Collections.Generic.List<Control> hiddenForForm = new();
 
         public bool FormIsOpenAndDirty => pageForm != null && !pageForm.IsDisposed && pageForm.HasUnsavedTyping;
         public void DiscardAndCloseForm() => pageForm?.CloseWithoutAsking();
@@ -55,10 +56,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 bool saved = dlg.IsSaved;
                 pageForm = null;
                 Controls.Remove(dlg);
+                foreach (var c in hiddenForForm) c.Visible = true; // the list comes back
+                hiddenForForm.Clear();
                 SetFullScreen(false);
                 if (saved) { try { LoadData(); } catch (Exception ex) { ErrLog.Swallowed(ex); } }
                 if (go != null) BeginInvoke(go);
             };
+            // Nov 6: the form takes the whole page (the list, its totals and toolbar are hidden until it closes).
+            hiddenForForm.Clear();
+            foreach (Control c in Controls) if (c.Visible) { hiddenForForm.Add(c); c.Visible = false; }
             Controls.Add(dlg);
             dlg.BringToFront();
             SetFullScreen(true);
