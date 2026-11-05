@@ -386,11 +386,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtTruckTimeOut = MakeTxt("");
             txtTruckTimeIn.PlaceholderText = "e.g. 2042 (24-hour)";
             txtTruckTimeOut.PlaceholderText = "e.g. 0139 (24-hour)";
-            txtDtrApprovedBy = MakeTxt("RAMIL MENDOZA");
+            txtDtrApprovedBy = MakeTxt("");
             txtReturnCheckedBy = MakeTxt("");
-            txtDtrPreparedBy = MakeTxt("XERXES RYAN MANRIQUE");
-            txtDrPreparedBy = MakeTxt("VINJOHN VILLAMOR");
-            txtDrCheckedBy = MakeTxt("JOE-EM FLORES");
+            txtDtrPreparedBy = MakeTxt("");
+            txtDrPreparedBy = MakeTxt("");
+            txtDrCheckedBy = MakeTxt("");
             txtGuardName = MakeTxt("");
 
             tblFooter.Controls.Add(MakeLbl("Truck time in"), 0, 0);
@@ -1027,8 +1027,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 if (dIdx >= 0) cbDelivery.SelectedIndex = dIdx;
 
-                txtArrivalTime.Text = string.IsNullOrEmpty(selectedTripReport.ArrivalTime) ? "10:00 AM" : selectedTripReport.ArrivalTime;
-                txtDepartureTime.Text = string.IsNullOrEmpty(selectedTripReport.DepartureTime) ? "11:30 AM" : selectedTripReport.DepartureTime;
+                txtArrivalTime.Text = selectedTripReport.ArrivalTime ?? "";
+                txtDepartureTime.Text = selectedTripReport.DepartureTime ?? "";
                 numDeliveredGCrates.Value = Math.Max(0, selectedTripReport.DeliveredGCrates);
                 numDeliveredECrates.Value = Math.Max(0, selectedTripReport.DeliveredECrates);
                 numReturnedGCrates.Value = Math.Max(0, selectedTripReport.ReturnedGCrates);
@@ -1039,11 +1039,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 txtRemarks.Text = selectedTripReport.Remarks;
                 if (txtTruckTimeIn != null) txtTruckTimeIn.Text = selectedTripReport.TruckTimeIn ?? "";
                 if (txtTruckTimeOut != null) txtTruckTimeOut.Text = selectedTripReport.TruckTimeOut ?? "";
-                if (txtDtrApprovedBy != null) txtDtrApprovedBy.Text = string.IsNullOrWhiteSpace(selectedTripReport.DtrApprovedBy) ? "RAMIL MENDOZA" : selectedTripReport.DtrApprovedBy;
+                if (txtDtrApprovedBy != null) txtDtrApprovedBy.Text = selectedTripReport.DtrApprovedBy ?? "";
                 if (txtReturnCheckedBy != null) txtReturnCheckedBy.Text = selectedTripReport.ReturnCheckedBy ?? "";
-                if (txtDtrPreparedBy != null) txtDtrPreparedBy.Text = string.IsNullOrWhiteSpace(selectedTripReport.DtrPreparedBy) ? "XERXES RYAN MANRIQUE" : selectedTripReport.DtrPreparedBy;
-                if (txtDrPreparedBy != null) txtDrPreparedBy.Text = string.IsNullOrWhiteSpace(selectedTripReport.DrPreparedBy) ? "VINJOHN VILLAMOR" : selectedTripReport.DrPreparedBy;
-                if (txtDrCheckedBy != null) txtDrCheckedBy.Text = string.IsNullOrWhiteSpace(selectedTripReport.DrCheckedBy) ? "JOE-EM FLORES" : selectedTripReport.DrCheckedBy;
+                if (txtDtrPreparedBy != null) txtDtrPreparedBy.Text = selectedTripReport.DtrPreparedBy ?? "";
+                if (txtDrPreparedBy != null) txtDrPreparedBy.Text = selectedTripReport.DrPreparedBy ?? "";
+                if (txtDrCheckedBy != null) txtDrCheckedBy.Text = selectedTripReport.DrCheckedBy ?? "";
                 if (txtGuardName != null) txtGuardName.Text = selectedTripReport.GuardName ?? "";
                 var del = allDeliveries.FirstOrDefault(d => d.Id == selectedTripReport.DeliveryId || d.DispatchNumber == selectedTripReport.DispatchNumber);
                 if (del != null) UpdateMultiDropTripInfo(del);
@@ -1093,7 +1093,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo} [{d.Status}] ({d.DriverName}){tag}");
                     }
                     int keepIdx = keepDispatch == null ? -1 : FindDeliveryItemIndex(keepDispatch);
-                    cbDelivery.SelectedIndex = keepIdx >= 0 ? keepIdx : 0;
+                    cbDelivery.SelectedIndex = keepIdx; // Nov 6: -1 (blank) unless a trip was already picked
                 }
 
                 isBindingForm = wasBinding;
@@ -1150,6 +1150,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     firstInvalid ??= numDeliveredGCrates;
                 }
 
+                foreach (var (bfMsg, bfField) in BlankFormChecks()) { valErrors.Add(bfMsg); firstInvalid ??= bfField; } // Nov 6: times and sign-off names are typed
                 if (!ValidationHelper.ShowValidationSummaryIfAny(this, valErrors, firstInvalid))
                 {
                     return;
@@ -1319,11 +1320,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     ReportDate = DateTime.Now,
                     TruckTimeIn = txtTruckTimeIn?.Text?.Trim() ?? "",
                     TruckTimeOut = txtTruckTimeOut?.Text?.Trim() ?? "",
-                    DtrApprovedBy = txtDtrApprovedBy?.Text?.Trim() ?? "RAMIL MENDOZA",
+                    DtrApprovedBy = txtDtrApprovedBy?.Text?.Trim() ?? "",
                     ReturnCheckedBy = txtReturnCheckedBy?.Text?.Trim() ?? "",
-                    DtrPreparedBy = txtDtrPreparedBy?.Text?.Trim() ?? "XERXES RYAN MANRIQUE",
-                    DrPreparedBy = txtDrPreparedBy?.Text?.Trim() ?? "VINJOHN VILLAMOR",
-                    DrCheckedBy = txtDrCheckedBy?.Text?.Trim() ?? "JOE-EM FLORES",
+                    DtrPreparedBy = txtDtrPreparedBy?.Text?.Trim() ?? "",
+                    DrPreparedBy = txtDrPreparedBy?.Text?.Trim() ?? "",
+                    DrCheckedBy = txtDrCheckedBy?.Text?.Trim() ?? "",
                     GuardName = txtGuardName?.Text?.Trim() ?? ""
                 };
 
@@ -1367,6 +1368,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                if (!PassBlankFormChecks()) return; // Nov 6
                 var selDel = allDeliveries.FirstOrDefault(d => d.Id == selectedTripReport.DeliveryId || d.DispatchNumber == selectedTripReport.DispatchNumber);
                 if (!ConfirmDrNumbers(selDel)) return;
                 if (!ConfirmIncompleteStoresTwice()) return;
@@ -1498,11 +1500,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedTripReport.Remarks = txtRemarks.Text.Trim();
                 selectedTripReport.TruckTimeIn = txtTruckTimeIn?.Text?.Trim() ?? "";
                 selectedTripReport.TruckTimeOut = txtTruckTimeOut?.Text?.Trim() ?? "";
-                selectedTripReport.DtrApprovedBy = txtDtrApprovedBy?.Text?.Trim() ?? "RAMIL MENDOZA";
+                selectedTripReport.DtrApprovedBy = txtDtrApprovedBy?.Text?.Trim() ?? "";
                 selectedTripReport.ReturnCheckedBy = txtReturnCheckedBy?.Text?.Trim() ?? "";
-                selectedTripReport.DtrPreparedBy = txtDtrPreparedBy?.Text?.Trim() ?? "XERXES RYAN MANRIQUE";
-                selectedTripReport.DrPreparedBy = txtDrPreparedBy?.Text?.Trim() ?? "VINJOHN VILLAMOR";
-                selectedTripReport.DrCheckedBy = txtDrCheckedBy?.Text?.Trim() ?? "JOE-EM FLORES";
+                selectedTripReport.DtrPreparedBy = txtDtrPreparedBy?.Text?.Trim() ?? "";
+                selectedTripReport.DrPreparedBy = txtDrPreparedBy?.Text?.Trim() ?? "";
+                selectedTripReport.DrCheckedBy = txtDrCheckedBy?.Text?.Trim() ?? "";
                 selectedTripReport.GuardName = txtGuardName?.Text?.Trim() ?? "";
 
                 if (selDel != null && stopsToSave.Count > 0)
@@ -1691,11 +1693,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void ClearFields()
         {
             selectedTripReport = null;
-            txtArrivalTime.Text = "10:30 AM";
-            txtDepartureTime.Text = "11:45 AM";
-            numDeliveredGCrates.Value = 150;
+            txtArrivalTime.Text = "";
+            txtDepartureTime.Text = "";
+            numDeliveredGCrates.Value = 0;
             numDeliveredECrates.Value = 0;
-            numReturnedGCrates.Value = 150;
+            numReturnedGCrates.Value = 0;
             numReturnedECrates.Value = 0;
             txtStoreManagerLastName.Text = "";
             txtStoreManagerFirstName.Text = "";
@@ -1703,13 +1705,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtRemarks.Text = "";
             if (txtTruckTimeIn != null) txtTruckTimeIn.Text = "";
             if (txtTruckTimeOut != null) txtTruckTimeOut.Text = "";
-            if (txtDtrApprovedBy != null) txtDtrApprovedBy.Text = "RAMIL MENDOZA";
+            if (txtDtrApprovedBy != null) txtDtrApprovedBy.Text = "";
             if (txtReturnCheckedBy != null) txtReturnCheckedBy.Text = "";
-            if (txtDtrPreparedBy != null) txtDtrPreparedBy.Text = "XERXES RYAN MANRIQUE";
-            if (txtDrPreparedBy != null) txtDrPreparedBy.Text = "VINJOHN VILLAMOR";
-            if (txtDrCheckedBy != null) txtDrCheckedBy.Text = "JOE-EM FLORES";
+            if (txtDtrPreparedBy != null) txtDtrPreparedBy.Text = "";
+            if (txtDrPreparedBy != null) txtDrPreparedBy.Text = "";
+            if (txtDrCheckedBy != null) txtDrCheckedBy.Text = "";
             if (txtGuardName != null) txtGuardName.Text = "";
-            if (cbDelivery.Items.Count > 0) cbDelivery.SelectedIndex = 0;
+            cbDelivery.SelectedIndex = -1; // Nov 6: no trip picked until the person picks one
             if (pnlMultiDropInfo != null) pnlMultiDropInfo.Visible = false;
             if (tripCrateSummary != null) tripCrateSummary.Visible = false; // shown again with the store table
             LoadCrewPay(null);

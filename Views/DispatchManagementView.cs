@@ -759,7 +759,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 // "+ Add order" always opens a blank order, never the row that happens to be selected in the list.
 
-                if (!pnlForm.Visible && selectedDelivery != null) ClearFields();
+                if (!pnlForm.Visible) ClearFields(); // Nov 6: a new order always opens blank
 
                 SetFormVisibility(!pnlForm.Visible);
 

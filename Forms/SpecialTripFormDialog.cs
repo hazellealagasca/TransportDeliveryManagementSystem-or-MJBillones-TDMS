@@ -311,7 +311,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbDepartureTime = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDown, Font = new Font("Segoe UI", 9.5F), Height = 30 };
             string[] times = { "06:00 AM", "07:00 AM", "08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM", "08:00 PM", "10:00 PM" };
             cbDepartureTime.Items.AddRange(times);
-            cbDepartureTime.Text = "08:00 AM";
+            cbDepartureTime.Text = "";
             pnlDeparture.Controls.Add(cbDepartureTime);
             pnlDeparture.Controls.Add(lblDep);
             tblHeaderFields.Controls.Add(pnlDeparture, 1, 1);
@@ -467,7 +467,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Label lblSvc = new Label { Text = "Service Type", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Location = new Point(0, 0), AutoSize = true };
             cbServiceType = new ComboBox { Location = new Point(0, 20), Size = new Size(420, 28), DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F) };
             cbServiceType.Items.AddRange(new object[] { "Dedicated / Special Delivery", "Non-Crate / Specialized Cargo", "Bulk / Boxed Goods", "Equipment / Oversized Cargo", "Fragile / High-Value Cargo", "Hotshot / Urgent Delivery", "Inter-Branch Transfer", "Event / Urgent Dispatch", "Return Trip" });
-            cbServiceType.SelectedIndex = 0;
+            cbServiceType.SelectedIndex = -1;
 
             Label lblStat = new Label { Text = "Status", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Location = new Point(0, 0), AutoSize = true };
             cbStatus = new ComboBox { Location = new Point(0, 20), Size = new Size(420, 28), DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F) };
@@ -844,8 +844,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtAddress.Text = string.Empty;
             txtDestination.Text = string.Empty;
             numTripCharge.Value = 0;
-            cbDepartureTime.Text = "08:00 AM";
-            cbServiceType.SelectedIndex = 0;
+            cbDepartureTime.Text = "";
+            cbServiceType.SelectedIndex = -1;
             cbStatus.SelectedIndex = 0;
 
             chkPaymentWithReport.Checked = false; // the checklist starts empty: tick what this trip needs
@@ -1200,6 +1200,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbCompany.Focus();
                 return;
             }
+            if (cbServiceType.SelectedIndex < 0 && (loadedTrip == null || string.IsNullOrWhiteSpace(loadedTrip.ServiceType))) { MessageBox.Show("Please choose the Service Type.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbServiceType.Focus(); return; } // Nov 6
 
             string depText = cbDepartureTime.Text.Trim();
             if (!System.Text.RegularExpressions.Regex.IsMatch(depText, @"^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
@@ -1262,6 +1263,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show("A collection is recorded against an invoice. Tick \"With Service Invoice\" or \"With SOA\" as well, so there is something to collect.", "Nothing to Collect Against", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 chkWithInvoice.Focus();
                 return;
+            }
+            // Nov 6: "With Service Invoice" asks for the typed SI No. when the trip has no invoice yet.
+            string? siNumber = null;
+            if (chkWithInvoice.Checked && !cancelling && (isNew || !MJdatabase.SpecialTripHasActiveInvoice(currentTripId)))
+            {
+                siNumber = NumberPrompt.Ask(this, "Service Invoice No.", $"\"With Service Invoice\" is ticked, so a service invoice is made for this trip (PHP {numTripCharge.Value:N2}).\nType its Service Invoice No. from the printed invoice:", "e.g. 2451", MJdatabase.SiNumberMaxLength, n => MJdatabase.CheckSiNumber(n));
+                if (siNumber == null) return;
             }
             SpecialTrip trip = new SpecialTrip
             {
@@ -1363,7 +1371,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     IsSaved = true;
 
                     // The checklist runs on every save (creates or updates the linked records once; never twice).
-                    var done = MJdatabase.SyncSpecialTripChecklist(trip, isNew ? null : loadedTrip);
+                    var done = MJdatabase.SyncSpecialTripChecklist(trip, isNew ? null : loadedTrip, siNumber);
                     string checklist = done.Count > 0 ? "\n\nChecklist:\n• " + string.Join("\n• ", done) : "";
                     MessageBox.Show(
                         $"Special Trip '{trip.OrderReference}' successfully {(isNew ? "created and saved" : "updated")}!\n\nStatus: {trip.Status}\nDestination: {trip.DestinationAddress}\nMode of Payment: {trip.ModeOfPayment}\nStops Configured: {trip.Stops.Count}{checklist}",

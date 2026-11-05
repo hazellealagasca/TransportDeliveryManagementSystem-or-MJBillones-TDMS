@@ -47,10 +47,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbDelivery.Items.Insert(0, $"{del.DispatchNumber} - {del.LoadingScheduleInfo} (Driver: {del.DriverName})");
                 cbDelivery.SelectedIndex = 0;
             }
-            if (string.IsNullOrWhiteSpace(txtInvoiceNumber.Text))
-            {
-                txtInvoiceNumber.Text = MJdatabase.GenerateNextInvoiceNumber();
-            }
         }
 
         public BillingView()
@@ -595,11 +591,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
 
                 string invNum = txtInvoiceNumber.Text.Trim();
-                if (string.IsNullOrWhiteSpace(invNum))
-                {
-                    invNum = MJdatabase.GenerateNextInvoiceNumber();
-                    txtInvoiceNumber.Text = invNum;
-                }
+                var siWhy = MJdatabase.CheckSiNumber(invNum, selectedInvoice?.Id ?? 0); // Nov 6: typed, required, never repeated
+                if (siWhy != null) { MessageBox.Show(siWhy, "Service Invoice No.", MessageBoxButtons.OK, MessageBoxIcon.Warning); txtInvoiceNumber.Focus(); return; }
 
                 var duplicateNum = existingInvoices.Find(i => (selectedInvoice == null || i.Id != selectedInvoice.Id) &&
                     !string.IsNullOrWhiteSpace(i.InvoiceNumber) && i.InvoiceNumber.Equals(invNum, StringComparison.OrdinalIgnoreCase));
@@ -674,6 +667,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     txtInvoiceNumber.Focus();
                     return;
                 }
+                { var siWhy2 = MJdatabase.CheckSiNumber(invNum, selectedInvoice.Id); if (siWhy2 != null) { MessageBox.Show(siWhy2, "Service Invoice No.", MessageBoxButtons.OK, MessageBoxIcon.Warning); txtInvoiceNumber.Focus(); return; } } // Nov 6
 
                 var existingInvoices = MJdatabase.GetInvoices();
                 var duplicateNum = existingInvoices.Find(i => i.Id != selectedInvoice.Id &&

@@ -235,7 +235,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbDepartureTime.Name = "cbDepartureTime";
             cbDepartureTime.Size = new Size(165, 25);
             cbDepartureTime.TabIndex = 0;
-            cbDepartureTime.Text = "08:00 AM";
+            cbDepartureTime.Text = "";
 
             btnPickAnalogTime.Cursor = Cursors.Hand;
             btnPickAnalogTime.Dock = DockStyle.Right;
@@ -474,7 +474,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numGCrate.Name = "numGCrate";
             numGCrate.Size = new Size(129, 25);
             numGCrate.TabIndex = 3;
-            numGCrate.Value = new decimal(new int[] { 150, 0, 0, 0 });
 
             numECrate.Dock = DockStyle.Fill;
             numECrate.Font = new Font("Segoe UI", 9F);
@@ -496,7 +495,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtTotalCrates.ReadOnly = true;
             txtTotalCrates.Size = new Size(130, 25);
             txtTotalCrates.TabIndex = 5;
-            txtTotalCrates.Text = "150 Crates";
+            txtTotalCrates.Text = "0 Crates";
             txtTotalCrates.TextAlign = HorizontalAlignment.Center;
 
             tblCargoPeak.AutoSize = true;

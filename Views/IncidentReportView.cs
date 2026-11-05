@@ -348,7 +348,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo} [{d.Status}]");
                 }
-                if (cbDelivery.Items.Count > 0) cbDelivery.SelectedIndex = 0;
+                cbDelivery.SelectedIndex = -1; // Nov 6: blank until picked
 
                 FilterGridData();
 
@@ -559,9 +559,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void ClearForm()
         {
             selectedIncident = null;
-            if (cbDelivery.Items.Count > 0) cbDelivery.SelectedIndex = 0;
-            numDamagedQty.Value = 2;
-            numEstimatedCost.Value = 1500;
+            cbDelivery.SelectedIndex = -1; // Nov 6: blank until picked
+            numDamagedQty.Value = numDamagedQty.Minimum;
+            numEstimatedCost.Value = numEstimatedCost.Minimum;
             txtCause.Text = "";
             chkChargeable.Checked = false;
             txtDescription.Text = "";

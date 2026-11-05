@@ -231,7 +231,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtArrivalTime.Name = "txtArrivalTime";
             this.txtArrivalTime.Size = new System.Drawing.Size(178, 24);
             this.txtArrivalTime.TabIndex = 0;
-            this.txtArrivalTime.Text = "10:30 AM";
+            this.txtArrivalTime.Text = "";
 
             this.btnPickArrival.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnPickArrival.Dock = System.Windows.Forms.DockStyle.Right;
@@ -261,7 +261,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtDepartureTime.Name = "txtDepartureTime";
             this.txtDepartureTime.Size = new System.Drawing.Size(178, 24);
             this.txtDepartureTime.TabIndex = 0;
-            this.txtDepartureTime.Text = "11:45 AM";
+            this.txtDepartureTime.Text = "";
 
             this.btnPickDeparture.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnPickDeparture.Dock = System.Windows.Forms.DockStyle.Right;
@@ -322,7 +322,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.numDeliveredGCrates.Name = "numDeliveredGCrates";
             this.numDeliveredGCrates.Size = new System.Drawing.Size(214, 24);
             this.numDeliveredGCrates.TabIndex = 2;
-            this.numDeliveredGCrates.Value = new decimal(new int[] { 150, 0, 0, 0 });
 
             this.numDeliveredECrates.Dock = System.Windows.Forms.DockStyle.Fill;
             this.numDeliveredECrates.Font = new System.Drawing.Font("Segoe UI", 9.5F);
@@ -380,7 +379,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.numReturnedGCrates.Name = "numReturnedGCrates";
             this.numReturnedGCrates.Size = new System.Drawing.Size(214, 24);
             this.numReturnedGCrates.TabIndex = 2;
-            this.numReturnedGCrates.Value = new decimal(new int[] { 150, 0, 0, 0 });
 
             this.numReturnedECrates.Dock = System.Windows.Forms.DockStyle.Fill;
             this.numReturnedECrates.Font = new System.Drawing.Font("Segoe UI", 9.5F);

@@ -129,7 +129,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             OpenNewRecordForm();
             int idx = completedDeliveries.FindIndex(x => x.Id == d.Id);
             if (idx >= 0 && idx < cbDelivery.Items.Count) cbDelivery.SelectedIndex = idx;
-            if (string.IsNullOrWhiteSpace(txtInvoiceNumber.Text)) txtInvoiceNumber.Text = MJdatabase.GenerateNextInvoiceNumber();
             UpdateBillGuide();
         }
         private Delivery? SelectedBillDelivery() => cbDelivery.SelectedIndex >= 0 && cbDelivery.SelectedIndex < completedDeliveries.Count ? completedDeliveries[cbDelivery.SelectedIndex] : null;

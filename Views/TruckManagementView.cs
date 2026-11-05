@@ -440,6 +440,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 string? truckType = CommitCategoryFromForm(capacity);
                 if (truckType == null) return;
+                if (cbCargoType.SelectedIndex < 0) { MessageBox.Show("Please choose the cargo type (Cold / Chilled, Dry Goods or Combi).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbCargoType.Focus(); return; } // Nov 6
                 capacity = MJdatabase.LockedCapacity(truckType, cbCargoType.SelectedItem?.ToString(), capacity);
                 Truck truck = new Truck
                 {
@@ -528,6 +529,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 bool statusChanged = !string.Equals(oldStatus.Trim(), newStatus.Trim(), StringComparison.OrdinalIgnoreCase);
                 string statusReason = "";
                 if (statusChanged && !AskStatusReason(selectedTruck, oldStatus, newStatus, out statusReason)) return;
+                if (cbCargoType.SelectedIndex < 0) { MessageBox.Show("Please choose the cargo type (Cold / Chilled, Dry Goods or Combi).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbCargoType.Focus(); return; } // Nov 6
                 capacity = MJdatabase.LockedCapacity(truckType, cbCargoType.SelectedItem?.ToString(), capacity);
                 selectedTruck.PlateNumber = plateNumber;
                 selectedTruck.TruckType = truckType;
@@ -714,9 +716,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtPlate.Text = "";
             cbType.SelectedIndex = -1;
             cbType.Text = "";
-            numCapacity.Value = 300;
+            numCapacity.Value = numCapacity.Minimum;
             cbStatus.SelectedIndex = 0;
-            cbCargoType.SelectedIndex = 0;
+            cbCargoType.SelectedIndex = -1;
             txtRemarks.Text = "";
             lblFormHeader.Text = "Truck Vehicle Details";
             SetButtonStates(false);
@@ -749,7 +751,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     cbCargoType.Items.AddRange(new object[] { "Cold / Chilled", "Dry Goods", "Combi (Cold + Dry)" });
                 }
-                if (cbCargoType.SelectedIndex < 0) cbCargoType.SelectedIndex = 0;
+                // Nov 6: cargo type starts blank; it is required on save.
 
                 if (cbStatus.Items.Count == 0)
                 {

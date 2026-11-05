@@ -11157,7 +11157,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        inv.InvoiceNumber = GenerateNextInvoiceNumber();
+                        throw new InvalidOperationException("Type the Service Invoice No. before saving. It is not made by the system."); // Nov 6
 
                     }
 
@@ -14843,6 +14843,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static void SaveFormDraft(string moduleKey, string userKey, string draftData)
 
         {
+            if (DraftsOff) return; // Nov 6: drafts are no longer kept
 
             if (string.IsNullOrWhiteSpace(moduleKey)) return;
 
@@ -14891,6 +14892,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static (string Data, DateTime LastSaved)? GetFormDraft(string moduleKey, string userKey)
 
         {
+            if (DraftsOff) return null; // Nov 6: drafts are no longer kept
 
             if (string.IsNullOrWhiteSpace(moduleKey)) return null;
 

@@ -308,7 +308,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.numRate.Size = new System.Drawing.Size(432, 24);
             this.numRate.TabIndex = 9;
             this.numRate.ThousandsSeparator = true;
-            this.numRate.Value = new decimal(new int[] { 8500, 0, 0, 0 });
 
             this.btnSave.BackColor = System.Drawing.Color.FromArgb(37, 99, 235);
             this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;

@@ -464,11 +464,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbClient = new ComboBox { DropDownStyle = ComboBoxStyle.DropDown, Font = new Font("Segoe UI", 10F) };
             cbClient.SelectedIndexChanged += (s, e) => { if (!isBindingForm) AutoFillClientDetails(); SchedulePickerRefresh(); };
             cbClient.TextChanged += (s, e) => SchedulePickerRefresh();
-            txtClientAddress = new TextBox { Font = new Font("Segoe UI", 10F), Text = "BCS CMPD., ALCANTARA ST., VIGAN CITY, ILOCOS SUR" };
-            txtClientTin = new TextBox { Font = new Font("Segoe UI", 10F), Text = "006-896-371-000" };
+            txtClientAddress = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };
+            txtClientTin = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };
             cbDeliveryType = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 10F) };
             cbDeliveryType.Items.AddRange(new object[] { "REF", "DRY" });
-            cbDeliveryType.SelectedIndex = 0;
+            cbDeliveryType.SelectedIndex = -1;
             dtpIssueDate = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Font = new Font("Segoe UI", 10F) };
             var pnlDates = new TableLayoutPanel { Height = Dpi(30), ColumnCount = 3, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             pnlDates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -695,9 +695,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             taxLayout.Controls.Add(totalBox, 1, 0);
             // ---------------- Sign-off
             txtSalesInvoiceNo = new TextBox { Font = new Font("Segoe UI Semibold", 10F), Text = "" };
-            txtPreparedBy = new TextBox { Font = new Font("Segoe UI", 10F), Text = "Marie Ann J. Billones" };
-            txtReceivedBy1 = new TextBox { Font = new Font("Segoe UI", 10F), Text = "Ma'am Monette Rubonal" };
-            txtReceivedBy2 = new TextBox { Font = new Font("Segoe UI", 10F), Text = "Ma'am Francis Pauline Rodillas" };
+            txtPreparedBy = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };
+            txtReceivedBy1 = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };
+            txtReceivedBy2 = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };
             var gridSign = CreateFieldGrid(2,
                 ("Sales invoice no. (SI no.)", txtSalesInvoiceNo), ("Prepared by (billing officer)", txtPreparedBy),
                 ("Received by 1 (client accountant)", txtReceivedBy1), ("Received by 2 (client accountant)", txtReceivedBy2));
@@ -1200,9 +1200,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             cbDeliveryType.SelectedItem = string.IsNullOrEmpty(soa.DeliveryType) ? "REF" : soa.DeliveryType;
             txtSalesInvoiceNo.Text = soa.SalesInvoiceNo;
-            txtPreparedBy.Text = string.IsNullOrEmpty(soa.PreparedBy) ? "Marie Ann J. Billones" : soa.PreparedBy;
-            txtReceivedBy1.Text = string.IsNullOrEmpty(soa.ReceivedBy1) ? "Ma'am Monette Rubonal" : soa.ReceivedBy1;
-            txtReceivedBy2.Text = string.IsNullOrEmpty(soa.ReceivedBy2) ? "Ma'am Francis Pauline Rodillas" : soa.ReceivedBy2;
+            txtPreparedBy.Text = soa.PreparedBy ?? "";
+            txtReceivedBy1.Text = soa.ReceivedBy1 ?? "";
+            txtReceivedBy2.Text = soa.ReceivedBy2 ?? "";
 
             numTotalSales.Value = Math.Min(numTotalSales.Maximum, Math.Max(numTotalSales.Minimum, soa.TotalSalesVatInc));
             numVat.Value = Math.Min(numVat.Maximum, Math.Max(numVat.Minimum, soa.VatAmount));
@@ -1230,15 +1230,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             selectedSoa = null;
             txtSoaNumber.Text = MJdatabase.GenerateNextSoaNumber();
-            cbClient.SelectedItem = "MORE THAN CAKES, INC.";
-            AutoFillClientDetails();
+            cbClient.SelectedIndex = -1; cbClient.Text = ""; txtClientAddress.Text = ""; txtClientTin.Text = ""; // Nov 6: blank until a client is picked
             dtpIssueDate.Value = DateTime.Today;
-            cbDeliveryType.SelectedIndex = 0;
+            cbDeliveryType.SelectedIndex = -1;
             gridItems.Rows.Clear();
             txtSalesInvoiceNo.Text = "";
-            txtPreparedBy.Text = "Marie Ann J. Billones";
-            txtReceivedBy1.Text = "Ma'am Monette Rubonal";
-            txtReceivedBy2.Text = "Ma'am Francis Pauline Rodillas";
+            txtPreparedBy.Text = "";
+            txtReceivedBy1.Text = "";
+            txtReceivedBy2.Text = "";
             numTotalSales.Value = 0;
             numVat.Value = 0;
             numNetOfVat.Value = 0;
@@ -1430,6 +1429,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     MessageBox.Show("Please select or enter the client company name.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
+                if (cbDeliveryType.SelectedIndex < 0) { MessageBox.Show("Please choose the delivery type (REF or DRY).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbDeliveryType.Focus(); return; } // Nov 6
+                if (string.IsNullOrWhiteSpace(txtPreparedBy.Text)) { MessageBox.Show("Please type who prepared this statement (Prepared by).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); txtPreparedBy.Focus(); return; }
 
                 if (gridItems.Rows.Count == 0)
                 {

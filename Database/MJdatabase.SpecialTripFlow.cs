@@ -314,7 +314,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// </list>
         /// Returns what was done, in plain words, for the save message.
         /// </summary>
-        public static List<string> SyncSpecialTripChecklist(SpecialTrip trip, SpecialTrip? before)
+        public static List<string> SyncSpecialTripChecklist(SpecialTrip trip, SpecialTrip? before, string? siNumber = null)
         {
             var notes = new List<string>();
             if (trip == null || trip.Id <= 0) return notes;
@@ -328,11 +328,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (trip.WithServiceInvoice && !cancelled)
                 {
-                    if (inv == null)
+                    if (inv == null && string.IsNullOrWhiteSpace(siNumber))
                     {
-                        string number = "INV-" + trip.OrderReference;
-                        if (GetInvoices().Any(i => string.Equals(i.InvoiceNumber, number, StringComparison.OrdinalIgnoreCase)))
-                            number = $"INV-{trip.OrderReference}-{DateTime.Now:HHmmss}";
+                        notes.Add("Service invoice not made yet: no Service Invoice No. was typed. Make it in Billing and type its SI No."); // Nov 6
+                    }
+                    else if (inv == null)
+                    {
+                        string number = siNumber!.Trim();
+                        var siWhy = CheckSiNumber(number);
+                        if (siWhy != null) throw new InvalidOperationException(siWhy);
                         var created = new Invoice
                         {
                             InvoiceNumber = number,

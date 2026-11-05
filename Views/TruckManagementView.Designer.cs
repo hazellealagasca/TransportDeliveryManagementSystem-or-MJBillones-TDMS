@@ -195,11 +195,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numCapacity.Location = new Point(16, 188);
             numCapacity.Margin = new Padding(0, 0, 0, 8);
             numCapacity.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
-            numCapacity.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
+            numCapacity.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
             numCapacity.Name = "numCapacity";
             numCapacity.Size = new Size(436, 29);
             numCapacity.TabIndex = 4;
-            numCapacity.Value = new decimal(new int[] { 300, 0, 0, 0 });
             lblCap.AutoSize = true;
             lblCap.Dock = DockStyle.Top;
             lblCap.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);

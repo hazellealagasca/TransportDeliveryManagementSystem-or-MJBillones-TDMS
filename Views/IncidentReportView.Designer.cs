@@ -207,7 +207,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.numDamagedQty.Name = "numDamagedQty";
             this.numDamagedQty.Size = new System.Drawing.Size(262, 24);
             this.numDamagedQty.TabIndex = 1;
-            this.numDamagedQty.Value = new decimal(new int[] { 2, 0, 0, 0 });
 
             this.pnlCost.Controls.Add(this.numEstimatedCost);
             this.pnlCost.Controls.Add(this.lblCost);
@@ -238,7 +237,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.numEstimatedCost.Size = new System.Drawing.Size(268, 24);
             this.numEstimatedCost.TabIndex = 1;
             this.numEstimatedCost.ThousandsSeparator = true;
-            this.numEstimatedCost.Value = new decimal(new int[] { 1500, 0, 0, 0 });
 
             this.lblCause.AutoSize = true;
             this.lblCause.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);

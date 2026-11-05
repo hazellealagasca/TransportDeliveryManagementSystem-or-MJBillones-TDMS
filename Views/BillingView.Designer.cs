@@ -139,14 +139,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblInvoiceNumber.Padding = new System.Windows.Forms.Padding(0, 3, 0, 4);
             this.lblInvoiceNumber.Size = new System.Drawing.Size(185, 23);
             this.lblInvoiceNumber.TabIndex = 0;
-            this.lblInvoiceNumber.Text = "Invoice / Billing Reference # *:";
+            this.lblInvoiceNumber.Text = "Service Invoice No. *";
 
             this.txtInvoiceNumber.Dock = System.Windows.Forms.DockStyle.Top;
             this.txtInvoiceNumber.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.txtInvoiceNumber.Location = new System.Drawing.Point(16, 27);
             this.txtInvoiceNumber.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
             this.txtInvoiceNumber.Name = "txtInvoiceNumber";
-            this.txtInvoiceNumber.PlaceholderText = "e.g. INV-20261001-0001 or SI-0668";
+            this.txtInvoiceNumber.PlaceholderText = "Type the SI No. from the printed invoice (e.g. 2451)";
             this.txtInvoiceNumber.Size = new System.Drawing.Size(378, 27);
             this.txtInvoiceNumber.TabIndex = 1;
 
@@ -275,7 +275,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.numTotalAmount.Size = new System.Drawing.Size(214, 25);
             this.numTotalAmount.TabIndex = 1;
             this.numTotalAmount.ThousandsSeparator = true;
-            this.numTotalAmount.Value = new decimal(new int[] { 8500, 0, 0, 0 });
             this.numTotalAmount.ValueChanged += new System.EventHandler(this.RecalculateNet);
             this.pnlDedCol.AutoSize = true;
             this.pnlDedCol.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;

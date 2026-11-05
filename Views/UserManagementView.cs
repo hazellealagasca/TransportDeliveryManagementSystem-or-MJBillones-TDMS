@@ -387,6 +387,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                if (string.IsNullOrWhiteSpace(cbRole.Text)) { MessageBox.Show("Please choose the user's role.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbRole.Focus(); return; } // Nov 6
                 string fullName = NameHelper.FormatFullName(lastName, firstName, middleName);
 
                 string contact = txtContact.Text.Trim();
@@ -508,6 +509,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                if (string.IsNullOrWhiteSpace(cbRole.Text)) { MessageBox.Show("Please choose the user's role.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbRole.Focus(); return; } // Nov 6
                 string fullName = NameHelper.FormatFullName(lastName, firstName, middleName);
 
                 string contact = txtContact.Text.Trim();
@@ -712,7 +714,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtUsername.Text = "";
             txtPassword.Text = "";
             chkShowPassword.Checked = false;
-            cbRole.SelectedIndex = 0;
+            cbRole.SelectedIndex = -1;
             txtLastName.Text = "";
             txtFirstName.Text = "";
             txtMiddleName.Text = "";
@@ -733,7 +735,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 allUsers = MJdatabase.GetUsers();
                 FilterGridData();
-                if (cbRole.Items.Count > 0 && cbRole.SelectedIndex < 0) cbRole.SelectedIndex = 0;
+                // Nov 6: the role starts blank; it is required on save.
             }
             catch (Exception ex)
             { ErrLog.Error("UserManagementView", ex); 

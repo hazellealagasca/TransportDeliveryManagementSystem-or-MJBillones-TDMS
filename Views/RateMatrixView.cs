@@ -800,9 +800,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 clbDestinations.SetItemChecked(i, false);
             }
             UpdateMultiCount();
-            cbTruckType.Text = "Refrigerated Van";
+            cbTruckType.SelectedIndex = -1; cbTruckType.Text = "";
             chkPeak.Checked = false;
-            numRate.Value = 8500;
+            numRate.Value = numRate.Minimum;
         }
 
         private void LoadRates()
