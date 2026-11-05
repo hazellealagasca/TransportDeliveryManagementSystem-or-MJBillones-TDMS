@@ -287,7 +287,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 c.CommandText = "SELECT sql FROM sqlite_master WHERE type='table' AND name='CollectionReceipts'";
                 createSql = Convert.ToString(c.ExecuteScalar()) ?? "";
             }
-            var uniqueRx = new System.Text.RegularExpressions.Regex(@"(ReceiptNumber\s+TEXT)\s+UNIQUE", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var uniqueRx = new System.Text.RegularExpressions.Regex(@"ReceiptNumber\s+TEXT\s+(NOT\s+NULL\s+UNIQUE|UNIQUE\s+NOT\s+NULL|UNIQUE)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             if (!uniqueRx.IsMatch(createSql)) { receiptSchemaChecked = true; return; }
 
             string backup = Path.Combine(Path.GetDirectoryName(dbFilePath) ?? ".", "Backups", $"before_one_receipt_per_soa_{DateTime.Now:yyyyMMdd_HHmmss}.db");
@@ -303,7 +303,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 using var r = c.ExecuteReader();
                 while (r.Read()) indexSql.Add(r.GetString(0));
             }
-            string newSql = uniqueRx.Replace(createSql, "$1", 1);
+            string newSql = uniqueRx.Replace(createSql, "ReceiptNumber TEXT NOT NULL", 1);
             newSql = System.Text.RegularExpressions.Regex.Replace(newSql, @"CREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?""?CollectionReceipts""?", "CREATE TABLE CollectionReceipts_new", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             string colList = string.Join(", ", cols.Select(x => "\"" + x + "\""));
             int before, after;
@@ -355,12 +355,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             using (var conn = new SqliteConnection(connectionString))
             {
                 conn.Open();
-                bool hasVoidReason = false;
+                bool hasVoidReason = false, hasVoidedAt = false;
                 using (var c0 = conn.CreateCommand())
                 {
                     c0.CommandText = "PRAGMA table_info(CollectionReceipts)";
                     using var r0 = c0.ExecuteReader();
-                    while (r0.Read()) if (r0.GetString(1).Equals("VoidReason", StringComparison.OrdinalIgnoreCase)) hasVoidReason = true;
+                    while (r0.Read()) { string cn = r0.GetString(1); if (cn.Equals("VoidReason", StringComparison.OrdinalIgnoreCase)) hasVoidReason = true; if (cn.Equals("VoidedAt", StringComparison.OrdinalIgnoreCase)) hasVoidedAt = true; }
                 }
                 using var tx = conn.BeginTransaction();
                 try
@@ -373,7 +373,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                     // 1. Renumber receipts that are not 4–8 digits, in date order, from 0001 (skipping numbers already used).
                     var all = new List<(int Id, string No, string Date, string Notes, int InvoiceId)>();
-                    using (var c = Cmd("SELECT Id, ReceiptNumber, PaymentDate, COALESCE(Notes,''), InvoiceId FROM CollectionReceipts ORDER BY PaymentDate, Id"))
+                    using (var c = Cmd("SELECT Id, ReceiptNumber, PaymentDate, COALESCE(Notes,''), InvoiceId FROM CollectionReceipts WHERE COALESCE(IsVoid,0) = 0 ORDER BY PaymentDate, Id"))
                     using (var r = c.ExecuteReader())
                         while (r.Read()) all.Add((r.GetInt32(0), r.GetString(1).Trim(), r.GetString(2), r.GetString(3), r.GetInt32(4)));
                     var used = new HashSet<string>(all.Where(a => System.Text.RegularExpressions.Regex.IsMatch(a.No, @"^\d{4,8}$")).Select(a => a.No.TrimStart('0')));
@@ -416,8 +416,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             log.Add(("CollectionReceipts", first.Id, first.No, "AmountPaid", first.Amt.ToString("N2"), total.ToString("N2"), "Nov 6 cleanup: one receipt per invoice; SI-1001's receipts merged into the first"));
                             foreach (var x in rs.Skip(1))
                             {
-                                using (var c = Cmd("UPDATE CollectionReceipts SET IsVoid=1" + (hasVoidReason ? ", VoidReason=@why" : "") + ", Notes=@n WHERE Id=@id",
-                                    ("@why", "merged"), ("@n", (x.Notes.Length > 0 ? x.Notes + " | " : "") + $"Voided: merged into receipt {first.No}"), ("@id", x.Id))) c.ExecuteNonQuery();
+                                using (var c = Cmd("UPDATE CollectionReceipts SET IsVoid=1" + (hasVoidReason ? ", VoidReason=@why" : "") + (hasVoidedAt ? ", VoidedAt=@at, VoidedBy=@by" : "") + ", Notes=@n WHERE Id=@id",
+                                    ("@why", "merged"), ("@at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")), ("@by", "Nov 6 cleanup (merged)"), ("@n", (x.Notes.Length > 0 ? x.Notes + " | " : "") + $"Voided: merged into receipt {first.No}"), ("@id", x.Id))) c.ExecuteNonQuery();
                                 log.Add(("CollectionReceipts", x.Id, x.No, "IsVoid", "0", "1", $"Nov 6 cleanup: merged into receipt {first.No} (reason: merged)"));
                             }
                             touchedInvoices.Add(si1001);

@@ -121,8 +121,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 $"{d.DispatchNumber}  ·  {d.ClientName}  ·  {d.DispatchDate:MMM d}   ▸ Invoice",
                 $"Opens a new invoice filled from dispatch {d.DispatchNumber} ({d.CleanRouteDisplay}). Nothing is saved until you issue it.",
                 (Action)(() => StartInvoiceFor(d)))).ToList();
-            billReady.SetItems($"{completedDeliveries.Count} completed trip{(completedDeliveries.Count == 1 ? "" : "s")} ready to invoice (not on a statement):",
-                "No completed trips are waiting for a direct invoice. Trips billed on a statement of account get their invoice from the statement.", items, 4);
+            billReady.SetItems($"{completedDeliveries.Count} completed trip{(completedDeliveries.Count == 1 ? "" : "s")} waiting for their service invoice:",
+                "No completed trips are waiting for their service invoice. Each trip gets its own service invoice here (type its SI No.); statements then group those invoices.", items, 4);
         }
         private void StartInvoiceFor(Delivery d)
         {
@@ -229,7 +229,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     // A statement's invoice must match the statement; change the amounts on the SOA instead.
                     bool same = Math.Abs(numTotalAmount.Value - selectedInvoice.TotalAmount) < 0.005m && Math.Abs(numDeductions.Value - selectedInvoice.Deductions) < 0.005m;
-                    checks.Add(new PaymentCheck(same ? "Amounts match its statement of account" : "This invoice comes from a statement — change its amounts on the Statement of Account, not here", same));
+                    checks.Add(new PaymentCheck(same ? "Amounts match its statement of account" : "This invoice is on a statement - its amounts can't change while it is on one (take its trip off the Statement of Account first)", same));
                 }
                 else if (selectedInvoice.DeliveryId <= 0 && string.IsNullOrWhiteSpace(selectedInvoice.DispatchNumber)) // special-trip invoices carry their ST- number
                     checks.Add(new PaymentCheck("This invoice bills no trip — a direct invoice needs a completed (or chargeable cancelled) trip", false));
