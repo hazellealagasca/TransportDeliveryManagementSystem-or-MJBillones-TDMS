@@ -1886,6 +1886,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 2, 4, 2)
             };
             btnAddStoreRow.FlatAppearance.BorderSize = 0;
+            btnAddStoreRow.Paint += (s, e) => { }; // keep its emerald colour (the app theme leaves buttons with a paint handler alone)
             btnAddStoreRow.Click += (s, e) => AddStoreBreakdownRow();
 
             btnEditStoreTable = new Button
@@ -2137,7 +2138,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             // Rule 16d: row type badge first, and a hidden flag (true = store from the order's route, locked).
-            var colType = new DataGridViewTextBoxColumn { Name = "colRowType", HeaderText = "Row Type", FillWeight = 105, MinimumWidth = Dpi(150), ReadOnly = true };
+            var colType = new DataGridViewTextBoxColumn { Name = "colRowType", HeaderText = "Row Type", FillWeight = 150, MinimumWidth = Dpi(LargePrint.Px(250, 170)), ReadOnly = true };
             colType.DefaultCellStyle.Font = LargePrint.Bold(10F, 8F);
             colType.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             gridRouteStores.Columns.Add(colType);
@@ -6411,7 +6412,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AutoCompleteMode = AutoCompleteMode.SuggestAppend,
                 AutoCompleteSource = AutoCompleteSource.ListItems,
                 Font = LargePrint.Bold(14F, 9.5F),
-                Width = Dpi(330),
+                Width = Dpi(LargePrint.Px(500, 360)),
                 Margin = new Padding(0, 0, Dpi(6), 0),
                 IntegralHeight = false,
                 MaxDropDownItems = 12

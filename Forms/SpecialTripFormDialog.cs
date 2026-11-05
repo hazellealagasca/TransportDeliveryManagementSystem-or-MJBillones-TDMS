@@ -492,6 +492,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 void Paint()
                 {
                     bool on = cb.Checked;
+                    // The theme sweep resizes and re-fonts check boxes: put the card's size and font back each time.
+                    cb.AutoSize = false;
+                    cb.Size = new Size(394, LargePrint.Px(44, 30));
+                    cb.Font = LargePrint.Bold(13F, 10.5F);
                     cb.Text = (on ? "[ ✔ ]  " : "[    ]  ") + (string)cb.Tag!;
                     cb.BackColor = on ? AppTheme.Success : AppTheme.SurfaceAlt;
                     cb.ForeColor = on ? AppTheme.BestTextOn(AppTheme.Success) : AppTheme.TextPrimary;
@@ -537,6 +541,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbPayment.Items.AddRange(PaymentModes.Cast<object>().ToArray());
             cbPayment.SelectedIndex = -1;
             cbPayment.SelectedIndexChanged += (s, e) => UpdateChecklistNote();
+            // Rule 16a: the theme re-fonts inputs when the form opens; set the large fonts again once it is shown.
+            Shown += (s, e) => { txtDestination.Font = LargePrint.Semibold(14F, 10F); cbPayment.Font = LargePrint.Bold(14F, 9.5F); cbPayment.ItemHeight = LargePrint.Px(34, 22); foreach (var cb in new[] { chkPaymentWithReport, chkWithSOA, chkWithInvoice, chkWithCollection }) { cb.AutoSize = false; cb.Size = new Size(394, LargePrint.Px(44, 30)); cb.Font = LargePrint.Bold(13F, 10.5F); } };
             lblSvc.Dispose();
             pnlLeftBlock.Controls.Add(lblStat);
             pnlLeftBlock.Controls.Add(cbStatus);

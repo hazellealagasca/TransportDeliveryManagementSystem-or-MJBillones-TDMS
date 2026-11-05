@@ -96,8 +96,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridAssign.ReadOnly = false;
             gridAssign.Columns.Add(new DataGridViewCheckBoxColumn { Name = "colOn", HeaderText = "✔", FillWeight = 20 });
             gridAssign.Columns.Add(new DataGridViewTextBoxColumn { Name = "colCode", HeaderText = "Store Code", FillWeight = 55, ReadOnly = true });
-            gridAssign.Columns.Add(new DataGridViewTextBoxColumn { Name = "colName", HeaderText = "Store Name", FillWeight = 120, ReadOnly = true });
-            gridAssign.Columns.Add(new DataGridViewTextBoxColumn { Name = "colTag", HeaderText = "Status", FillWeight = 80, ReadOnly = true });
+            gridAssign.Columns.Add(new DataGridViewTextBoxColumn { Name = "colName", HeaderText = "Store Name", FillWeight = 110, ReadOnly = true });
+            gridAssign.Columns.Add(new DataGridViewTextBoxColumn { Name = "colTag", HeaderText = "Status", FillWeight = 125, MinimumWidth = 230, ReadOnly = true });
             gridAssign.CurrentCellDirtyStateChanged += (s, e) => { if (gridAssign.IsCurrentCellDirty) gridAssign.CommitEdit(DataGridViewDataErrorContexts.Commit); };
             gridAssign.CellValueChanged += (s, e) => { if (!binding && e.RowIndex >= 0 && gridAssign.Columns[e.ColumnIndex].Name == "colOn") ToggleStore(e.RowIndex); };
             gridAssign.CellFormatting += (s, e) =>
@@ -138,6 +138,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             var b = new Button { Dock = DockStyle.Fill, Text = text, FlatStyle = FlatStyle.Flat, Font = LargePrint.Bold(14F, 10.5F), Cursor = Cursors.Hand, Margin = new Padding(0), UseMnemonic = false, TextAlign = ContentAlignment.MiddleCenter };
             b.FlatAppearance.BorderSize = 0;
+            b.FlatAppearance.MouseOverBackColor = Color.Empty;
             b.Paint += (s, e) =>
             {
                 if (!(b.Tag is bool active) || !active) return;
@@ -155,6 +156,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             var b = new Button { Text = text, AutoSize = true, FlatStyle = FlatStyle.Flat, Font = LargePrint.Bold(13F, 10F), BackColor = back, ForeColor = AppTheme.BestTextOn(back), Cursor = Cursors.Hand, MinimumSize = new Size(0, D(LargePrint.Px(40, 30))), Padding = new Padding(D(10), 0, D(10), 0), UseMnemonic = false };
             b.FlatAppearance.BorderSize = 0;
+            b.Paint += (s, e) => { }; // own colours: the app theme leaves buttons with a paint handler alone
             return b;
         }
         private DataGridView NewGrid()
@@ -166,6 +168,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void StyleGrid(DataGridView? g)
         {
             if (g == null) return;
+            if (!g.IsHandleCreated) { g.HandleCreated += (s, e) => g.BeginInvoke(new Action(() => StyleGrid(g))); g.DataBindingComplete += (s, e) => { foreach (DataGridViewRow r in g.Rows) r.Height = D(LargePrint.Px(42, 30)); }; }
             g.BackgroundColor = AppTheme.Surface;
             g.GridColor = AppTheme.BorderStrong;
             g.RowTemplate.Height = D(LargePrint.Px(42, 30));
@@ -190,7 +193,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (var (b, on) in new[] { (tab1, n == 1), (tab2, n == 2) })
             {
                 b.Tag = on;
-                b.BackColor = on ? Pal.C(30, 41, 89) : AppTheme.SurfaceAlt; // deep navy for the active tab
+                b.BackColor = on ? Color.FromArgb(30, 41, 89) : AppTheme.SurfaceAlt; // deep navy for the active tab (fixed, not theme-mapped)
                 b.ForeColor = on ? Color.White : AppTheme.TextSecondary;
                 b.Invalidate();
             }

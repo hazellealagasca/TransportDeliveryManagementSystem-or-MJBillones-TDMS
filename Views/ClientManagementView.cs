@@ -820,7 +820,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlTripsCard.Visible = hasClient;
             pnlBillingCard.Visible = hasClient;
             lblStoresHint.Text = hasClient
-                ? "Type each store's own code and name (nothing is filled in for you). Picking a destination adds the store to that delivery route. Changes save automatically."
+                ? "Type each store's own code and name (nothing is filled in for you). Put stores on routes in tab 2. Changes save automatically."
                 : "Create the client first, then add its stores here.";
             UpdateSaveState();
         }
