@@ -27,6 +27,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             catch (Exception ex) { ErrLog.Swallowed(ex); }
         }
 
+        /// <summary>Opens a saved trip's details window (like the dispatch details): steps, next action, tiles. Edit opens the full-screen form.</summary>
+        public void ShowSpecialTripDetails(int tripId)
+            => SpecialTripDetailsDialog.ShowFor(this, tripId, id => OpenSpecialTripDialog(id), () => { try { LoadData(); } catch (Exception ex) { ErrLog.Swallowed(ex); } });
+
         /// <summary>Opens the special trip form (new when <paramref name="tripId"/> is 0) as a full page in this tab.</summary>
         public void OpenSpecialTripDialog(int tripId = 0, Action<SpecialTripFormDialog>? prefill = null)
         {

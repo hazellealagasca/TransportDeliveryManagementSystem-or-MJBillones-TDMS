@@ -376,12 +376,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 else if (invActive && inv != null)
                 {
-                    if (collected <= 0 && !string.Equals(inv.Status, "Paid", StringComparison.OrdinalIgnoreCase))
+                    if (collected <= 0 && inv.SoaId == 0 && !string.Equals(inv.Status, "Paid", StringComparison.OrdinalIgnoreCase)) // Nov 6: not while on a statement
                     {
                         SetInvoiceStatusDirect(inv.Id, "Cancelled", inv.InvoiceNumber, cancelled ? $"Special trip {trip.OrderReference} was cancelled" : $"\"With Service Invoice\" was unticked on special trip {trip.OrderReference}");
                         notes.Add($"Service invoice {inv.InvoiceNumber} was cancelled (nothing had been paid on it).");
                     }
-                    else notes.Add($"Service invoice {inv.InvoiceNumber} has payments, so it was kept.");
+                    else notes.Add($"Service invoice {inv.InvoiceNumber} is paid or on a statement, so it was kept.");
                 }
 
                 var links = GetSpecialTripLinks().TryGetValue(trip.Id, out var l) ? l : new SpecialTripLinks();

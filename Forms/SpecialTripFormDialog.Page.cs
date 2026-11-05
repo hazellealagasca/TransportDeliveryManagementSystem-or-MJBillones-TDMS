@@ -53,6 +53,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pageKit = new FullPageFormKit(this, tblFull, page, listDummy, header, lblTitle, btnBack, body, actionsBar, "Back to special trips", 980);
             pageKit.Build(sections.Select(s => new FullPageFormKit.Section(s.Title, s.Subtitle, s.Block)), new Control[] { actions });
             flowBar = BuildFlowBar();
+            foreach (var cb in new[] { chkPaymentWithReport, chkWithInvoice, chkWithSOA, chkWithCollection }) cb.CheckedChanged += (s, e) => RefreshFlowBar();
             pageKit.AddStrip(flowBar);
             Controls.Add(tblFull);
             tblFull.BringToFront();
@@ -70,7 +71,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private sealed record FlowStep(string Title, string Status, bool Done, string? ActionText, Action? Action, bool Next);
 
-        /// <summary>Re-reads what the trip is linked to and redraws the five steps.</summary>
+        /// <summary>Re-reads what the trip is linked to and redraws its steps (only the ticked ones).</summary>
         private void RefreshFlowBar()
         {
             if (flowBar == null) return;
@@ -79,62 +80,58 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 var trip = currentTripId > 0 ? MJdatabase.GetSpecialTripById(currentTripId) : null;
-                if (trip == null)
+                var flow = SpecialTripFlowState.Compute(trip, chkPaymentWithReport.Checked, chkWithInvoice.Checked, chkWithSOA.Checked, chkWithCollection.Checked);
+                var current = flow.Steps.FirstOrDefault(s => !s.Done);
+                int n = 1;
+                foreach (var s in flow.Steps)
                 {
-                    steps.Add(new FlowStep("1  Special trip", "Fill in the form and save", false, null, null, true));
-                    steps.Add(new FlowStep("2  Trip report", "After the trip is completed", false, null, null, false));
-                    steps.Add(new FlowStep("3  Service invoice", "After the trip report (Billing, typed SI No.)", false, null, null, false));
-                    steps.Add(new FlowStep("4  Statement (SOA)", "Groups the client's service invoices", false, null, null, false));
-                    steps.Add(new FlowStep("5  Collection receipt", "One receipt for the full amount", false, null, null, false));
-                }
-                else
-                {
-                    bool cancelled = RowMenu.Is(trip.Status, "Cancelled"), completed = RowMenu.Is(trip.Status, "Completed");
-                    var links = MJdatabase.GetSpecialTripLinks().TryGetValue(trip.Id, out var l) ? l : new SpecialTripLinks();
-                    var ti = MJdatabase.TripInvoiceFor(MJdatabase.GetTripInvoices(), 0, trip.Id);
-                    var receipt = ti == null ? null : MJdatabase.GetCollectionReceipts().FirstOrDefault(r => r.InvoiceId == ti.Id);
-                    Action Go(string step, string? number) => () => { PendingNavigation = () => MainForm.Instance?.GoToSpecialTripStep(step, trip, number); Close(); };
-                    steps.Add(new FlowStep("1  Special trip", $"Saved · {trip.Status}", completed, null, null, !completed && !cancelled));
-                    if (cancelled)
-                    {
-                        steps.Add(new FlowStep("2  Trip report", "Trip cancelled", false, null, null, false));
-                        steps.Add(new FlowStep("3  Service invoice", ti != null ? $"SI {ti.Number} · {ti.Status}" : "Not billed", ti != null, null, null, false));
-                        steps.Add(new FlowStep("4  Statement (SOA)", "—", false, null, null, false));
-                        steps.Add(new FlowStep("5  Collection receipt", receipt != null ? $"Receipt {receipt.ReceiptNumber}" : "—", receipt != null, null, null, false));
-                    }
-                    else
-                    {
-                        // 2 Trip report
-                        if (links.HasReport) steps.Add(new FlowStep("2  Trip report", $"✓ {links.TripReportNumber}", true, "Open", Go("report", null), false));
-                        else steps.Add(new FlowStep("2  Trip report", completed ? "Needed now" : "After the trip is completed", false, completed ? "File trip report" : null, completed ? Go("report", null) : null, completed));
-                        // 3 Service invoice
-                        if (ti != null) steps.Add(new FlowStep("3  Service invoice", $"✓ SI {ti.Number} · {ti.Status}", true, "Show", Go("invoice", ti.Number), false));
-                        else steps.Add(new FlowStep("3  Service invoice", links.HasReport ? "Needed now: type the SI No. in Billing" : "After the trip report", false,
-                            links.HasReport ? "Make service invoice" : null, links.HasReport ? Go("invoice", null) : null, links.HasReport));
-                        // 4 SOA (optional: a lone invoice is collected on its own)
-                        if (ti != null && ti.SoaId > 0) steps.Add(new FlowStep("4  Statement (SOA)", $"✓ On {ti.SoaNumber}", true, "Show", Go("soa", ti.SoaNumber), false));
-                        else if (ti != null && ti.Open) steps.Add(new FlowStep("4  Statement (SOA)", "Optional: group it with the client's other invoices", false, "Add to a statement", Go("soa", null), false));
-                        else if (ti != null) steps.Add(new FlowStep("4  Statement (SOA)", "Not on a statement (paid on its own)", true, null, null, false));
-                        else steps.Add(new FlowStep("4  Statement (SOA)", "After the service invoice", false, null, null, false));
-                        // 5 Collection receipt
-                        if (receipt != null) steps.Add(new FlowStep("5  Collection receipt", $"✓ Receipt {receipt.ReceiptNumber} · PHP {ti!.Net:N2}", true, "Show", Go("receipt", receipt.ReceiptNumber), false));
-                        else if (ti != null && ti.Open) steps.Add(new FlowStep("5  Collection receipt", ti.SoaId > 0 ? $"Needed: one receipt for {ti.SoaNumber}" : $"Needed: PHP {ti.Net:N2}", false, "Record receipt", Go("receipt", null), true));
-                        else steps.Add(new FlowStep("5  Collection receipt", "After the service invoice", false, null, null, false));
-                    }
+                    if (trip != null && s.Key == "transit") continue; // shown in the details window; the form keeps the bar short
+                    Action? act = null;
+                    if (s.ActionKey == "complete") act = MarkCompletedHere;
+                    else if (s.ActionKey != null && trip != null) { var key = s.ActionKey; var num = s.Number; act = () => { PendingNavigation = () => MainForm.Instance?.GoToSpecialTripStep(key, trip, num); Close(); }; }
+                    steps.Add(new FlowStep($"{n++}  {s.Title}", (s.Done ? "✓ " : "") + s.Status, s.Done, act != null ? s.ActionText : null, act, s == current));
                 }
             }
             catch (Exception ex) { ErrLog.Swallowed(ex); }
             RenderFlowBar(steps);
         }
 
+        /// <summary>The flow bar's "Mark trip completed": asks to save typing first, then completes the saved trip and stays on the form.</summary>
+        private void MarkCompletedHere()
+        {
+            if (currentTripId <= 0) return;
+            if (HasUnsavedTyping)
+            {
+                MessageBox.Show(OwnerWindow, "Save your changes first (Update), then mark the trip completed.", "Unsaved changes", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            if (MessageBox.Show(OwnerWindow, $"Mark special trip {txtOrderRef.Text} as completed?\n\nThe truck, driver and aides are freed. The ticked next steps open from the flow bar.", "Complete trip",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            try
+            {
+                if (!MJdatabase.MarkSpecialTripCompleted(currentTripId)) return;
+                IsSaved = true; // the list reloads when the form closes
+                int idx = cbStatus.Items.IndexOf("Completed");
+                if (idx >= 0) cbStatus.SelectedIndex = idx;
+                if (loadedTrip != null) loadedTrip.Status = "Completed";
+                dirtyTracker?.Reset();
+                RefreshFlowBar();
+                ToastHelper.ShowToast(this, $"{txtOrderRef.Text} marked completed", ToastType.Success);
+            }
+            catch (Exception ex) { ErrLog.Error("SpecialTripFormDialog.MarkCompleted", ex); MessageBox.Show(OwnerWindow, "Couldn't complete the trip: " + ex.Message, "Complete trip", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+        }
+
         private void RenderFlowBar(List<FlowStep> steps)
         {
             flowBar.SuspendLayout();
             foreach (Control c in flowBar.Controls.Cast<Control>().ToList()) { flowBar.Controls.Remove(c); c.Dispose(); }
-            for (int i = 0; i < steps.Count && i < 5; i++)
+            flowBar.ColumnCount = Math.Max(1, steps.Count);
+            flowBar.ColumnStyles.Clear();
+            for (int c = 0; c < flowBar.ColumnCount; c++) flowBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F / flowBar.ColumnCount));
+            for (int i = 0; i < steps.Count; i++)
             {
                 var s = steps[i];
-                var cell = new Panel { Dock = DockStyle.Fill, Margin = new Padding(i == 0 ? 0 : Px(4), Px(6), i == 4 ? 0 : Px(4), Px(8)), Padding = new Padding(Px(10), Px(6), Px(10), Px(6)),
+                var cell = new Panel { Dock = DockStyle.Fill, Margin = new Padding(i == 0 ? 0 : Px(4), Px(6), i == steps.Count - 1 ? 0 : Px(4), Px(8)), Padding = new Padding(Px(10), Px(6), Px(10), Px(6)),
                     BackColor = s.Done ? AppTheme.SuccessSoft : s.Next ? AppTheme.AccentSoft : AppTheme.Surface };
                 var border = s.Done ? AppTheme.Success : s.Next ? AppTheme.Accent : AppTheme.Border;
                 cell.Paint += (o, e) => { using var pen = new Pen(border); e.Graphics.DrawRectangle(pen, 0, 0, cell.Width - 1, cell.Height - 1); };

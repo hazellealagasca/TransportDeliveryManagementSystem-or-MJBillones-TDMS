@@ -40,9 +40,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 var links = MJdatabase.GetSpecialTripLinks();
-                foreach (var t in MJdatabase.GetSpecialTrips().Where(t => RowMenu.Is(t.Status, "Completed")))
+                foreach (var t in MJdatabase.GetSpecialTrips().Where(t => RowMenu.Is(t.Status, "Completed") && t.WithServiceInvoice))
                 {
-                    if (!links.TryGetValue(t.Id, out var l) || !l.HasReport || l.InvoiceId > 0) continue;
+                    var l = links.TryGetValue(t.Id, out var lk) ? lk : new SpecialTripLinks();
+                    if ((t.WithTripReport && !l.HasReport) || l.InvoiceId > 0) continue;
                     billSpecials[t.Id] = t;
                     list.Add(SpecialTripStandIn(t));
                 }
@@ -60,7 +61,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private static bool SpecialTripHasReport(int tripId)
         {
-            try { return MJdatabase.GetSpecialTripLinks().TryGetValue(tripId, out var l) && l.HasReport; } catch (Exception ex) { ErrLog.Swallowed(ex); return false; }
+            try
+            {
+                var t = MJdatabase.GetSpecialTripById(tripId);
+                if (t == null || !RowMenu.Is(t.Status, "Completed")) return false;
+                return !t.WithTripReport || (MJdatabase.GetSpecialTripLinks().TryGetValue(tripId, out var l) && l.HasReport);
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); return false; }
         }
     }
 }

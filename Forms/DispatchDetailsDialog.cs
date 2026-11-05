@@ -1277,7 +1277,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
         // ------------------------------------------------------------------ Painted pieces
-        private sealed class Pill : Control
+        internal sealed class Pill : Control
         {
             private readonly Color back, fore;
             public Pill(string text, Color back, Color fore)
@@ -1300,7 +1300,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 TextRenderer.DrawText(e.Graphics, Text, Font, ClientRectangle, fore, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
             }
         }
-        private sealed class Tile : Control
+        internal sealed class Tile : Control
         {
             private readonly string caption, value, sub;
             private readonly Color? valueColor;
@@ -1333,7 +1333,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 TextRenderer.DrawText(g, sub, f3, new Rectangle(x, (int)(60 * s), Width - 2 * x, (int)(18 * s)), AppTheme.TextMuted, flags);
             }
         }
-        private sealed class Tracker : Control
+        internal sealed class Tracker : Control
         {
             public sealed record Step(string Title, string Sub, bool Done);
             private readonly List<Step> steps;

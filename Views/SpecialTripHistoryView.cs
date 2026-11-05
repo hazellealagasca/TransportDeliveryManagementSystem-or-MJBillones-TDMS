@@ -226,7 +226,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (e.RowIndex >= 0 && gridSpecialTrips.Rows[e.RowIndex].Tag is SpecialTrip trip)
                 {
-                    OpenSpecialTripDialog(trip.Id);
+                    ShowSpecialTripDetails(trip.Id);
                 }
             };
 
@@ -572,7 +572,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int idxComp = gridSpecialTrips.Columns["colBtnComplete"]?.Index ?? -1;
             int idxDel = gridSpecialTrips.Columns["colBtnDel"]?.Index ?? -1;
 
-            if (e.ColumnIndex == idxView) OpenSpecialTripDialog(trip.Id);
+            if (e.ColumnIndex == idxView) ShowSpecialTripDetails(trip.Id);
             else if (e.ColumnIndex == idxResched) RescheduleTrip(trip);
             else if (e.ColumnIndex == idxComp) CompleteTrip(trip);
             else if (e.ColumnIndex == idxDel) DeleteTrip(trip);
@@ -584,7 +584,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (rows[0].Tag is not SpecialTrip t) return;
                 bool done = RowMenu.Is(t.Status, "Completed"), cancelled = RowMenu.Is(t.Status, "Cancelled");
                 m.Items.AddRange(RowMenu.Header($"🌟  {t.OrderReference}", $"{RowMenu.Short(t.Company, 26)} · {t.DispatchDate:MMM d} {t.DepartureTime} · {t.TruckPlate} · {t.Status}"));
-                m.Items.Add(RowMenu.Item(done || cancelled ? "Open trip" : "Open / edit trip", () => OpenSpecialTripDialog(t.Id), "Enter"));
+                m.Items.Add(RowMenu.Item("Open trip details", () => ShowSpecialTripDetails(t.Id), "Enter"));
+                m.Items.Add(RowMenu.Item("Edit trip", () => OpenSpecialTripDialog(t.Id)));
                 m.Items.Add(RowMenu.Good("Mark as completed", () => CompleteTrip(t), !done && !cancelled));
                 m.Items.Add(RowMenu.Item("Reschedule…", () => RescheduleTrip(t), "", !done && !cancelled));
                 m.Items.Add(RowMenu.Item("Open client profile", () => MainForm.Instance?.OpenClientProfile(t.Company), "", !string.IsNullOrWhiteSpace(t.Company)));
@@ -602,7 +603,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             });
             gridSpecialTrips.KeyDown += (s, e) =>
             {
-                if (e.KeyCode == Keys.Enter && gridSpecialTrips.CurrentRow?.Tag is SpecialTrip t) { OpenSpecialTripDialog(t.Id); e.Handled = true; e.SuppressKeyPress = true; }
+                if (e.KeyCode == Keys.Enter && gridSpecialTrips.CurrentRow?.Tag is SpecialTrip t) { ShowSpecialTripDetails(t.Id); e.Handled = true; e.SuppressKeyPress = true; }
             };
         }
         private void RescheduleTrip(SpecialTrip trip)

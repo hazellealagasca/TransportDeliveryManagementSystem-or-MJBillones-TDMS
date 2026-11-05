@@ -580,6 +580,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             // Nov 6: a full page like the dispatch order form; the four "With ..." ticks are replaced by the flow bar.
             pnlLeftBlock.Controls.Remove(pnlPaymentBox);
+            pnlPaymentBox.Height = 272; pnlPaymentBox.Margin = new Padding(0);
             tblBottomSections.Controls.Remove(pnlLeftBlock);
             tblBottomSections.Controls.Remove(pnlRightBlock);
             pnlLeftBlock.Height = 128; pnlLeftBlock.Margin = new Padding(0);
@@ -591,7 +592,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ("Where the truck goes & the charge", "Destination address and the trip charge (billed on its service invoice).", tblTripDetails),
                 ("Stops / delivery details", "One line per stop. Double-click the table title to change its columns.", pnlTableSection),
                 ("Truck, driver & aides", "Who goes, and with which truck.", pnlRightBlock),
-                ("Status & payment", "Trip status and how the client pays.", pnlLeftBlock));
+                ("Status & payment", "Trip status and how the client pays.", pnlLeftBlock),
+                ("Steps for this trip", "Tick what this trip needs after it is completed. Unticked steps are skipped.", pnlPaymentBox));
         }
 
         private void RestoreCustomFormStyling()
@@ -1197,8 +1199,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void SaveTripInternal(bool isNew)
         {
-            // Nov 6: every special trip follows the flow Trip report -> Service invoice (Billing) -> SOA -> Collection receipt.
-            chkPaymentWithReport.Checked = true; chkWithSOA.Checked = true; chkWithInvoice.Checked = true; chkWithCollection.Checked = true;
             gridDeliveryDetails.EndEdit();
 
             string orderRef = txtOrderRef.Text.Trim();

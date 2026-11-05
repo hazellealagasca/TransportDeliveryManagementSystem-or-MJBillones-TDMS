@@ -787,10 +787,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnSpecialTrip.FlatAppearance.BorderSize = 0;
             btnSpecialTrip.Click += (s, e) =>
             {
-                using (var dlg = new Forms.SpecialTripFormDialog())
-                {
-                    dlg.ShowDialog(this.FindForm());
-                }
+                // Nov 6: the special trip form opens full screen in the Special Trip tab (no popup).
+                var mf = MainForm.Instance;
+                mf?.NavigateToOperations("SpecialTrips");
+                mf?.GetOperationsView<SpecialTripHistoryView>("SpecialTrips")?.OpenSpecialTripDialog();
             };
             pnlGridActionsFlow.Controls.Add(btnSpecialTrip);
 
