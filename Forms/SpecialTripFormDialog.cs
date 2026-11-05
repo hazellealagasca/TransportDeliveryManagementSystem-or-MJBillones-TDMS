@@ -587,13 +587,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlRightBlock.Height = 300; pnlRightBlock.Margin = new Padding(0);
             pnlTableSection.Height = 300;
             pnlFooter.Controls.Remove(flowActions);
-            BuildFullPage(flowActions,
-                ("Company & date", "Who the trip is for, when it leaves and the billing address.", tblHeaderFields),
-                ("Where the truck goes & the charge", "Destination address and the trip charge (billed on its service invoice).", tblTripDetails),
-                ("Stops / delivery details", "One line per stop. Double-click the table title to change its columns.", pnlTableSection),
-                ("Truck, driver & aides", "Who goes, and with which truck.", pnlRightBlock),
-                ("Status & payment", "Trip status and how the client pays.", pnlLeftBlock),
-                ("Steps for this trip", "Tick what this trip needs after it is completed. Unticked steps are skipped.", pnlPaymentBox));
+            BuildDispatchStyleLayout(flowActions, pnlTableSection, pnlPaymentBox); // Nov 6: the New Dispatch Order layout
         }
 
         private void RestoreCustomFormStyling()

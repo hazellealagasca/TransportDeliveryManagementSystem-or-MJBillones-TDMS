@@ -63,7 +63,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         // ------------------------------------------------------------------ Flow bar
         private TableLayoutPanel BuildFlowBar()
         {
-            var t = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 5, RowCount = 1, Height = Px(92), BackColor = AppTheme.Canvas, Margin = new Padding(0) };
+            var t = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 5, RowCount = 1, Height = Px(80), BackColor = AppTheme.Canvas, Margin = new Padding(0) };
             for (int i = 0; i < 5; i++) t.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
             t.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             return t;
@@ -136,7 +136,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var border = s.Done ? AppTheme.Success : s.Next ? AppTheme.Accent : AppTheme.Border;
                 cell.Paint += (o, e) => { using var pen = new Pen(border); e.Graphics.DrawRectangle(pen, 0, 0, cell.Width - 1, cell.Height - 1); };
                 var title = new Label { Text = s.Title, Dock = DockStyle.Top, Height = Px(20), Font = FontCache.Get("Segoe UI Semibold", 9.5F, FontStyle.Regular), ForeColor = AppTheme.TextPrimary, UseMnemonic = false, AutoEllipsis = true, BackColor = Color.Transparent };
-                var status = new Label { Text = s.Status, Dock = DockStyle.Top, Height = Px(32), Font = FontCache.Get("Segoe UI", 8.75F, FontStyle.Regular), ForeColor = s.Done ? AppTheme.SuccessText : AppTheme.TextSecondary, UseMnemonic = false, AutoEllipsis = true, BackColor = Color.Transparent };
+                var status = new Label { Text = s.Status, Dock = DockStyle.Top, Height = Px(22), Font = FontCache.Get("Segoe UI", 8.75F, FontStyle.Regular), ForeColor = s.Done ? AppTheme.SuccessText : AppTheme.TextSecondary, UseMnemonic = false, AutoEllipsis = true, BackColor = Color.Transparent };
                 new ToolTip().SetToolTip(status, s.Status);
                 if (s.ActionText != null && s.Action != null)
                 {

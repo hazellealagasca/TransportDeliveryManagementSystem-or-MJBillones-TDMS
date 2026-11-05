@@ -209,13 +209,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 new("Trip charge", trip.TripCharge > 0 ? $"₱{trip.TripCharge:N0}" : "—", string.IsNullOrWhiteSpace(trip.ModeOfPayment) ? "Mode of payment not set" : trip.ModeOfPayment),
                 new("Stops", $"{stopCount}", stopCount > 1 ? "Several stops" : "Single stop"),
-                new("Truck", string.IsNullOrWhiteSpace(trip.TruckPlate) ? "—" : trip.TruckPlate, string.IsNullOrWhiteSpace(trip.DriverName) ? "No driver yet" : trip.DriverName),
-                new("Trip report", flow.Links.HasReport ? "Filed" : "—", flow.Links.HasReport ? flow.Links.TripReportNumber : trip.WithTripReport ? "Not filed yet" : "Not needed (unticked)"),
-                new("Billing", ti != null ? $"₱{ti.Net:N0}" : "—", ti != null ? $"SI {ti.Number} · {ti.Status}" + (ti.SoaId > 0 ? $" · {ti.SoaNumber}" : "") : trip.WithServiceInvoice ? "Not billed yet" : "Not needed (unticked)",
-                    ti == null ? (Color?)null : ti.Open ? AppTheme.WarningText : AppTheme.SuccessText),
-                new("Collected", flow.Receipt != null ? $"₱{flow.Receipt.AmountPaid:N0}" : "—", flow.Receipt != null ? $"Receipt {flow.Receipt.ReceiptNumber} · {flow.Receipt.PaymentMethod}" : trip.WithCollection ? "No receipt yet" : "Not needed (unticked)",
-                    flow.Receipt != null ? AppTheme.SuccessText : (Color?)null)
+                new("Truck", string.IsNullOrWhiteSpace(trip.TruckPlate) ? "—" : trip.TruckPlate, string.IsNullOrWhiteSpace(trip.DriverName) ? "No driver yet" : trip.DriverName)
             };
+            // Nov 6: only the steps ticked on the trip get a tile.
+            if (trip.WithTripReport) tiles.Add(new("Trip report", flow.Links.HasReport ? "Filed" : "—", flow.Links.HasReport ? flow.Links.TripReportNumber : "Not filed yet"));
+            if (trip.WithServiceInvoice) tiles.Add(new("Service invoice", ti != null ? $"₱{ti.Net:N0}" : "—", ti != null ? $"SI {ti.Number} · {ti.Status}" : "Not made yet",
+                ti == null ? (Color?)null : ti.Open ? AppTheme.WarningText : AppTheme.SuccessText));
+            if (trip.WithSOA) tiles.Add(new("Statement (SOA)", ti != null && ti.SoaId > 0 ? ti.SoaNumber : "—", ti != null && ti.SoaId > 0 ? "Service invoice is on it" : "Not on a statement yet"));
+            if (trip.WithCollection) tiles.Add(new("Collection receipt", flow.Receipt != null ? $"₱{flow.Receipt.AmountPaid:N0}" : "—", flow.Receipt != null ? $"Receipt {flow.Receipt.ReceiptNumber} · {flow.Receipt.PaymentMethod}" : "No receipt yet",
+                flow.Receipt != null ? AppTheme.SuccessText : (Color?)null));
+
             var host = new Panel { Dock = DockStyle.Top, Height = D(104), BackColor = AppTheme.Canvas, Padding = new Padding(D(24), D(12), D(24), 0) };
             var tbl = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = tiles.Count, RowCount = 1, BackColor = AppTheme.Canvas, Margin = new Padding(0) };
             for (int i = 0; i < tiles.Count; i++)
@@ -309,15 +312,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ("Status", string.IsNullOrWhiteSpace(trip.Status) ? "Pending" : trip.Status, false),
                 ("Completed", trip.CompletedAt.HasValue ? trip.CompletedAt.Value.ToString("MMM d, yyyy h:mm tt") : "—", false)
             };
-            var steps = new List<(string, string, bool)>
-            {
-                ("With Trip Report", trip.WithTripReport ? "Yes" : "No", false),
-                ("With Service Invoice", trip.WithServiceInvoice ? "Yes" : "No", false),
-                ("With SOA", trip.WithSOA ? "Yes" : "No", false),
-                ("With Collection Receipt", trip.WithCollection ? "Yes" : "No", false)
-            };
+            var steps = new List<(string, string, bool)>();
+            if (trip.WithTripReport) steps.Add(("Trip report", flow.Links.HasReport ? flow.Links.TripReportNumber : "Not filed yet", false));
+            if (trip.WithServiceInvoice) steps.Add(("Service invoice", flow.Invoice != null ? $"SI {flow.Invoice.Number} · {flow.Invoice.Status}" : "Not made yet", false));
+            if (trip.WithSOA) steps.Add(("Statement (SOA)", flow.Invoice != null && flow.Invoice.SoaId > 0 ? flow.Invoice.SoaNumber : "Not on a statement yet", false));
+            if (trip.WithCollection) steps.Add(("Collection receipt", flow.Receipt != null ? $"Receipt {flow.Receipt.ReceiptNumber}" : "No receipt yet", false));
+            if (steps.Count == 0) steps.Add(("Next steps", "None ticked for this trip", false));
             AddCards(left, InfoCard("Trip & client", order), InfoCard("Schedule", sched));
-            AddCards(right, InfoCard("Truck & crew", crewRows), InfoCard("Steps ticked for this trip", steps));
+            AddCards(right, InfoCard("Truck & crew", crewRows), InfoCard("Next steps for this trip", steps));
             grid.Controls.Add(left, 0, 0);
             grid.Controls.Add(right, 1, 0);
             scroll.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(30), Text = "Tip: click any underlined value to copy it. Edit the trip to change the ticked steps.", ForeColor = AppTheme.TextMuted, Font = new Font("Segoe UI", 8.75F), TextAlign = ContentAlignment.BottomLeft });
