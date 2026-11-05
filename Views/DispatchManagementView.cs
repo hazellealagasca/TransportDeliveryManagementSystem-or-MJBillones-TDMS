@@ -1872,21 +1872,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var btnAddStoreRow = new Button
             {
-                Text = "+ Add Extra Store (Same Client Company)",
-                Height = Dpi(LargePrint.Px(44, 34)),
+                Text = "＋ Add store",
+                Height = Dpi(34),
                 AutoSize = true,
                 Padding = new Padding(Dpi(10), 0, Dpi(10), 0),
-                Font = LargePrint.Bold(14F, 9F),
-                BackColor = AppTheme.Success,
+                Font = new Font("Segoe UI Semibold", 9F),
+                BackColor = AppTheme.Surface,
 
-                ForeColor = Pal.White,
+                ForeColor = AppTheme.TextPrimary,
 
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
-                Margin = new Padding(0, 2, 4, 2)
+                Margin = new Padding(0, 2, 8, 2)
             };
-            btnAddStoreRow.FlatAppearance.BorderSize = 0;
-            btnAddStoreRow.Paint += (s, e) => { }; // keep its emerald colour (the app theme leaves buttons with a paint handler alone)
+            UIThemeHelper.SetButtonRole(btnAddStoreRow, "secondary"); // same look as the other form buttons
+            tipRouteStores.SetToolTip(btnAddStoreRow, "Add another store of the same client company to this order");
             btnAddStoreRow.Click += (s, e) => AddStoreBreakdownRow();
 
             btnEditStoreTable = new Button
@@ -1979,9 +1979,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SelectionMode = DataGridViewSelectionMode.CellSelect,
                 EditMode = DataGridViewEditMode.EditOnEnter,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                ColumnHeadersHeight = Dpi(LargePrint.Px(36, 28)),
-                RowTemplate = { Height = Dpi(LargePrint.Px(44, 28)) },
-                Font = LargePrint.Bold(13F, 9F),
+                ColumnHeadersHeight = Dpi(LargePrint.Px(36, 30)),
+                RowTemplate = { Height = Dpi(LargePrint.Px(40, 32)) },
+                Font = LargePrint.On ? LargePrint.Bold(12F, 9F) : new Font("Segoe UI", 9F),
                 GridColor = AppTheme.BorderStrong,
                 CellBorderStyle = DataGridViewCellBorderStyle.Single,
                 EnableHeadersVisualStyles = false
@@ -2138,8 +2138,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             // Rule 16d: row type badge first, and a hidden flag (true = store from the order's route, locked).
-            var colType = new DataGridViewTextBoxColumn { Name = "colRowType", HeaderText = "Row Type", FillWeight = 150, MinimumWidth = Dpi(LargePrint.Px(250, 170)), ReadOnly = true };
-            colType.DefaultCellStyle.Font = LargePrint.Bold(10F, 8F);
+            var colType = new DataGridViewTextBoxColumn { Name = "colRowType", HeaderText = "Row Type", FillWeight = 150, MinimumWidth = Dpi(LargePrint.Px(170, 112)), ReadOnly = true };
+            colType.DefaultCellStyle.Font = LargePrint.On ? LargePrint.Bold(10F, 8.25F) : new Font("Segoe UI Semibold", 8.25F);
             colType.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             gridRouteStores.Columns.Add(colType);
             gridRouteStores.Columns.Add(new DataGridViewCheckBoxColumn { Name = "colBaseline", Visible = false, ReadOnly = true });
@@ -2165,7 +2165,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         Alignment = isNumeric ? DataGridViewContentAlignment.MiddleRight : DataGridViewContentAlignment.MiddleLeft,
                         BackColor = isTotal ? Pal.C(241, 245, 249) : Pal.C(254, 252, 232),
 
-                        Font = isNumeric ? LargePrint.Bold(15F, 9F) : isTotal ? LargePrint.Bold(13F, 8.5F) : LargePrint.Bold(13F, 8.5F)
+                        Font = LargePrint.On ? (isNumeric ? LargePrint.Bold(13F, 9F) : LargePrint.Bold(12F, 9F)) : (isNumeric || isTotal ? new Font("Segoe UI Semibold", 9F) : new Font("Segoe UI", 9F))
                     }
                 };
                 gridRouteStores.Columns.Add(col);
@@ -2183,7 +2183,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             colDel.DefaultCellStyle.ForeColor = Color.White;
             colDel.DefaultCellStyle.BackColor = AppTheme.Danger;
-            colDel.DefaultCellStyle.Font = LargePrint.Bold(12F, 8.5F);
+            colDel.DefaultCellStyle.Font = new Font("Segoe UI Semibold", 8.5F);
 
             gridRouteStores.Columns.Add(colDel);
         }
@@ -3173,10 +3173,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (gridRouteStores == null || !gridRouteStores.Columns.Contains("colBaseline")) return;
             row.Cells["colBaseline"].Value = routeStore;
-            row.Cells["colRowType"].Value = routeStore ? "🔒 ROUTE STORE (LOCKED)" : "➕ ADDED COMPANY STORE";
+            row.Cells["colRowType"].Value = routeStore ? "🔒 Route store" : "＋ Added store";
             foreach (var key in new[] { "colStoreCode", "colStoreName" })
                 if (gridRouteStores.Columns.Contains(key)) row.Cells[key].ReadOnly = routeStore;
-            row.Height = Dpi(LargePrint.Px(44, 28));
+            row.Height = Dpi(LargePrint.Px(40, 32));
         }
         /// <summary>Rows that came in without a type (table editor, saved draft): on the route = route store, otherwise added.</summary>
         private void ClassifyUnsetStoreRows()
@@ -3212,21 +3212,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string cn = gridRouteStores.Columns[e.ColumnIndex].Name;
             if (cn == "colDelStore")
             {
-                e.Value = locked ? "Remove…" : "🗑 Remove";
-                e.CellStyle.BackColor = locked ? AppTheme.SurfaceAlt : AppTheme.Danger;
-                e.CellStyle.ForeColor = locked ? AppTheme.TextSecondary : Color.White;
+                // Theme-soft: added rows show a red "Remove" link-style button; route rows a muted "Remove…" (asks for a reason).
+                e.Value = locked ? "Remove…" : "Remove";
+                e.CellStyle.BackColor = locked ? AppTheme.Surface : AppTheme.DangerSoft;
+                e.CellStyle.ForeColor = locked ? AppTheme.TextMuted : AppTheme.DangerText;
                 return;
             }
             if (cn == "colRowType")
             {
-                e.CellStyle.BackColor = locked ? AppTheme.InfoSoft : AppTheme.SuccessSoft;
-                e.CellStyle.ForeColor = locked ? AppTheme.InfoText : AppTheme.SuccessText;
+                e.CellStyle.ForeColor = locked ? AppTheme.TextSecondary : AppTheme.SuccessText;
                 return;
             }
             if (cn == "colECrate" || cn == "colGCrate" || cn == "colStoreTotal") return; // keep the crate cells' own look
-            // Route rows: steel-blue tint; added rows: soft mint.
-            e.CellStyle.BackColor = locked ? Pal.C(226, 232, 240) : Pal.C(236, 253, 245);
-            e.CellStyle.ForeColor = AppTheme.TextPrimary;
+            // Route rows keep the grid's own colours (code and name are read-only); added rows get a faint green tint.
+            if (!locked) e.CellStyle.BackColor = ThemeManager.Mix(AppTheme.Surface, AppTheme.Success, ThemeManager.IsDark ? 0.10 : 0.06);
+            if (locked && (cn == "colStoreCode" || cn == "colStoreName")) e.CellStyle.ForeColor = AppTheme.TextSecondary;
         }
         /// <summary>Reason for taking a locked route store off this order (at least 10 characters), or null when kept.</summary>
         private string? PromptRouteRowRemovalReason(string store)
@@ -6394,7 +6394,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             public Crew Aide { get; }
             public string Label { get; }
-            public AideItem(Crew a, string status) { Aide = a; Label = $"{a.FullName}  |  Status: {status}"; }
+            public AideItem(Crew a, string status) { Aide = a; Label = $"{a.FullName}  ·  {status}"; }
             public override string ToString() => Label;
         }
         private List<int> AideSlots() => selectedAideIds.Take(MJdatabase.MaxAidesPerOrder).ToList();
@@ -6411,8 +6411,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 DropDownStyle = ComboBoxStyle.DropDown,
                 AutoCompleteMode = AutoCompleteMode.SuggestAppend,
                 AutoCompleteSource = AutoCompleteSource.ListItems,
-                Font = LargePrint.Bold(14F, 9.5F),
-                Width = Dpi(LargePrint.Px(500, 360)),
+                Font = LargePrint.On ? LargePrint.Bold(12F, 9.75F) : new Font("Segoe UI", 9.75F),
+                Width = Dpi(LargePrint.Px(420, 320)),
                 Margin = new Padding(0, 0, Dpi(6), 0),
                 IntegralHeight = false,
                 MaxDropDownItems = 12
@@ -6420,6 +6420,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Typed text must match a listed aide; anything else snaps back to the slot's current aide.
             cb.Leave += (s, e) => { if (!renderingAides && cb.SelectedItem == null && cb.Text.Trim().Length > 0) BeginInvoke(new Action(RenderAidesModule)); };
             cb.SelectionChangeCommitted += (s, e) => BeginInvoke(new Action(() => OnAideSlotPicked(cb)));
+            UIThemeHelper.StyleInput(cb);
             return cb;
         }
         private void OnAideSlotPicked(ComboBox cb)
@@ -6441,10 +6442,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             t.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             t.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             t.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            Label Cap(string text) => new Label { Text = text, AutoSize = true, Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold), ForeColor = AppTheme.TextSecondary, Margin = new Padding(0, Dpi(6), Dpi(8), 0), UseMnemonic = false };
+            Label Cap(string text) => new Label { Text = text, AutoSize = true, Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextSecondary, Margin = new Padding(0, Dpi(7), Dpi(10), 0), UseMnemonic = false };
             Button Clear(Func<ComboBox?> slot) {
-                var b = new Button { Text = "✕ Clear", AutoSize = true, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold), Cursor = Cursors.Hand, Margin = new Padding(0, Dpi(2), 0, 0), MinimumSize = new Size(0, Dpi(36)) };
-                b.FlatAppearance.BorderColor = AppTheme.BorderStrong;
+                var b = new Button { Text = "Clear", AutoSize = true, Font = new Font("Segoe UI Semibold", 9F), Cursor = Cursors.Hand, Margin = new Padding(Dpi(6), Dpi(1), 0, 0), MinimumSize = new Size(0, Dpi(30)) };
+                UIThemeHelper.SetButtonRole(b, "secondary");
                 b.Click += (s, e) => {
                     var slots = AideSlots();
                     int a1 = slots.Count > 0 ? slots[0] : 0, a2 = slots.Count > 1 ? slots[1] : 0;
@@ -6456,9 +6457,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             cbAideSlot1 = MakeAideSlot();
             cbAideSlot2 = MakeAideSlot();
-            lblAideCount = new Label { AutoSize = true, Font = new Font("Segoe UI", 12F, FontStyle.Bold), Padding = new Padding(Dpi(10), Dpi(6), Dpi(10), Dpi(6)), Margin = new Padding(0, Dpi(8), 0, 0), UseMnemonic = false };
-            var auto = new Button { Text = "⚡ Pick 2 free aides", AutoSize = true, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold), Cursor = Cursors.Hand, Margin = new Padding(Dpi(10), Dpi(8), 0, 0), MinimumSize = new Size(0, Dpi(36)) };
-            auto.FlatAppearance.BorderColor = AppTheme.BorderStrong;
+            lblAideCount = new Label { AutoSize = true, Font = new Font("Segoe UI Semibold", 8.75F), Padding = new Padding(Dpi(8), Dpi(3), Dpi(8), Dpi(3)), Margin = new Padding(0, Dpi(9), 0, 0), UseMnemonic = false };
+            var auto = new Button { Text = "Pick 2 free aides", AutoSize = true, Font = new Font("Segoe UI Semibold", 9F), Cursor = Cursors.Hand, Margin = new Padding(Dpi(10), Dpi(6), 0, 0), MinimumSize = new Size(0, Dpi(30)) };
+            UIThemeHelper.SetButtonRole(auto, "secondary");
             tipRouteStores.SetToolTip(auto, "Picks the 2 free aides with the fewest trips");
             auto.Click += (s, e) =>
             {
@@ -6512,9 +6513,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (lblAideCount != null)
             {
                 bool max = n >= MJdatabase.MaxAidesPerOrder;
-                lblAideCount.Text = max ? $"{n} / {MJdatabase.MaxAidesPerOrder} Aides Assigned — MAX LIMIT REACHED" : $"{n} / {MJdatabase.MaxAidesPerOrder} Aides Assigned";
-                lblAideCount.BackColor = n == 0 ? AppTheme.SurfaceAlt : max ? AppTheme.Success : AppTheme.Info;
-                lblAideCount.ForeColor = n == 0 ? AppTheme.TextSecondary : AppTheme.BestTextOn(lblAideCount.BackColor);
+                lblAideCount.Text = max ? $"{n} of {MJdatabase.MaxAidesPerOrder} aides assigned · limit reached" : $"{n} of {MJdatabase.MaxAidesPerOrder} aides assigned";
+                lblAideCount.BackColor = n == 0 ? AppTheme.SurfaceAlt : max ? AppTheme.SuccessSoft : AppTheme.InfoSoft;
+                lblAideCount.ForeColor = n == 0 ? AppTheme.TextMuted : max ? AppTheme.SuccessText : AppTheme.InfoText;
             }
             lblAidesSummary.Text = selNames.Count == 0 ? "No aides assigned yet" : $"Aides: {string.Join(", ", selNames)}";
             lblAidesSummary.ForeColor = selNames.Count == 0 ? AppTheme.TextMuted : AppTheme.SuccessText;

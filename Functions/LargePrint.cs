@@ -5,7 +5,7 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.D
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions
 {
     /// <summary>
-    /// Rule 16 large-print look (Settings → Appearance → "Large print", on by default): bigger bold text, taller rows
+    /// Rule 16 large-print look (Settings → Appearance → "Large print", off by default; the normal sizes follow the app theme): bigger bold text, taller rows
     /// and thicker borders on the redesigned screens. Screens ask for sizes here instead of hard-coding them.
     /// </summary>
     public static class LargePrint
@@ -17,7 +17,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             get
             {
                 if (cached.HasValue) return cached.Value;
-                try { cached = MJdatabase.GetSystemSetting(SettingKey, "1") != "0"; } catch { cached = true; }
+                try { cached = MJdatabase.GetSystemSetting(SettingKey, "0") == "1"; } catch { cached = false; }
                 return cached.Value;
             }
         }

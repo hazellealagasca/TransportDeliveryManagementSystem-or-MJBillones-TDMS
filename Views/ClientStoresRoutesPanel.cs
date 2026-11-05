@@ -38,20 +38,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Height = D(LargePrint.Px(520, 420));
 
             // ---- segmented tabs (48 px, 14 pt bold, active = navy with a 4 px accent bar)
-            var tabs = new TableLayoutPanel { Dock = DockStyle.Top, Height = D(LargePrint.Px(52, 40)), ColumnCount = 2, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
+            var tabs = new TableLayoutPanel { Dock = DockStyle.Top, Height = D(LargePrint.Px(46, 38)), ColumnCount = 2, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             tabs.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50)); tabs.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            tab1 = TabButton("1. Company Stores Master Pool (Store Code & Store Name Only)");
-            tab2 = TabButton("2. Delivery Routes (Visual Split-Pane Route Builder)");
+            tab1 = TabButton("Company stores");
+            tab2 = TabButton("Delivery routes");
             tabs.Controls.Add(tab1, 0, 0); tabs.Controls.Add(tab2, 1, 0);
 
-            lblMsg = new Label { Dock = DockStyle.Top, Height = D(28), Font = LargePrint.Semibold(11F, 9F), ForeColor = AppTheme.TextSecondary, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(D(4), 0, 0, 0), UseMnemonic = false, AutoEllipsis = true };
+            lblMsg = new Label { Dock = DockStyle.Top, Height = D(28), Font = FontCache.Get("Segoe UI", LargePrint.Pt(10F, 8.75F)), ForeColor = AppTheme.TextSecondary, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(D(4), 0, 0, 0), UseMnemonic = false, AutoEllipsis = true };
 
             // ---- page 1: quick-entry bar + the existing store table
             page1 = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Surface };
             var quick = new FlowLayoutPanel { Dock = DockStyle.Top, Height = D(LargePrint.Px(58, 44)), WrapContents = false, BackColor = AppTheme.SurfaceAlt, Padding = new Padding(D(8), D(8), D(8), D(6)) };
             txtCode = Entry("Store Code", 170, upper: true);
             txtName = Entry("Store Name", 340, upper: false);
-            var btnAdd = BigButton("+ Add to Company Stores", AppTheme.Success);
+            var btnAdd = BigButton("＋ Add store", AppTheme.Success);
             btnAdd.Click += (s, e) => AddStore();
             txtCode.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; txtName.Focus(); } };
             txtName.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; AddStore(); } };
@@ -70,7 +70,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var newBar = new FlowLayoutPanel { Dock = DockStyle.Top, Height = D(LargePrint.Px(58, 44)), WrapContents = false, BackColor = AppTheme.SurfaceAlt, Padding = new Padding(D(6), D(8), D(6), D(6)) };
             txtNewCode = Entry("Route Code", 110, upper: true);
             txtNewName = Entry("Route Name", 170, upper: false);
-            var btnNewRoute = BigButton("+ New Delivery Route", AppTheme.Accent);
+            var btnNewRoute = BigButton("＋ New route", AppTheme.Accent);
             btnNewRoute.Click += (s, e) => AddRoute();
             txtNewName.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; AddRoute(); } };
             newBar.Controls.AddRange(new Control[] { txtNewCode, txtNewName, btnNewRoute });
@@ -89,15 +89,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             left.Controls.Add(newBar);
             // right: stores of the same client
             var right = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Surface };
-            lblAssignTitle = new Label { Dock = DockStyle.Top, Height = D(30), Font = LargePrint.Bold(12F, 10F), ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.MiddleLeft, UseMnemonic = false, AutoEllipsis = true, Text = "Assign Destination Stores from Same Client Company" };
-            txtSearch = new TextBox { Dock = DockStyle.Top, Font = LargePrint.Semibold(13F, 10F), PlaceholderText = "🔍 Search stores (code or name)…" };
+            lblAssignTitle = new Label { Dock = DockStyle.Top, Height = D(30), Font = FontCache.Get("Segoe UI Semibold", LargePrint.Pt(11F, 9.5F)), ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.MiddleLeft, UseMnemonic = false, AutoEllipsis = true, Text = "Stores on this route" };
+            txtSearch = new TextBox { Dock = DockStyle.Top, Font = FontCache.Get("Segoe UI", LargePrint.Pt(11F, 9.75F)), PlaceholderText = "🔍 Search stores (code or name)…" };
             txtSearch.TextChanged += (s, e) => RenderAssign();
             gridAssign = NewGrid();
             gridAssign.ReadOnly = false;
             gridAssign.Columns.Add(new DataGridViewCheckBoxColumn { Name = "colOn", HeaderText = "✔", FillWeight = 20 });
             gridAssign.Columns.Add(new DataGridViewTextBoxColumn { Name = "colCode", HeaderText = "Store Code", FillWeight = 55, ReadOnly = true });
             gridAssign.Columns.Add(new DataGridViewTextBoxColumn { Name = "colName", HeaderText = "Store Name", FillWeight = 110, ReadOnly = true });
-            gridAssign.Columns.Add(new DataGridViewTextBoxColumn { Name = "colTag", HeaderText = "Status", FillWeight = 125, MinimumWidth = 230, ReadOnly = true });
+            gridAssign.Columns.Add(new DataGridViewTextBoxColumn { Name = "colTag", HeaderText = "Status", FillWeight = 80, MinimumWidth = 120, ReadOnly = true });
             gridAssign.CurrentCellDirtyStateChanged += (s, e) => { if (gridAssign.IsCurrentCellDirty) gridAssign.CommitEdit(DataGridViewDataErrorContexts.Commit); };
             gridAssign.CellValueChanged += (s, e) => { if (!binding && e.RowIndex >= 0 && gridAssign.Columns[e.ColumnIndex].Name == "colOn") ToggleStore(e.RowIndex); };
             gridAssign.CellFormatting += (s, e) =>
@@ -106,7 +106,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 bool on = (e.Value?.ToString() ?? "").StartsWith("✔");
                 e.CellStyle.BackColor = on ? AppTheme.SuccessSoft : AppTheme.SurfaceAlt;
                 e.CellStyle.ForeColor = on ? AppTheme.SuccessText : AppTheme.TextSecondary;
-                e.CellStyle.Font = LargePrint.Bold(11F, 9F);
+                e.CellStyle.Font = FontCache.Get("Segoe UI Semibold", LargePrint.Pt(10F, 8.5F));
             };
             right.Controls.Add(gridAssign);
             right.Controls.Add(txtSearch);
@@ -136,27 +136,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private Button TabButton(string text)
         {
-            var b = new Button { Dock = DockStyle.Fill, Text = text, FlatStyle = FlatStyle.Flat, Font = LargePrint.Bold(14F, 10.5F), Cursor = Cursors.Hand, Margin = new Padding(0), UseMnemonic = false, TextAlign = ContentAlignment.MiddleCenter };
+            var b = new Button { Dock = DockStyle.Fill, Text = text, FlatStyle = FlatStyle.Flat, Font = LargePrint.On ? LargePrint.Bold(13F, 10F) : FontCache.Get("Segoe UI Semibold", 10F), Cursor = Cursors.Hand, Margin = new Padding(0), UseMnemonic = false, TextAlign = ContentAlignment.MiddleCenter };
             b.FlatAppearance.BorderSize = 0;
             b.FlatAppearance.MouseOverBackColor = Color.Empty;
             b.Paint += (s, e) =>
             {
                 if (!(b.Tag is bool active) || !active) return;
                 using var br = new SolidBrush(AppTheme.Accent);
-                e.Graphics.FillRectangle(br, 0, b.Height - D(4), b.Width, D(4)); // 4 px accent bar under the active tab
+                e.Graphics.FillRectangle(br, 0, b.Height - D(3), b.Width, D(3)); // accent bar under the active tab
             };
             return b;
         }
         private TextBox Entry(string placeholder, int width, bool upper)
         {
-            var t = new TextBox { PlaceholderText = placeholder, Width = D(width), Font = LargePrint.Bold(14F, 10F), Margin = new Padding(0, 0, D(8), 0), CharacterCasing = upper ? CharacterCasing.Upper : CharacterCasing.Normal, BorderStyle = BorderStyle.FixedSingle };
+            var t = new TextBox { PlaceholderText = placeholder, Width = D(width), Font = LargePrint.On ? LargePrint.Bold(12F, 9.75F) : FontCache.Get("Segoe UI", 9.75F), Margin = new Padding(0, 0, D(8), 0), CharacterCasing = upper ? CharacterCasing.Upper : CharacterCasing.Normal, BorderStyle = BorderStyle.FixedSingle };
             return t;
         }
         private Button BigButton(string text, Color back)
         {
-            var b = new Button { Text = text, AutoSize = true, FlatStyle = FlatStyle.Flat, Font = LargePrint.Bold(13F, 10F), BackColor = back, ForeColor = AppTheme.BestTextOn(back), Cursor = Cursors.Hand, MinimumSize = new Size(0, D(LargePrint.Px(40, 30))), Padding = new Padding(D(10), 0, D(10), 0), UseMnemonic = false };
-            b.FlatAppearance.BorderSize = 0;
-            b.Paint += (s, e) => { }; // own colours: the app theme leaves buttons with a paint handler alone
+            var b = new Button { Text = text, AutoSize = true, Font = FontCache.Get("Segoe UI Semibold", 9F), Cursor = Cursors.Hand, MinimumSize = new Size(0, D(LargePrint.Px(36, 30))), Padding = new Padding(D(8), 0, D(8), 0), UseMnemonic = false };
+            UIThemeHelper.SetButtonRole(b, back == AppTheme.Success ? "primary" : "secondary");
+
             return b;
         }
         private DataGridView NewGrid()
@@ -168,21 +168,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void StyleGrid(DataGridView? g)
         {
             if (g == null) return;
-            if (!g.IsHandleCreated) { g.HandleCreated += (s, e) => g.BeginInvoke(new Action(() => StyleGrid(g))); g.DataBindingComplete += (s, e) => { foreach (DataGridViewRow r in g.Rows) r.Height = D(LargePrint.Px(42, 30)); }; }
+            if (!g.IsHandleCreated) { g.HandleCreated += (s, e) => g.BeginInvoke(new Action(() => StyleGrid(g))); g.DataBindingComplete += (s, e) => { foreach (DataGridViewRow r in g.Rows) r.Height = D(LargePrint.Px(38, 32)); }; }
             g.BackgroundColor = AppTheme.Surface;
             g.GridColor = AppTheme.BorderStrong;
-            g.RowTemplate.Height = D(LargePrint.Px(42, 30));
-            g.DefaultCellStyle.Font = LargePrint.Bold(13F, 9.5F);
+            g.RowTemplate.Height = D(LargePrint.Px(38, 32));
+            g.DefaultCellStyle.Font = LargePrint.On ? LargePrint.Bold(12F, 9.25F) : FontCache.Get("Segoe UI", 9.25F);
             g.DefaultCellStyle.BackColor = AppTheme.Surface;
             g.DefaultCellStyle.ForeColor = AppTheme.TextPrimary;
             g.DefaultCellStyle.SelectionBackColor = AppTheme.GridSelection;
             g.DefaultCellStyle.SelectionForeColor = AppTheme.TextPrimary;
             g.AlternatingRowsDefaultCellStyle.BackColor = AppTheme.SurfaceAlt; // zebra rows
             g.EnableHeadersVisualStyles = false;
-            g.ColumnHeadersDefaultCellStyle.Font = LargePrint.Bold(12F, 9F);
+            g.ColumnHeadersDefaultCellStyle.Font = FontCache.Get("Segoe UI Semibold", LargePrint.Pt(10F, 8.75F));
             g.ColumnHeadersDefaultCellStyle.BackColor = AppTheme.GridHeaderBack;
             g.ColumnHeadersDefaultCellStyle.ForeColor = AppTheme.GridHeaderText;
-            g.ColumnHeadersHeight = D(LargePrint.Px(40, 30));
+            g.ColumnHeadersHeight = D(LargePrint.Px(36, 32));
             g.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             foreach (DataGridViewRow r in g.Rows) r.Height = g.RowTemplate.Height;
         }
@@ -193,8 +193,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (var (b, on) in new[] { (tab1, n == 1), (tab2, n == 2) })
             {
                 b.Tag = on;
-                b.BackColor = on ? Color.FromArgb(30, 41, 89) : AppTheme.SurfaceAlt; // deep navy for the active tab (fixed, not theme-mapped)
-                b.ForeColor = on ? Color.White : AppTheme.TextSecondary;
+                b.BackColor = on ? AppTheme.AccentSoft : AppTheme.Surface; // theme accent tint for the active tab
+                b.ForeColor = on ? AppTheme.AccentText : AppTheme.TextSecondary;
                 b.Invalidate();
             }
             lblMsg.Text = n == 1 ? "Type a store code and name, then press Enter. Stores are not tied to a route here." : "Pick a route on the left, then tick the stores it serves. A store can be on any of this client's routes.";
@@ -277,7 +277,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void RenderAssign()
         {
             var r = SelectedRoute();
-            lblAssignTitle.Text = r == null ? "Assign Destination Stores from Same Client Company — pick a route" : $"Assign Destination Stores from Same Client Company — route {r.RouteCode}";
+            lblAssignTitle.Text = r == null ? "Stores on this route — pick a route on the left" : $"Stores on route {r.RouteCode} — tick the stores it serves (same client only)";
             string q = txtSearch.Text.Trim();
             binding = true;
             try
@@ -287,7 +287,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 foreach (var st in stores.Where(st => q.Length == 0 || st.StoreCode.Contains(q, StringComparison.OrdinalIgnoreCase) || st.StoreName.Contains(q, StringComparison.OrdinalIgnoreCase)).OrderBy(st => st.StoreName))
                 {
                     bool on = r != null && r.PlacesList.Any(p => MJdatabase.PlaceIsStore(p, st));
-                    int i = gridAssign.Rows.Add(on, st.StoreCode, st.StoreName, on ? "✔ Included in Selected Route" : "Available");
+                    int i = gridAssign.Rows.Add(on, st.StoreCode, st.StoreName, on ? "✔ On this route" : "Available");
                     gridAssign.Rows[i].Tag = st;
                     gridAssign.Rows[i].Height = gridAssign.RowTemplate.Height;
                 }

@@ -487,21 +487,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Rule 16a: each option is a large toggle card (44 px, 13 pt bold, 2 px border): slate with [   ] when off, emerald with [ ✔ ] when on.
             CheckBox Check(string text, int y)
             {
-                var cb = new CheckBox { Tag = text, Appearance = Appearance.Button, FlatStyle = FlatStyle.Flat, TextAlign = ContentAlignment.MiddleLeft, Font = LargePrint.Bold(13F, 10.5F), Location = new Point(12, y), Size = new Size(394, LargePrint.Px(44, 30)), Cursor = Cursors.Hand, UseMnemonic = false, Padding = new Padding(8, 0, 0, 0) };
-                cb.FlatAppearance.BorderSize = LargePrint.Border;
+                var cb = new CheckBox { Tag = text, Appearance = Appearance.Button, FlatStyle = FlatStyle.Flat, TextAlign = ContentAlignment.MiddleLeft, Font = LargePrint.On ? LargePrint.Bold(12F, 9.5F) : FontCache.Get("Segoe UI Semibold", 9.5F), Location = new Point(12, y), Size = new Size(394, LargePrint.Px(42, 36)), Cursor = Cursors.Hand, UseMnemonic = false, Padding = new Padding(8, 0, 0, 0) };
+                cb.FlatAppearance.BorderSize = 1;
                 void Paint()
                 {
                     bool on = cb.Checked;
                     // The theme sweep resizes and re-fonts check boxes: put the card's size and font back each time.
                     cb.AutoSize = false;
-                    cb.Size = new Size(394, LargePrint.Px(44, 30));
-                    cb.Font = LargePrint.Bold(13F, 10.5F);
-                    cb.Text = (on ? "[ ✔ ]  " : "[    ]  ") + (string)cb.Tag!;
-                    cb.BackColor = on ? AppTheme.Success : AppTheme.SurfaceAlt;
-                    cb.ForeColor = on ? AppTheme.BestTextOn(AppTheme.Success) : AppTheme.TextPrimary;
-                    cb.FlatAppearance.BorderColor = on ? AppTheme.SuccessText : AppTheme.BorderStrong;
-                    cb.FlatAppearance.CheckedBackColor = AppTheme.Success;
-                    cb.FlatAppearance.MouseOverBackColor = on ? AppTheme.Success : AppTheme.SurfaceHover;
+                    cb.Size = new Size(394, LargePrint.Px(42, 36));
+                    cb.Font = LargePrint.On ? LargePrint.Bold(12F, 9.5F) : FontCache.Get("Segoe UI Semibold", 9.5F);
+                    cb.Text = (on ? "✔  " : "○  ") + (string)cb.Tag!;
+                    cb.BackColor = on ? AppTheme.SuccessSoft : AppTheme.Surface;
+                    cb.ForeColor = on ? AppTheme.SuccessText : AppTheme.TextPrimary;
+                    cb.FlatAppearance.BorderColor = on ? AppTheme.Success : AppTheme.BorderStrong;
+                    cb.FlatAppearance.CheckedBackColor = AppTheme.SuccessSoft;
+                    cb.FlatAppearance.MouseOverBackColor = on ? AppTheme.SuccessSoft : AppTheme.SurfaceHover;
                 }
                 cb.CheckedChanged += (s, e) => Paint();
                 // The theme sweep restyles check boxes after creation: repaint the card when it is shown.
@@ -542,7 +542,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbPayment.SelectedIndex = -1;
             cbPayment.SelectedIndexChanged += (s, e) => UpdateChecklistNote();
             // Rule 16a: the theme re-fonts inputs when the form opens; set the large fonts again once it is shown.
-            Shown += (s, e) => { txtDestination.Font = LargePrint.Semibold(14F, 10F); cbPayment.Font = LargePrint.Bold(14F, 9.5F); cbPayment.ItemHeight = LargePrint.Px(34, 22); foreach (var cb in new[] { chkPaymentWithReport, chkWithSOA, chkWithInvoice, chkWithCollection }) { cb.AutoSize = false; cb.Size = new Size(394, LargePrint.Px(44, 30)); cb.Font = LargePrint.Bold(13F, 10.5F); } };
+            Shown += (s, e) => { txtDestination.Font = LargePrint.Semibold(14F, 10F); cbPayment.Font = LargePrint.Bold(14F, 9.5F); cbPayment.ItemHeight = LargePrint.Px(34, 22); foreach (var cb in new[] { chkPaymentWithReport, chkWithSOA, chkWithInvoice, chkWithCollection }) { cb.AutoSize = false; cb.Size = new Size(394, LargePrint.Px(42, 36)); cb.Font = LargePrint.On ? LargePrint.Bold(12F, 9.5F) : FontCache.Get("Segoe UI Semibold", 9.5F); } };
             lblSvc.Dispose();
             pnlLeftBlock.Controls.Add(lblStat);
             pnlLeftBlock.Controls.Add(cbStatus);

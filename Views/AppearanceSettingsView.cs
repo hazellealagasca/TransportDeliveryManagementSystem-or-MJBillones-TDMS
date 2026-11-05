@@ -224,7 +224,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Card BuildLargePrintSection()
         {
             var card = new Card { Height = S(150), Padding = new Padding(S(20), S(18), S(20), S(18)), Margin = new Padding(S(0), S(0), S(0), S(16)) };
-            var title = SectionTitle("Large print", "Bigger bold text, taller rows and thicker borders on Clients (stores & routes), Dispatch stores, Aides and Special Trip.");
+            var title = SectionTitle("Large print", "Bigger bold text and taller rows on Clients (stores & routes), Dispatch stores, Aides and Special Trip, for easier reading. Off by default.");
             title.Dock = DockStyle.Top;
             var chk = new CheckBox { Text = "Use large print", Checked = LargePrint.On, AutoSize = true, Font = new Font("Segoe UI Semibold", 11F), ForeColor = AppTheme.TextPrimary, BackColor = AppTheme.Surface, Dock = DockStyle.Top, Padding = new Padding(S(0), S(8), S(0), S(0)) };
             var note = new Label { Dock = DockStyle.Top, Height = S(24), Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.TextMuted, BackColor = AppTheme.Surface, Text = "Saved at once. Screens already open change when you open them again." };
