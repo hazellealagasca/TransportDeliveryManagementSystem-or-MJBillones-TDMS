@@ -32,6 +32,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
         private static DialogResult Core(IWin32Window? owner, string? text, string? caption, MessageBoxButtons buttons, MessageBoxIcon icon, MessageBoxDefaultButton defaultButton)
         {
             text ??= ""; caption ??= "";
@@ -57,7 +59,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-        /// <summary>"DUPLICATE DISPATCH NUMBER:" → "Duplicate dispatch number:". Lines with numbers or codes are left alone.</summary>
+
+
+        /// <summary>"DISPATCH NUMBER ALREADY EXISTS:" → "Dispatch number already exists:". Lines with numbers or codes are left alone.</summary>
         internal static string Calm(string s)
         {
             if (string.IsNullOrEmpty(s)) return s;
@@ -76,6 +80,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             return string.Join(Environment.NewLine, lines);
         }
+
+
 
 
 

@@ -89,7 +89,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (string.Equals((grid.Rows[i].Cells[columnName].Value?.ToString() ?? "").Trim(), v, StringComparison.OrdinalIgnoreCase))
                     {
                         grid.Rows[e.RowIndex].ErrorText = $"{label} {v} is already used on row {i + 1}.";
-                        MessageBox.Show(grid.FindForm(), $"{label} \"{v}\" is already used on row {i + 1}. Each {label.ToLowerInvariant()} must be unique.", "Duplicate " + label.ToLowerInvariant(), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show(grid.FindForm(), $"{label} \"{v}\" is already used on row {i + 1}. Each {label.ToLowerInvariant()} must be unique.", label + " Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         e.Cancel = true;
                         return;
                     }

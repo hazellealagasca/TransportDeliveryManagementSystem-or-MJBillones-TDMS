@@ -32,6 +32,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private FlowLayoutPanel? flowActions;
         private Panel? headerSpacer;
         private readonly Padding originalMasterPadding;
+        private Control? strip;
+        /// <summary>Slim header (Payments): smaller title and less space above the form.</summary>
+        public bool Compact { get; set; }
+        /// <summary>The bottom bar's button row (right-to-left), once <see cref="Build"/> has run.</summary>
+        public FlowLayoutPanel? Actions => flowActions;
         private int D(int v) => (int)Math.Round(v * host.DeviceDpi / 96f);
         public FullPageFormKit(Control host, TableLayoutPanel tblMaster, Panel pnlForm, Control listPanel, Panel header, Label title, Button back,
             Panel body, Panel actionsBar, string backText, int maxContentWidth = 900)
@@ -155,12 +160,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.BorderStyle = BorderStyle.None;
             body.BackColor = AppTheme.Canvas;
             header.BackColor = AppTheme.Canvas;
-            header.Height = D(62);
+            header.Height = D(Compact ? 44 : 62);
             back.AutoSize = false;
             back.MinimumSize = Size.Empty;
             back.Dock = DockStyle.Left;
-            back.Width = Math.Max(D(170), TextRenderer.MeasureText(back.Text, new Font("Segoe UI Semibold", 9.5F)).Width + D(36));
-            back.Font = new Font("Segoe UI Semibold", 9.5F);
+            back.Font = new Font("Segoe UI Semibold", Compact ? 9F : 9.5F);
+            back.Width = Math.Max(D(Compact ? 150 : 170), TextRenderer.MeasureText(back.Text, back.Font).Width + D(36));
             back.Padding = new Padding(0);
             UIThemeHelper.SetButtonRole(back, "secondary");
             back.ForeColor = AppTheme.TextPrimary;
@@ -171,7 +176,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             title.AutoEllipsis = true;
             title.Dock = DockStyle.Fill;
             title.TextAlign = ContentAlignment.MiddleLeft;
-            title.Font = new Font("Segoe UI Semibold", 15F);
+            title.Font = new Font("Segoe UI Semibold", Compact ? 13F : 15F);
             title.ForeColor = AppTheme.TextPrimary;
             title.BackColor = AppTheme.Canvas;
             title.UseMnemonic = false;
@@ -184,10 +189,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (pnlForm.Width <= 0) return;
             int side = Math.Max(D(24), (pnlForm.ClientSize.Width - D(maxWidth)) / 2);
-            header.Padding = new Padding(side, D(10), side, D(14));
+            header.Padding = Compact ? new Padding(side, D(4), side, D(6)) : new Padding(side, D(10), side, D(14));
+            if (strip != null) strip.Padding = new Padding(side, 0, side, 0);
             body.Padding = new Padding(side, 0, side + SystemInformation.VerticalScrollBarWidth / 2, D(16));
             actionsBar.Padding = new Padding(side, D(12), side, D(12));
         }
+        /// <summary>Puts a control (e.g. a totals strip) under the header that stays put while the form scrolls.</summary>
+        public void AddStrip(Control c)
+        {
+            strip = c;
+            c.Dock = DockStyle.Top;
+            pnlForm.SuspendLayout();
+            pnlForm.Controls.Add(c);
+            // dock order: header first (top), then the strip, then the scrolling body
+            pnlForm.Controls.SetChildIndex(body, 0);
+            pnlForm.Controls.SetChildIndex(c, pnlForm.Controls.GetChildIndex(header));
+            pnlForm.ResumeLayout(true);
+            Center();
+        }
+        /// <summary>Adds a control at the top of the scrolling form body (above the first section).</summary>
+        public void AddBodyTop(Control c) { c.Dock = DockStyle.Top; body.Controls.Add(c); }
+        /// <summary>Adds a control at the bottom of the scrolling form body (below the last section).</summary>
+        public void AddBodyBottom(Control c) { c.Dock = DockStyle.Top; body.Controls.Add(c); body.Controls.SetChildIndex(c, 0); }
+        public void ScrollTo(Control c) { try { body.ScrollControlIntoView(c); } catch (Exception ex) { ErrLog.Swallowed(ex); } }
         /// <summary>Shows the form as a full page in place of the list, or goes back to the list.</summary>
         public void Show(bool visible)
         {

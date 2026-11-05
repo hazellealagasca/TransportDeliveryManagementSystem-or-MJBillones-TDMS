@@ -269,7 +269,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridSpecialTrips.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "colAddress",
-                HeaderText = "Address / Route",
+                HeaderText = "Destination Address",
                 Width = D(180),
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
             });
@@ -321,9 +321,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             gridSpecialTrips.Columns.Add(new DataGridViewTextBoxColumn
             {
+                Name = "colCharge",
+                HeaderText = "Trip Charge",
+                Width = D(105),
+                DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleRight }
+            });
+            gridSpecialTrips.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colMop",
+                HeaderText = "Mode of Payment",
+                Width = D(125)
+            });
+            gridSpecialTrips.Columns.Add(new DataGridViewTextBoxColumn
+            {
                 Name = "colPaymentFlags",
-                HeaderText = "Payment Setup",
-                Width = D(150)
+                HeaderText = "Checklist",
+                Width = D(230),
+                DefaultCellStyle = { WrapMode = DataGridViewTriState.True, Font = new Font("Segoe UI Semibold", 8.5F) }
             });
 
             DataGridViewButtonColumn colBtnView = new DataGridViewButtonColumn
@@ -375,6 +389,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 allSpecialTrips = MJdatabase.GetSpecialTrips();
+                try { specialLinks = MJdatabase.GetSpecialTripLinks(); } catch (Exception lx) { ErrLog.Swallowed(lx); specialLinks = new Dictionary<int, SpecialTripLinks>(); }
                 UpdateKpiCards();
                 ApplyFilter();
             }
@@ -413,6 +428,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     bool match = t.OrderReference.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                                  t.Company.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                                  t.Address.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                                 (t.DestinationAddress ?? "").Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                                 (t.ModeOfPayment ?? "").Contains(query, StringComparison.OrdinalIgnoreCase) ||
                                  t.DriverName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                                  t.TruckPlate.Contains(query, StringComparison.OrdinalIgnoreCase);
                     if (!match) return false;
@@ -422,6 +439,86 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }).OrderByDescending(t => t.Id).ToList();
 
             PopulateGrid(filtered);
+            UpdateSpecialSummary(filtered);
+        }
+        // ------------------------------------------------------------------ All-in-One Summary (follows search, filters and the clicked trip)
+        private AllInOneSummaryBar? specialSummary;
+        private List<SpecialTrip> specialSummaryShown = new List<SpecialTrip>();
+        private void UpdateSpecialSummary(List<SpecialTrip> shown)
+        {
+            specialSummaryShown = shown ?? new List<SpecialTrip>();
+            RenderSpecialSummary();
+        }
+        private void RenderSpecialSummary()
+        {
+            if (gridSpecialTrips?.Parent == null) return;
+            try
+            {
+                if (specialSummary == null)
+                {
+                    specialSummary = AllInOneSummaryBar.AttachBelow(gridSpecialTrips, "SpecialTrips");
+                    gridSpecialTrips.SelectionChanged += (s, e) => RenderSpecialSummary();
+                }
+                var list = specialSummaryShown;
+                bool Cancelled(SpecialTrip t) => RowMenu.Is(t.Status, "Cancelled");
+                int waiting = list.Count(t => RowMenu.Is(t.Status, "Pending", "Scheduled", "Assigned"));
+                int road = list.Count(t => RowMenu.Is(t.Status, "In Transit", "In-Transit", "Dispatched"));
+                int completed = list.Count(t => RowMenu.Is(t.Status, "Completed", "Delivered"));
+                int cancelled = list.Count(Cancelled);
+                int stops = list.Where(t => !Cancelled(t)).Sum(t => Math.Max(1, t.TotalStopsCount));
+                var live = list.Where(t => !Cancelled(t)).ToList();
+                int repNeed = live.Count(t => t.WithTripReport), repDone = live.Count(t => t.WithTripReport && LinksOf(t).HasReport);
+                int soaNeed = live.Count(t => t.WithSOA), soaDone = live.Count(t => t.WithSOA && LinksOf(t).OnSoa);
+                int invNeed = live.Count(t => t.WithServiceInvoice), invDone = live.Count(t => t.WithServiceInvoice && LinksOf(t).InvoiceId > 0);
+                int colNeed = live.Count(t => t.WithCollection), colDone = live.Count(t => t.WithCollection && LinksOf(t).IsCollected);
+                decimal charges = live.Sum(t => t.TripCharge);
+                string Top(IEnumerable<string> xs) => string.Join(", ", xs.Where(x => !string.IsNullOrWhiteSpace(x)).GroupBy(x => x.Trim(), StringComparer.OrdinalIgnoreCase).OrderByDescending(g => g.Count()).Take(3).Select(g => $"{g.Key} ({g.Count()})"));
+                int trucks = list.Where(t => !Cancelled(t) && t.TruckId > 0).Select(t => t.TruckId).Distinct().Count();
+                var m = new List<SummaryMetric>
+                {
+                    new("Special trips shown", list.Count.ToString("N0"), SummaryTone.Blue, $"of {allSpecialTrips.Count:N0} trips", Strong: true),
+                    new("Waiting to leave", waiting.ToString("N0"), SummaryTone.Purple, "pending / scheduled"),
+                    new("On the road", road.ToString("N0"), SummaryTone.Amber, "in transit now", Strong: road > 0),
+                    new("Completed", completed.ToString("N0"), SummaryTone.Green, "finished trips"),
+                    new("Cancelled", cancelled.ToString("N0"), SummaryTone.Red, "not counted below"),
+                    new("Stops", stops.ToString("N0"), SummaryTone.Teal, "on the trips shown"),
+                    new("Trucks used", trucks.ToString("N0"), SummaryTone.Neutral, "different trucks"),
+                    new("Trip charges", AllInOneSummaryBar.Money(charges), SummaryTone.Blue, "on the trips shown"),
+                    new("Trip reports", $"{repDone:N0} / {repNeed:N0}", SummaryTone.Teal, repNeed - repDone > 0 ? $"{repNeed - repDone:N0} pending" : "all done", Strong: false),
+                    new("On SOA", $"{soaDone:N0} / {soaNeed:N0}", SummaryTone.Purple, soaNeed - soaDone > 0 ? $"{soaNeed - soaDone:N0} still to bill" : "all billed"),
+                    new("Service invoices", $"{invDone:N0} / {invNeed:N0}", SummaryTone.Green, invNeed - invDone > 0 ? $"{invNeed - invDone:N0} pending" : "all made"),
+                    new("Collections", $"{colDone:N0} / {colNeed:N0}", SummaryTone.Amber, colNeed - colDone > 0 ? $"{colNeed - colDone:N0} still to collect" : "all paid", Strong: colNeed - colDone > 0),
+                };
+                string dests = Top(live.Select(t => t.DestinationAddress));
+                string modes = Top(live.Select(t => t.ModeOfPayment));
+                string context = $"Special trips shown: {list.Count:N0} (follows your search and filters)" + (dests.Length > 0 ? $"   ·   Destinations: {dests}" : "") + (modes.Length > 0 ? $"   ·   Payment: {modes}" : "");
+                string preview = $"{AllInOneSummaryBar.Count(list.Count, "trip", "trips")}  ·  {road:N0} on the road  ·  {stops:N0} stops";
+                var sel = gridSpecialTrips.SelectedRows.Count == 1 ? gridSpecialTrips.SelectedRows[0].Tag as SpecialTrip : null;
+                if (sel != null)
+                {
+                    m.Add(new SummaryMetric("Selected trip", sel.OrderReference, SummaryTone.Purple, $"{sel.Status} · {sel.Company}", Strong: true));
+                    m.Add(new SummaryMetric("Its stops", Math.Max(1, sel.TotalStopsCount).ToString("N0"), SummaryTone.Teal, string.IsNullOrWhiteSpace(sel.DestinationAddress) ? sel.Address : sel.DestinationAddress));
+                    m.Add(new SummaryMetric("Truck & driver", string.IsNullOrWhiteSpace(sel.TruckPlate) ? "—" : sel.TruckPlate, SummaryTone.Neutral, string.IsNullOrWhiteSpace(sel.DriverName) ? "no driver yet" : sel.DriverName));
+                    m.Add(new SummaryMetric("Its charge", sel.TripCharge > 0 ? AllInOneSummaryBar.Money(sel.TripCharge) : "—", SummaryTone.Blue, string.IsNullOrWhiteSpace(sel.ModeOfPayment) ? "mode of payment not set" : sel.ModeOfPayment));
+                    m.Add(new SummaryMetric("Its checklist", ChecklistText(sel), SummaryTone.Teal, string.IsNullOrWhiteSpace(sel.DestinationAddress) ? "no destination yet" : sel.DestinationAddress));
+                    context = $"Selected trip {sel.OrderReference} — {sel.Company} · {sel.DispatchDate:MMM d, yyyy} · {sel.Status}   ·   Special trips shown: {list.Count:N0}";
+                }
+                specialSummary.SetMetrics(m, preview, context);
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+        }
+        private Dictionary<int, SpecialTripLinks> specialLinks = new Dictionary<int, SpecialTripLinks>();
+        private SpecialTripLinks LinksOf(SpecialTrip t) => specialLinks.TryGetValue(t.Id, out var l) ? l : new SpecialTripLinks();
+        /// <summary>The ticked checklist items with where each stands, e.g. "Trip Report ✓ · SOA: ready · Invoice ✓ · Collection: pending".</summary>
+        private string ChecklistText(SpecialTrip t)
+        {
+            var l = LinksOf(t);
+            var parts = new List<string>();
+            if (t.WithTripReport) parts.Add(l.HasReport ? "Trip Report ✓" : "Trip Report: pending");
+            if (t.WithSOA) parts.Add(l.OnSoa ? $"SOA ✓ ({l.SoaNumber})" : "SOA: ready to add");
+            if (t.WithServiceInvoice) parts.Add(l.InvoiceId > 0 ? $"Invoice ✓ ({l.InvoiceNumber})" : "Invoice: pending");
+            if (t.WithCollection) parts.Add(l.IsCollected ? "Collection ✓ paid" : "Collection: pending");
+            return parts.Count > 0 ? string.Join(" · ", parts) : "None ticked";
         }
 
         private void PopulateGrid(List<SpecialTrip> trips)
@@ -436,7 +533,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 row.Cells["colRef"].Value = t.OrderReference;
                 row.Cells["colDate"].Value = t.DispatchDate.ToString("yyyy-MM-dd");
                 row.Cells["colCompany"].Value = t.Company;
-                row.Cells["colAddress"].Value = !string.IsNullOrWhiteSpace(t.Address) ? t.Address : "Direct Dispatch Route";
+                row.Cells["colAddress"].Value = !string.IsNullOrWhiteSpace(t.DestinationAddress) ? t.DestinationAddress : (!string.IsNullOrWhiteSpace(t.Address) ? t.Address + "  (client address — no destination yet)" : "—  no destination yet");
+                row.Cells["colCharge"].Value = t.TripCharge > 0 ? "₱" + t.TripCharge.ToString("N2") : "—";
+                row.Cells["colMop"].Value = string.IsNullOrWhiteSpace(t.ModeOfPayment) ? "— not set" : t.ModeOfPayment;
                 row.Cells["colServiceType"].Value = t.ServiceType;
                 row.Cells["colTruck"].Value = !string.IsNullOrWhiteSpace(t.TruckPlate) ? t.TruckPlate : "Unassigned";
                 row.Cells["colDriver"].Value = !string.IsNullOrWhiteSpace(t.DriverName) ? t.DriverName : "Unassigned";
@@ -444,13 +543,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 row.Cells["colStops"].Value = t.TotalStopsCount.ToString();
                 row.Cells["colStatus"].Value = t.Status;
 
-                List<string> flags = new List<string>();
-                if (t.ModeOfPaymentWithReport) flags.Add("Report");
-                if (t.WithSOA) flags.Add("SOA");
-                if (t.WithServiceInvoice) flags.Add("Invoice");
-                if (t.WithCollection) flags.Add("Receipt");
-                row.Cells["colPaymentFlags"].Value = flags.Count > 0 ? string.Join(", ", flags) : "Standard";
-
+                row.Cells["colPaymentFlags"].Value = ChecklistText(t);
                 if (t.Status.Equals("Completed", StringComparison.OrdinalIgnoreCase))
                 {
                     row.Cells["colStatus"].Style.ForeColor = Pal.C(5, 150, 105);
@@ -495,6 +588,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.Add(RowMenu.Good("Mark as completed", () => CompleteTrip(t), !done && !cancelled));
                 m.Items.Add(RowMenu.Item("Reschedule…", () => RescheduleTrip(t), "", !done && !cancelled));
                 m.Items.Add(RowMenu.Item("Open client profile", () => MainForm.Instance?.OpenClientProfile(t.Company), "", !string.IsNullOrWhiteSpace(t.Company)));
+                var lk = LinksOf(t);
+                if (t.WithCollection) m.Items.Add(RowMenu.Good(lk.IsCollected ? "Collection: paid ✓" : $"Record collection ({(string.IsNullOrWhiteSpace(t.ModeOfPayment) ? "payment" : t.ModeOfPayment)})…", () => MainForm.Instance?.RecordSpecialTripCollection(t), !lk.IsCollected && !cancelled));
+                if (lk.InvoiceId > 0) m.Items.Add(RowMenu.Item($"Show invoice {lk.InvoiceNumber}", () => MainForm.Instance?.ShowFinanceRecords("Billing", lk.InvoiceNumber)));
+                if (lk.OnSoa) m.Items.Add(RowMenu.Item($"Show statement {lk.SoaNumber}", () => MainForm.Instance?.ShowFinanceRecords("StatementOfAccount", lk.SoaNumber)));
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.CopySub(this, ("Order reference", t.OrderReference), ("Client", t.Company), ("Address", t.Address),
                     ("Summary", $"{t.OrderReference} — {t.Company}, {t.DispatchDate:dddd, MMMM d} at {t.DepartureTime}; truck {t.TruckPlate}, driver {t.DriverName}{(string.IsNullOrWhiteSpace(t.AideName) ? "" : ", aide " + t.AideName)}. {t.Status}.")));

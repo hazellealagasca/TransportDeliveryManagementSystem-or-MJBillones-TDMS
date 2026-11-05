@@ -72,6 +72,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Settings → Features & Pop-ups → "Ask before saving". Resets always ask.
             if (kind != Kind.Reset && !Features.On(Features.ConfirmSaves)) return true;
             string what = Clean(b.Text);
+            // Buttons named like "New dispatch form" read as a noun: make the question a proper sentence.
+            if (what.StartsWith("new ")) what = "open a " + what;
             if (what.Length == 0) what = kind switch { Kind.Add => "add this record", Kind.Update => "update this record", Kind.Reset => "reset", _ => "save" };
             string question, title;
             switch (kind)

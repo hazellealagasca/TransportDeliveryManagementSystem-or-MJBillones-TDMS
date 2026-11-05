@@ -1304,6 +1304,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             else if (tab == "Collections") fhv.ShowCollections(search);
             else fhv.ShowStatements(search);
         }
+        /// <summary>Goes to Collections &amp; Receipts with a new receipt for this special trip.</summary>
+        public void RecordSpecialTripCollection(Models.SpecialTrip trip)
+        {
+            NavigateToFinance("Collections");
+            if (viewCache.TryGetValue("FinanceHubView", out var fv) && fv is FinanceHubView fhv) fhv.RecordSpecialTripCollection(trip);
+        }
         public void NavigateToFinance(string tab = "StatementOfAccount")
         {
             skipNextViewRefresh = true; // the tab selection below refreshes the visible page once

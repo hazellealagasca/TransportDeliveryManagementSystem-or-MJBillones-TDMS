@@ -151,6 +151,39 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
         }
+        /// <summary>
+        /// One-line variant: smaller title with the description beside it (muted, cut with "…", full text on hover)
+        /// and the buttons on the right. Used where screen height matters most (Payments).
+        /// </summary>
+        public void MakeCompact()
+        {
+            SuspendLayout();
+            Controls.Clear();
+            ColumnStyles.Clear();
+            RowStyles.Clear();
+            ColumnCount = 3;
+            RowCount = 1;
+            ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            Title.Font = new Font("Segoe UI Semibold", 12.5F);
+            Title.Anchor = AnchorStyles.Left;
+            Title.Margin = new Padding(0, 0, (int)Math.Round(12 * DeviceDpi / 96f), 0);
+            Subtitle.AutoSize = false;
+            Subtitle.Font = new Font("Segoe UI", 9F);
+            Subtitle.Dock = DockStyle.Fill;
+            Subtitle.TextAlign = ContentAlignment.MiddleLeft;
+            Subtitle.Height = (int)Math.Round(20 * DeviceDpi / 96f);
+            Subtitle.Margin = new Padding(0);
+            new ToolTip().SetToolTip(Subtitle, Subtitle.Text);
+            Actions.Anchor = AnchorStyles.Right;
+            Actions.Margin = new Padding((int)Math.Round(12 * DeviceDpi / 96f), 0, 0, 0);
+            Controls.Add(Title, 0, 0);
+            Controls.Add(Subtitle, 1, 0);
+            Controls.Add(Actions, 2, 0);
+            ResumeLayout(true);
+        }
         /// <summary>Adds buttons right-to-left: the first one ends up right-most (make it the primary action).</summary>
         public void AddActions(params Control[] buttons)
         {

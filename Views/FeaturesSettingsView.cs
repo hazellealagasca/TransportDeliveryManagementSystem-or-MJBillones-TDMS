@@ -22,6 +22,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             new(Features.TruckSuggestion, "Suggest the best truck", "When you enter the crates on a loading order or dispatch, the system suggests the free truck that fits them best and picks it for you. When off, no truck is suggested and you choose one yourself. Warnings about an overloaded truck or the wrong cargo type still show."),
             new(Features.EmptyCrateCheck, "Check returned empty crates", "When a trip report is saved with no returned empty crates, the system asks first, so the empties the crew brought back are not forgotten. When off, trip reports save without asking."),
         };
+        private static readonly Option[] TableConfig =
+        {
+            new(Features.StoreTableEditHeader, "Show Column Edit Header in Edit Store Table", "The “✎ Edit” / “Customize table” controls that change a store table's columns, on New Dispatch Order and every other store table (Special Trip, Statement of Account lines, client stores), with the ✎ marks in the headers. When off, they are hidden on all of them and the column headers stay as they are; no saved data changes."),
+            new(Features.AllInOneSummary, "Show All-in-One Summary", "The “▼ Show All-in-One Summary Overview” bar at the end of the Dispatch, Special Trip, Incident, Trip Reports, Order History, Statement of Account, Billing, Collections and Payments tables, with big colour-coded totals for what is shown and the order you click. Off by default: when off, the bar is not shown at all."),
+        };
         private static readonly Option[] Popups =
         {
             new(Features.QuietNotices, "Quiet notices instead of pop-ups", "Simple confirmations such as “Saved successfully” appear as a small notice in the corner that fades away, instead of a window you have to click OK on. Questions, warnings and errors still use a window."),
@@ -45,6 +50,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 blocks.Add(new Label { Text = "Only the Owner / Administrator can change these settings.", AutoSize = true, ForeColor = AppTheme.TextMuted });
             blocks.Add(Card("🧩  Parts of the system", "Turn off what M.J. Billones doesn't use. Turning a part off only hides it: no records are deleted or changed, and everything comes back exactly as it was when you turn it on again.", Parts));
             blocks.Add(Card("🚚  Dispatch rules", "How loading orders, dispatches and trip reports help you. These used to be on the Dispatch Rules tab.", DispatchRules));
+            blocks.Add(Card("📋  New Dispatch Order & table configuration", "How the tables look, what can be changed on them, and the summaries shown under them.", TableConfig));
             blocks.Add(Card("🔔  Pop-ups and reminders", "Choose which messages need your attention. Fewer pop-ups means fewer interruptions while you work.", Popups));
             foreach (var c in blocks) Controls.Add(c);
             bool fitting = false;

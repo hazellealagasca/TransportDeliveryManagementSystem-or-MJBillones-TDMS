@@ -260,6 +260,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         /// <summary>Recomputes an invoice's payment status from its collected receipts. Draft and Cancelled invoices are left alone.</summary>
 
+        /// <summary>Rounds an amount to whole centavos. Amounts are stored as REAL, so sums can drift (8399.4499...); compare only rounded values.</summary>
+        public static decimal Centavos(decimal v) => Math.Round(v, 2, MidpointRounding.AwayFromZero);
         private static void RecalculateInvoiceStatus(SqliteConnection conn, SqliteTransaction? tx, int invoiceId)
 
         {
@@ -286,7 +288,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (!r.Read()) return;
 
-                netAmount = Convert.ToDecimal(r.GetDouble(0));
+                netAmount = Centavos(Convert.ToDecimal(r.GetDouble(0)));
 
                 if (DateTime.TryParse(r.GetString(1), out var dd)) dueDate = dd;
 
@@ -308,7 +310,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 sumCmd.Parameters.AddWithValue("@invId", invoiceId);
 
-                totalCollected = Convert.ToDecimal(sumCmd.ExecuteScalar() ?? 0);
+                totalCollected = Centavos(Convert.ToDecimal(sumCmd.ExecuteScalar() ?? 0));
 
             }
 
@@ -2083,7 +2085,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         Excess REAL DEFAULT 0,
 
-                        DeliveryId INTEGER DEFAULT 0
+                        DeliveryId INTEGER DEFAULT 0,
+
+                        StoreCode TEXT DEFAULT '',
+
+                        TripReportNumber TEXT DEFAULT '',
+
+                        TotalCrates INTEGER DEFAULT 0
 
                     );"
 
@@ -5001,7 +5009,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        return $"DUPLICATE CREW NAME DETECTED:\nA crew member named '{fullName}' is already registered as '{r.GetString(1)}' (ID: {r.GetInt32(0)}).";
+                        return $"CREW NAME ALREADY EXISTS:\nA crew member named '{fullName}' is already registered as '{r.GetString(1)}' (ID: {r.GetInt32(0)}).";
 
                     }
 
@@ -5033,7 +5041,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             {
 
-                                return $"DUPLICATE CONTACT NUMBER:\nContact number '{contactNumber}' is already registered to '{r.GetString(1)}' ({r.GetString(2)}, ID: {r.GetInt32(0)}).";
+                                return $"CONTACT NUMBER ALREADY EXISTS:\nContact number '{contactNumber}' is already registered to '{r.GetString(1)}' ({r.GetString(2)}, ID: {r.GetInt32(0)}).";
 
                             }
 
@@ -5069,7 +5077,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             {
 
-                                return $"DUPLICATE DRIVER'S LICENSE:\nDriver's License #{licenseNumber} is already registered to '{r.GetString(1)}' (ID: {r.GetInt32(0)}).";
+                                return $"DRIVER'S LICENSE ALREADY EXISTS:\nDriver's License #{licenseNumber} is already registered to '{r.GetString(1)}' (ID: {r.GetInt32(0)}).";
 
                             }
 
@@ -5175,13 +5183,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 cmd1.CommandText = "SELECT COALESCE(SUM(AmountPaid), 0) FROM CollectionReceipts WHERE COALESCE(IsVoid,0) = 0";
 
-                totalCollected = Convert.ToDecimal(cmd1.ExecuteScalar() ?? 0);
+                totalCollected = Centavos(Convert.ToDecimal(cmd1.ExecuteScalar() ?? 0));
 
                 var cmd2 = conn.CreateCommand();
 
                 cmd2.CommandText = "SELECT COALESCE(SUM(NetAmount), 0) FROM Invoices WHERE Status <> 'Cancelled'";
 
-                totalBilled = Convert.ToDecimal(cmd2.ExecuteScalar() ?? 0);
+                totalBilled = Centavos(Convert.ToDecimal(cmd2.ExecuteScalar() ?? 0));
 
             }
 
@@ -9294,6 +9302,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (d == null) return new List<DispatchStop>();
 
+            if (d.Id < 0) return GetOrBuildSpecialTripReportStops(-d.Id, d.ClientName);
+
             var existing = GetDispatchStops(d.Id);
 
             if (existing.Count > 0)
@@ -9622,7 +9632,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         {
 
-            if (deliveryId <= 0 || stops == null) return;
+            // A negative id is a special trip's trip report rows (−special trip Id).
+
+            if (deliveryId == 0 || stops == null) return;
 
             try
 
@@ -10002,7 +10014,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         string dt = reader.IsDBNull(2) ? "08:00 AM" : reader.GetString(2);
 
-                        return $"DUPLICATE LOADING SCHEDULE CONFLICT:\nAn active schedule ({sn} - {status}) for '{clientName}' to '{destination}' at {dt} is already booked for {scheduleDate:MMM dd, yyyy}.\n\nIf this is a second batch/trip order for the same client today, please specify a different Departure Time.";
+                        return $"LOADING SCHEDULE ALREADY EXISTS:\nAn active schedule ({sn} - {status}) for '{clientName}' to '{destination}' at {dt} is already booked for {scheduleDate:MMM dd, yyyy}.\n\nIf this is a second batch/trip order for the same client today, please specify a different Departure Time.";
 
                     }
 
@@ -10130,9 +10142,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             StoreManagerMiddleName = smmn,
 
-                            TruckTimeIn = reader.FieldCount > 18 && !reader.IsDBNull(18) ? reader.GetString(18) : "2042",
+                            TruckTimeIn = reader.FieldCount > 18 && !reader.IsDBNull(18) ? reader.GetString(18) : "",
 
-                            TruckTimeOut = reader.FieldCount > 19 && !reader.IsDBNull(19) ? reader.GetString(19) : "0139",
+                            TruckTimeOut = reader.FieldCount > 19 && !reader.IsDBNull(19) ? reader.GetString(19) : "",
 
                             DtrApprovedBy = reader.FieldCount > 20 && !reader.IsDBNull(20) ? reader.GetString(20) : "RAMIL MENDOZA",
 
@@ -10410,6 +10422,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             bool wasNew = tr.Id <= 0;
 
+            if (tr.SpecialTripId > 0) EnsureSpecialTripColumns();
+
             using (var conn = new SqliteConnection(connectionString))
 
             {
@@ -10440,7 +10454,61 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         }
 
-                        if (tr.Id == 0)
+                        if (tr.Id == 0 && tr.SpecialTripId > 0)
+
+                        {
+
+                            // A special trip's report: one per trip, and only once the trip is completed. No dispatch is touched.
+
+                            using (var dupCmd = conn.CreateCommand())
+
+                            {
+
+                                dupCmd.Transaction = tx;
+
+                                dupCmd.CommandText = "SELECT TripReportNumber FROM TripReports WHERE COALESCE(SpecialTripId,0) = @st AND COALESCE(IsVoid,0) = 0 LIMIT 1";
+
+                                dupCmd.Parameters.AddWithValue("@st", tr.SpecialTripId);
+
+                                var existingTr = dupCmd.ExecuteScalar();
+
+                                if (existingTr != null && existingTr != DBNull.Value)
+
+                                    throw new InvalidOperationException($"A trip report (#{existingTr}) already exists for this special trip. Open and edit that report instead of filing a new one.");
+
+                            }
+
+                            using (var stCmd = conn.CreateCommand())
+
+                            {
+
+                                stCmd.Transaction = tx;
+
+                                stCmd.CommandText = "SELECT COALESCE(Status,'') FROM SpecialTrips WHERE Id = @st";
+
+                                stCmd.Parameters.AddWithValue("@st", tr.SpecialTripId);
+
+                                string stStatus = stCmd.ExecuteScalar()?.ToString() ?? "";
+
+                                if (stStatus.Length == 0) throw new InvalidOperationException("That special trip no longer exists.");
+
+                                if (stStatus.Equals("Cancelled", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("This special trip was cancelled. A trip report cannot be filed for it.");
+
+                                if (!stStatus.Equals("Completed", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException($"This special trip is still \"{stStatus}\". Mark it completed in Special Trip before filing its trip report.");
+
+                            }
+
+                            tr.DeliveryId = 0;
+
+                            tr.TripReportNumber = $"TRIP-{DateTime.Now:yyyyMMdd-HHmmss}-{DateTime.Now.Millisecond:D3}{Random.Shared.Next(10, 99)}";
+
+                            cmd.CommandText = @"INSERT INTO TripReports (TripReportNumber, DeliveryId, DispatchNumber, ArrivalTime, DepartureTime, DeliveredGCrates, DeliveredECrates, DeliveredCrates, ReturnedGCrates, ReturnedECrates, ReturnedCrates, StoreManagerName, Remarks, ReportDate, StoreManagerLastName, StoreManagerFirstName, StoreManagerMiddleName, TruckTimeIn, TruckTimeOut, DtrApprovedBy, ReturnCheckedBy, DtrPreparedBy, DrPreparedBy, DrCheckedBy, GuardName)
+
+                                                VALUES (@trn, @did, @dn, @at, @dt, @dgc, @dec, @dc, @rgc, @rec, @rc, @sm, @r, @rd, @smln, @smfn, @smmn, @tti, @tto, @dtra, @rcb, @dtrp, @drp, @drc, @gn)";
+
+                        }
+
+                        else if (tr.Id == 0)
 
                         {
 
@@ -10662,9 +10730,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         cmd.Parameters.AddWithValue("@smmn", (tr.StoreManagerMiddleName ?? "").Trim());
 
-                        cmd.Parameters.AddWithValue("@tti", tr.TruckTimeIn ?? "2042");
+                        cmd.Parameters.AddWithValue("@tti", tr.TruckTimeIn ?? "");
 
-                        cmd.Parameters.AddWithValue("@tto", tr.TruckTimeOut ?? "0139");
+                        cmd.Parameters.AddWithValue("@tto", tr.TruckTimeOut ?? "");
 
                         cmd.Parameters.AddWithValue("@dtra", tr.DtrApprovedBy ?? "RAMIL MENDOZA");
 
@@ -10679,6 +10747,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         cmd.Parameters.AddWithValue("@gn", tr.GuardName ?? "");
 
                         cmd.ExecuteNonQuery();
+
+                        if (tr.SpecialTripId > 0)
+
+                        {
+
+                            using var link = conn.CreateCommand();
+
+                            link.Transaction = tx;
+
+                            link.CommandText = "UPDATE TripReports SET SpecialTripId = @st WHERE TripReportNumber = @trn";
+
+                            link.Parameters.AddWithValue("@st", tr.SpecialTripId);
+
+                            link.Parameters.AddWithValue("@trn", tr.TripReportNumber);
+
+                            link.ExecuteNonQuery();
+
+                        }
 
                         ReconcileResourceStatuses(conn, tx);
 
@@ -10944,11 +11030,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             DueDate = dueDate,
 
-                            TotalAmount = Convert.ToDecimal(reader.GetDouble(7)),
+                            TotalAmount = Centavos(Convert.ToDecimal(reader.GetDouble(7))),
 
-                            Deductions = Convert.ToDecimal(reader.GetDouble(8)),
+                            Deductions = Centavos(Convert.ToDecimal(reader.GetDouble(8))),
 
-                            NetAmount = Convert.ToDecimal(reader.GetDouble(9)),
+                            NetAmount = Centavos(Convert.ToDecimal(reader.GetDouble(9))),
 
                             Status = reader.GetString(10),
 
@@ -10963,6 +11049,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
 
             }
+
+            FillSpecialTripInvoiceInfo(list);
 
             return list;
 
@@ -11042,8 +11130,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 var d = GetDeliveryById(inv.DeliveryId);
 
-                if (d != null && !string.Equals(d.Status, "Completed", StringComparison.OrdinalIgnoreCase) && !string.Equals(d.Status, "Delivered", StringComparison.OrdinalIgnoreCase))
-
+                bool chargeableCancelled = d != null && string.Equals(d.Status, "Cancelled", StringComparison.OrdinalIgnoreCase) && GetChargeableCancelledFees().ContainsKey(d.Id);
+                if (d != null && string.Equals(d.Status, "Cancelled", StringComparison.OrdinalIgnoreCase) && !chargeableCancelled)
+                    throw new InvalidOperationException($"Dispatch {d.DispatchNumber} was cancelled with no charge, so it can't be billed. Nothing was saved.");
+                if (d != null && !chargeableCancelled && !string.Equals(d.Status, "Completed", StringComparison.OrdinalIgnoreCase) && !string.Equals(d.Status, "Delivered", StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException($"Dispatch {d.DispatchNumber} is still \"{d.Status}\". Mark it completed in Dispatch before billing it.");
 
             }
@@ -11180,7 +11270,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             IssueDate = issDate,
 
-                            TotalAmount = Convert.ToDecimal(reader.GetDouble(5)),
+                            TotalAmount = Centavos(Convert.ToDecimal(reader.GetDouble(5))),
 
                             Status = reader.GetString(6),
 
@@ -11270,7 +11360,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             IssueDate = issDate,
 
-                            TotalAmount = Convert.ToDecimal(reader.GetDouble(5)),
+                            TotalAmount = Centavos(Convert.ToDecimal(reader.GetDouble(5))),
 
                             Status = reader.GetString(6),
 
@@ -11336,7 +11426,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                     LEFT JOIN StatementsOfAccount s ON s.Id = i.SoaId
 
-                                    WHERE i.DeliveryId > 0 AND i.SoaId <> @ex";
+                                    WHERE i.DeliveryId > 0 AND i.SoaId <> @ex
+                                      AND COALESCE(s.Status, '') <> 'Cancelled' COLLATE NOCASE";
 
                 cmd.Parameters.AddWithValue("@ex", excludeSoaId);
 
@@ -11366,6 +11457,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var list = new List<StatementOfAccountItem>();
 
+            EnsureSoaStoreCodeColumn();
+
+            EnsureSpecialTripColumns();
+
             using (var conn = new SqliteConnection(connectionString))
 
             {
@@ -11380,7 +11475,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                            COALESCE(PlateNumber, ''), COALESCE(Tonnage, '6T'), DropCount, Amount, FuelSurcharge,
 
-                                           COALESCE(DriverHelper, ''), DriverWage, HelperWage, DistanceKm, DieselCost, Excess, DeliveryId
+                                           COALESCE(DriverHelper, ''), DriverWage, HelperWage, DistanceKm, DieselCost, Excess, DeliveryId, COALESCE(StoreCode, ''), COALESCE(TripReportNumber, ''), COALESCE(TotalCrates, 0), COALESCE(SpecialTripId, 0)
 
                                     FROM StatementOfAccountItems WHERE SoaId = @soaId ORDER BY TripNumber ASC, Id ASC";
 
@@ -11436,7 +11531,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             Excess = Convert.ToDecimal(reader.GetDouble(18)),
 
-                            DeliveryId = reader.GetInt32(19)
+                            DeliveryId = reader.GetInt32(19),
+
+                            StoreCode = reader.GetString(20),
+
+                            TripReportNumber = reader.GetString(21),
+
+                            TotalCrates = reader.GetInt32(22),
+
+                            SpecialTripId = reader.GetInt32(23)
 
                         });
 
@@ -11539,6 +11642,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static int SaveStatementOfAccount(StatementOfAccount soa, List<StatementOfAccountItem> items)
 
         {
+
+            EnsureSoaStoreCodeColumn();
+
+            EnsureSpecialTripColumns();
 
             if (soa.Id > 0)
 
@@ -11696,7 +11803,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                      Tonnage, DropCount, Amount, FuelSurcharge, DriverHelper, DriverWage, HelperWage,
 
-                                     DistanceKm, DieselCost, Excess, DeliveryId)
+                                     DistanceKm, DieselCost, Excess, DeliveryId, StoreCode, TripReportNumber, TotalCrates, SpecialTripId)
 
                                     VALUES
 
@@ -11704,7 +11811,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                      @ton, @dc, @amt, @fsc, @dh, @dw, @hw,
 
-                                     @dist, @dsc, @exs, @did);";
+                                     @dist, @dsc, @exs, @did, @scode, @trn, @tcr, @stid);";
 
                                 insItm.Parameters.AddWithValue("@sid", soaId);
 
@@ -11744,11 +11851,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                 insItm.Parameters.AddWithValue("@did", itm.DeliveryId);
 
+                                insItm.Parameters.AddWithValue("@scode", itm.StoreCode ?? "");
+
+                                insItm.Parameters.AddWithValue("@trn", itm.TripReportNumber ?? "");
+
+                                insItm.Parameters.AddWithValue("@tcr", Math.Max(0, itm.TotalCrates));
+
+                                insItm.Parameters.AddWithValue("@stid", Math.Max(0, itm.SpecialTripId));
+
                                 insItm.ExecuteNonQuery();
 
                             }
 
                         }
+
+                        string invoiceLog = "";
 
                         if (!string.IsNullOrWhiteSpace(soa.SalesInvoiceNo))
 
@@ -11768,13 +11885,41 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             chkInvCmd.Transaction = tx;
 
-                            chkInvCmd.CommandText = "SELECT Id FROM Invoices WHERE SoaId = @sid OR InvoiceNumber = @invNum LIMIT 1";
+                            // This statement's own invoice first; an SI no. already on another statement's invoice is refused.
+
+                            chkInvCmd.CommandText = "SELECT Id FROM Invoices WHERE SoaId = @sid ORDER BY Id LIMIT 1";
 
                             chkInvCmd.Parameters.AddWithValue("@sid", soaId);
 
-                            chkInvCmd.Parameters.AddWithValue("@invNum", invNum);
-
                             var existingInvObj = chkInvCmd.ExecuteScalar();
+
+                            var clashCmd = conn.CreateCommand();
+
+                            clashCmd.Transaction = tx;
+
+                            clashCmd.CommandText = "SELECT Id, SoaId FROM Invoices WHERE InvoiceNumber = @invNum COLLATE NOCASE AND SoaId <> @sid LIMIT 1";
+
+                            clashCmd.Parameters.AddWithValue("@invNum", invNum);
+
+                            clashCmd.Parameters.AddWithValue("@sid", soaId);
+
+                            using (var cr = clashCmd.ExecuteReader())
+
+                            {
+
+                                if (cr.Read())
+
+                                {
+
+                                    int otherSoa = cr.IsDBNull(1) ? 0 : cr.GetInt32(1);
+
+                                    if (otherSoa > 0) throw new InvalidOperationException($"Sales invoice no. {rawSi} is already used by another statement's invoice ({invNum}).");
+
+                                    if (existingInvObj == null || existingInvObj == DBNull.Value) existingInvObj = cr.GetInt32(0); // an unlinked invoice with this SI no. gets linked
+
+                                }
+
+                            }
 
                             if (existingInvObj != null && existingInvObj != DBNull.Value)
 
@@ -11852,6 +11997,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                 insInvCmd.ExecuteNonQuery();
 
+                                invoiceLog = invNum;
+
                             }
 
                         }
@@ -11861,6 +12008,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         tx.Commit();
 
                         try { LogAuditTrail(wasEdit ? "UPDATE" : "ADD", "StatementsOfAccount", soaId, soa.SoaNumber, "TotalAmount", "", soa.TotalAmount.ToString("N2"), $"Statement {soa.SoaNumber} for {soa.ClientName} {(wasEdit ? "edited" : "created")}: {items?.Count ?? 0} line(s), PHP {soa.TotalAmount:N2}"); } catch (Exception swxA) { ErrLog.Swallowed(swxA); }
+
+                        if (invoiceLog.Length > 0)
+
+                            try { LogAuditTrail("ADD", "Invoices", 0, invoiceLog, "NetAmount", "", soa.TotalAmount.ToString("N2"), $"Invoice {invoiceLog} for {soa.ClientName} created from statement {soa.SoaNumber}: PHP {soa.TotalAmount:N2}"); } catch (Exception swxI) { ErrLog.Swallowed(swxI); }
 
                         try
 
@@ -12088,11 +12239,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             DueDate = dueDate,
 
-                            TotalAmount = Convert.ToDecimal(reader.GetDouble(7)),
+                            TotalAmount = Centavos(Convert.ToDecimal(reader.GetDouble(7))),
 
-                            Deductions = Convert.ToDecimal(reader.GetDouble(8)),
+                            Deductions = Centavos(Convert.ToDecimal(reader.GetDouble(8))),
 
-                            NetAmount = Convert.ToDecimal(reader.GetDouble(9)),
+                            NetAmount = Centavos(Convert.ToDecimal(reader.GetDouble(9))),
 
                             Status = reader.GetString(10),
 
@@ -12237,8 +12388,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.CommandText = "SELECT COALESCE(SUM(AmountPaid), 0) FROM CollectionReceipts WHERE InvoiceId = @id AND COALESCE(IsVoid,0) = 0";
 
                 cmd.Parameters.AddWithValue("@id", invoiceId);
-
-                return Convert.ToDecimal(cmd.ExecuteScalar() ?? 0);
+                return Centavos(Convert.ToDecimal(cmd.ExecuteScalar() ?? 0));
 
             }
 
@@ -12284,7 +12434,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             PaymentDate = pDate,
 
-                            AmountPaid = Convert.ToDecimal(reader.GetDouble(5)),
+                            AmountPaid = Centavos(Convert.ToDecimal(reader.GetDouble(5))),
 
                             PaymentMethod = reader.GetString(6),
 
@@ -12364,7 +12514,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             if (!r.Read()) throw new ArgumentException("The selected invoice no longer exists.");
 
-                            netAmount = Convert.ToDecimal(r.GetDouble(0));
+                            netAmount = Centavos(Convert.ToDecimal(r.GetDouble(0)));
 
                             invStatus = r.IsDBNull(1) ? "" : r.GetString(1);
 
@@ -12412,11 +12562,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             sumCmd.Parameters.AddWithValue("@id", cr.Id);
 
-                            otherPaid = Convert.ToDecimal(sumCmd.ExecuteScalar() ?? 0);
+                            otherPaid = Centavos(Convert.ToDecimal(sumCmd.ExecuteScalar() ?? 0));
 
                         }
 
-                        if (otherPaid + cr.AmountPaid > netAmount + 0.009m)
+                        cr.AmountPaid = Centavos(cr.AmountPaid);
+                        if (otherPaid + cr.AmountPaid > netAmount)
 
                         {
 
@@ -13967,6 +14118,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (string.IsNullOrWhiteSpace(itemValue)) return;
 
+            bool added;
+
             using (var conn = new SqliteConnection(connectionString))
 
             {
@@ -13981,9 +14134,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 cmd.Parameters.AddWithValue("@v", itemValue.Trim());
 
-                cmd.ExecuteNonQuery();
+                added = cmd.ExecuteNonQuery() > 0;
 
             }
+
+            // Only a value that is really new refreshes the open screen and goes in the audit trail; re-saving a known one
+
+            // (e.g. "CASH" on every receipt) used to log it again and refresh the screen the person was typing in.
+
+            if (!added) return;
 
             NotifyCategoriesChanged();
 
@@ -15220,6 +15379,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 trip.Stops = GetSpecialTripStops(trip.Id);
             }
 
+            FillSpecialTripExtras(list);
+
             return list;
         }
 
@@ -15267,6 +15428,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (trip != null)
             {
                 trip.Stops = GetSpecialTripStops(trip.Id);
+                FillSpecialTripExtras(new[] { trip });
+
             }
             return trip;
         }
@@ -15302,6 +15465,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static bool SaveSpecialTrip(SpecialTrip trip)
         {
             if (trip == null) return false;
+            EnsureSpecialTripColumns();
+
             string stStatus = trip.Status.Trim();
 
             bool stActive = !stStatus.Equals("Completed", StringComparison.OrdinalIgnoreCase) && !stStatus.Equals("Cancelled", StringComparison.OrdinalIgnoreCase);
@@ -15443,6 +15608,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         }
                     }
 
+                    SaveSpecialTripExtras(conn, trans, trip);
+
                     ReconcileResourceStatuses(conn, trans);
 
                     trans.Commit();
@@ -15479,68 +15646,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return ok;
         }
 
-        public static void QueueSpecialTripFinanceDrafts(SpecialTrip trip)
-        {
-            if (trip == null) return;
-            try
-            {
-                if (trip.WithSOA)
-                {
-                    var existingSoa = GetStatementsOfAccount().FirstOrDefault(s => s.PeriodCovered.Contains(trip.OrderReference));
-                    if (existingSoa == null)
-                    {
-                        var soa = new StatementOfAccount
-                        {
-                            SoaNumber = $"SOA-{trip.OrderReference}",
-                            ClientName = trip.Company,
-                            ClientAddress = trip.Address,
-                            PeriodCovered = $"Special Trip {trip.OrderReference} ({trip.DispatchDate:yyyy-MM-dd})",
-                            IssueDate = DateTime.Now,
-                            DeliveryType = "SPECIAL",
-                            Status = "Draft",
-                            TotalAmount = 0
-                        };
-                        SaveStatementOfAccount(soa, soa.Items ?? new List<StatementOfAccountItem>());
-                    }
-                }
+        /// <summary>Runs the trip's checklist (service invoice, SOA, trip report, collection) — see <see cref="SyncSpecialTripChecklist"/>.</summary>
 
-                if (trip.WithServiceInvoice)
-                {
-                    string draftInvNum = $"INV-{trip.OrderReference}";
+        public static void QueueSpecialTripFinanceDrafts(SpecialTrip trip) => SyncSpecialTripChecklist(trip, null);
 
-                    var existingInv = GetInvoices().FirstOrDefault(i => i.InvoiceNumber.Equals(draftInvNum, StringComparison.OrdinalIgnoreCase));
-
-                    if (existingInv == null)
-                    {
-                        // Created as a Draft (no amount yet). Billing must set the amount before it can be collected.
-
-                        var inv = new Invoice
-                        {
-                            InvoiceNumber = draftInvNum,
-
-                            DispatchNumber = trip.OrderReference,
-                            LoadingScheduleNumber = "SPECIAL-TRIP",
-                            ClientName = trip.Company,
-                            IssueDate = DateTime.Now,
-                            DueDate = DateTime.Now.AddDays(15),
-                            Status = "Draft"
-
-                        };
-                        SaveInvoice(inv);
-                    }
-                }
-
-                if (trip.WithCollection)
-                {
-                    // A receipt needs a real amount and a finalized invoice, so it can't be auto-created. Remind the user instead.
-
-                    EventNotificationService.Publish("Collection Pending", $"Special Trip {trip.OrderReference} for {trip.Company} is completed. Record its collection once the invoice amount is final.", ToastType.Info, null, "Finance", "Collections", trip.OrderReference);
-
-                }
-            }
-            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[SpecialTrip] QueueSpecialTripFinanceDrafts error: {ex.Message}"); ErrLog.Swallowed(ex); }
-
-        }
 }
 
 }

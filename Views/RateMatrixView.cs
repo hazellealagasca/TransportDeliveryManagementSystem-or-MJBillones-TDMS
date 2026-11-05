@@ -64,7 +64,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         r.IsPeakSeason = !r.IsPeakSeason;
                         int row = e.RowIndex;
                         BeginInvoke(new Action(() => { try { gridRates.InvalidateRow(row); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); } }));
-                        MessageBox.Show(clash, "Duplicate Rate Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                        MessageBox.Show(clash, "Rate Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                         return;
                     }
                     MJdatabase.ToggleRateMatrixPeak(r.Id, r.IsPeakSeason);
@@ -90,7 +90,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == Keys.Escape && pnlForm.Visible)
+            if (keyData == Keys.Escape && pnlForm.Visible && EscapeGuard.AllowClose(this))
             {
                 SetFormVisibility(false);
                 return true;
@@ -772,7 +772,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             bool next = !r.IsPeakSeason;
             var clash = FindPeakClash(r, next);
-            if (clash != null) { MessageBox.Show(clash, "Duplicate Rate Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop); return; }
+            if (clash != null) { MessageBox.Show(clash, "Rate Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop); return; }
             MJdatabase.ToggleRateMatrixPeak(r.Id, next);
             r.IsPeakSeason = next;
             LoadRates();

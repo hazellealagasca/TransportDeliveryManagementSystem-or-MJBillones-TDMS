@@ -445,6 +445,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public bool WithSOA { get; set; } = false;
         public bool WithServiceInvoice { get; set; } = false;
         public bool WithCollection { get; set; } = false;
+        /// <summary>"With Trip Report" on the checklist (stored in the older ModeOfPaymentWithReport column).</summary>
+        public bool WithTripReport { get => ModeOfPaymentWithReport; set => ModeOfPaymentWithReport = value; }
+        /// <summary>Where the truck goes (required). The client's own address stays in <see cref="Address"/>.</summary>
+        public string DestinationAddress { get; set; } = string.Empty;
+        /// <summary>What the trip is charged (carried to the SOA line, service invoice and collection).</summary>
+        public decimal TripCharge { get; set; }
+        /// <summary>Cash, Bank Transfer, Cheque or Online Payment.</summary>
+        public string ModeOfPayment { get; set; } = string.Empty;
         public int TruckId { get; set; }
         public string TruckPlate { get; set; } = string.Empty;
         public int DriverId { get; set; }
@@ -484,6 +492,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     public class TripReport
     {
         public int Id { get; set; }
+        /// <summary>The special trip this report is for (0 for a dispatch). Its DeliveryId is then 0.</summary>
+        public int SpecialTripId { get; set; }
         public string TripReportNumber { get; set; } = string.Empty;
         public int DeliveryId { get; set; }
         public string DispatchNumber { get; set; } = string.Empty;
@@ -501,8 +511,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string StoreManagerName { get; set; } = string.Empty;
         public string Remarks { get; set; } = string.Empty;
         public DateTime ReportDate { get; set; } = DateTime.Now;
-        public string TruckTimeIn { get; set; } = "2042";
-        public string TruckTimeOut { get; set; } = "0139";
+        public string TruckTimeIn { get; set; } = "";
+        public string TruckTimeOut { get; set; } = "";
         public string DtrApprovedBy { get; set; } = "RAMIL MENDOZA";
         public string ReturnCheckedBy { get; set; } = string.Empty;
         public string DtrPreparedBy { get; set; } = "XERXES RYAN MANRIQUE";
@@ -588,6 +598,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public decimal DieselCost { get; set; }
         public decimal Excess { get; set; }
         public int DeliveryId { get; set; }
+        /// <summary>Store code of the line (filled from the trip report); blank on older lines and hand-typed ones.</summary>
+        public string StoreCode { get; set; } = string.Empty;
+        /// <summary>Trip report number the line came from; blank on older lines and hand-typed ones.</summary>
+        public string TripReportNumber { get; set; } = string.Empty;
+        /// <summary>Total crates delivered to the store on that trip (G + E from the trip report); only the total is billed.</summary>
+        public int TotalCrates { get; set; }
+        /// <summary>The special trip this line bills (0 for a dispatch or a typed line).</summary>
+        public int SpecialTripId { get; set; }
     }
 
     public class Invoice

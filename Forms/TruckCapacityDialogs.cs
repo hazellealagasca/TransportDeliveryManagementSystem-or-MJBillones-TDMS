@@ -59,6 +59,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
     /// <summary>
     /// Truck categories and their load-planning matrix (Dry / Cold / Combi crates). Saving checks the hard rules
     /// (blocks) and warns when trucks of that category will change capacity.
@@ -78,6 +79,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
         public TruckCategoryMatrixDialog(bool startWithNew = false)
         {
             Text = "Truck categories & capacities";
@@ -92,15 +94,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
             var header = new Panel { Dock = DockStyle.Top, Height = D(64), BackColor = AppTheme.Surface, Padding = new Padding(D(20), D(10), D(20), D(6)) };
             header.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(22), Text = "Crates each category can carry. A truck's capacity is locked to its category and cargo type. Combi = cold part + dry part; the Dry capacity is the truck's hard maximum.", Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, AutoEllipsis = true });
             header.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(28), Text = "Truck categories & capacities", Font = new Font("Segoe UI Semibold", 13F), ForeColor = AppTheme.TextPrimary });
 
 
 
+
             var body = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Padding = new Padding(D(16)), BackColor = AppTheme.Canvas };
             body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
             body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
+
 
 
 
@@ -123,6 +128,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             grid.SelectionChanged += (s, e) => { if (grid.Focused && grid.CurrentRow?.Tag is string n) LoadEditor(n); };
             grid.CellClick += (s, e) => { if (e.RowIndex >= 0 && grid.Rows[e.RowIndex].Tag is string n) LoadEditor(n); };
             body.Controls.Add(grid, 0, 0);
+
 
 
 
@@ -158,12 +164,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
             var footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = D(54), FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(D(16), D(8), D(16), D(8)), BackColor = AppTheme.Surface };
             var close = new Button { Text = "Close", AutoSize = true, MinimumSize = new Size(D(100), D(34)), FlatStyle = FlatStyle.Flat, DialogResult = DialogResult.Cancel };
             close.FlatAppearance.BorderSize = 0;
             UIThemeHelper.SetButtonRole(close, "secondary");
             footer.Controls.Add(close);
             CancelButton = close;
+
 
 
 
@@ -178,6 +186,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Reload();
             LoadEditor(startWithNew ? null : categories.FirstOrDefault()?.CategoryName);
         }
+
 
 
 
@@ -198,7 +207,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
         private TruckCapacity? Find(string? name) => matrix.FirstOrDefault(x => string.Equals(x.CategoryName.Trim(), (name ?? "").Trim(), StringComparison.OrdinalIgnoreCase));
+
 
 
 
@@ -220,11 +231,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
         private TruckCapacity FromEditor() => new TruckCapacity
         {
             CategoryName = System.Text.RegularExpressions.Regex.Replace(txtName.Text.Trim(), @"\s+", " "),
             DryMax = (int)numDry.Value, ColdMax = (int)numCold.Value, CombiColdMax = (int)numCombiCold.Value, CombiDryMax = (int)numCombiDry.Value
         };
+
 
 
 
@@ -238,6 +251,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
         private void SaveCurrent()
         {
             var m = FromEditor();
@@ -248,7 +262,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
             var clash = categories.FirstOrDefault(c => string.Equals(c.CategoryName.Trim(), m.CategoryName, StringComparison.OrdinalIgnoreCase) && !string.Equals(c.CategoryName, editingName, StringComparison.OrdinalIgnoreCase));
-            if (clash != null) { QuietBox.Show($"There is already a category named \"{clash.CategoryName}\".", "Duplicate category", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            if (clash != null) { QuietBox.Show($"There is already a category named \"{clash.CategoryName}\".", "Category Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             // Warn (Section 8): trucks of this category will change capacity.
             var old = Find(editingName);
             int trucks = categories.FirstOrDefault(c => string.Equals(c.CategoryName, editingName, StringComparison.OrdinalIgnoreCase))?.AssignedTrucksCount ?? 0;
@@ -268,6 +282,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             catch (Exception ex) { ErrLog.Error("TruckCategoryMatrixDialog", ex); MessageBox.Show(ex.Message, "Save truck category", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
+
 
 
 
@@ -291,6 +306,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             catch (Exception ex) { ErrLog.Error("TruckCategoryMatrixDialog", ex); MessageBox.Show(ex.Message, "Remove category", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
+
 
 
 

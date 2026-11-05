@@ -338,13 +338,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var matchSched = matchDel != null && matchDel.LoadingScheduleId > 0
                     ? MJdatabase.GetLoadingSchedules().FirstOrDefault(s => s.Id == matchDel.LoadingScheduleId)
                     : null;
-                string clientName = matchSched?.ClientName ?? "";
+                // The dispatch's own client first (most dispatches have no loading schedule).
+                string clientName = !string.IsNullOrWhiteSpace(matchDel?.ClientName) ? matchDel!.ClientName : (matchSched?.ClientName ?? "");
                 if (string.IsNullOrEmpty(clientName) && matchDel?.Stops != null && matchDel.Stops.Count > 0)
                 {
                     clientName = string.Join(", ", matchDel.Stops.Select(s => s.ClientName).Where(c => !string.IsNullOrEmpty(c)).Distinct());
                 }
-                if (string.IsNullOrEmpty(clientName)) clientName = "M.J. Billones Client Partner";
-
+                if (string.IsNullOrEmpty(clientName)) clientName = "—"; // never a made-up client name
                 title = $"📝 Trip Report: {tr.TripReportNumber}";
                 subtitle = $"Delivery Audit • Client: {clientName}";
                 statusBadge = "Recorded";
@@ -465,13 +465,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var matchSched = matchDel != null && matchDel.LoadingScheduleId > 0
                     ? MJdatabase.GetLoadingSchedules().FirstOrDefault(s => s.Id == matchDel.LoadingScheduleId)
                     : null;
-                string clientName = matchSched?.ClientName ?? "";
+                // The dispatch's own client first (most dispatches have no loading schedule).
+                string clientName = !string.IsNullOrWhiteSpace(matchDel?.ClientName) ? matchDel!.ClientName : (matchSched?.ClientName ?? "");
                 if (string.IsNullOrEmpty(clientName) && matchDel?.Stops != null && matchDel.Stops.Count > 0)
                 {
                     clientName = string.Join(", ", matchDel.Stops.Select(s => s.ClientName).Where(c => !string.IsNullOrEmpty(c)).Distinct());
                 }
-                if (string.IsNullOrEmpty(clientName)) clientName = "M.J. Billones Client Partner";
-
+                if (string.IsNullOrEmpty(clientName)) clientName = "—"; // never a made-up client name
                 title = $"⚠️ Incident Report: #{inc.Id}";
                 subtitle = $"Transit Discrepancy & Claims • Client: {clientName}";
                 statusBadge = inc.Status;
@@ -836,40 +836,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnPrint.FlatAppearance.BorderSize = 0;
             btnPrint.Click += (s, e) =>
             {
-                PrintDocument pd = new PrintDocument();
-                pd.DefaultPageSettings.PaperSize = new PaperSize("ShortBond", 850, 1100);
-                pd.PrintPage += (ps, pe) =>
-                {
-                    Graphics g = pe.Graphics!;
-                    float y = 40;
-                    g.DrawString("M.J. BILLONES TRANSPORT SERVICE", new Font("Segoe UI", 14F, FontStyle.Bold), Brushes.Black, 50, y);
-                    y += 24;
-                    g.DrawString("Official Record Specification & Audit Summary", new Font("Segoe UI", 10F, FontStyle.Italic), Brushes.DarkSlateGray, 50, y);
-                    y += 20;
-                    g.DrawLine(new Pen(Pal.C(15, 23, 42), 2), 50, y, 780, y);
-                    y += 18;
-
-                    g.DrawString(title, new Font("Segoe UI", 12F, FontStyle.Bold), Brushes.Black, 50, y);
-                    y += 26;
-
-                    Font lblFont = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
-                    Font valFont = new Font("Segoe UI", 9.5F, FontStyle.Regular);
-
-                    foreach (var kv in keyValues)
-                    {
-                        g.DrawString(kv.Label + ":", lblFont, Brushes.DimGray, 50, y);
-                        g.DrawString(kv.Value, valFont, Brushes.Black, 280, y);
-                        y += 22;
-                    }
-
-                    y += 20;
-                    g.DrawLine(Pens.LightGray, 50, y, 780, y);
-                    y += 10;
-                    g.DrawString($"Printed on {DateTime.Now:MMMM dd, yyyy hh:mm tt} • Confidential System Record", new Font("Segoe UI", 8F), Brushes.Gray, 50, y);
-                };
-
-                PrintPreviewDialog ppd = new PrintPreviewDialog { Document = pd, Width = 800, Height = 600 };
-                ppd.ShowDialog(dlg);
+                // Same print window as every other printout (readable options, preview, PDF / print).
+                var sheet = keyValues.ToList();
+                PrintStudio.Show(() => PrintForms.RecordSheet(title, subtitle, sheet));
             };
 
             Button btnClose = new Button
@@ -889,11 +858,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             pnlFooter.Controls.Add(btnPrint);
             pnlFooter.Controls.Add(btnClose);
-            pnlFooter.Resize += (s, e) =>
+            // Buttons size to their text (fixed widths cut "Print summary" off on scaled screens) and sit one after another.
+            foreach (var b in pnlFooter.Controls.OfType<Button>())
             {
-                btnClose.Location = new Point(pnlFooter.ClientSize.Width - btnClose.Width - 16, 10);
-            };
-
+                b.MinimumSize = new Size(b.Width, b.Height);
+                b.AutoSize = true;
+                b.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+                b.Padding = new Padding(6, 0, 6, 0);
+            }
+            void LayFooter()
+            {
+                int x = 16;
+                foreach (var b in pnlFooter.Controls.OfType<Button>().Where(b => b != btnClose).OrderBy(b => b == btnPrint ? 1 : 0).ThenBy(b => b.TabIndex))
+                {
+                    b.Location = new Point(x, Math.Max(4, (pnlFooter.ClientSize.Height - b.Height) / 2));
+                    x = b.Right + 10;
+                }
+                btnClose.Location = new Point(pnlFooter.ClientSize.Width - btnClose.Width - 16, Math.Max(4, (pnlFooter.ClientSize.Height - btnClose.Height) / 2));
+            }
+            pnlFooter.Resize += (s, e) => LayFooter();
+            pnlFooter.Layout += (s, e) => LayFooter();
             dlg.Controls.Add(tabs);
             dlg.Controls.Add(pnlFooter);
             dlg.Controls.Add(pnlHeader);

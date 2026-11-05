@@ -627,7 +627,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var billedOnSoa = SafeBilled();
                 unbilled = unbilled.Where(d => !billedOnSoa.ContainsKey(d.Id)).ToList();
                 if (unbilled.Count > 0)
-                    items.Add(new ActionList.Item(AppTheme.Warning, $"{unbilled.Count} delivered trip(s) not billed yet", $"{unbilled.Select(d => d.ClientName).Distinct().Count()} client(s) · put them on a statement of account", "Bill", () => MainForm.Instance?.NavigateToFinance("StatementOfAccount"), "Billing", 1, unbilled.Min(d => d.DispatchDate), unbilled.Count));
+                    items.Add(new ActionList.Item(AppTheme.Warning, $"{unbilled.Count} delivered trip{(unbilled.Count == 1 ? "" : "s")} not billed yet", $"{unbilled.Select(d => d.ClientName).Distinct().Count()} client{(unbilled.Select(d => d.ClientName).Distinct().Count() == 1 ? "" : "s")} · put them on a statement of account", "Bill", () => MainForm.Instance?.NavigateToFinance("StatementOfAccount"), "Billing", 1, unbilled.Min(d => d.DispatchDate), unbilled.Count));
                 int drafts = data.Invoices.Count(i => RowMenu.Is(i.Status, "Draft"));
                 if (drafts > 0)
                     items.Add(new ActionList.Item(AppTheme.Info, $"{drafts} draft invoice(s) to finish", "From completed special trips — add the amount to issue them", "Open", () => MainForm.Instance?.ShowFinanceRecords("Billing", "Draft"), "Billing", 2, null, drafts));

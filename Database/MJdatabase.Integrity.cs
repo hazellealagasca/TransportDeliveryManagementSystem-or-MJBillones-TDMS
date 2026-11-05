@@ -32,7 +32,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             "CollectionReceipts" => "The receipt is not erased: it is voided, its amount no longer counts toward the invoice, and it stays in the audit log.",
             "TripReports" => "The trip report is not erased: it is voided and kept for the audit log, and the dispatch can get a new report.",
             "IncidentReports" => "The incident is not erased: it is voided, stops counting toward deductions, and stays in the audit log.",
-            "StatementsOfAccount" => "The statement is not erased: it is marked Cancelled and its invoices can be put on a new statement.",
+            "StatementsOfAccount" => "The statement is not erased: it and its invoice are marked Cancelled, and its trips can go on a new statement. A statement with payments can't be cancelled until those receipts are voided.",
             "SpecialTrips" => "The special trip is not erased: it is marked Cancelled and stays in the history.",
             "Users" => "The account is not erased: it is deactivated so it can no longer sign in. Its history stays.",
             "Crews" => "The crew member is not erased: they are set to inactive and no longer offered for new trips. Their trip history stays.",
@@ -139,10 +139,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 case "StatementsOfAccount":
                     {
                         ident = Scalar("SELECT SoaNumber FROM StatementsOfAccount WHERE Id = @id");
+                        // Guard: money already came in on this statement's invoice. Cancelling now would leave a paid invoice with no statement.
+                        string paidCount = Scalar("SELECT COUNT(*) FROM CollectionReceipts r JOIN Invoices v ON v.Id = r.InvoiceId WHERE v.SoaId = @id AND COALESCE(r.IsVoid,0) = 0");
+                        if (paidCount != "" && paidCount != "0")
+                            throw new InvalidOperationException($"Statement {ident} has {paidCount} payment(s) recorded on its invoice. Void those collection receipts first (Collections & Receipts), then cancel the statement.");
                         Exec("UPDATE StatementsOfAccount SET Status = 'Cancelled' WHERE Id = @id");
-                        Exec("UPDATE Invoices SET SoaId = 0 WHERE SoaId = @id");
+                        // The statement's own invoice is cancelled with it (same transaction), so it can't be collected on or block its trips as a direct invoice.
+                        // The SoaId link is kept for the history.
+                        int invCancelled = Exec("UPDATE Invoices SET Status = 'Cancelled' WHERE SoaId = @id AND Status <> 'Cancelled'");
                         action = "CANCEL";
-                        LastDeleteSummary = $"Statement {ident} was cancelled. Its invoices are free to go on a new statement.";
+                        LastDeleteSummary = invCancelled > 0
+                            ? $"Statement {ident} and its invoice were cancelled. Its trips are free to go on a new statement."
+                            : $"Statement {ident} was cancelled. Its trips are free to go on a new statement.";
                         break;
                     }
                 case "SpecialTrips":

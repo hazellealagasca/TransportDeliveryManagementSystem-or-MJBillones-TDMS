@@ -25,9 +25,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
         private void InitCapacityUi()
         {
-            lblCombiSplit = new Label { Text = "Combi split — cold crates / dry crates *", UseMnemonic = false };
+            lblCombiSplit = new Label { Text = "Combi: cold crates *", AutoSize = true, UseMnemonic = false };
             pnlCombiSplit = new Panel { Dock = DockStyle.Fill };
             numCombiCold = new NumericUpDown { Dock = DockStyle.Left, Width = Dpi(110), Maximum = 100000, Minimum = 0, Font = new Font("Segoe UI", 10F) };
             InputGuards.DigitsOnly(numCombiCold);
@@ -41,6 +43,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
             lnkCapDetails = new LinkLabel { Text = "View capacity details", AutoSize = true, Dock = DockStyle.Bottom, Font = new Font("Segoe UI Semibold", 8.75F), LinkColor = AppTheme.Accent, ActiveLinkColor = AppTheme.AccentHover, Padding = new Padding(0, Dpi(2), 0, 0), Visible = false };
             lnkCapDetails.LinkClicked += (s, e) => ShowCapacityDetails();
             pnlRec.Controls.Add(lnkCapDetails);
@@ -49,7 +53,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
         private bool IsCombiCargo => MJdatabase.NormalizeCargo(cbCargoType.Text) == MJdatabase.CargoCombi;
+
+
 
 
 
@@ -64,11 +72,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
         private void UpdateCombiSplitUi(int total)
         {
             bool combi = IsCombiCargo && !CargoRouting.IsSpecial(cbCargoType.Text);
             lblCombiSplit.Visible = combi;
             pnlCombiSplit.Visible = combi;
+            if (pnlRowCombi != null && pnlRowCombi.Visible != combi) pnlRowCombi.Visible = combi;
             if (!combi) return;
             int c = (int)numCombiCold.Value;
             int dry = total - c;
@@ -79,7 +90,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
         private Truck? SelectedTruckOrNull() => (cbTruck.SelectedIndex >= 0 && cbTruck.SelectedIndex < trucks.Count) ? trucks[cbTruck.SelectedIndex] : null;
+
+
 
 
 
@@ -109,6 +124,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
         private List<Truck> TrucksFreeForThisOrder()
         {
             try
@@ -118,6 +135,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             catch { return trucks.ToList(); }
         }
+
+
 
 
 
@@ -132,6 +151,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             using var dlg = new CapacityCheckDialog(r, TrucksFreeForThisOrder(), gate: false);
             dlg.ShowDialog(FindForm());
         }
+
+
 
 
 
@@ -168,10 +189,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
         private void RefreshOverCapacityMap()
         {
             try { overCapacityMap = MJdatabase.GetOverCapacityMap(); } catch { overCapacityMap = new Dictionary<int, int>(); }
         }
+
+
 
 
 

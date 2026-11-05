@@ -126,7 +126,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (clash)
                 {
                     grid.Rows[e.RowIndex].ErrorText = $"\"{typed}\" is already used by another column.";
-                    MessageBox.Show(this, $"There's already a column called \"{typed}\". Column names must be unique.", "Duplicate column", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show(this, $"There's already a column called \"{typed}\". Column names must be unique.", "Column Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     e.Cancel = true;
                 }
             };
@@ -266,7 +266,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var dups = working.GroupBy(w => w.Header.Trim(), StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
             if (dups.Count > 0)
             {
-                MessageBox.Show(this, "Column names must be unique. These appear more than once:\n\n• " + string.Join("\n• ", dups) + "\n\nRename one of each before applying.", "Duplicate columns", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, "Column names must be unique. These appear more than once:\n\n• " + string.Join("\n• ", dups) + "\n\nRename one of each before applying.", "Column Names Already Exist", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             Result = working;

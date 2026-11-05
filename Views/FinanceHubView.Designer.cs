@@ -26,8 +26,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlTopNav.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlTopNav.Location = new System.Drawing.Point(0, 0);
             this.pnlTopNav.Name = "pnlTopNav";
-            this.pnlTopNav.Padding = new System.Windows.Forms.Padding(16, 8, 16, 6);
-            this.pnlTopNav.Size = new System.Drawing.Size(1200, 48);
+            this.pnlTopNav.Padding = new System.Windows.Forms.Padding(16, 5, 16, 5);
+            this.pnlTopNav.Size = new System.Drawing.Size(1200, 40);
             this.pnlTopNav.TabIndex = 0;
 
             this.flowNavTabs.Dock = System.Windows.Forms.DockStyle.Fill;

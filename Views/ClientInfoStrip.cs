@@ -100,10 +100,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else
                 {
                     int stores = MJdatabase.GetClientStores(cl.CompanyName).Count;
+                    // Routes of this client only (shared routes of other clients aren't counted).
+                    var routes = MJdatabase.GetDeliveryRoutesByClient(cl.CompanyName, activeOnly: true)
+                        .Count(r => string.Equals((r.ClientCompanyName ?? "").Trim(), cl.CompanyName.Trim(), StringComparison.OrdinalIgnoreCase));
                     var parts = new System.Collections.Generic.List<string>();
                     if (!string.IsNullOrWhiteSpace(cl.TIN)) parts.Add($"TIN {cl.TIN}");
                     string contact = string.Join(" ", new[] { cl.ContactPerson, cl.ContactNumber }.Where(x => !string.IsNullOrWhiteSpace(x)));
                     if (contact.Length > 0) parts.Add($"📞 {contact}");
+                    parts.Add($"{routes} route{(routes == 1 ? "" : "s")}");
                     parts.Add($"{stores} store{(stores == 1 ? "" : "s")}");
                     if (!string.IsNullOrWhiteSpace(cl.Address)) parts.Add(cl.Address.Replace("\r", " ").Replace("\n", " "));
                     lbl.Text = "🏢  " + string.Join("   ·   ", parts);

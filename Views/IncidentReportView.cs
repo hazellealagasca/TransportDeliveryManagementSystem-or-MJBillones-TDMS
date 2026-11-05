@@ -117,7 +117,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == Keys.Escape && pnlForm.Visible)
+            if (keyData == Keys.Escape && pnlForm.Visible && EscapeGuard.AllowClose(this))
             {
                 SetFormVisibility(false);
                 return true;
@@ -611,6 +611,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridIncidents.SelectionChanged -= GridIncidents_SelectionChanged;
             gridIncidents.DataSource = null;
             gridIncidents.DataSource = filtered;
+            UpdateIncidentSummary(filtered.ToList());
             lblGridHeader.Text = string.IsNullOrEmpty(q)
                 ? $"Incidents ({allIncidents.Count})"
                 : $"Incidents ({filtered.Count} of {allIncidents.Count})";

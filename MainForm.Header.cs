@@ -61,6 +61,42 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             this.Move += (s, e) => globalSearch?.HideResults();
         }
+        private bool compactHeader;
+        /// <summary>
+        /// Payments uses a slim one-row top bar (menu · page title · user badge · search) so its forms get more room;
+        /// every other page keeps the regular two-line bar.
+        /// </summary>
+        private void SetCompactHeader(bool on)
+        {
+            if (compactHeader == on && panelHeader.Height == S(on ? 48 : 64)) return;
+            compactHeader = on;
+            panelHeader.SuspendLayout();
+            try
+            {
+                int h = S(on ? 48 : 64);
+                panelHeader.Height = h;
+                pnlHeaderLeft.Height = h - 1;
+                btnToggleSidebar.Location = new Point(S(16), (h - 1 - btnToggleSidebar.Height) / 2);
+                if (on)
+                {
+                    int th = lblHeaderTitle.PreferredHeight;
+                    lblHeaderTitle.Location = new Point(S(60), Math.Max(0, (h - 1 - th) / 2));
+                    if (userBadge != null)
+                        userBadge.Location = new Point(lblHeaderTitle.Left + lblHeaderTitle.PreferredWidth + S(14), Math.Max(0, (h - 1 - userBadge.Height) / 2));
+                    int need = (userBadge != null ? userBadge.Right : lblHeaderTitle.Right) + S(16);
+                    pnlHeaderLeft.Width = Math.Max(S(460), need);
+                }
+                else
+                {
+                    lblHeaderTitle.Location = new Point(S(60), S(6));
+                    if (userBadge != null) userBadge.Location = new Point(S(58), S(34));
+                    pnlHeaderLeft.Width = S(460);
+                }
+            }
+            finally { panelHeader.ResumeLayout(true); }
+            panelHeader.Invalidate();
+            PlaceGlobalSearch();
+        }
         /// <summary>Centers the search box on the whole top bar (not just the free space), shrinking it when room is tight.</summary>
         private void PlaceGlobalSearch()
         {

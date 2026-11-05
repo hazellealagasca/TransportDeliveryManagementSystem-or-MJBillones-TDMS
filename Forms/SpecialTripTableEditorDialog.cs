@@ -100,7 +100,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Button btnMoveDownCol = null!;
         private Button btnResetCols = null!;
         private Button btnAddRow = null!;
-        private Button btnDuplicateRow = null!;
         private Button btnDeleteRow = null!;
         private Button btnClearRows = null!;
         private Button btnApply = null!;
@@ -234,7 +233,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (EditedColumns.Where((c, i) => i != e.RowIndex).Any(c => c.HeaderText.Trim().Equals(typed, StringComparison.OrdinalIgnoreCase)))
                 {
                     gridColumns.Rows[e.RowIndex].ErrorText = $"\"{typed}\" is already a column.";
-                    MessageBox.Show($"There is already a column called \"{typed}\". Column headers must be unique.", "Duplicate Column", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show($"There is already a column called \"{typed}\". Column headers must be unique.", "Column Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     e.Cancel = true;
                 }
             };
@@ -288,9 +287,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnAddRow = new Button { Text = "+ Add row", Size = new Size(D(118), D(38)), Margin = new Padding(D(8), 0, 0, 0) };
             btnAddRow.Click += BtnAddRow_Click;
 
-            btnDuplicateRow = new Button { Text = "Duplicate", Size = new Size(D(108), D(38)), Margin = new Padding(D(8), 0, 0, 0) };
-            btnDuplicateRow.Click += BtnDuplicateRow_Click;
-
             btnDeleteRow = new Button { Text = "Delete row", Size = new Size(D(112), D(38)), Margin = new Padding(D(8), 0, 0, 0) };
             btnDeleteRow.Click += BtnDeleteRow_Click;
 
@@ -299,7 +295,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             flowRowBtns.Controls.Add(btnClearRows);
             flowRowBtns.Controls.Add(btnDeleteRow);
-            flowRowBtns.Controls.Add(btnDuplicateRow);
             flowRowBtns.Controls.Add(btnAddRow);
             rowsHead.Controls.Add(flowRowBtns);
             gridRows = new DataGridView
@@ -380,16 +375,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UIThemeHelper.SetButtonRole(btnMoveDownCol, "secondary");
             UIThemeHelper.SetButtonRole(btnResetCols, "secondary");
             UIThemeHelper.SetButtonRole(btnAddRow, "primary");
-            UIThemeHelper.SetButtonRole(btnDuplicateRow, "secondary");
             UIThemeHelper.SetButtonRole(btnDeleteRow, "danger");
             UIThemeHelper.SetButtonRole(btnClearRows, "secondary");
-            foreach (var b in new[] { btnApply, btnCancel, btnAddRow, btnDuplicateRow, btnDeleteRow, btnClearRows, btnAddCol, btnRenameCol, btnDeleteCol, btnMoveUpCol, btnMoveDownCol, btnResetCols })
+            foreach (var b in new[] { btnApply, btnCancel, btnAddRow, btnDeleteRow, btnClearRows, btnAddCol, btnRenameCol, btnDeleteCol, btnMoveUpCol, btnMoveDownCol, btnResetCols })
             {
                 b.Font = new Font("Segoe UI Semibold", 9.25F);
             }
             btnApply.Size = new Size(D(180), D(40));
             btnCancel.Size = new Size(D(120), D(40));
-            foreach (var b in new[] { btnAddRow, btnDuplicateRow, btnDeleteRow, btnClearRows }) b.Height = D(38);
+            foreach (var b in new[] { btnAddRow, btnDeleteRow, btnClearRows }) b.Height = D(38);
             // Editable cell grid: keep cell-by-cell selection and comfortable rows.
             gridRows.SelectionMode = DataGridViewSelectionMode.CellSelect;
             gridRows.EditMode = DataGridViewEditMode.EditOnEnter;
@@ -597,7 +591,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (EditedColumns.Any(c => c.HeaderText.Trim().Equals(header, StringComparison.OrdinalIgnoreCase)))
             {
-                MessageBox.Show($"There is already a column called \"{header}\". Column headers must be unique.", "Duplicate Column", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show($"There is already a column called \"{header}\". Column headers must be unique.", "Column Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtColumnName.Focus();
                 txtColumnName.SelectAll();
                 return;
@@ -643,7 +637,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             newTitle = System.Text.RegularExpressions.Regex.Replace(newTitle, @"\s+", " ");
             if (EditedColumns.Where((c, i) => i != idx).Any(c => c.HeaderText.Trim().Equals(newTitle, StringComparison.OrdinalIgnoreCase)))
             {
-                MessageBox.Show($"There is already a column called \"{newTitle}\". Column headers must be unique.", "Duplicate Column", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show($"There is already a column called \"{newTitle}\". Column headers must be unique.", "Column Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtColumnName.Focus();
                 txtColumnName.SelectAll();
                 return;
@@ -779,36 +773,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
-        private void BtnDuplicateRow_Click(object? sender, EventArgs e)
-        {
-            gridRows.EndEdit();
-            if (gridRows.CurrentRow == null || gridRows.CurrentRow.Index < 0)
-            {
-                BtnAddRow_Click(sender, e);
-                return;
-            }
-
-            var srcRow = gridRows.CurrentRow;
-            int nextSeq = gridRows.Rows.Count + 1;
-            int rIdx = gridRows.Rows.Add();
-            var dstRow = gridRows.Rows[rIdx];
-            dstRow.Cells["colSeq"].Value = nextSeq.ToString();
-
-            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var col in EditedColumns)
-            {
-                string val = srcRow.Cells[col.Key].Value?.ToString() ?? string.Empty;
-                if (col.Key.Equals("colStdId", StringComparison.OrdinalIgnoreCase))
-                {
-                    val = $"ST-{nextSeq:D3}";
-                }
-                dstRow.Cells[col.Key].Value = val;
-                dict[col.Key] = val;
-            }
-            dstRow.Tag = dict;
-            RenumberRows();
-        }
-
         private void BtnDeleteRow_Click(object? sender, EventArgs e)
         {
             gridRows.EndEdit();
@@ -865,7 +829,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var dupHeaders = EditedColumns.GroupBy(c => c.HeaderText.Trim(), StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
             if (dupHeaders.Count > 0)
             {
-                MessageBox.Show("Column headers must be unique. These appear more than once:\n\n• " + string.Join("\n• ", dupHeaders) + "\n\nRename one of each before applying.", "Duplicate Columns", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Column headers must be unique. These appear more than once:\n\n• " + string.Join("\n• ", dupHeaders) + "\n\nRename one of each before applying.", "Column Names Already Exist", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             var badNumber = CaptureCurrentRowsFromGrid().Select((r, i) => (r, i)).SelectMany(x => x.r.Where(kv => (kv.Key.Equals("colECrate", StringComparison.OrdinalIgnoreCase) || kv.Key.Equals("colGCrate", StringComparison.OrdinalIgnoreCase)) && !string.IsNullOrWhiteSpace(kv.Value) && !kv.Value.Trim().All(char.IsDigit)).Select(kv => x.i + 1)).FirstOrDefault();

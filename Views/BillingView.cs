@@ -16,6 +16,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private string currentSortColumn = "InvoiceNumber";
         private bool isSortAscending = true;
         private List<Delivery> completedDeliveries = new List<Delivery>();
+        /// <summary>Cancelled trips the client is still charged for (trip id → agreed fee). Only these cancelled trips can be billed.</summary>
+        private Dictionary<int, decimal> chargeFees = new Dictionary<int, decimal>();
+        private bool IsChargeableCancelled(Delivery d) => string.Equals(d.Status, "Cancelled", StringComparison.OrdinalIgnoreCase) && chargeFees.ContainsKey(d.Id);
         private bool isBindingForm = false;
         private Button btnToggleForm = null!;
         private Button btnCloseForm = null!;
@@ -26,6 +29,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (del == null) return;
             del = DispatchGate.Fresh(del);
             if (!DispatchGate.RequireCompleted(FindForm(), del, "bill it")) return;
+            // Strict binding: only a trip with a saved trip report, not billed on a statement or another invoice.
+            string? block = !MJdatabase.HasTripReport(del.Id) ? $"{del.DispatchNumber} has no saved trip report yet. File it first (Operations → Trip reports), then invoice the trip."
+                : MJdatabase.GetBilledDeliveryIds(0).TryGetValue(del.Id, out var soaNo) ? $"{del.DispatchNumber} is already billed on statement {soaNo}. Its invoice comes from that statement."
+                : MJdatabase.GetDirectlyInvoicedDeliveryIds().TryGetValue(del.Id, out var invNo) ? $"{del.DispatchNumber} is already invoiced ({invNo})."
+                : null;
+            if (block != null) { MessageBox.Show(FindForm(), block, "Can't invoice this trip", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
             SetFormVisibility(true);
             int idx = completedDeliveries.FindIndex(d => d.Id == del.Id);
             if (idx >= 0 && idx < cbDelivery.Items.Count)
@@ -91,7 +100,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == Keys.Escape && pnlForm.Visible)
+            if (keyData == Keys.Escape && pnlForm.Visible && EscapeGuard.AllowClose(this))
             {
                 SetFormVisibility(false);
                 return true;
@@ -145,8 +154,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit.Build(new[]
             {
                 new FullPageFormKit.Section("Invoice & order", "Which dispatch this invoice bills and who it is for.", lblInvoiceNumber, txtInvoiceNumber, lblDel, cbDelivery, lblLoadingSchedule, txtLoadingSchedule, lblClient, cbClient),
-                new FullPageFormKit.Section("Amounts", "Gross amount, deductions and the net amount due.", pnlClientSpacer, tblAmounts, pnlAmountsSpacer, pnlNetDue, pnlNetDueSpacer, lblTariffMatch)
+                new FullPageFormKit.Section("Amounts", "Gross amount, deductions and the net amount due.", pnlClientSpacer, tblAmounts, pnlAmountsSpacer, pnlNetDue, pnlNetDueSpacer, lblTariffMatch, BuildBillAdjustPanel())
             });
+            InitBillGuide();
             if (btnToggleForm != null)
             {
                 btnToggleForm.Text = "＋ New invoice";
@@ -172,6 +182,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (formKit != null) formKit.Show(visible);
             else pnlForm.Visible = visible;
             if (btnToggleForm != null) btnToggleForm.Visible = !visible;
+            OnBillFormShown(visible);
             MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
@@ -201,6 +212,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridInvoices.CellFormatting += GridInvoices_CellFormatting;
         }
 
+        private decimal OverduePaid(int invoiceId)
+        {
+            if (billingPaid.Count == 0)
+            {
+                try { billingPaid = MJdatabase.GetCollectionReceipts().Where(r => r.InvoiceId > 0).GroupBy(r => r.InvoiceId).ToDictionary(g => g.Key, g => MJdatabase.Centavos(g.Sum(r => r.AmountPaid))); }
+                catch (Exception ex) { ErrLog.Swallowed(ex); }
+                if (billingPaid.Count == 0) billingPaid[-1] = 0m; // loaded, nothing paid: don't re-query on every paint
+            }
+            return billingPaid.TryGetValue(invoiceId, out var p) ? p : 0m;
+        }
         private void GridInvoices_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
             if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
@@ -224,6 +245,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     e.CellStyle.BackColor = Pal.C(254, 226, 226);
                     e.CellStyle.ForeColor = Pal.C(185, 28, 28);
                     e.CellStyle.Font = FontCache.Get(gridInvoices.Font, FontStyle.Bold);
+                    // Past due but partly paid: keep Overdue and show what has come in.
+                    if (gridInvoices.Rows[e.RowIndex].DataBoundItem is Invoice od && OverduePaid(od.Id) is var odPaid && odPaid > 0)
+                    {
+                        e.Value = $"Overdue · ₱{odPaid:N2} paid";
+                        e.FormattingApplied = true;
+                    }
                 }
                 else if (status.Equals("Unpaid", StringComparison.OrdinalIgnoreCase))
                 {
@@ -255,8 +282,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     txtLoadingSchedule.Text = "(No Loading Schedule Linked)";
                 }
 
-                string clientName = "";
-                if (ls != null && !string.IsNullOrWhiteSpace(ls.ClientName))
+                // The trip's own client comes first (parsing the loading info split names that contain " - ").
+                string clientName = (del.ClientName ?? "").Trim();
+                if (clientName.Length > 0) { }
+                else if (ls != null && !string.IsNullOrWhiteSpace(ls.ClientName))
                 {
                     clientName = ls.ClientName.Trim();
                 }
@@ -283,7 +312,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
 
                 string tariffDesc;
-                decimal calculatedAmount = MJdatabase.CalculateDeliveryTariff(del, out tariffDesc);
+                decimal calculatedAmount;
+                if (IsChargeableCancelled(del))
+                {
+                    // Cancelled but chargeable: bill the agreed fee recorded at cancellation; no incident deductions.
+                    calculatedAmount = chargeFees[del.Id];
+                    tariffDesc = "Cancelled – chargeable (agreed fee)";
+                    lblTariffMatch.Text = $"✓ {tariffDesc} -> PHP {calculatedAmount:N2}";
+                    lblTariffMatch.Visible = true;
+                    if (calculatedAmount > numTotalAmount.Maximum) numTotalAmount.Maximum = calculatedAmount * 2;
+                    numTotalAmount.Value = Math.Max(numTotalAmount.Minimum, Math.Min(numTotalAmount.Maximum, calculatedAmount));
+                    numDeductions.Value = 0;
+                    RecalculateNet(sender, e);
+                    return;
+                }
+                calculatedAmount = MJdatabase.CalculateDeliveryTariff(del, out tariffDesc);
                 lblTariffMatch.Text = calculatedAmount > 0 ? $"✓ {tariffDesc} -> PHP {calculatedAmount:N2}" : tariffDesc;
                 lblTariffMatch.Visible = true;
 
@@ -428,6 +471,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 allInvoices = MJdatabase.GetInvoices();
+                billingPaid.Clear(); // the summary reads the payments again
                 var invoicedDeliveryIds = new HashSet<int>(allInvoices.Select(inv => inv.DeliveryId));
 
                 var clients = MJdatabase.GetLookupItems("Client Company");
@@ -444,7 +488,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     cbClient.Items.Add(c);
                 }
 
-                completedDeliveries = MJdatabase.GetDeliveries().FindAll(d => d.Status == "Completed" && !invoicedDeliveryIds.Contains(d.Id));
+                // Ready to invoice: completed, with a saved trip report, not on a statement and not invoiced already.
+                var reportedIds = MJdatabase.GetTripReportDeliveryIds();
+                var onStatement = MJdatabase.GetBilledDeliveryIds(0);
+                chargeFees = MJdatabase.GetChargeableCancelledFees();
+                // Billable: completed trips with a trip report, plus cancelled trips marked chargeable. Cancelled no-charge trips never appear.
+                completedDeliveries = MJdatabase.GetDeliveries().FindAll(d => ((d.Status == "Completed" && reportedIds.Contains(d.Id)) || IsChargeableCancelled(d)) && !invoicedDeliveryIds.Contains(d.Id) && !onStatement.ContainsKey(d.Id));
                 var schedulesList = MJdatabase.GetLoadingSchedules();
                 var schedDict = schedulesList.ToDictionary(s => s.Id, s => s);
 
@@ -454,11 +503,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     string sNum = schedDict.TryGetValue(d.LoadingScheduleId, out var s) ? s.ScheduleNumber : "";
                     if (!string.IsNullOrEmpty(sNum))
                     {
-                        cbDelivery.Items.Add($"{d.DispatchNumber} • {sNum} - {d.LoadingScheduleInfo}");
+                        cbDelivery.Items.Add($"{d.DispatchNumber} • {sNum} - {d.LoadingScheduleInfo}{(IsChargeableCancelled(d) ? $"  [Cancelled – chargeable ₱{chargeFees[d.Id]:N2}]" : "")}");
                     }
                     else
                     {
-                        cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo}");
+                        cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo}{(IsChargeableCancelled(d) ? $"  [Cancelled – chargeable ₱{chargeFees[d.Id]:N2}]" : "")}");
                     }
                 }
                 if (cbDelivery.Items.Count > 0)
@@ -473,13 +522,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 FilterGridData();
 
+                if (!pnlForm.Visible) RefreshBillReady();
                 int unpaid = allInvoices.Count(i => i.Status == "Unpaid");
                 int partial = allInvoices.Count(i => i.Status == "Partial");
                 int overdue = allInvoices.Count(i => i.Status == "Overdue");
                 int paid = allInvoices.Count(i => i.Status == "Paid");
-                decimal totalNet = allInvoices.Sum(i => i.NetAmount);
+                int cancelled = allInvoices.Count(i => i.Status == "Cancelled");
+                // Cancelled invoices are not money billed.
+                decimal totalNet = allInvoices.Where(i => i.Status != "Cancelled").Sum(i => i.NetAmount);
 
-                lblSummary.Text = $"{allInvoices.Count:N0} invoice{(allInvoices.Count == 1 ? "" : "s")}  ·  {unpaid} unpaid  ·  {partial} partly paid  ·  {overdue} overdue  ·  {paid} paid  ·  ₱{totalNet:N2} billed";
+                lblSummary.Text = $"{allInvoices.Count:N0} invoice{(allInvoices.Count == 1 ? "" : "s")}  ·  {unpaid} unpaid  ·  {partial} partly paid  ·  {overdue} overdue  ·  {paid} paid{(cancelled > 0 ? $"  ·  {cancelled} cancelled" : "")}  ·  ₱{totalNet:N2} billed";
             }
             catch (Exception ex)
             { ErrLog.Error("BillingView", ex); 
@@ -490,6 +542,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void BtnSave_Click(object? sender, EventArgs e)
         {
+            if (!BillGateBeforeSave()) return;
             try
             {
                 var valErrors = new List<string>();
@@ -529,7 +582,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var duplicateInvoice = existingInvoices.Find(i => (selectedInvoice == null || i.Id != selectedInvoice.Id) && i.DeliveryId == selDel.Id);
                 if (duplicateInvoice != null)
                 {
-                    MessageBox.Show($"DUPLICATE INVOICE BLOCKED:\nDelivery #{selDel.DispatchNumber} has already been invoiced under Invoice #{duplicateInvoice.InvoiceNumber} (Date: {duplicateInvoice.IssueDate:MMM dd, yyyy}). Duplicate invoices for the same delivery trip are strictly prohibited.", "Duplicate Invoice Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    MessageBox.Show($"INVOICE ALREADY EXISTS:\nDelivery #{selDel.DispatchNumber} has already been invoiced under Invoice #{duplicateInvoice.InvoiceNumber} (Date: {duplicateInvoice.IssueDate:MMM dd, yyyy}). A delivery trip can be invoiced only once.", "Invoice Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                     return;
                 }
 
@@ -544,7 +597,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     !string.IsNullOrWhiteSpace(i.InvoiceNumber) && i.InvoiceNumber.Equals(invNum, StringComparison.OrdinalIgnoreCase));
                 if (duplicateNum != null)
                 {
-                    MessageBox.Show($"Invoice Reference Number '{invNum}' is already in use by another invoice (Client: {duplicateNum.ClientName}). Please provide a unique reference number.", "Duplicate Reference Number", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show($"Invoice Reference Number '{invNum}' is already in use by another invoice (Client: {duplicateNum.ClientName}). Please provide a unique reference number.", "Reference Number Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtInvoiceNumber.Focus();
                     return;
                 }
@@ -581,6 +634,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 };
 
                 MJdatabase.SaveInvoice(inv);
+                BillAfterSave(inv.Id, inv.InvoiceNumber);
                 QuietBox.Show("Service Invoice generated and issued with 15-day credit terms!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadData();
@@ -591,10 +645,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 System.Diagnostics.Debug.WriteLine($"[BillingView] BtnSave_Click: {ex}");
                 MessageBox.Show($"Failed to save invoice: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            finally { BillSaveFinished(); }
         }
 
         private void BtnUpdate_Click(object? sender, EventArgs e)
         {
+            if (!BillGateBeforeSave()) return;
             try
             {
                 if (selectedInvoice == null)
@@ -616,7 +672,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     !string.IsNullOrWhiteSpace(i.InvoiceNumber) && i.InvoiceNumber.Equals(invNum, StringComparison.OrdinalIgnoreCase));
                 if (duplicateNum != null)
                 {
-                    MessageBox.Show($"Invoice Reference Number '{invNum}' is already in use by another invoice (Client: {duplicateNum.ClientName}). Please provide a unique reference number.", "Duplicate Reference Number", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show($"Invoice Reference Number '{invNum}' is already in use by another invoice (Client: {duplicateNum.ClientName}). Please provide a unique reference number.", "Reference Number Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtInvoiceNumber.Focus();
                     return;
                 }
@@ -663,6 +719,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     selectedInvoice.Status = "Unpaid";
                 }
                 MJdatabase.SaveInvoice(selectedInvoice);
+                BillAfterSave(selectedInvoice.Id, selectedInvoice.InvoiceNumber);
                 QuietBox.Show("Invoice updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadData();
@@ -673,6 +730,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 System.Diagnostics.Debug.WriteLine($"[BillingView] BtnUpdate_Click: {ex}");
                 MessageBox.Show($"Failed to update invoice: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            finally { BillSaveFinished(); }
         }
 
         private void BtnDelete_Click(object? sender, EventArgs e)
@@ -737,6 +795,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             filtered = ApplyListChips(filtered);
             gridInvoices.DataSource = null;
             gridInvoices.DataSource = filtered;
+            UpdateBillingSummary(filtered.ToList(), reloadPayments: false);
             lblGridHeader.Text = string.IsNullOrEmpty(q) && filtered.Count == allInvoices.Count
                 ? $"Invoices ({allInvoices.Count})"
                 : $"Invoices ({filtered.Count} of {allInvoices.Count})";
@@ -799,7 +858,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblFormHeader.Text = "Generate Service Invoice";
             txtLoadingSchedule.Text = "";
             cbClient.Text = "";
-            numTotalAmount.Value = 8500;
+            numTotalAmount.Value = 0; // filled from the trip's rate when a dispatch is picked
             numDeductions.Value = 0;
             lblTariffMatch.Visible = false;
             lblDueDate.Text = $"Payment Due Date (15 Days): {DateTime.Today.AddDays(15):MM/dd/yyyy}";
@@ -825,6 +884,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnUpdate.Visible = exists;
             ApplyButtonVisualState(btnSave, !exists, Pal.C(13, 110, 253), Pal.White);
             ApplyButtonVisualState(btnUpdate, exists, Pal.C(25, 135, 84), Pal.White);
+            ScheduleBillGuide(); // the checklist decides whether Issue / Update can be clicked
         }
 
         private void ApplyButtonVisualState(Button btn, bool enabled, Color enabledBack, Color enabledFore)

@@ -391,6 +391,50 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string cut = realRows < shown.Count && collapsed.Count == 0 ? $"   ·   showing the first {MaxRows:N0}, narrow the search to see the rest" : "";
             lblFoot.Text = shown.Count == 0 ? "" : $"{shown.Count:N0} of {all.Count:N0} transactions   ·   {shown.Sum(r => r.Crates):N0} crates{cut}";
             if (shown.Count == 0) ShowPreview(null);
+            RenderHistorySummary();
+        }
+        // ------------------------------------------------------------------ All-in-One Summary (follows tabs, search, filters and the clicked order)
+        private AllInOneSummaryBar? historySummary;
+        private void RenderHistorySummary()
+        {
+            if (grid?.Parent == null) return;
+            try
+            {
+                historySummary ??= AllInOneSummaryBar.AttachBelow(grid, "OrderHistory");
+                var list = shown ?? new List<TxRecord>();
+                int dispatches = list.Count(r => r.Kind == TxRecord.KDispatch);
+                int loading = list.Count(r => r.Kind == TxRecord.KLoading);
+                int special = list.Count(r => r.Kind == TxRecord.KSpecial);
+                int completed = list.Count(r => r.StatusGroup == "Completed");
+                int cancelled = list.Count(r => r.StatusGroup == "Cancelled");
+                int crates = list.Where(r => r.StatusGroup != "Cancelled").Sum(r => Math.Max(0, r.Crates));
+                decimal amount = list.Where(r => r.StatusGroup != "Cancelled" && r.Amount.HasValue).Sum(r => r.Amount!.Value);
+                var m = new List<SummaryMetric>
+                {
+                    new("Transactions shown", list.Count.ToString("N0"), SummaryTone.Blue, $"of {all.Count:N0} transactions", Strong: true),
+                    new("Dispatches", dispatches.ToString("N0"), SummaryTone.Teal, "delivery orders"),
+                    new("Loading orders", loading.ToString("N0"), SummaryTone.Purple, "schedules"),
+                    new("Special trips", special.ToString("N0"), SummaryTone.Neutral, "non-crate trips"),
+                    new("Completed", completed.ToString("N0"), SummaryTone.Green, "finished"),
+                    new("Cancelled", cancelled.ToString("N0"), SummaryTone.Red, "not counted below"),
+                    new("Total crates", crates.ToString("N0"), SummaryTone.Blue, "on the transactions shown"),
+                    new("Amount", AllInOneSummaryBar.Money(amount), SummaryTone.Green, "where an amount is known"),
+                };
+                string context = $"Transactions shown: {list.Count:N0} (follows the tab, your search and filters)";
+                string preview = $"{AllInOneSummaryBar.Count(list.Count, "transaction", "transactions")}  ·  {crates:N0} crates  ·  {completed:N0} completed";
+                var sel = selected;
+                if (sel != null)
+                {
+                    m.Add(new SummaryMetric("Selected order", sel.Number, SummaryTone.Purple, $"{sel.Kind} · {sel.Status}", Strong: true));
+                    m.Add(new SummaryMetric("Its crates", sel.Crates.ToString("N0"), SummaryTone.Teal, string.IsNullOrWhiteSpace(sel.Route) ? sel.Client : sel.Route));
+                    m.Add(new SummaryMetric("Its amount", sel.Amount.HasValue ? AllInOneSummaryBar.Money(sel.Amount.Value) : "—", SummaryTone.Green, string.IsNullOrWhiteSpace(sel.InvoiceNo) ? "no invoice yet" : "invoice " + sel.InvoiceNo));
+                    m.Add(new SummaryMetric("Truck & crew", string.IsNullOrWhiteSpace(sel.Truck) ? "—" : sel.Truck, SummaryTone.Neutral, string.IsNullOrWhiteSpace(sel.Crew) ? "no crew yet" : sel.Crew));
+                    context = $"Selected {sel.Kind.ToLowerInvariant()} {sel.Number} — {sel.Client} · {sel.Date:MMM d, yyyy} · {sel.Status}   ·   Transactions shown: {list.Count:N0}";
+                    preview += $"  ·  selected {sel.Number}";
+                }
+                historySummary.SetMetrics(m, preview, context);
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
         }
         // =====================================================================================================
         // Painting
@@ -494,6 +538,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (preview == null) return;
             selected = r;
+            if (!rendering) RenderHistorySummary();
             preview.SuspendLayout();
             foreach (Control c in preview.Controls.Cast<Control>().ToList()) c.Dispose();
             preview.Controls.Clear();

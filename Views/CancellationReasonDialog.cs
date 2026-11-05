@@ -21,6 +21,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly Button btnKeep;
         private readonly Label lblCount;
         private string cancellationReason = string.Empty;
+        // Optional charge choice (dispatch orders only): is the client still charged for the cancelled trip?
+        private readonly RadioButton? rbNoCharge;
+        private readonly RadioButton? rbCharge;
+        private readonly NumericUpDown? numFee;
+        public bool Chargeable => rbCharge?.Checked == true;
+        public decimal Fee => Chargeable && numFee != null ? numFee.Value : 0m;
 
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -43,7 +49,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (t.ToLowerInvariant().Contains("loading")) return "loading order";
             return string.IsNullOrEmpty(t) ? "record" : t.ToLowerInvariant();
         }
-        public CancellationReasonDialog(string itemType = "Dispatch Order", string identifier = "", string? subject = null)
+        public CancellationReasonDialog(string itemType = "Dispatch Order", string identifier = "", string? subject = null, decimal? chargeDefault = null)
         {
             bool isDispatch = (itemType ?? "").ToLowerInvariant().Contains("dispatch");
             bool isLoading = (itemType ?? "").ToLowerInvariant().Contains("loading");
@@ -116,6 +122,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             body.Controls.Add(lblReason, 0, 2);
             body.Controls.Add(txtReason, 0, 3);
             body.Controls.Add(hintRow, 0, 4);
+            if (chargeDefault.HasValue)
+            {
+                // Billing: only a chargeable cancelled trip can be invoiced later; a no-charge one never appears in Billing.
+                var charge = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Dock = DockStyle.Top, Margin = new Padding(0, D(12), 0, 0), BackColor = AppTheme.Surface };
+                charge.Controls.Add(L("Is the client still charged? (required)", new Font("Segoe UI Semibold", 9.5F), AppTheme.TextPrimary, 0, AppTheme.Surface));
+                rbNoCharge = new RadioButton { Text = "Cancelled – No charge (this trip can't be billed)", AutoSize = true, Font = new Font("Segoe UI", 10F), ForeColor = AppTheme.TextPrimary, BackColor = AppTheme.Surface, Margin = new Padding(0, D(6), 0, 0), Checked = true, UseMnemonic = false };
+                rbCharge = new RadioButton { Text = "Cancelled – Chargeable (client still pays; bill it in Billing)", AutoSize = true, Font = new Font("Segoe UI", 10F), ForeColor = AppTheme.TextPrimary, BackColor = AppTheme.Surface, Margin = new Padding(0, D(4), 0, 0), UseMnemonic = false };
+                var feeRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = false, AutoSize = true, Margin = new Padding(D(20), D(6), 0, 0), BackColor = AppTheme.Surface };
+                feeRow.Controls.Add(new Label { Text = "Amount to bill (₱):", AutoSize = true, Font = new Font("Segoe UI", 9.5F), ForeColor = AppTheme.TextSecondary, BackColor = AppTheme.Surface, Margin = new Padding(0, D(6), D(8), 0), UseMnemonic = false });
+                numFee = new NumericUpDown { DecimalPlaces = 2, Maximum = 100000000, Minimum = 0, ThousandsSeparator = true, Width = D(160), Font = new Font("Segoe UI", 10F), Enabled = false };
+                numFee.Value = Math.Max(0, Math.Min(numFee.Maximum, Math.Round(chargeDefault.Value, 2)));
+                InputGuard.MoneyOnly(numFee);
+                feeRow.Controls.Add(numFee);
+                charge.Controls.Add(rbNoCharge);
+                charge.Controls.Add(rbCharge);
+                charge.Controls.Add(feeRow);
+                body.Controls.Add(charge, 0, 5);
+                rbCharge.CheckedChanged += (s, e) => { numFee.Enabled = rbCharge.Checked; UpdateState(); if (rbCharge.Checked) numFee.Focus(); };
+                numFee.ValueChanged += (s, e) => UpdateState();
+            }
             // ---- footer: Keep (secondary) and Cancel (danger), right-aligned on a band
             var footer = new FlowLayoutPanel { Height = D(62), FlowDirection = FlowDirection.RightToLeft, WrapContents = false, Margin = new Padding(0), Padding = new Padding(D(16), D(13), D(20), D(13)), BackColor = AppTheme.SurfaceAlt };
             footer.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawLine(pen, 0, 0, footer.Width, 0); };
@@ -174,18 +200,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             int n = txtReason.Text.Trim().Length;
             lblCount.Text = $"{txtReason.TextLength} / {MaxChars}";
-            btnConfirm.Enabled = n >= MinChars;
+            btnConfirm.Enabled = n >= MinChars && (!Chargeable || (numFee != null && numFee.Value > 0));
         }
 
         private void BtnConfirm_Click(object? sender, EventArgs e)
         {
             string reason = txtReason.Text.Trim();
             if (reason.Length < MinChars) { txtReason.Focus(); return; }
+            if (Chargeable && (numFee == null || numFee.Value <= 0)) { numFee?.Focus(); return; } // a chargeable cancellation needs an amount
             cancellationReason = reason;
             DialogResult = DialogResult.OK;
             Close();
         }
 
+        /// <summary>Dispatch cancellation: reason plus whether the client is still charged (and how much). Returns null when the user keeps the order.</summary>
+        public static string? PromptDispatchCancellation(IWin32Window owner, string identifier, string? subject, decimal defaultFee, out bool chargeable, out decimal fee)
+        {
+            using var dlg = new CancellationReasonDialog("Dispatch Order", identifier, subject, defaultFee);
+            bool ok = dlg.ShowDialog(owner) == DialogResult.OK;
+            chargeable = ok && dlg.Chargeable;
+            fee = ok ? dlg.Fee : 0m;
+            return ok ? dlg.CancellationReason : null;
+        }
         public static string? PromptCancellationReason(IWin32Window owner, string itemType = "Dispatch Order", string identifier = "", string? subject = null)
         {
             using var dlg = new CancellationReasonDialog(itemType, identifier, subject);

@@ -61,8 +61,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 n.InterceptArrowKeys = false;
                 n.TabStop = false;
                 n.Increment = 0;
-                if (n.Controls.Count > 0) n.Controls[0].Visible = false; // hide the up/down arrows
                 n.MouseWheel += (s, e) => { if (e is HandledMouseEventArgs h) h.Handled = true; };
+                // Show the total in a plain read-only box (a locked number box still drew its arrow area).
+                var shown = new TextBox { ReadOnly = true, TabStop = false, Font = n.Font, Dock = n.Dock, Anchor = n.Anchor, Margin = n.Margin, Text = n.Value.ToString("N0"), BackColor = AppTheme.Surface, ForeColor = AppTheme.TextPrimary };
+                var numBox = n;
+                numBox.ValueChanged += (s, e) => shown.Text = numBox.Value.ToString("N0");
+                var parent = n.Parent;
+                if (parent is TableLayoutPanel tlp)
+                {
+                    var pos = tlp.GetPositionFromControl(n);
+                    tlp.Controls.Remove(n);
+                    tlp.Controls.Add(shown, pos.Column, pos.Row);
+                }
+                else if (parent != null)
+                {
+                    int idx = parent.Controls.GetChildIndex(n);
+                    parent.Controls.Add(shown);
+                    parent.Controls.SetChildIndex(shown, idx);
+                    n.Visible = false;
+                }
             }
             tblDeliveredCrates.Dock = DockStyle.Fill;
             tblReturnedCrates.Dock = DockStyle.Fill;
@@ -84,8 +101,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnLogIncident.Font = new Font("Segoe UI Semibold", 9.5F);
             var card1 = CreateSectionCard(1, "Dispatch order", "Pick the delivery this report closes out. Its route, truck and crew load automatically.",
                 lblDel, cbDelivery, lblDispatchInfoBanner);
+            tripCrateSummary = new TripCrateSummaryPanel();
             var card2 = CreateSectionCard(2, "Stores & crates", "What each store received and what came back.",
-                pnlMultiDropInfo, CreateGap(Dpi(12)), tblCrateTotals, CreateGap(Dpi(8)), btnLogIncident, tblTimes, tblManagerNames);
+                pnlMultiDropInfo, CreateGap(Dpi(10)), tripCrateSummary, CreateGap(Dpi(12)), tblCrateTotals, CreateGap(Dpi(8)), btnLogIncident, tblTimes, tblManagerNames);
             var card3 = CreateSectionCard(3, "Driver & aide pay", "Daily wage and meal allowance of each crew member on this trip, recorded with the report for reference.",
                 pnlCrewPay);
             var card4 = CreateSectionCard(4, "Plant gate & sign-off", "Truck times at the plant, the people who signed, and any remarks.",
@@ -265,6 +283,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             pnlForm.Margin = new Padding(0);
             tblMasterContent.ResumeLayout(true);
+            // Closing the form: the next new report may offer a waiting draft again.
+            if (!visible) draftAnswered = false;
             if (visible)
             {
                 CenterFormContent();
@@ -328,6 +348,87 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return allDeliveries.FirstOrDefault(del => selText.StartsWith(del.DispatchNumber + " - "));
         }
         private AttachmentPanel? tripAttachments;
+        private TripCrateSummaryPanel? tripCrateSummary;
+        private int tripIncidentDeliveryId = -1, tripIncidentDamaged;
+        private string tripIncidentNote = "";
+        private List<ClientStore> tripRouteStores = new List<ClientStore>();
+        private string tripRouteStoresClient = "\0";
+        /// <summary>The trip's dispatch: the one picked, or the one behind the report being edited.</summary>
+        private Delivery? TripDelivery()
+        {
+            var d = GetSelectedDelivery();
+            if (d == null && isEditingExistingReport && selectedTripReport != null)
+                d = allDeliveries.FirstOrDefault(x => x.Id == selectedTripReport.DeliveryId || string.Equals(x.DispatchNumber, selectedTripReport.DispatchNumber, StringComparison.OrdinalIgnoreCase));
+            return d;
+        }
+        /// <summary>
+        /// Refreshes the Trip &amp; Crate Summary Overview from the store rows: total delivered, missing (crates not
+        /// returned, per crate type and store), damaged (incident reports of this trip), intact, the routes covered and
+        /// the stores with problems. Called whenever a store row is added, changed or removed.
+        /// </summary>
+        private void UpdateTripCrateSummary()
+        {
+            if (tripCrateSummary == null || gridStores == null) return;
+            try
+            {
+                var f = new TripCrateFigures();
+                var d = TripDelivery();
+                // Damaged crates come from the trip's incident reports (read again only when the trip changes).
+                int delId = d?.Id ?? 0;
+                if (delId != tripIncidentDeliveryId)
+                {
+                    tripIncidentDeliveryId = delId;
+                    tripIncidentDamaged = 0; tripIncidentNote = "";
+                    if (delId > 0)
+                    {
+                        var incs = MJdatabase.GetIncidentReports().FindAll(ir => ir.DeliveryId == delId && !string.Equals(ir.Status, "Cancelled", StringComparison.OrdinalIgnoreCase));
+                        tripIncidentDamaged = incs.Sum(i => Math.Max(0, i.DamagedQuantity));
+                        if (tripIncidentDamaged > 0)
+                            tripIncidentNote = $"Damaged: {tripIncidentDamaged:N0} crate{(tripIncidentDamaged == 1 ? "" : "s")} (incident reports for the whole trip: {string.Join("; ", incs.Where(i => i.DamagedQuantity > 0).Select(i => $"{i.Cause} {i.DamagedQuantity:N0}"))})";
+                    }
+                }
+                string client = (d?.ClientName ?? "").Trim();
+                if (!string.Equals(client, tripRouteStoresClient, StringComparison.OrdinalIgnoreCase))
+                {
+                    tripRouteStoresClient = client;
+                    try { tripRouteStores = client.Length == 0 ? new List<ClientStore>() : MJdatabase.GetClientStores(client, includeArchived: true); }
+                    catch (Exception ex) { ErrLog.Swallowed(ex); tripRouteStores = new List<ClientStore>(); }
+                }
+                var routes = new List<string>();
+                int N(DataGridViewRow r, string col) => gridStores.Columns.Contains(col) && int.TryParse(r.Cells[col].Value?.ToString(), out int n) ? Math.Max(0, n) : 0;
+                string T(DataGridViewRow r, string col) => gridStores.Columns.Contains(col) ? (r.Cells[col].Value?.ToString() ?? "").Trim() : "";
+                foreach (DataGridViewRow row in gridStores.Rows)
+                {
+                    if (row.IsNewRow) continue;
+                    string code = T(row, "colCode"), name = T(row, "colStore");
+                    if (code.Length == 0 && name.Length == 0) continue;
+                    f.Stores++;
+                    int le = N(row, "colLoadE"), lg = N(row, "colLoadG"), re = N(row, "colRetE"), rg = N(row, "colRetG");
+                    f.TotalCrates += le + lg;
+                    f.ReturnedTotal += re + rg;
+                    f.Drops += N(row, "colRem");
+                    int shortG = Math.Max(0, lg - rg), shortE = Math.Max(0, le - re);
+                    string who = code.Length > 0 ? $"{code} – {name}" : name;
+                    if (shortG + shortE > 0)
+                    {
+                        f.Missing += shortG + shortE;
+                        f.StoreIssues.Add($"{who}:  {shortG + shortE:N0} missing" + (shortG > 0 && shortE > 0 ? $" (G {shortG:N0}, E {shortE:N0})" : shortG > 0 ? " (G crates)" : " (E crates)"));
+                    }
+                    int overG = Math.Max(0, rg - lg), overE = Math.Max(0, re - le);
+                    if (overG + overE > 0) f.OverReturns.Add($"{who}:  returned {overG + overE:N0} more than delivered");
+                    var st = (code.Length > 0 ? tripRouteStores.FirstOrDefault(s => StoreDirectory.Same(s.StoreCode, code)) : null)
+                             ?? (name.Length > 0 ? tripRouteStores.FirstOrDefault(s => StoreDirectory.Same(s.StoreName, name)) : null);
+                    string route = StoreDirectory.Route(st);
+                    if (route.Length > 0 && !routes.Any(x => StoreDirectory.Same(x, route))) routes.Add(route);
+                }
+                if (routes.Count == 0 && d != null && !string.IsNullOrWhiteSpace(d.CleanRouteDisplay)) routes.Add(d.CleanRouteDisplay.Trim());
+                f.Routes = routes;
+                f.Damaged = tripIncidentDamaged;
+                f.DamagedNote = tripIncidentNote;
+                tripCrateSummary.ShowFigures(f);
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+        }
         /// <summary>Points the attachments box at the trip's dispatch: the picked dispatch, or the report being edited.</summary>
         private void SyncAttachmentOwner()
         {

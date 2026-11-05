@@ -93,7 +93,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == Keys.Escape && pnlForm.Visible)
+            if (keyData == Keys.Escape && pnlForm.Visible && EscapeGuard.AllowClose(this))
             {
                 SetFormVisibility(false);
                 return true;
@@ -635,7 +635,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string? duplicate = MJdatabase.ValidateDuplicateCrew(0, name, contact, null, lastName, firstName);
                 if (!string.IsNullOrEmpty(duplicate))
                 {
-                    MessageBox.Show(duplicate, "Duplicate Crew Information Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    MessageBox.Show(duplicate, "Crew Information Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                     return;
                 }
 
@@ -728,7 +728,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string? duplicate = MJdatabase.ValidateDuplicateCrew(selectedCrew.Id, name, contact, null, lastName, firstName);
                 if (!string.IsNullOrEmpty(duplicate))
                 {
-                    MessageBox.Show(duplicate, "Duplicate Crew Information Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    MessageBox.Show(duplicate, "Crew Information Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                     return;
                 }
 

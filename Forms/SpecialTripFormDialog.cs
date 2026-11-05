@@ -47,7 +47,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private ComboBox cbDriver = null!;
         private CheckedListBox clbAides = null!;
         private ComboBox cbPayment = null!;
-        private static readonly string[] PaymentModes = { "With trip report", "With SOA", "With Service Invoice", "With collection" };
+        private TextBox txtDestination = null!;
+        private NumericUpDown numTripCharge = null!;
+        private Label lblChecklistNote = null!;
+        /// <summary>Mode of Payment: exactly these four (Settings can't add others).</summary>
+        private static readonly string[] PaymentModes = MJdatabase.SpecialTripPaymentModes;
         private Button btnSave = null!;
         private Button btnUpdate = null!;
         private Button btnClear = null!;
@@ -313,13 +317,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblHeaderFields.Controls.Add(pnlDeparture, 1, 1);
 
             Panel pnlAddr = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) };
-            Label lblAddr = new Label { Text = "Address", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Dock = DockStyle.Top, Height = 20 };
+            Label lblAddr = new Label { Text = "Client Address (billing)", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Dock = DockStyle.Top, Height = 20 };
             txtAddress = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 9.5F), Height = 30 };
             pnlAddr.Controls.Add(txtAddress);
             pnlAddr.Controls.Add(lblAddr);
             tblHeaderFields.Controls.Add(pnlAddr, 0, 2);
             tblHeaderFields.SetColumnSpan(pnlAddr, 2);
 
+            // Where the truck goes and what the trip is charged.
+            TableLayoutPanel tblTripDetails = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 2, RowCount = 2, Height = 136, Padding = new Padding(0, 0, 0, 8) };
+            tblTripDetails.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblTripDetails.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblTripDetails.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
+            tblTripDetails.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
+            Panel pnlDest = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8) };
+            Label lblDest = new Label { Text = "Destination Address *  (where the truck goes)", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Dock = DockStyle.Top, Height = 20 };
+            txtDestination = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 10F), Height = 30, MaxLength = 300, PlaceholderText = "Street, barangay, town / city, province" };
+            pnlDest.Controls.Add(txtDestination);
+            pnlDest.Controls.Add(lblDest);
+            tblTripDetails.Controls.Add(pnlDest, 0, 0);
+            tblTripDetails.SetColumnSpan(pnlDest, 2);
+            Panel pnlCharge = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 8, 8) };
+            Label lblCharge = new Label { Text = "Trip charge (₱)  — needed for SOA, service invoice and collection", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Dock = DockStyle.Top, Height = 20, AutoEllipsis = true };
+            numTripCharge = new NumericUpDown { Dock = DockStyle.Top, Font = new Font("Segoe UI", 10F), Height = 30, DecimalPlaces = 2, Minimum = 0, Maximum = 99999999, ThousandsSeparator = true, TextAlign = HorizontalAlignment.Right };
+            pnlCharge.Controls.Add(numTripCharge);
+            pnlCharge.Controls.Add(lblCharge);
+            tblTripDetails.Controls.Add(pnlCharge, 0, 1);
             Panel pnlTableSection = new Panel
             {
                 Dock = DockStyle.Top,
@@ -391,6 +414,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnEditTable.FlatAppearance.BorderSize = 0;
             btnEditTable.Click += BtnEditTable_Click;
 
+            Features.Bind(btnEditTable, () => btnEditTable.Visible = Features.On(Features.StoreTableEditHeader), Features.StoreTableEditHeader);
             flowTableBtns.Controls.Add(btnAddItem);
             flowTableBtns.Controls.Add(btnEditTable);
 
@@ -431,7 +455,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Top,
                 ColumnCount = 2,
                 RowCount = 1,
-                Height = 300,
+                Height = 340,
                 Padding = new Padding(0, 10, 0, 0)
             };
             tblBottomSections.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -458,22 +482,37 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Padding = new Padding(12, 8, 12, 8)
             };
 
-            chkPaymentWithReport = new CheckBox { Text = "Mode of payment with my report", Checked = true, Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Pal.C(15, 23, 42), Location = new Point(12, 10), AutoSize = true };
-            chkWithSOA = new CheckBox { Text = "With SOA", Font = new Font("Segoe UI", 9F), ForeColor = Pal.C(51, 65, 85), Location = new Point(12, 35), AutoSize = true };
-            chkWithInvoice = new CheckBox { Text = "With Service Invoice", Font = new Font("Segoe UI", 9F), ForeColor = Pal.C(51, 65, 85), Location = new Point(12, 60), AutoSize = true };
-            chkWithCollection = new CheckBox { Text = "With collection", Font = new Font("Segoe UI", 9F), ForeColor = Pal.C(51, 65, 85), Location = new Point(12, 85), AutoSize = true };
-            // Mode of payment is one choice from a dropdown (the old tick boxes are kept off-screen and follow the dropdown).
-            // Service Type is no longer asked; existing trips keep the value they had.
-            Label lblPay = new Label { Text = "Mode of Payment", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Location = new Point(0, 65), AutoSize = true };
+            // Checklist: what the system does with this trip when it is saved (any combination).
+            CheckBox Check(string text, int y) => new CheckBox { Text = text, Font = new Font("Segoe UI", 10.5F, FontStyle.Bold), ForeColor = Pal.C(15, 23, 42), Location = new Point(14, y), AutoSize = true, Cursor = Cursors.Hand };
+            chkPaymentWithReport = Check("With Trip Report", 34);
+            chkWithSOA = Check("With SOA", 66);
+            chkWithInvoice = Check("With Service Invoice", 98);
+            chkWithCollection = Check("With Collection", 130);
+            var tips = new ToolTip();
+            tips.SetToolTip(chkPaymentWithReport, "Listed in Trip Reports until a trip report is made for this trip.");
+            tips.SetToolTip(chkWithSOA, "Offered in the client's Statement of Account so its charge can be billed there.");
+            tips.SetToolTip(chkWithInvoice, "A service invoice for the trip charge is made in Billing Invoices.");
+            tips.SetToolTip(chkWithCollection, "Shown as a pending collection until its payment is recorded in Collections & Receipts.");
+            pnlPaymentBox.Location = new Point(0, 125);
+            pnlPaymentBox.Size = new Size(420, 200);
+            pnlPaymentBox.BackColor = Pal.C(239, 246, 255);
+            pnlPaymentBox.Padding = new Padding(12, 8, 12, 8);
+            var lblChecklist = new Label { Text = "Checklist — what the system does when you save", Font = new Font("Segoe UI", 9.5F, FontStyle.Bold), ForeColor = Pal.C(30, 58, 138), Location = new Point(12, 8), AutoSize = true };
+            lblChecklistNote = new Label { Text = "", Font = new Font("Segoe UI", 8.5F), ForeColor = Pal.C(71, 85, 105), Location = new Point(12, 162), Size = new Size(392, 32), AutoEllipsis = true };
+            pnlPaymentBox.Controls.AddRange(new Control[] { lblChecklist, chkPaymentWithReport, chkWithSOA, chkWithInvoice, chkWithCollection, lblChecklistNote });
+            foreach (var cb in new[] { chkPaymentWithReport, chkWithSOA, chkWithInvoice, chkWithCollection }) cb.CheckedChanged += (s, e) => UpdateChecklistNote();
+            // Mode of Payment: one of the four choices, picked from the list (no typing). Service Type is no longer asked.
+            Label lblPay = new Label { Text = "Mode of Payment *", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Location = new Point(0, 65), AutoSize = true };
             cbPayment = new ComboBox { Location = new Point(0, 85), Size = new Size(420, 28), DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F) };
             cbPayment.Items.AddRange(PaymentModes.Cast<object>().ToArray());
-            cbPayment.SelectedIndex = 0;
-            pnlPaymentBox.Dispose();
+            cbPayment.SelectedIndex = -1;
+            cbPayment.SelectedIndexChanged += (s, e) => UpdateChecklistNote();
             lblSvc.Dispose();
             pnlLeftBlock.Controls.Add(lblStat);
             pnlLeftBlock.Controls.Add(cbStatus);
             pnlLeftBlock.Controls.Add(lblPay);
             pnlLeftBlock.Controls.Add(cbPayment);
+            pnlLeftBlock.Controls.Add(pnlPaymentBox);
             tblBottomSections.Controls.Add(pnlLeftBlock, 0, 0);
 
             Panel pnlRightBlock = new Panel { Dock = DockStyle.Fill, Margin = new Padding(10, 0, 0, 0) };
@@ -486,7 +525,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblAid = new Label { Text = "Assign Aides  (tick one or more)", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Location = new Point(0, 130), AutoSize = true };
             clbAides = new CheckedListBox { Location = new Point(0, 150), Size = new Size(420, 140), CheckOnClick = true, IntegralHeight = false, Font = new Font("Segoe UI", 9.5F), BorderStyle = BorderStyle.FixedSingle };
-            clbAides.ItemCheck += (s, e) => BeginInvoke(new Action(UpdateAideLabel));
+            // The tick is applied after this event, so the label is updated just after it; while the window is still being
+            // built (an existing trip's aides are ticked in the constructor) there is nothing to queue on, so update directly.
+            clbAides.ItemCheck += (s, e) => { if (IsHandleCreated && !IsDisposed) BeginInvoke(new Action(UpdateAideLabel)); };
+            HandleCreated += (s, e) => UpdateAideLabel();
             lblAidesRef = lblAid;
             pnlRightBlock.Controls.Add(lblTrk);
             pnlRightBlock.Controls.Add(cbTruck);
@@ -498,6 +540,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             pnlCard.Controls.Add(tblBottomSections);
             pnlCard.Controls.Add(pnlTableSection);
+            pnlCard.Controls.Add(tblTripDetails);
             pnlCard.Controls.Add(tblHeaderFields);
 
             pnlScrollBody.Controls.Add(pnlCard);
@@ -744,14 +787,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int n = clbAides.CheckedItems.Count;
             lblAidesRef.Text = n == 0 ? "Assign Aides  (tick one or more)" : $"Assign Aides  ·  {n} selected";
         }
-        /// <summary>Copies the Mode of Payment dropdown into the stored flags (exactly one is on).</summary>
-        private void SyncPaymentChecks()
+        /// <summary>One line under the checklist saying what will happen on save.</summary>
+        private void UpdateChecklistNote()
         {
-            int p = Math.Max(0, cbPayment.SelectedIndex);
-            chkPaymentWithReport.Checked = p == 0;
-            chkWithSOA.Checked = p == 1;
-            chkWithInvoice.Checked = p == 2;
-            chkWithCollection.Checked = p == 3;
+            if (lblChecklistNote == null) return;
+            var on = new List<string>();
+            if (chkPaymentWithReport.Checked) on.Add("trip report");
+            if (chkWithSOA.Checked) on.Add("SOA");
+            if (chkWithInvoice.Checked) on.Add("service invoice");
+            if (chkWithCollection.Checked) on.Add("collection" + (cbPayment.SelectedIndex >= 0 ? $" ({cbPayment.Text})" : ""));
+            lblChecklistNote.Text = on.Count == 0 ? "Nothing ticked: no trip report, billing or collection is tracked for this trip." : "On save: " + string.Join(", ", on) + ".";
         }
         private void ResetFormForNew()
         {
@@ -761,11 +806,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             dtpDispatchDate.Value = DateTime.Now;
             cbCompany.Text = string.Empty;
             txtAddress.Text = string.Empty;
+            txtDestination.Text = string.Empty;
+            numTripCharge.Value = 0;
             cbDepartureTime.Text = "08:00 AM";
             cbServiceType.SelectedIndex = 0;
             cbStatus.SelectedIndex = 0;
 
-            chkPaymentWithReport.Checked = true;
+            chkPaymentWithReport.Checked = false; // the checklist starts empty: tick what this trip needs
             chkWithSOA.Checked = false;
             chkWithInvoice.Checked = false;
             chkWithCollection.Checked = false;
@@ -773,7 +820,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbTruck.SelectedIndex = 0;
             cbDriver.SelectedIndex = 0;
             SetSelectedAides(new List<int>(), "");
-            cbPayment.SelectedIndex = 0;
+            cbPayment.SelectedIndex = -1;
+            UpdateChecklistNote();
             lblTableTitle.Text = "Delivery Details";
             lblTableDesc.Text = "add a line or row and column";
             UpdateTableTitleAndDescPositions();
@@ -874,6 +922,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void BtnEditTable_Click(object? sender, EventArgs e)
         {
+            if (!Features.On(Features.StoreTableEditHeader)) return; // the column edit header is switched off in Settings
             var rowsSnapshot = CaptureGridRows();
             using (var dlg = new SpecialTripTableEditorDialog(
                 lblTableTitle.Text,
@@ -941,7 +990,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             chkWithInvoice.Checked = loadedTrip.WithServiceInvoice;
             chkWithCollection.Checked = loadedTrip.WithCollection;
 
-            cbPayment.SelectedIndex = loadedTrip.WithCollection ? 3 : loadedTrip.WithServiceInvoice ? 2 : loadedTrip.WithSOA ? 1 : 0;
+            txtDestination.Text = loadedTrip.DestinationAddress;
+            numTripCharge.Value = Math.Min(numTripCharge.Maximum, Math.Max(0m, loadedTrip.TripCharge));
+            // Older trips have no Mode of Payment yet: it is asked for on the next save.
+            int mop = Array.FindIndex(PaymentModes, m => string.Equals(m, loadedTrip.ModeOfPayment?.Trim(), StringComparison.OrdinalIgnoreCase));
+            cbPayment.SelectedIndex = mop;
+            UpdateChecklistNote();
             if (loadedTrip.TruckId > 0 && !string.IsNullOrWhiteSpace(loadedTrip.TruckPlate))
             {
                 for (int i = 0; i < cbTruck.Items.Count; i++)
@@ -1145,7 +1199,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 clbAides.Focus();
                 return;
             }
-            SyncPaymentChecks();
+            txtDestination.Text = System.Text.RegularExpressions.Regex.Replace(txtDestination.Text.Trim(), @"\s+", " ");
+            if (txtDestination.Text.Length == 0)
+            {
+                MessageBox.Show("Please enter the Destination Address (where the truck goes).", "Destination Address Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtDestination.Focus();
+                return;
+            }
+            if (cbPayment.SelectedIndex < 0)
+            {
+                MessageBox.Show("Please choose the Mode of Payment: Cash, Bank Transfer, Cheque or Online Payment.", "Mode of Payment Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                cbPayment.Focus();
+                cbPayment.DroppedDown = true;
+                return;
+            }
+            bool billed = chkWithSOA.Checked || chkWithInvoice.Checked || chkWithCollection.Checked;
+            if (billed && !cancelling && numTripCharge.Value <= 0)
+            {
+                MessageBox.Show("Please enter the trip charge. It is needed for the SOA, the service invoice and the collection you ticked.", "Trip Charge Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                numTripCharge.Focus();
+                numTripCharge.Select(0, numTripCharge.Text.Length);
+                return;
+            }
+            if (chkWithCollection.Checked && !chkWithInvoice.Checked && !chkWithSOA.Checked)
+            {
+                MessageBox.Show("A collection is recorded against an invoice. Tick \"With Service Invoice\" or \"With SOA\" as well, so there is something to collect.", "Nothing to Collect Against", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                chkWithInvoice.Focus();
+                return;
+            }
             SpecialTrip trip = new SpecialTrip
             {
                 Id = isNew ? 0 : currentTripId,
@@ -1160,6 +1241,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 WithSOA = chkWithSOA.Checked,
                 WithServiceInvoice = chkWithInvoice.Checked,
                 WithCollection = chkWithCollection.Checked,
+                DestinationAddress = txtDestination.Text.Trim(),
+                TripCharge = numTripCharge.Value,
+                ModeOfPayment = cbPayment.SelectedItem?.ToString() ?? "",
                 CreatedAt = isNew ? DateTime.Now : (loadedTrip?.CreatedAt ?? DateTime.Now),
                 CompletedAt = cbStatus.Text.Trim() == "Completed" ? (DateTime?)DateTime.Now : (loadedTrip?.CompletedAt),
                 Remarks = $"Special Trip dispatch for {company}"
@@ -1242,13 +1326,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     SavedSpecialTripId = trip.Id;
                     IsSaved = true;
 
-                    if (trip.Status == "Completed")
-                    {
-                        MJdatabase.QueueSpecialTripFinanceDrafts(trip);
-                    }
-
+                    // The checklist runs on every save (creates or updates the linked records once; never twice).
+                    var done = MJdatabase.SyncSpecialTripChecklist(trip, isNew ? null : loadedTrip);
+                    string checklist = done.Count > 0 ? "\n\nChecklist:\n• " + string.Join("\n• ", done) : "";
                     MessageBox.Show(
-                        $"Special Trip '{trip.OrderReference}' successfully {(isNew ? "created and saved" : "updated")}!\n\nStatus: {trip.Status}\nStops Configured: {trip.Stops.Count}\nSaved in Special Trip.",
+                        $"Special Trip '{trip.OrderReference}' successfully {(isNew ? "created and saved" : "updated")}!\n\nStatus: {trip.Status}\nDestination: {trip.DestinationAddress}\nMode of Payment: {trip.ModeOfPayment}\nStops Configured: {trip.Stops.Count}{checklist}",
                         "Special Trip Saved",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information);

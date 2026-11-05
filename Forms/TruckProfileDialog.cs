@@ -389,7 +389,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int maxOdo = Math.Max(specs.OdometerKm, maintenance.Where(m => editing == null || m.Id != editing.Id).Select(m => m.OdometerKm).DefaultIfEmpty(0).Max());
                 if (odo > 0 && odo < maxOdo && MessageBox.Show(this, $"The odometer reading ({odo:N0} km) is lower than the last recorded {maxOdo:N0} km. Save anyway?", "Odometer check", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
                 bool dupSameDay = maintenance.Any(m => (editing == null || m.Id != editing.Id) && m.ServiceDate.Date == dtpDate.Value.Date && string.Equals(m.Task, task, StringComparison.OrdinalIgnoreCase));
-                if (dupSameDay && MessageBox.Show(this, $"\"{task}\" is already logged on {dtpDate.Value:MMM d, yyyy}. Add it again?", "Possible duplicate", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+                if (dupSameDay && MessageBox.Show(this, $"\"{task}\" is already logged on {dtpDate.Value:MMM d, yyyy}. Add it again?", "Already Logged", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
                 if (MessageBox.Show(this, editing == null ? $"Are you sure you want to add \"{task}\" to {truck.PlateNumber}'s maintenance log?" : "Are you sure you want to update this maintenance entry?", editing == null ? "Add maintenance" : "Update maintenance", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
                 var rec = editing ?? new TruckMaintenance { TruckId = truck.Id };
                 rec.ServiceDate = dtpDate.Value.Date; rec.Task = task; rec.Category = cbCat.Text; rec.OdometerKm = odo; rec.Cost = cost;

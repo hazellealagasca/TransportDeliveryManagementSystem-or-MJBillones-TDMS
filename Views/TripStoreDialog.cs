@@ -15,7 +15,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     {
         public string StoreCode => txtCode.Text.Trim();
         public string StoreName => txtName.Text.Trim();
-        public string DrNumbers => string.Join(", ", lstDr.Items.Cast<object>().Select(o => o.ToString()!.Trim()).Where(x => x.Length > 0));
+        public string DrNumbers => DrList.Join(lstDr.Items.Cast<object>().Select(o => o.ToString() ?? ""));
         public int ReturnedG => (int)numRetG.Value;
         public int ReturnedE => (int)numRetE.Value;
         public string Drops => numDrops.Value > 0 ? ((int)numDrops.Value).ToString() : "";
@@ -25,17 +25,38 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-        private readonly int deliveredG, deliveredE, originalRetG, originalRetE;
+
+
+
+        private int deliveredG, deliveredE;
+        private readonly int originalRetG, originalRetE;
+        private readonly NumericUpDown? numDelG, numDelE;
+        /// <summary>Delivered crates (typed in when the trip has no dispatch figures, e.g. a special trip).</summary>
+        public int DeliveredG => numDelG != null ? (int)numDelG.Value : deliveredG;
+        public int DeliveredE => numDelE != null ? (int)numDelE.Value : deliveredE;
         private readonly TextBox txtCode = new TextBox(), txtName = new TextBox(), txtDrNew = new TextBox(), txtIn = new TextBox(), txtOut = new TextBox(), txtRep = new TextBox();
         private readonly ListBox lstDr = new ListBox();
         private readonly NumericUpDown numRetG = new NumericUpDown(), numRetE = new NumericUpDown(), numDrops = new NumericUpDown();
         private readonly Label lblStatus = new Label();
+        private TextBoxStoreLookup? storeLookup;
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
 
 
 
+
+        /// <summary>The trip's client: a store typed here must be one of its registered stores. Set before showing.</summary>
+        [System.ComponentModel.Browsable(false)][System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        public string StoreClient { get; set; } = "";
+        /// <summary>Route offered first when registering a new store. Set before showing.</summary>
+        [System.ComponentModel.Browsable(false)][System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        public string? StoreRoute { get; set; }
+        /// <summary>Returns a message when the store is already on another row of the trip (it can't be added twice).</summary>
+        [System.ComponentModel.Browsable(false)][System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        public Func<Models.ClientStore, string?>? AlreadyListed { get; set; }
+
+
         public TripStoreDialog(string code, string name, bool canRenameStore, int deliveredG, int deliveredE, int returnedG, int returnedE,
-                               string drNumbers, string drops, string timeIn, string timeOut, string representative)
+                               string drNumbers, string drops, string timeIn, string timeOut, string representative, bool canEditDelivered = false)
         {
             this.deliveredG = Math.Max(0, deliveredG);
             this.deliveredE = Math.Max(0, deliveredE);
@@ -56,6 +77,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
+
             var root = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 2, BackColor = AppTheme.Surface };
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, D(260)));
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, D(260)));
@@ -67,10 +91,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
+
             var title = new Label { Text = string.IsNullOrWhiteSpace(name) ? "New store" : name, AutoSize = true, Font = new Font("Segoe UI Semibold", 14F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, 0, 0, D(2)), UseMnemonic = false, MaximumSize = new Size(D(520), 0) };
             Add2(title, null, 2);
             var sub = new Label { Text = "Delivered crates come from the dispatch and can't be changed. Enter what the store returned.", AutoSize = true, ForeColor = AppTheme.TextMuted, Font = new Font("Segoe UI", 9.5F), MaximumSize = new Size(D(520), 0), Margin = new Padding(0, 0, 0, D(8)), UseMnemonic = false };
             Add2(sub, null, 2);
+
+
+
 
 
 
@@ -79,6 +109,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtCode.ReadOnly = txtName.ReadOnly = !canRenameStore;
             if (!canRenameStore) { txtCode.BackColor = AppTheme.SurfaceAlt; txtName.BackColor = AppTheme.SurfaceAlt; txtCode.TabStop = txtName.TabStop = false; }
             Add2(txtCode, txtName);
+
+
+
 
 
 
@@ -95,9 +128,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 UseMnemonic = false,
                 MaximumSize = new Size(D(520), 0)
             };
-            Add2(refBox, null, 2);
-
-
+            if (canEditDelivered)
+            {
+                // A special trip has no dispatch crate figures: what was delivered is typed here.
+                refBox.Text = "Delivered crates (special trip: type what was delivered; leave 0 for non-crate cargo)";
+                refBox.Font = new Font("Segoe UI Semibold", 9.5F);
+                Add2(refBox, null, 2);
+                numDelG = new NumericUpDown(); numDelE = new NumericUpDown();
+                Add2(Cap("Delivered G crates"), Cap("Delivered E crates"));
+                foreach (var n in new[] { numDelG, numDelE }) { n.Minimum = 0; n.Maximum = 99999; Field(n); n.TextAlign = HorizontalAlignment.Right; }
+                numDelG.Value = Math.Min(numDelG.Maximum, this.deliveredG);
+                numDelE.Value = Math.Min(numDelE.Maximum, this.deliveredE);
+                numDelG.ValueChanged += (s, e) => deliveredG = (int)numDelG.Value;
+                numDelE.ValueChanged += (s, e) => deliveredE = (int)numDelE.Value;
+                Add2(numDelG, numDelE);
+            }
+            else Add2(refBox, null, 2);
 
             Add2(Cap("Returned G crates"), Cap("Returned E crates"));
             foreach (var n in new[] { numRetG, numRetE }) { n.Minimum = 0; n.Maximum = 99999; Field(n); n.TextAlign = HorizontalAlignment.Right; }
@@ -111,29 +157,52 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
+
             // Delivery receipts (several allowed)
             Add2(Cap("Delivery receipts (DR numbers): add one or more"), null, 2);
             var drRow = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 3, Margin = new Padding(0), BackColor = AppTheme.Surface };
             drRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             drRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             drRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            Field(txtDrNew); txtDrNew.PlaceholderText = "Type a DR number and press Enter"; txtDrNew.MaxLength = 60;
+            Field(txtDrNew); txtDrNew.PlaceholderText = "Type one or more DR numbers and press Enter"; txtDrNew.MaxLength = 2000;
             var btnAddDr = Btn("Add", "secondary");
             var btnRemoveDr = Btn("Remove", "secondary");
             btnAddDr.Click += (s, e) => AddDr();
             btnRemoveDr.Click += (s, e) => { if (lstDr.SelectedIndex >= 0) lstDr.Items.RemoveAt(lstDr.SelectedIndex); };
-            txtDrNew.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; AddDr(); } };
+            txtDrNew.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; AddDr(); }
+                else if (e.KeyCode == Keys.V && e.Control)
+                {
+                    // A pasted list (one per line, or with commas) is added as separate DRs.
+                    string clip = "";
+                    try { if (Clipboard.ContainsText()) clip = Clipboard.GetText(); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+                    if (clip.IndexOfAny(new[] { '\r', '\n', ',', ';', '\t' }) >= 0) { e.SuppressKeyPress = true; txtDrNew.Text = clip; AddDr(); }
+                }
+            };
             drRow.Controls.Add(txtDrNew, 0, 0); drRow.Controls.Add(btnAddDr, 1, 0); drRow.Controls.Add(btnRemoveDr, 2, 0);
             Add2(drRow, null, 2);
-            foreach (var dr in (drNumbers ?? "").Split(new[] { ',', ';', '/', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).Where(x => x.Length > 0))
+            foreach (var dr in DrList.Parse(drNumbers))
                 lstDr.Items.Add(dr);
             lstDr.Height = D(90); Field(lstDr); lstDr.IntegralHeight = false;
             Add2(lstDr, null, 2);
 
 
 
+
+
+
             Add2(Cap("No. Drops"), Cap("Representative"));
             numDrops.Minimum = 0; numDrops.Maximum = 999; Field(numDrops);
+            // Clicking or tabbing into a number box selects it, so typing replaces the old number (not "58" → "5860").
+            foreach (var n in new[] { numRetG, numRetE, numDrops })
+            {
+                void SelectAll() { try { n.Select(0, n.Text.Length); } catch (Exception ex) { ErrLog.Swallowed(ex); } }
+                n.Enter += (s, e) => BeginInvoke(new Action(SelectAll));
+                n.MouseUp += (s, e) => { if (n.Focused && e.Button == MouseButtons.Left) SelectAll(); };
+            }
             if (int.TryParse((drops ?? "").Trim(), out int dp) && dp > 0) numDrops.Value = Math.Min(999, dp);
             txtRep.Text = representative; Field(txtRep); txtRep.MaxLength = 120;
             Add2(numDrops, txtRep);
@@ -141,6 +210,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtIn.Text = timeIn; txtOut.Text = timeOut; Field(txtIn); Field(txtOut);
             txtIn.PlaceholderText = txtOut.PlaceholderText = "e.g. 08:00 AM";
             Add2(txtIn, txtOut);
+
+
+
 
 
 
@@ -154,7 +226,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             CancelButton = btnCancel;
             UpdateStatus();
             Shown += (s, e) => { (canRenameStore && string.IsNullOrWhiteSpace(name) ? (Control)txtName : numRetG).Focus(); };
+            if (canRenameStore)
+            {
+                // Typed stores must be the client's registered stores: lookup list while typing, checked on Apply.
+                txtCode.PlaceholderText = "Type a code…";
+                txtName.PlaceholderText = "Type a name…";
+                Load += (s, e) => storeLookup = new TextBoxStoreLookup(txtCode, txtName, () => StoreClient, () => StoreRoute);
+            }
         }
+
+
+
 
 
 
@@ -167,19 +249,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
+
+        /// <summary>Adds the DR number(s) typed: several can be typed at once with commas, semicolons or new lines between them.</summary>
         private void AddDr()
         {
-            string dr = txtDrNew.Text.Trim();
-            if (dr.Length == 0) return;
-            if (lstDr.Items.Cast<object>().Any(o => string.Equals(o.ToString(), dr, StringComparison.OrdinalIgnoreCase)))
+            var typed = DrList.Parse(txtDrNew.Text);
+            if (typed.Count == 0) { txtDrNew.Clear(); return; }
+            var existing = new HashSet<string>(lstDr.Items.Cast<object>().Select(o => o.ToString() ?? ""), StringComparer.OrdinalIgnoreCase);
+            var already = new List<string>();
+            foreach (var dr in typed)
             {
-                MessageBox.Show(this, $"DR \"{dr}\" is already listed for this store.", "Delivery receipt", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
+                if (existing.Add(dr)) lstDr.Items.Add(dr);
+                else already.Add(dr);
             }
-            lstDr.Items.Add(dr);
             txtDrNew.Clear();
             txtDrNew.Focus();
+            if (already.Count > 0)
+                MessageBox.Show(this, $"Already listed for this store, not added again: {string.Join(", ", already)}", "Delivery receipt", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
+
+
+
 
 
 
@@ -193,6 +285,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (de > 0) parts.Add($"E crates over by {de:N0}");
             return string.Join(", ", parts);
         }
+
+
+
 
 
 
@@ -213,13 +308,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
+
         private void TryApply()
         {
-            if (!txtName.ReadOnly && StoreName.Length == 0)
+            if (!txtName.ReadOnly)
             {
-                MessageBox.Show(this, "Please enter the store name.", "Store details", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                txtName.Focus();
-                return;
+                if (storeLookup == null)
+                {
+                    if (StoreName.Length == 0) { MessageBox.Show(this, "Please enter the store name.", "Store details", MessageBoxButtons.OK, MessageBoxIcon.Warning); txtName.Focus(); return; }
+                }
+                else if (storeLookup.Confirm(this, AlreadyListed) == null) return;
             }
             if (txtDrNew.Text.Trim().Length > 0) AddDr(); // a DR typed but not added yet is kept
             string diff = Difference();

@@ -47,7 +47,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             });
 
             AddTab("Collections", "💵  Collections & Receipts", () => new CollectionView());
-            AddTab("History", "📜  Finance History", () => new ModuleHistoryView("Billing & collections history", new[] { "Invoices", "CollectionReceipts", "StatementsOfAccount" }, isAdminOnly: true));
+            AddTab("History", "📜  Finance History", () => new ModuleHistoryView("Billing & collections history", new[] { "Invoices", "CollectionReceipts", "StatementsOfAccount" }, isAdminOnly: true, paymentsSummary: true));
         }
 
         private void AddTab(string key, string title, Func<UserControl> viewFactory)
@@ -58,9 +58,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Tag = key,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowOnly,
-                MinimumSize = new Size(160, 32),
-                Padding = new Padding(12, 0, 12, 0),
-                Margin = new Padding(0, 0, 8, 0),
+                MinimumSize = new Size(140, 30),
+                Padding = new Padding(10, 0, 10, 0),
+                Margin = new Padding(0, 0, 6, 0),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 BackColor = Pal.White,
@@ -98,6 +98,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         public void RecordPaymentFor(Invoice inv) => OpenTab<CollectionView>("Collections")?.PrefillForInvoice(inv);
         public void ShowInvoices(string search) => OpenTab<BillingView>("Billing")?.FilterByText(search);
+        /// <summary>Opens a new receipt for a special trip's payment (Mode of Payment and destination pre-filled).</summary>
+        public void RecordSpecialTripCollection(Models.SpecialTrip trip) => OpenTab<CollectionView>("Collections")?.PrefillForSpecialTrip(trip);
         public void ShowCollections(string search) => OpenTab<CollectionView>("Collections")?.FilterByText(search);
         public void ShowStatements(string search) => OpenTab<StatementOfAccountView>("StatementOfAccount")?.FilterByText(search);
         /// <summary>Hides the tabs this account may not open (Settings → User Accounts → Access &amp; permissions).</summary>

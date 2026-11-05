@@ -27,6 +27,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         // =====================================================================================================
         // Table report (any list in the app)
         // =====================================================================================================
+        /// <summary>
+        /// A record's details as label / value pairs (the record pop-up's Print button), through the same print window
+        /// as every other printout.
+        /// </summary>
+        public static PrintFormDef RecordSheet(string title, string subtitle, IEnumerable<(string Label, string Value)> details)
+        {
+            var list = details.Where(d => !string.IsNullOrWhiteSpace(d.Label)).ToList();
+            string clean = Regex.Replace(title ?? "", @"[^\p{L}\p{N}\s:·#\-/().,&']", "").Trim();
+            if (clean.Length == 0) clean = "Record details";
+            string key = "Record." + Regex.Replace(clean.Split(':')[0], "[^A-Za-z0-9]+", "");
+            var o = NewOptions(key, clean, string.IsNullOrWhiteSpace(subtitle) ? D(DateTime.Today) : Regex.Replace(subtitle, @"[^\p{L}\p{N}\s:·#\-/().,&']", "").Trim());
+            o.Fields = list.Select((d, i) => new PrintField($"f{i}", d.Label, d.Value ?? "")).ToList();
+            AddCommon(o);
+            o.Signatures = new List<PrintSig>
+            {
+                new PrintSig("Prepared by", CurrentUserName, "Prepared by", true),
+                new PrintSig("Approved by", OwnerName, "Owner")
+            };
+            var def = new PrintFormDef { Key = key, Name = clean, FileName = Regex.Replace(clean, "[^A-Za-z0-9]+", "_"), Defaults = o };
+            def.Body = opt => FieldGrid(opt, 2, o.Fields.Select(f => f.Key).ToArray());
+            return def;
+        }
         public static PrintFormDef GridReport(string title, DataGridView grid, string notes)
         {
             var cols = grid.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible && !(c is DataGridViewButtonColumn) && !(c is DataGridViewImageColumn)).OrderBy(c => c.DisplayIndex).ToList();
@@ -153,10 +175,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         // =====================================================================================================
         // Statement of account (trip lines)
         // =====================================================================================================
+        /// <summary>The trip report number(s) of a trip's lines, one per line (normally one).</summary>
+        private static string TripReportNos(List<StatementOfAccountItem> g) =>
+            string.Join("<br/>", g.Select(x => (x.TripReportNumber ?? "").Trim()).Where(x => x.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(x => Esc(x).Replace("-", "-<wbr>"))); // may break after a hyphen, so the table fits the page
         public static PrintFormDef StatementOfAccount(StatementOfAccount soa, List<StatementOfAccountItem> items)
         {
             var groups = items.GroupBy(i => i.TripNumber).OrderBy(g => g.Key).Select(g => g.ToList()).ToList();
-            decimal amountSum = groups.Sum(g => g[0].Amount), fuelSum = groups.Sum(g => g[0].FuelSurcharge);
+            // A trip's amount and fuel surcharge are its lines added up (an amount typed on a later store line used to be left out).
+            decimal TripAmount(List<StatementOfAccountItem> g) => g.Sum(x => x.Amount);
+            decimal TripFuel(List<StatementOfAccountItem> g) => g.Sum(x => x.FuelSurcharge);
+            decimal amountSum = groups.Sum(TripAmount), fuelSum = groups.Sum(TripFuel);
+            int crateSum = items.Sum(i => Math.Max(0, i.TotalCrates));
             decimal totalSales = soa.TotalSalesVatInc > 0 ? soa.TotalSalesVatInc : amountSum + fuelSum;
             decimal vat = soa.VatAmount > 0 ? soa.VatAmount : Math.Round(totalSales / 1.12m * 0.12m, 2);
             decimal netOfVat = soa.NetOfVat > 0 ? soa.NetOfVat : Math.Round(totalSales / 1.12m, 2);
@@ -179,7 +209,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             o.Sections = new List<PrintChoice> { new("billto", "Billed-to details"), new("trips", "Trip lines table"), new("trip_total", "Trip totals row"), new("taxes", "VAT / withholding computation"), new("pay", "Payment instructions") };
             AddCommon(o);
-            o.Columns = new List<PrintChoice> { new("no", "No."), new("date", "Date received"), new("zone", "Zone"), new("dr", "DR no."), new("dest", "Destination"), new("type", "Type"), new("plate", "Plate no."), new("tons", "Tons"), new("drops", "Drops"), new("amount", "Amount"), new("fuel", "Fuel surcharge"), new("driver", "Driver / helper") };
+            o.Columns = new List<PrintChoice> { new("no", "No."), new("trip_report", "Trip report #"), new("date", "Date received"), new("zone", "Zone"), new("dr", "DR no."), new("code", "Store code", false), new("dest", "Destination"), new("crates", "Total crates"), new("type", "Type"), new("plate", "Plate no."), new("tons", "Tons"), new("drops", "Drops"), new("amount", "Amount"), new("fuel", "Fuel surcharge"), new("driver", "Driver / helper") };
             o.Signatures = new List<PrintSig>
             {
                 new PrintSig("Prepared by", soa.PreparedBy, "Billing Officer", true),
@@ -196,7 +226,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     var cols = new (string Key, string Header, string Css, bool PerTrip)[]
                     {
-                        ("no", "No.", "center", true), ("date", "Date received", "center", true), ("zone", "Zone", "center", true), ("dr", "DR no.", "", false), ("dest", "Destination", "", false),
+                        ("no", "No.", "center", true), ("trip_report", "Trip report #", "center", true), ("date", "Date received", "center", true), ("zone", "Zone", "center", true), ("dr", "DR no.", "", false), ("code", "Store code", "center", false), ("dest", "Destination", "", false), ("crates", "Total crates", "num", false),
                         ("type", "Type", "center", true), ("plate", "Plate no.", "center", true), ("tons", "Tons", "center", true), ("drops", "Drops", "center", true),
                         ("amount", "Amount", "num", true), ("fuel", "Fuel surcharge", "num", true), ("driver", "Driver / helper", "", true)
                     }.Where(c => opt.Col(c.Key)).ToList();
@@ -218,9 +248,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                 string span = c.PerTrip && g.Count > 1 ? $" rowspan='{g.Count}'" : "";
                                 string v = c.Key switch
                                 {
-                                    "no" => n.ToString(), "date" => Esc(f.DateReceived), "zone" => Esc(f.Zone), "dr" => Esc(g[i].DrNumbers), "dest" => $"<b>{Esc(g[i].Destination)}</b>",
+                                    "no" => n.ToString(), "trip_report" => TripReportNos(g), "crates" => g[i].TotalCrates > 0 ? g[i].TotalCrates.ToString("N0") : "-", "date" => Esc(f.DateReceived), "zone" => Esc(f.Zone), "dr" => DrList.Html(g[i].DrNumbers), "code" => Esc(g[i].StoreCode), "dest" => $"<b>{Esc(g[i].Destination)}</b>",
                                     "type" => Esc(f.DeliveryType), "plate" => $"<b>{Esc(f.PlateNumber)}</b>", "tons" => Esc(f.Tonnage), "drops" => f.DropCount.ToString(),
-                                    "amount" => $"<b>{f.Amount:N2}</b>", "fuel" => f.FuelSurcharge > 0 ? f.FuelSurcharge.ToString("N2") : "-", "driver" => Esc(f.DriverHelper), _ => ""
+                                    "amount" => $"<b>{TripAmount(g):N2}</b>", "fuel" => TripFuel(g) > 0 ? TripFuel(g).ToString("N2") : "-", "driver" => Esc(f.DriverHelper), _ => ""
                                 };
                                 sb.Append($"<td class='{c.Css}'{span}>{v}</td>");
                             }
@@ -235,8 +265,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         bool labelled = false;
                         foreach (var c in cols)
                         {
-                            string v = c.Key == "amount" ? amountSum.ToString("N2") : c.Key == "fuel" ? fuelSum.ToString("N2") : "";
-                            if (v.Length == 0 && !labelled && c.Key != "amount" && c.Key != "fuel") { v = $"{groups.Count} trip(s)"; labelled = true; }
+                            string v = c.Key == "amount" ? amountSum.ToString("N2") : c.Key == "fuel" ? fuelSum.ToString("N2") : c.Key == "crates" ? crateSum.ToString("N0") : "";
+                            if (v.Length == 0 && !labelled && c.Key is not ("amount" or "fuel" or "crates")) { v = groups.Count == 1 ? "1 trip" : $"{groups.Count} trips"; labelled = true; }
                             sb.Append($"<td class='{c.Css}'>{v}</td>");
                         }
                         sb.Append("</tr></tfoot>");
@@ -417,7 +447,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     sb.Append(SectionTitle($"Stores ({stops.Count})"));
                     sb.Append(Table(opt, new[] { ("seq", "#", "center"), ("store", "Store", ""), ("planned", "Planned", "num"), ("delivered", "Delivered", "num"), ("returned", "Returned", "num"), ("time", "Arrival / departure", ""), ("received", "Received by", ""), ("status", "Status", "") },
-                        stops.OrderBy(s => s.StopSequence).Select(s => Row(("seq", s.StopSequence), ("store", $"<b>{Esc((s.StoreCode + " " + s.Destination).Trim())}</b>{(string.IsNullOrWhiteSpace(s.DrNumbers) ? "" : "<br/>DR# " + Esc(s.DrNumbers))}"),
+                        stops.OrderBy(s => s.StopSequence).Select(s => Row(("seq", s.StopSequence), ("store", $"<b>{Esc((s.StoreCode + " " + s.Destination).Trim())}</b>{(DrList.Count(s.DrNumbers) == 0 ? "" : "<br/>" + DrList.Html(s.DrNumbers, "DR# "))}"),
                             ("planned", $"{s.TotalCrates} (G {s.GCrate} / E {s.ECrate})"), ("delivered", $"{s.DeliveredCrates}"), ("returned", $"{s.ReturnedCrates}"), ("time", $"{s.ArrivalTime} – {s.DepartureTime}"), ("received", s.StoreManagerName), ("status", s.Status)))));
                 }
                 if (opt.On("trip"))
@@ -625,7 +655,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     int n = 0;
                     int Le(DispatchStop s) => s.DeliveredECrates > 0 || s.DeliveredGCrates > 0 ? s.DeliveredECrates : s.ECrate;
                     int Lg(DispatchStop s) => s.DeliveredECrates > 0 || s.DeliveredGCrates > 0 ? s.DeliveredGCrates : s.GCrate;
-                    var rows = stops.Select(s => Row(("no", ++n), ("code", $"<b>{Esc(s.StoreCode)}</b>"), ("store", $"<b>{Esc(s.Destination)}</b>{(string.IsNullOrWhiteSpace(s.DrNumbers) ? "" : "<br/>DR# " + Esc(s.DrNumbers))}"),
+                    var rows = stops.Select(s => Row(("no", ++n), ("code", $"<b>{Esc(s.StoreCode)}</b>"), ("store", $"<b>{Esc(s.Destination)}</b>{(DrList.Count(s.DrNumbers) == 0 ? "" : "<br/>" + DrList.Html(s.DrNumbers, "DR# "))}"),
                         ("in", s.ArrivalTime), ("out", s.DepartureTime), ("rep", s.StoreManagerName), ("le", Le(s)), ("lg", Lg(s)),
                         ("re", s.ReturnedECrates), ("rg", s.ReturnedGCrates), ("remarks", s.Remarks))).ToList();
                     var totals = opt.On("totals") ? new Dictionary<string, string> { ["store"] = "TOTAL", ["le"] = stops.Sum(Le).ToString(), ["lg"] = stops.Sum(Lg).ToString(), ["re"] = stops.Sum(s => s.ReturnedECrates).ToString(), ["rg"] = stops.Sum(s => s.ReturnedGCrates).ToString() } : null;

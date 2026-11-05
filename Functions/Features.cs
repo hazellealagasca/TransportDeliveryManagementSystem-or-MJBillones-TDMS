@@ -25,11 +25,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         // Dispatch rules (were on the old Settings → Dispatch Rules tab; same saved settings, so nothing is lost)
         public const string TruckSuggestion = "AutoTruckRecommendation";
         public const string EmptyCrateCheck = "RequireCrateReturnTracking";
+        /// <summary>Show the column edit header ("✎ Edit" / "Customize table" and the ✎ marks) on the store tables.</summary>
+        public const string StoreTableEditHeader = "Feature.StoreTableEditHeader";
+        /// <summary>Show the All-in-One Summary bar at the end of the tables (off unless switched on).</summary>
+        public const string AllInOneSummary = "Feature.AllInOneSummary";
         private static readonly Dictionary<string, bool> Defaults = new()
         {
             [RateMatrix] = true, [AutoDispatchNumber] = true, [SpecialTrips] = true, [Incidents] = true, [CrewPay] = true,
             [BackupReminder] = true, [ConfirmSaves] = true, [QuietNotices] = true, [Toasts] = true,
-            [TruckSuggestion] = true, [EmptyCrateCheck] = true
+            [TruckSuggestion] = true, [EmptyCrateCheck] = true, [StoreTableEditHeader] = true, [AllInOneSummary] = false
         };
         private static readonly Dictionary<string, bool> cache = new();
         private static readonly object gate = new();

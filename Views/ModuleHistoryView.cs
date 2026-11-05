@@ -37,8 +37,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             : string.Join(", ", targetTables.Select(t => FriendlyTable.TryGetValue(t, out var f) ? f : t));
         private List<AuditTrailEntry> rawLogs = new List<AuditTrailEntry>();
 
-        public ModuleHistoryView(string moduleTitle, string[]? targetTables = null, bool isAdminOnly = false)
+        /// <summary>Shows the All-in-One Payments summary under the table (the Finance History tab).</summary>
+        private readonly bool paymentsSummary;
+        public ModuleHistoryView(string moduleTitle, string[]? targetTables = null, bool isAdminOnly = false, bool paymentsSummary = false)
         {
+            this.paymentsSummary = paymentsSummary;
             this.moduleTitle = moduleTitle;
             this.targetTables = targetTables;
             this.isAdminOnly = isAdminOnly;
@@ -444,6 +447,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             gridHistory.DataSource = null;
             gridHistory.DataSource = filtered;
+            if (paymentsSummary) RenderPaymentsSummary(cutoff);
             lblCount.Text = $"Showing {filtered.Count:N0} of {rawLogs.Count:N0} changes  ·  right-click a row to copy or export";
             if (tiles != null)
             {
@@ -457,6 +461,43 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 tOther.Value = last == null ? "—" : Ago(last.Timestamp);
                 tOther.Note = last == null ? "no changes yet" : $"{last.Username} · {last.ActionType.ToLowerInvariant()} · {last.RecordIdentifier}";
             }
+        }
+        // ------------------------------------------------------------------ All-in-One Payments summary (follows the period filter)
+        private AllInOneSummaryBar? paymentsBar;
+        private void RenderPaymentsSummary(DateTime? since)
+        {
+            if (gridHistory?.Parent == null) return;
+            try
+            {
+                paymentsBar ??= AllInOneSummaryBar.AttachBelow(gridHistory, "Payments");
+                var invoices = MJdatabase.GetInvoices().Where(i => !RowMenu.Is(i.Status, "Cancelled", "Void", "Voided")).ToList();
+                var receipts = MJdatabase.GetCollectionReceipts();
+                var soas = MJdatabase.GetStatementsOfAccount().Where(x => !RowMenu.Is(x.Status, "Cancelled", "Void", "Voided")).ToList();
+                var paidBy = receipts.Where(r => r.InvoiceId > 0).GroupBy(r => r.InvoiceId).ToDictionary(g => g.Key, g => g.Sum(r => r.AmountPaid));
+                decimal Paid(Invoice i) => paidBy.TryGetValue(i.Id, out var p) ? p : 0m;
+                decimal Balance(Invoice i) => Math.Max(0m, i.NetAmount - Paid(i));
+                var invInPeriod = since.HasValue ? invoices.Where(i => i.IssueDate >= since.Value).ToList() : invoices;
+                var recInPeriod = since.HasValue ? receipts.Where(r => r.PaymentDate >= since.Value).ToList() : receipts;
+                var soaInPeriod = since.HasValue ? soas.Where(x => x.IssueDate >= since.Value).ToList() : soas;
+                decimal billed = invInPeriod.Sum(i => i.NetAmount);
+                decimal collected = recInPeriod.Sum(r => r.AmountPaid);
+                decimal outstanding = invoices.Sum(Balance);
+                var overdue = invoices.Where(i => Balance(i) > 0 && i.DueDate.Date < DateTime.Today).ToList();
+                var last = receipts.OrderByDescending(r => r.PaymentDate).FirstOrDefault();
+                string period = since.HasValue ? $"since {since.Value:MMM d, yyyy}" : "all time";
+                var m = new List<SummaryMetric>
+                {
+                    new("Billed", AllInOneSummaryBar.Money(billed), SummaryTone.Blue, $"{invInPeriod.Count:N0} invoices · {period}", Strong: true),
+                    new("Collected", AllInOneSummaryBar.Money(collected), SummaryTone.Green, $"{recInPeriod.Count:N0} receipts · {period}", Strong: true),
+                    new("Outstanding now", AllInOneSummaryBar.Money(outstanding), SummaryTone.Amber, "all unpaid balances", Strong: outstanding > 0),
+                    new("Overdue now", overdue.Count.ToString("N0"), SummaryTone.Red, overdue.Count > 0 ? AllInOneSummaryBar.Money(overdue.Sum(Balance)) + " past due" : "none past due", Strong: overdue.Count > 0),
+                    new("Statements", soaInPeriod.Count.ToString("N0"), SummaryTone.Teal, $"{AllInOneSummaryBar.Money(soaInPeriod.Sum(x => x.TotalAmount))} · {period}"),
+                    new("Last payment", last == null ? "—" : last.PaymentDate.ToString("MMM d"), SummaryTone.Neutral, last == null ? "no receipts yet" : $"{last.ReceiptNumber} · {AllInOneSummaryBar.Money(last.AmountPaid)}"),
+                };
+                string preview = $"{AllInOneSummaryBar.Money(collected)} collected  ·  {AllInOneSummaryBar.Money(outstanding)} outstanding  ·  {overdue.Count:N0} overdue";
+                paymentsBar.SetMetrics(m, preview, $"Payments overview ({period}; outstanding and overdue are as of today)");
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
         }
     }
 }

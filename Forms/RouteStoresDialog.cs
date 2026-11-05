@@ -22,7 +22,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private ListBox lstAvailable = null!;
         private ListBox lstChosen = null!;
         private Label lblCount = null!;
+        private Button openClient = null!;
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
+
+
 
 
 
@@ -39,6 +42,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
         public RouteStoresDialog(string clientName, string routeLabel, List<string> currentPlaces, List<DeliveryRoute> otherRoutesOfClient)
         {
             client = clientName;
@@ -47,13 +52,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try { stores = MJdatabase.GetClientStores(clientName); } catch { stores = new List<ClientStore>(); }
             Build(routeLabel);
             UIThemeHelper.ApplyTheme(this);
+            UIThemeHelper.SetButtonRole(openClient, "secondary");
             FillChosen();
             FillAvailable();
         }
 
 
 
+
+
         private static string Norm(string s) => System.Text.RegularExpressions.Regex.Replace((s ?? "").Trim(), @"\s+", " ").ToUpperInvariant();
+
+
 
 
 
@@ -73,9 +83,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
             var header = new Panel { Dock = DockStyle.Top, Height = D(66), BackColor = AppTheme.Surface, Padding = new Padding(D(20), D(10), D(20), D(8)) };
             header.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(22), Text = $"Pick the stores the truck delivers to, in order. Only {client}'s stores in Master Data can be picked.", Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, AutoEllipsis = true, UseMnemonic = false });
             header.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(28), Text = $"Stores on {routeLabel}", Font = new Font("Segoe UI Semibold", 13F), ForeColor = AppTheme.TextPrimary, AutoEllipsis = true, UseMnemonic = false });
+
+
 
 
 
@@ -86,6 +100,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             body.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             body.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             body.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+
 
 
 
@@ -101,12 +117,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
             lstAvailable = new ListBox { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10F), IntegralHeight = false, SelectionMode = SelectionMode.MultiExtended, BorderStyle = BorderStyle.FixedSingle };
             lstAvailable.DoubleClick += (s, e) => AddSelected();
             lstChosen = new ListBox { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10F), IntegralHeight = false, BorderStyle = BorderStyle.FixedSingle };
             lstChosen.DoubleClick += (s, e) => RemoveSelected();
             body.Controls.Add(lstAvailable, 0, 2);
             body.Controls.Add(lstChosen, 2, 2);
+
+
 
 
 
@@ -121,10 +141,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             mid.Controls.Add(Btn("Add  ➜", "primary", AddSelected));
             mid.Controls.Add(Btn("⬅  Remove", "secondary", RemoveSelected));
-            mid.Controls.Add(Btn("▲  Up", "secondary", () => Move(-1)));
-            mid.Controls.Add(Btn("▼  Down", "secondary", () => Move(1)));
+            mid.Controls.Add(Btn("▲  Up", "secondary", () => MoveItem(-1)));
+            mid.Controls.Add(Btn("▼  Down", "secondary", () => MoveItem(1)));
             body.Controls.Add(mid, 1, 2);
             body.SetRowSpan(mid, 1);
+
+
 
 
 
@@ -140,7 +162,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var cancel = new Button { Text = "Cancel", AutoSize = true, MinimumSize = new Size(D(100), D(36)), FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, DialogResult = DialogResult.Cancel, Margin = new Padding(0, 0, D(8), 0) };
             cancel.FlatAppearance.BorderSize = 0;
             UIThemeHelper.SetButtonRole(cancel, "secondary");
-            var openClient = new Button { Text = "Open client profile", AutoSize = true, MinimumSize = new Size(0, D(36)), FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Margin = new Padding(0, 0, D(24), 0) };
+            openClient = new Button { Text = "Open client profile", AutoSize = true, MinimumSize = new Size(0, D(36)), FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Margin = new Padding(0, 0, D(24), 0) };
             openClient.FlatAppearance.BorderSize = 0;
             UIThemeHelper.SetButtonRole(openClient, "secondary");
             new ToolTip().SetToolTip(openClient, "New stores are created on the client's profile (Stores & branches), then picked here.");
@@ -153,10 +175,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
             Controls.Add(body);
             Controls.Add(footer);
             Controls.Add(header);
         }
+
+
 
 
 
@@ -180,6 +206,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
         private void FillChosen()
         {
             lstChosen.BeginUpdate();
@@ -191,7 +219,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
         private void UpdateCount() => lblCount.Text = lstChosen.Items.Count == 0 ? "Delivery order (none yet)" : $"Delivery order ({lstChosen.Items.Count} store{(lstChosen.Items.Count == 1 ? "" : "s")})";
+
+
 
 
 
@@ -207,6 +239,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
+
         private void RemoveSelected()
         {
             int i = lstChosen.SelectedIndex;
@@ -219,7 +253,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-        private void Move(int dir)
+
+
+        private void MoveItem(int dir)
         {
             int i = lstChosen.SelectedIndex, j = i + dir;
             if (i < 0 || j < 0 || j >= lstChosen.Items.Count) return;
@@ -228,6 +264,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lstChosen.Items.Insert(j, item);
             lstChosen.SelectedIndex = j;
         }
+
+
 
 
 

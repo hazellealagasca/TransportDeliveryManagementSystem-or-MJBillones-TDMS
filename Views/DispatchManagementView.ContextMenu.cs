@@ -261,11 +261,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     QuietBox.Show($"Dispatch {d.DispatchNumber} is already {d.Status.ToLowerInvariant()}.", "Cancel order", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
-                string? reason = CancellationReasonDialog.PromptCancellationReason(this.FindForm() ?? this.ParentForm!, "Dispatch Order", d.DispatchNumber, d.ClientName);
+                decimal rateFee = 0m;
+                try { rateFee = MJdatabase.CalculateDeliveryTariff(d, out _); } catch (Exception rex) { ErrLog.Swallowed(rex); }
+                string? reason = CancellationReasonDialog.PromptDispatchCancellation(this.FindForm() ?? this.ParentForm!, d.DispatchNumber, d.ClientName, rateFee, out bool chargeable, out decimal fee);
                 if (string.IsNullOrEmpty(reason)) return;
                 d.Status = "Cancelled";
                 d.CancellationReason = reason;
                 MJdatabase.SaveDelivery(d);
+                MJdatabase.SetDeliveryCancelCharge(d.Id, chargeable, fee);
                 LoadDropdownsAndGrid();
                 try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch (System.Exception swx6) { ErrLog.Swallowed(swx6); }
                 ToastHelper.ShowToast(this, $"Dispatch {d.DispatchNumber} cancelled" + FinishedNote, ToastType.Warning);

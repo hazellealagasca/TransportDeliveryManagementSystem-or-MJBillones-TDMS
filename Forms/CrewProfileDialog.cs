@@ -355,7 +355,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
                 if (records.Any(r => r.Kind == kind && r.RecordDate.Date == dtp.Value.Date && string.Equals(r.Type, type, StringComparison.OrdinalIgnoreCase) && string.Equals(r.DispatchNumber, dn, StringComparison.OrdinalIgnoreCase))
-                    && MessageBox.Show(this, $"The same {kind.ToLowerInvariant()} is already recorded for that day. Add it again?", "Possible duplicate", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+                    && MessageBox.Show(this, $"The same {kind.ToLowerInvariant()} is already recorded for that day. Add it again?", "Already Logged", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
                 if (MessageBox.Show(this, $"Are you sure you want to add this {kind.ToLowerInvariant()} to {crew.FullName}'s record?\n\n{type}{(dn.Length > 0 ? " · " + dn : "")}", "Add " + kind.ToLowerInvariant(), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
                 try
                 {

@@ -179,7 +179,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == Keys.Escape && pnlForm.Visible)
+            if (keyData == Keys.Escape && pnlForm.Visible && EscapeGuard.AllowClose(this))
             {
                 SetFormVisibility(false);
                 return true;
@@ -349,7 +349,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var allUsers = MJdatabase.GetUsers();
                 if (allUsers.Any(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase)))
                 {
-                    MessageBox.Show($"DUPLICATE USERNAME BLOCKED:\nThe username '{username}' is already in use. Duplicate usernames are not permitted.", "Duplicate Username Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    MessageBox.Show($"USERNAME ALREADY EXISTS:\nThe username '{username}' is already in use. Each account needs its own username.", "Username Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                     txtUsername.Focus();
                     return;
                 }
@@ -435,7 +435,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var allUsers = MJdatabase.GetUsers();
                 if (allUsers.Any(u => u.Id != selectedUser.Id && u.Username.Equals(username, StringComparison.OrdinalIgnoreCase)))
                 {
-                    MessageBox.Show($"The username '{username}' is already in use by another account.", "Duplicate Username", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show($"The username '{username}' is already in use by another account.", "Username Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtUsername.Focus();
                     return;
                 }

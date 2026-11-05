@@ -58,7 +58,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == Keys.Escape && pnlForm.Visible)
+            if (keyData == Keys.Escape && pnlForm.Visible && EscapeGuard.AllowClose(this))
             {
                 SetFormVisibility(false);
                 return true;
@@ -112,8 +112,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit.Build(new[]
             {
                 new FullPageFormKit.Section("Invoice being paid", "Pick the invoice this payment settles.", lblInv, cbInvoice, pnlLinkedInvoice),
-                new FullPageFormKit.Section("Payment", "Amount, date, method and reference of the payment.", tblPaymentRow, lblRef, txtRefNo, lblNotes, txtNotes)
+                new FullPageFormKit.Section("Payment", "Amount, date, method and reference of the payment.", tblPaymentRow, BuildCollCapLabel(), lblRef, txtRefNo, lblNotes, txtNotes)
             });
+            InitCollGuide();
             if (btnToggleForm != null)
             {
                 btnToggleForm.Text = "＋ New receipt";
@@ -139,6 +140,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (formKit != null) formKit.Show(visible);
             else pnlForm.Visible = visible;
             if (btnToggleForm != null) btnToggleForm.Visible = !visible;
+            OnCollFormShown(visible);
             MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
@@ -175,6 +177,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var _amt = remaining > 0 ? remaining : inv.NetAmount;
                 if (_amt > numAmountPaid.Maximum) numAmountPaid.Maximum = _amt * 2;
                 numAmountPaid.Value = Math.Max(numAmountPaid.Minimum, Math.Min(numAmountPaid.Maximum, _amt));
+                PrefillFromSpecialTrip(inv);
             }
             else
             {
@@ -245,6 +248,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
+                MJdatabase.EnsureOnlinePaymentMethod();
                 var methods = MJdatabase.GetLookupItems("Payment Method");
                 cbPaymentMethod.Items.Clear();
                 foreach (var m in methods) cbPaymentMethod.Items.Add(m);
@@ -255,12 +259,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     decimal collected = MJdatabase.GetTotalCollectedForInvoice(inv.Id);
                     decimal remaining = Math.Max(0, inv.NetAmount - collected);
-                    cbInvoice.Items.Add($"{inv.InvoiceNumber} - {inv.ClientName} (Balance: PHP {remaining:N2} / Total: PHP {inv.NetAmount:N2})");
+                    string overdueTag = inv.Status == "Overdue" ? (collected > 0 ? $" [Overdue · ₱{collected:N2} paid]" : " [Overdue]") : "";
+                    cbInvoice.Items.Add($"{inv.InvoiceNumber} - {inv.ClientName} (Balance: PHP {remaining:N2} / Total: PHP {inv.NetAmount:N2}){overdueTag}");
                 }
                 cbInvoice.SelectedIndex = -1; cbInvoice.Text = "";
 
                 allReceipts = MJdatabase.GetCollectionReceipts();
                 FilterGridData();
+                if (!pnlForm.Visible) RefreshCollReady();
                 var receipts = allReceipts;
 
                 decimal totalPaid = receipts.Sum(c => c.AmountPaid);
@@ -274,6 +280,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void BtnSave_Click(object? sender, EventArgs e)
         {
+            if (!CollGateBeforeSave()) return;
             try
             {
                 var valErrors = new List<string>();
@@ -320,15 +327,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (numAmountPaid.Value > remainingBalance)
                 {
-                    var confirmOverpay = MessageBox.Show($"The entered payment (PHP {numAmountPaid.Value:N2}) exceeds the outstanding remaining balance (PHP {remainingBalance:N2}).\n\nWould you like to adjust the payment to the exact remaining balance of PHP {remainingBalance:N2}?", "Payment Exceeds Remaining Balance", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                    if (confirmOverpay == DialogResult.Yes)
-                    {
-                        var _amt = remainingBalance; if (_amt > numAmountPaid.Maximum) numAmountPaid.Maximum = _amt * 2; numAmountPaid.Value = Math.Max(numAmountPaid.Minimum, Math.Min(numAmountPaid.Maximum, _amt));
-                    }
-                    else
-                    {
-                        return;
-                    }
+                    // Hard cap: a payment can never be more than what is still owed.
+                    MessageBox.Show($"The payment (PHP {numAmountPaid.Value:N2}) is more than the balance of invoice {selInv.InvoiceNumber} (PHP {remainingBalance:N2}).\n\nEnter PHP {remainingBalance:N2} or less.", "More than the balance", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
                 }
 
                 string pmethod = cbPaymentMethod.Text.Trim();
@@ -346,13 +347,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     var duplicateReceipt = existingReceipts.Find(r => (selectedCollection == null || r.Id != selectedCollection.Id) && !string.IsNullOrWhiteSpace(r.ReferenceNumber) && r.ReferenceNumber.Equals(refNum, StringComparison.OrdinalIgnoreCase));
                     if (duplicateReceipt != null)
                     {
-                        var confirm = MessageBox.Show($"Payment Reference Number '{refNum}' was already recorded in Receipt #{duplicateReceipt.ReceiptNumber} on {duplicateReceipt.PaymentDate:MM/dd/yyyy}.\n\nDo you want to proceed and record this duplicate payment reference?", "Duplicate Reference Confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                        if (confirm != DialogResult.Yes)
-                        {
-                            txtRefNo.Focus();
-                            return;
-                        }
+                        MessageBox.Show($"Payment reference '{refNum}' is already recorded on receipt #{duplicateReceipt.ReceiptNumber} ({duplicateReceipt.PaymentDate:MM/dd/yyyy}). The same payment can't be recorded twice.", "Reference already recorded", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtRefNo.Focus();
+                        return;
                     }
+                }
+                if (!IsCash(pmethod) && string.IsNullOrWhiteSpace(refNum))
+                {
+                    MessageBox.Show($"A reference / cheque number is required for {pmethod} payments.", "Reference Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtRefNo.Focus();
+                    return;
                 }
 
                 MJdatabase.SaveLookupItem("Payment Method", pmethod);
@@ -378,10 +382,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             { ErrLog.Error("CollectionView", ex); 
                 MessageBox.Show($"Failed to record collection receipt: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            finally { CollSaveFinished(); }
         }
 
         private void BtnUpdate_Click(object? sender, EventArgs e)
         {
+            if (!CollGateBeforeSave()) return;
             try
             {
                 if (selectedCollection == null)
@@ -404,15 +410,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     decimal maxAllowed = Math.Max(0, matchedInv.NetAmount - otherCollected);
                     if (numAmountPaid.Value > maxAllowed)
                     {
-                        var confirmOverpay = MessageBox.Show($"The updated payment (PHP {numAmountPaid.Value:N2}) exceeds the outstanding balance for Invoice #{matchedInv.InvoiceNumber} (PHP {maxAllowed:N2}).\n\nWould you like to adjust the payment to the exact balance of PHP {maxAllowed:N2}?", "Payment Exceeds Balance", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                        if (confirmOverpay == DialogResult.Yes)
-                        {
-                            var _amt = maxAllowed; if (_amt > numAmountPaid.Maximum) numAmountPaid.Maximum = _amt * 2; numAmountPaid.Value = Math.Max(numAmountPaid.Minimum, Math.Min(numAmountPaid.Maximum, _amt));
-                        }
-                        else
-                        {
-                            return;
-                        }
+                        MessageBox.Show($"The payment (PHP {numAmountPaid.Value:N2}) is more than the balance of invoice {matchedInv.InvoiceNumber} (PHP {maxAllowed:N2}).\n\nEnter PHP {maxAllowed:N2} or less.", "More than the balance", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
                     }
                 }
 
@@ -431,16 +430,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     var duplicateReceipt = existingReceipts.Find(r => (selectedCollection == null || r.Id != selectedCollection.Id) && !string.IsNullOrWhiteSpace(r.ReferenceNumber) && r.ReferenceNumber.Equals(refNum, StringComparison.OrdinalIgnoreCase));
                     if (duplicateReceipt != null)
                     {
-                        var confirm = MessageBox.Show($"Payment Reference Number '{refNum}' was already recorded in Receipt #{duplicateReceipt.ReceiptNumber} on {duplicateReceipt.PaymentDate:MM/dd/yyyy}.\n\nDo you want to proceed and record this duplicate payment reference?", "Duplicate Reference Confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                        if (confirm != DialogResult.Yes)
-                        {
-                            txtRefNo.Focus();
-                            return;
-                        }
+                        MessageBox.Show($"Payment reference '{refNum}' is already recorded on receipt #{duplicateReceipt.ReceiptNumber} ({duplicateReceipt.PaymentDate:MM/dd/yyyy}). The same payment can't be recorded twice.", "Reference already recorded", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtRefNo.Focus();
+                        return;
                     }
                 }
 
-                if ((pmethod.IndexOf("Check", StringComparison.OrdinalIgnoreCase) >= 0 || pmethod.IndexOf("Transfer", StringComparison.OrdinalIgnoreCase) >= 0) && string.IsNullOrWhiteSpace(refNum))
+                if (!IsCash(pmethod) && string.IsNullOrWhiteSpace(refNum))
                 {
                     MessageBox.Show($"A reference / check number is required for {pmethod} payments.", "Reference Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtRefNo.Focus();
@@ -463,6 +459,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             { ErrLog.Error("CollectionView", ex); 
                 MessageBox.Show($"Failed to update collection receipt: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            finally { CollSaveFinished(); }
         }
 
         private void BtnDelete_Click(object? sender, EventArgs e)
@@ -519,6 +516,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             filtered = ApplyListChips(filtered);
             gridCollections.DataSource = null;
             gridCollections.DataSource = filtered;
+            UpdateCollectionSummary(filtered.ToList());
             lblGridHeader.Text = string.IsNullOrEmpty(q) && filtered.Count == allReceipts.Count
                 ? $"Receipts ({allReceipts.Count})"
                 : $"Receipts ({filtered.Count} of {allReceipts.Count})";
@@ -593,6 +591,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnUpdate.Visible = exists;
             ApplyButtonVisualState(btnSave, !exists, Pal.C(13, 110, 253), Pal.White);
             ApplyButtonVisualState(btnUpdate, exists, Pal.C(25, 135, 84), Pal.White);
+            collGuideKey = int.MinValue;
+            ScheduleCollGuide(); // the checklist decides whether Save / Update can be clicked
         }
 
         private void ApplyButtonVisualState(Button btn, bool enabled, Color enabledBack, Color enabledFore)
@@ -648,6 +648,45 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (pnlForm.Visible) SetFormVisibility(false);
             RowMenu.Search(txtGridSearch, text);
+        }
+        /// <summary>
+        /// A payment for a special trip (its service invoice, or an SOA that bills it): the trip's Mode of Payment is
+        /// picked and the notes say which trip and destination it is for (only on a new receipt, never over what was typed).
+        /// </summary>
+        private void PrefillFromSpecialTrip(Invoice inv)
+        {
+            try
+            {
+                if (selectedCollection != null) return; // editing an existing receipt: keep it as it was
+                var trip = MJdatabase.GetSpecialTripForInvoice(inv.Id);
+                if (trip == null) return;
+                if (!string.IsNullOrWhiteSpace(trip.ModeOfPayment))
+                {
+                    int idx = cbPaymentMethod.Items.Cast<object>().ToList().FindIndex(o => string.Equals(o?.ToString()?.Trim(), trip.ModeOfPayment.Trim(), StringComparison.OrdinalIgnoreCase));
+                    if (idx >= 0) cbPaymentMethod.SelectedIndex = idx;
+                }
+                string note = $"Special trip {trip.OrderReference} · Destination: {trip.DestinationAddress}";
+                if (string.IsNullOrWhiteSpace(txtNotes.Text)) txtNotes.Text = note;
+                lblLinkedInvoiceInfo.Text += $"  ·  {note}  ·  Mode of payment: {(string.IsNullOrWhiteSpace(trip.ModeOfPayment) ? "not set" : trip.ModeOfPayment)}";
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+        }
+        /// <summary>Opens a new receipt for a special trip's payment (its service invoice, or the SOA invoice that bills it).</summary>
+        public void PrefillForSpecialTrip(SpecialTrip trip)
+        {
+            LoadData();
+            var links = MJdatabase.GetSpecialTripLinks().TryGetValue(trip.Id, out var l) ? l : null;
+            int idx = -1;
+            if (links != null && links.InvoiceId > 0) idx = unpaidInvoices.FindIndex(i => i.Id == links.InvoiceId);
+            if (idx < 0) idx = unpaidInvoices.FindIndex(i => MJdatabase.GetSpecialTripForInvoice(i.Id)?.Id == trip.Id);
+            if (idx < 0)
+            {
+                QuietBox.Show($"Special trip {trip.OrderReference} has no unpaid invoice to collect yet. Tick \"With Service Invoice\" on the trip, or bill it on a Statement of Account and issue its invoice first.", "Nothing to collect yet", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            OpenNewRecordForm();
+            cbInvoice.SelectedIndex = idx;
+            numAmountPaid.Focus();
         }
         /// <summary>Opens a new receipt with the invoice already picked (from Billing → Record payment).</summary>
         public void PrefillForInvoice(Invoice inv)

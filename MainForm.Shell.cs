@@ -257,6 +257,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int split = raw.IndexOf("  ", StringComparison.Ordinal);
             string title = split > 0 ? raw.Substring(split).Trim() : NavTitleFor(btn);
             lblHeaderTitle.Text = title;
+            SetCompactHeader(btn == btnNavFinance);
         }
         private string NavTitleFor(Button btn)
         {

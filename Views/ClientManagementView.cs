@@ -381,7 +381,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (rows[0].DataBoundItem is not ClientRow r) return;
                 var c = r.Client;
-                m.Items.AddRange(RowMenu.Header($"🏢  {c.CompanyName}", $"{r.Stores} store(s) · {r.CompletedTrips} completed trip(s) · last trip {r.LastTrip} · outstanding {r.Unpaid}"));
+                m.Items.AddRange(RowMenu.Header($"🏢  {c.CompanyName}", $"{r.Stores} store{(r.Stores == 1 ? "" : "s")} · {r.CompletedTrips} completed trip{(r.CompletedTrips == 1 ? "" : "s")} · last trip {r.LastTrip} · outstanding {r.Unpaid}"));
                 m.Items.Add(RowMenu.Item("Open client profile", () => OpenClient(c), "Enter"));
                 if (c.IsActive) m.Items.Add(RowMenu.Danger("Archive client…", () => SetClientActive(c, false)));
                 else m.Items.Add(RowMenu.Good("Restore client", () => SetClientActive(c, true)));
@@ -472,6 +472,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnCustomizeTable = MakeButton("⚙  Customize table", "secondary");
             btnCustomizeTable.Margin = new Padding(0, 0, Dpi(8), 0);
             btnCustomizeTable.Click += (s, e) => CustomizeStoresTable();
+            Features.Bind(btnCustomizeTable, () => btnCustomizeTable.Visible = Features.On(Features.StoreTableEditHeader), Features.StoreTableEditHeader);
             tips.SetToolTip(btnCustomizeTable, "Choose, rename, reorder and resize the store columns, or add your own (e.g. Store manager, Contact #)");
             btnAddBranch = MakeButton("➕  Add store", "primary");
             btnAddBranch.Click += (s, e) => AddNewBranchRow();
@@ -535,31 +536,33 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 SaveStoreRow(e.RowIndex);
             };
+            // Problems are shown on the row (and the row isn't saved) instead of locking the cell: cancelling here made
+            // WinForms throw "cannot commit or quit a cell value change" when the page was left or hidden, for example
+            // when an older store with a blank code was in the list.
             gridBranches.CellValidating += (s, e) =>
             {
                 if (isBinding || e.RowIndex < 0 || e.RowIndex >= currentStores.Count) return;
                 string col = gridBranches.Columns[e.ColumnIndex].Name;
                 if (col != "StoreCode" && col != "StoreName") return;
-                bool unsavedRow = currentStores[e.RowIndex].Id <= 0;
                 string typed = (e.FormattedValue?.ToString() ?? "").Trim();
-                gridBranches.Rows[e.RowIndex].ErrorText = "";
+                var row = gridBranches.Rows[e.RowIndex];
+                row.ErrorText = "";
                 if (typed.Length == 0)
                 {
-                    gridBranches.Rows[e.RowIndex].ErrorText = col == "StoreCode" ? "Store code is required" : "Store name is required";
-                    if (!unsavedRow) e.Cancel = true; // a new blank row may be left half-filled; it saves once both are typed
+                    row.ErrorText = col == "StoreCode" ? "Type the store code" : "Type the store name";
                     return;
                 }
                 if (col == "StoreCode")
                 {
                     var other = currentStores.Where((st, i) => i != e.RowIndex).FirstOrDefault(st => string.Equals((st.StoreCode ?? "").Trim(), typed, StringComparison.OrdinalIgnoreCase));
-                    if (other != null)
-                    {
-                        gridBranches.Rows[e.RowIndex].ErrorText = $"Store code {typed} is already used by \"{other.StoreName}\"";
-                        e.Cancel = true;
-                    }
+                    if (other != null) row.ErrorText = $"Store code {typed} is already used by \"{other.StoreName}\"";
                 }
             };
-            gridBranches.CellEndEdit += (s, e) => { if (e.RowIndex >= 0 && e.RowIndex < gridBranches.Rows.Count) gridBranches.Rows[e.RowIndex].ErrorText = ""; };
+
+
+
+
+
             gridBranches.CellContentClick += (s, e) =>
             {
                 if (e.RowIndex >= 0 && gridBranches.Columns[e.ColumnIndex].Name == "Actions") ArchiveBranchRow(e.RowIndex);
@@ -972,7 +975,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var clash = allClients.FirstOrDefault(c => string.Equals(System.Text.RegularExpressions.Regex.Replace(c.CompanyName.Trim(), @"\s+", " "), name, StringComparison.OrdinalIgnoreCase) && (isNewClient || selectedClient == null || c.Id != selectedClient.Id));
             if (clash != null)
             {
-                MessageBox.Show($"A client named \"{clash.CompanyName}\" already exists{(clash.IsActive ? "" : " (archived — restore it from Master Data → Archive instead)")}. Open that client instead, or use a different name.", "Duplicate client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show($"A client named \"{clash.CompanyName}\" already exists{(clash.IsActive ? "" : " (archived — restore it from Master Data → Archive instead)")}. Open that client instead, or use a different name.", "Client Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtClientName.Focus();
                 return false;
             }
@@ -1101,7 +1104,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (blank == null)
             {
                 blank = new ClientStore { ClientId = selectedClient.Id, ClientCompanyName = selectedClient.CompanyName, StoreCode = "", StoreName = "", DestinationRoute = "" };
-                currentStores.Add(blank);
+                // Bind a new list object: the table keeps a position tracker per list object, and one made when the list
+                // was empty stays at position -1 (a plain list never tells it about the new row), which crashed here
+                // ("Index -1 does not have a value") when adding the first store of a client.
+                currentStores = new List<ClientStore>(currentStores) { blank };
                 isBinding = true;
                 gridBranches.DataSource = null;
                 gridBranches.DataSource = currentStores;
@@ -1176,6 +1182,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void CustomizeStoresTable()
         {
+            if (!Features.On(Features.StoreTableEditHeader)) return; // the column edit header is switched off in Settings
             using var dlg = new TableCustomizeDialog("Customize the stores table",
                 "Pick the columns to show, rename or reorder them, or add your own (e.g. Store manager, Contact #, Opening hours). Type values straight into the table.",
                 storePrefs, storeDefaults, allowCustom: true);

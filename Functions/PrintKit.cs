@@ -155,6 +155,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     public static class PrintKit
     {
         public static string Esc(string? s) => WebUtility.HtmlEncode(s ?? "");
+        /// <summary>The copy label as printed: labels saved with the old wording ("Duplicate", "Triplicate") print as "2nd copy" / "3rd copy".</summary>
+        public static string CopyLabelText(string? label)
+        {
+            string l = (label ?? "").Trim();
+            if (l.Equals("Duplicate", StringComparison.OrdinalIgnoreCase)) return "2nd copy";
+            if (l.Equals("Triplicate", StringComparison.OrdinalIgnoreCase)) return "3rd copy";
+            return l;
+        }
         public static string Money(decimal v) => $"₱{v:N2}";
         public static string Setting(string key, string fallback)
         {
@@ -304,7 +312,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             sb.Append($"table.kv {{ width:100%; border-collapse:collapse; }} table.kv td {{ padding:3px 6px; vertical-align:top; border-bottom:1px dotted {line}; }} table.kv td.k {{ width:16%; font-weight:700; white-space:nowrap; color:#222; }} table.kv td.v {{ width:34%; }}");
             sb.Append($"table.grid {{ width:100%; border-collapse:collapse; margin-top:4px; border:1.5px solid {ink}; }} table.grid th {{ background:{(color ? accent : "#000")}; color:#fff; padding:5px 6px; font-size:.86em; text-transform:uppercase; border:1px solid {ink}; text-align:left; }}");
             sb.Append($"table.grid td {{ border:1px solid {line}; padding:4px 6px; font-size:.92em; vertical-align:top; }} table.grid tbody tr:nth-child(even) td {{ background:{soft}; }} table.grid tfoot td {{ font-weight:800; border-top:2px solid {ink}; background:#fff; }}");
-            sb.Append("table.grid tr.blank td { height:20px; background:#fff; } .num { text-align:right !important; white-space:nowrap; } .center { text-align:center !important; } .empty { text-align:center; font-style:italic; color:#555; padding:10px; }");
+            sb.Append("table.grid tr.blank td { height:20px; background:#fff; } .num { text-align:right !important; } td.num { white-space:nowrap; } .center { text-align:center !important; } .empty { text-align:center; font-style:italic; color:#555; padding:10px; }");
             sb.Append($"table.summary {{ border-collapse:collapse; min-width:300px; margin-left:auto; margin-top:8px; border:1.5px solid {ink}; }} table.summary th {{ background:{soft}; text-align:left; padding:5px 8px; font-size:.86em; text-transform:uppercase; }} table.summary td {{ padding:4px 8px; border-bottom:1px solid {line}; }} table.summary tr.grand td {{ font-weight:800; font-size:1.12em; border-top:2px solid {ink}; }}");
             sb.Append($"table.stats {{ width:100%; border-collapse:separate; border-spacing:6px 0; margin:6px -6px; }} table.stats td {{ border:1.5px solid {ink}; text-align:center; padding:6px; }} .sv {{ font-size:1.35em; font-weight:800; }} .sl {{ font-size:.78em; text-transform:uppercase; font-weight:700; color:#333; }}");
             sb.Append($".note {{ border:1px solid {line}; background:{soft}; padding:6px 9px; margin-top:12px; font-size:.92em; }} .chk {{ white-space:nowrap; font-weight:600; }}");
@@ -335,7 +343,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (line2.Count > 0) sb.Append($"<div class='co-sub'>{string.Join(" &nbsp;|&nbsp; ", line2)}</div>");
             sb.Append("</td></tr></table></td>");
             sb.Append("<td class='doc' style='width:40%'>");
-            if (!string.IsNullOrWhiteSpace(o.CopyLabel)) sb.Append($"<div class='copy'>{Esc(o.CopyLabel.ToUpperInvariant())}</div>");
+            if (!string.IsNullOrWhiteSpace(o.CopyLabel)) sb.Append($"<div class='copy'>{Esc(CopyLabelText(o.CopyLabel).ToUpperInvariant())}</div>");
             sb.Append($"<div class='doc-title'>{Esc(o.Title)}</div>");
             if (!string.IsNullOrWhiteSpace(o.Subtitle)) sb.Append($"<div class='doc-sub'>{Multi(o.Subtitle)}</div>");
             sb.Append("</td></tr></table>");

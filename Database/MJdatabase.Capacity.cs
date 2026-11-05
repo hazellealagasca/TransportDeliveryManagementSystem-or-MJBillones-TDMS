@@ -20,6 +20,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
         /// <summary>Normalises any stored cargo text to one of the three crate cargo types.</summary>
         public static string NormalizeCargo(string? cargo)
         {
@@ -33,9 +34,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
         public static bool IsDecommissioned(string? status) =>
             string.Equals((status ?? "").Trim(), TruckDecommissioned, StringComparison.OrdinalIgnoreCase) ||
             string.Equals((status ?? "").Trim(), "Inactive", StringComparison.OrdinalIgnoreCase);
+
 
 
 
@@ -43,6 +46,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static void EnsureCapacitySchema()
         {
             if (capacitySchemaReady) return;
+            EnsureSoaStoreCodeColumn();
             using var conn = new SqliteConnection(connectionString);
             conn.Open();
             void Try(string sql)
@@ -85,6 +89,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
         /// <summary>Default load-planning matrix: (Dry, Cold, Combi cold part, Combi dry part).</summary>
         private static (int dry, int cold, int cc, int cd)? DefaultMatrixFor(string category)
         {
@@ -98,6 +103,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (tons == 0 && (n.Contains("FWD") || n.Contains("FORWARD"))) return (300, 200, 150, 100);
             return null;
         }
+
 
 
 
@@ -130,6 +136,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
         public static List<TruckCapacity> GetCapacityMatrix()
         {
             var list = new List<TruckCapacity>();
@@ -149,12 +156,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
         public static TruckCapacity? GetCapacityFor(string? category)
         {
             if (string.IsNullOrWhiteSpace(category)) return null;
             EnsureCapacitySchema();
             return GetCapacityMatrix().FirstOrDefault(m => string.Equals(m.CategoryName.Trim(), category.Trim(), StringComparison.OrdinalIgnoreCase));
         }
+
 
 
 
@@ -176,6 +185,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
         /// <summary>Hard rules for a category's matrix (Section 8: these block saving). Empty when it is valid.</summary>
         public static List<string> CapacityRuleErrors(TruckCapacity m)
         {
@@ -189,6 +199,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (m.CombiMax > m.TruckMax && m.TruckMax > 0) e.Add($"Combi total ({m.CombiMax}) can't be more than the truck's maximum ({m.TruckMax} = Dry capacity).");
             return e;
         }
+
 
 
 
@@ -221,6 +232,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
         /// <summary>The locked crate capacity of a truck: from its category's matrix and its cargo type.</summary>
         public static int LockedCapacity(string? category, string? truckCargo, int fallback)
         {
@@ -234,6 +246,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             return v > 0 ? v : fallback;
         }
+
 
 
 
@@ -271,6 +284,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
         // ------------------------------------------------------------------ status history
         public static void LogTruckStatusChange(int truckId, string oldStatus, string newStatus, string reason)
         {
@@ -292,6 +306,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
         public static List<(DateTime At, string OldStatus, string NewStatus, string Reason, string By)> GetTruckStatusHistory(int truckId)
         {
             var list = new List<(DateTime, string, string, string, string)>();
@@ -310,6 +325,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             catch (Exception ex) { ErrLog.Swallowed(ex); }
             return list;
         }
+
 
 
 
@@ -338,6 +354,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+
         public static (int Cold, int Dry, int Over, string Reason) GetDeliveryCapacityInfo(int deliveryId)
         {
             try
@@ -354,6 +371,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             catch (Exception ex) { ErrLog.Swallowed(ex); }
             return (0, 0, 0, "");
         }
+
 
 
 
@@ -374,6 +392,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             catch (Exception ex) { ErrLog.Swallowed(ex); }
             return map;
         }
+
 
 
 

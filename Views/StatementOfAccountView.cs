@@ -92,10 +92,36 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             LoadData();
             UIThemeHelper.ApplyTheme(this);
             StyleFullPageForm();
+            FitItemsGridColumns();
+            ThemeManager.ThemeChanged += (s, e) => { try { if (!IsDisposed && IsHandleCreated) BeginInvoke(new Action(FitItemsGridColumns)); } catch (Exception ex) { ErrLog.Swallowed(ex); } };
+        }
+        /// <summary>
+        /// Every column of the trip lines is at least as wide as its header (and the trip report number), so nothing is cut
+        /// off; when they don't all fit, the table scrolls sideways instead of squeezing the text.
+        /// </summary>
+        private void FitItemsGridColumns()
+        {
+            if (gridItems == null) return;
+            try
+            {
+                var headFont = gridItems.ColumnHeadersDefaultCellStyle.Font ?? gridItems.Font;
+                foreach (DataGridViewColumn c in gridItems.Columns)
+                {
+                    if (!c.Visible || c is DataGridViewButtonColumn) continue;
+                    int need = TextRenderer.MeasureText(c.HeaderText ?? "", headFont).Width + Dpi(30);
+                    if (c.Name == "colTripReport") need = Math.Max(need, TextRenderer.MeasureText("TRIP-20261105-022839-71078", gridItems.Font).Width + Dpi(16));
+                    if (c.Name == "colDate") need = Math.Max(need, TextRenderer.MeasureText("2026-11-05", gridItems.Font).Width + Dpi(16));
+                    if (c.Name == "colPlate") need = Math.Max(need, TextRenderer.MeasureText("CCE 9458", gridItems.Font).Width + Dpi(16));
+                    if (c.Name == "colAmount") need = Math.Max(need, TextRenderer.MeasureText("999,999.00", gridItems.Font).Width + Dpi(16));
+                    if (c.Name == "colDr") need = Math.Max(need, TextRenderer.MeasureText("DR-000000", gridItems.Font).Width + Dpi(16));
+                    if (c.MinimumWidth < need) c.MinimumWidth = need;
+                }
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
         }
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == Keys.Escape && pnlForm.Visible)
+            if (keyData == Keys.Escape && pnlForm.Visible && EscapeGuard.AllowClose(this))
             {
                 SetFormVisibility(false);
                 return true;
@@ -223,9 +249,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             // Page title like the other list pages (Trucks, Crew, Order History).
             var soaHeader = PageKit.Header("Statements of Account", "Statements sent to clients for a period of deliveries. Print the official SOA, export the list, or open the invoice it is linked to.");
-            var soaHeaderHost = new Panel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(Dpi(16), Dpi(14), Dpi(16), Dpi(6)), BackColor = Color.Transparent };
+            var soaHeaderHost = soaPageHeaderHost = new Panel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(Dpi(16), Dpi(8), Dpi(16), Dpi(4)), BackColor = Color.Transparent };
+            soaHeader.MakeCompact();
             soaHeaderHost.Controls.Add(soaHeader);
             this.Controls.Add(soaHeaderHost);
+            BuildSoaReadyBanner();
             tblMasterContent = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -331,12 +359,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Controls.Add(pnlFormHeaderBar);
             pnlForm.Resize += (s, e) => CenterFormContent();
             BuildFormControls();
+            InitSoaGuide();
         }
         private void CenterFormContent()
         {
             if (pnlForm == null || pnlForm.Width <= 0) return;
             int side = Math.Max(Dpi(24), (pnlForm.ClientSize.Width - Dpi(FormContentMaxWidth)) / 2);
-            pnlFormHeaderBar.Padding = new Padding(side, Dpi(6), side, Dpi(12));
+            pnlFormHeaderBar.Padding = new Padding(side, Dpi(4), side, Dpi(6));
+            if (soaStrip != null) soaStrip.Padding = new Padding(side, 0, side, 0);
             pnlFormBody.Padding = new Padding(side, 0, side + SystemInformation.VerticalScrollBarWidth / 2, Dpi(16));
             pnlFormActionsBar.Padding = new Padding(side, Dpi(12), side, Dpi(12));
         }
@@ -471,7 +501,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblPopulateHint = new Label
             {
                 Height = Dpi(26),
-                Text = "The client's completed dispatches in this period are listed in step 2. Add them all here, or tick the ones you want below.",
+                Text = "The client's completed trip reports in this period are listed in step 2. Add them all here, or tick the ones you want below.",
                 Font = new Font("Segoe UI", 8.75F),
                 ForeColor = AppTheme.TextMuted,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -495,6 +525,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnBulkEdit.Click += (s, e) => BulkEditSelectedRows();
             var btnEditSoaTable = MakeFormButton("✎ Edit table", "secondary");
             btnEditSoaTable.Click += (s, e) => OpenSoaTableEditor(lblItemsTitle);
+            Features.Bind(btnEditSoaTable, () => btnEditSoaTable.Visible = Features.On(Features.StoreTableEditHeader), Features.StoreTableEditHeader);
             btnRecalc = MakeFormButton("↻ Recalculate", "secondary");
             btnRecalc.Margin = new Padding(0);
             btnRecalc.Click += (s, e) => RecalculateTaxes(manualOverride: false);
@@ -517,7 +548,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var lblItemsHint = new Label
             {
                 Height = Dpi(24),
-                Text = "Yellow cells can be edited. Shift/Ctrl-click to select several rows, then \"Edit selected rows\" to change them all at once.",
+                Text = "Yellow cells can be edited. DR numbers: Enter or a comma between them, or click … beside the cell. Shift/Ctrl-click rows, then \"Edit selected rows\" to change them together.",
                 Font = new Font("Segoe UI", 8.75F),
                 ForeColor = AppTheme.TextMuted,
                 TextAlign = ContentAlignment.TopLeft,
@@ -525,7 +556,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
 
             pnlItemsGridHost = new Panel { Height = Dpi(300), BackColor = AppTheme.Surface };
-            gridItems = new DataGridView
+            gridItems = new MultiValueGrid
             {
                 Dock = DockStyle.Fill,
                 BackgroundColor = AppTheme.Surface,
@@ -540,7 +571,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                 ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
                 ColumnHeadersHeight = Dpi(36),
-                RowTemplate = { Height = Dpi(30) },
+                RowTemplate = { Height = Dpi(30), MinimumHeight = Dpi(30) },
                 Font = new Font("Segoe UI", 9.5F),
                 EnableHeadersVisualStyles = false
             };
@@ -555,7 +586,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridItems.Columns.Add(Col("colTripNo", "Trip", 38, roStyle, 38));
             gridItems.Columns.Add(Col("colDate", "Date received", 90, editStyle, 80));
             gridItems.Columns.Add(Col("colZone", "Zone", 52, editStyle));
-            gridItems.Columns.Add(Col("colDr", "Delivery receipt #", 130, editStyle, 90));
+            gridItems.Columns.Add(Col("colDr", "DR numbers", 130, editStyle, 96));
             gridItems.Columns.Add(Col("colDest", "Destination / store", 190, editStyle, 120));
             gridItems.Columns.Add(Col("colType", "Type", 50, editStyle));
             gridItems.Columns.Add(Col("colPlate", "Plate no.", 80, editStyle, 70));
@@ -565,6 +596,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridItems.Columns.Add(Col("colFuel", "Fuel surch.", 86, moneyStyle, 72));
             gridItems.Columns.Add(Col("colDriver", "Driver / helper", 140, editStyle, 100));
             gridItems.Columns.Add(new DataGridViewTextBoxColumn { Name = "colDeliveryId", HeaderText = "Delivery Id", Visible = false });
+            // Added last so every column above keeps its position (the totals read columns by position);
+            // shown next to the DR cell and the destination.
+            gridItems.Columns.Add(Col("colStoreCode", "Store code", 70, editStyle, 70));
+            gridItems.Columns.Add(DrCellSupport.MakeButtonColumn("colDrBtn", Dpi(34)));
+            // Trip report # (where the line came from; read-only) and the store's Total crates (G + E from the trip report:
+            // only the total is billed, the crate types stay on the trip report). Also added last, shown in place.
+            var trStyle = new DataGridViewCellStyle(roStyle) { Font = new Font("Segoe UI Semibold", 8.75F) };
+            var crStyle = new DataGridViewCellStyle(editStyle) { Alignment = DataGridViewContentAlignment.MiddleRight };
+            var colTr = Col("colTripReport", "Trip report #", 120, trStyle, 110);
+            colTr.ReadOnly = true;
+            gridItems.Columns.Add(colTr);
+            gridItems.Columns.Add(Col("colCrates", "Total crates", 64, crStyle, 70));
+            // The special trip a line bills (hidden; links the line back to the trip).
+            gridItems.Columns.Add(new DataGridViewTextBoxColumn { Name = "colSpecialTrip", HeaderText = "Special trip Id", Visible = false });
+            gridItems.Columns["colStoreCode"]!.DisplayIndex = gridItems.Columns["colDest"]!.DisplayIndex;
+            gridItems.Columns["colDrBtn"]!.DisplayIndex = gridItems.Columns["colDr"]!.DisplayIndex + 1;
+            gridItems.Columns["colTripReport"]!.DisplayIndex = gridItems.Columns["colTripNo"]!.DisplayIndex + 1;
+            gridItems.Columns["colCrates"]!.DisplayIndex = gridItems.Columns["colDrops"]!.DisplayIndex + 1;
+            InputGuards.DigitsOnlyColumns(gridItems, "colCrates");
+            DrCellSupport.Attach((MultiValueGrid)gridItems, "colDr", "colDrBtn",
+                row => (row.Cells["colDest"].Value?.ToString() ?? "").Trim(),
+                row => { RejectDuplicateSoaDrs(row); SizeItemsGrid(); });
             gridItems.CellValidating += (s, e) =>
             {
                 if (e.RowIndex < 0) return;
@@ -659,9 +712,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             // ---------------- Cards
             var card1 = CreateSectionCard(1, "Client & period", "Who the statement is for and which delivery dates it covers.", gridClient, lblPopulateHint);
-            var cardPicker = CreateSectionCard(2, "Completed dispatches", "Pick which completed trips go on this statement, or type a dispatch number.", BuildDispatchPicker());
+            var cardPicker = CreateSectionCard(2, "Completed trip reports", "Pick which completed trip reports go on this statement, or type a trip report or dispatch number.", BuildDispatchPicker());
             var card2 = CreateSectionCard(3, "Trips & stores", "Every trip and store billed on this statement.", bar, lblItemsHint, pnlItemsGridHost, lblItemsTotals);
-            var card3 = CreateSectionCard(4, "Taxes & total", "VAT, withholding tax and the amount the client pays.", taxLayout);
+            var card3 = CreateSectionCard(4, "Taxes & total", "VAT, withholding tax and the amount the client pays.", taxLayout, BuildSoaAdjustPanel());
             var card4 = CreateSectionCard(5, "Sales invoice & sign-off", "The SI number and the people who prepare and receive the statement.", gridSign, lblSiHint);
             pnlFormBody.Controls.Add(card4);
             pnlFormBody.Controls.Add(CreateSectionSpacer());
@@ -713,8 +766,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void SizeItemsGrid()
         {
             if (pnlItemsGridHost == null || gridItems == null) return;
-            int h = Dpi(36) + Math.Max(4, gridItems.Rows.Count) * Dpi(30) + Dpi(22);
-            pnlItemsGridHost.Height = Math.Clamp(h, Dpi(260), Dpi(560));
+            // Rows grow with their DR lists, so the table is sized from the real row heights.
+            try { gridItems.AutoResizeRows(DataGridViewAutoSizeRowsMode.AllCells); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            int rowsH = gridItems.Rows.Cast<DataGridViewRow>().Sum(r => r.Height);
+            int h = Math.Max(gridItems.ColumnHeadersHeight, Dpi(36)) + Math.Max(rowsH, 4 * Dpi(30)) + Dpi(22);
+            pnlItemsGridHost.Height = Math.Clamp(h, Dpi(260), Dpi(720));
         }
         private void UpdateItemsSummary()
         {
@@ -836,15 +892,35 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int did = 0;
                 int.TryParse(first.Cells["colDeliveryId"].Value?.ToString(), out did);
                 m.Items.AddRange(RowMenu.Header(picked.Count > 1 ? $"{picked.Count} trip rows" : $"Trip {first.Cells["colTripNo"].Value} · {RowMenu.Short(dest, 34)}",
-                    picked.Count > 1 ? "Change or remove them together" : (did > 0 ? "Filled from a dispatch" : "Typed by hand")));
+                    picked.Count > 1 ? "Change or remove them together" : (did > 0 ? "Filled from a trip report" : "Typed by hand")));
                 m.Items.Add(RowMenu.Item(picked.Count > 1 ? $"Edit a column on {picked.Count} rows…" : "Edit a column…", () => BulkEditSelectedRows()));
                 m.Items.Add(RowMenu.Item("Add a blank row", () => AddBlankGridRow()));
+                if (did > 0) m.Items.Add(RowMenu.Item("Refresh lines from trip reports", () => RefreshLinesFromTripReports()));
                 if (did > 0 && picked.Count == 1) m.Items.Add(RowMenu.Item("Open the dispatch", () => RowMenu.OpenDispatch(this, did, null)));
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.Danger(picked.Count > 1 ? $"Remove {picked.Count} rows" : "Remove this row", () => RemoveSelectedRows()));
             }, allowMultiSelect: true);
         }
-        /// <summary>Rows filled from a dispatch: that dispatch must be marked completed and not already on another statement.</summary>
+        /// <summary>Rows filled from a trip report: its dispatch must be completed, still have a saved trip report and not be on another statement.</summary>
+        /// <summary>A special trip can be billed on one statement only.</summary>
+        private bool CheckSpecialTripsBeforeSave()
+        {
+            if (!gridItems.Columns.Contains("colSpecialTrip")) return true;
+            var ids = new HashSet<int>();
+            foreach (DataGridViewRow r in gridItems.Rows)
+                if (!r.IsNewRow && int.TryParse(r.Cells["colSpecialTrip"].Value?.ToString(), out int id) && id > 0)
+                {
+                    if (!ids.Add(id)) { MessageBox.Show(this, "The same special trip is on this statement twice. Remove one of its lines.", "Special Trip Already Added", MessageBoxButtons.OK, MessageBoxIcon.Warning); return false; }
+                }
+            if (ids.Count == 0) return true;
+            string thisSoa = isEditingExisting && selectedSoa != null ? selectedSoa.SoaNumber : "";
+            var links = MJdatabase.GetSpecialTripLinks();
+            var problems = ids.Where(id => links.TryGetValue(id, out var l) && l.OnSoa && !string.Equals(l.SoaNumber, thisSoa, StringComparison.OrdinalIgnoreCase))
+                              .Select(id => { var t = MJdatabase.GetSpecialTripById(id); return $"• {t?.OrderReference ?? "#" + id} is already billed on {links[id].SoaNumber}"; }).ToList();
+            if (problems.Count == 0) return true;
+            MessageBox.Show(this, "These special trips are already on another statement:\n\n" + string.Join("\n", problems) + "\n\nRemove their lines from this statement.", "Special Trip Already Billed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
+        }
         private bool CheckLinkedDispatchesBeforeSave()
         {
             if (!gridItems.Columns.Contains("colDeliveryId")) return true;
@@ -853,6 +929,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!r.IsNewRow && int.TryParse(r.Cells["colDeliveryId"].Value?.ToString(), out int id) && id > 0) ids.Add(id);
             if (ids.Count == 0) return true;
             var billed = MJdatabase.GetBilledDeliveryIds(isEditingExisting && selectedSoa != null ? selectedSoa.Id : 0);
+            foreach (var kv in MJdatabase.GetDirectlyInvoicedDeliveryIds()) billed.TryAdd(kv.Key, "invoice " + kv.Value); // billed directly: can't go on a statement too
+            var reported = MJdatabase.GetTripReportDeliveryIds();
             var problems = new List<string>();
             foreach (int id in ids)
             {
@@ -860,6 +938,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (d == null) continue;
                 if (!DispatchGate.IsCompleted(d.Status)) problems.Add($"{d.DispatchNumber} is still \"{d.Status}\" — mark it completed in Dispatch first");
                 else if (billed.TryGetValue(id, out var other)) problems.Add($"{d.DispatchNumber} is already billed on {other}");
+                // The statement is made from completed trip reports: a report voided after the trip was added can't be billed.
+                else if (!reported.Contains(id)) problems.Add($"{d.DispatchNumber} has no saved trip report any more (it may have been voided) — file it again or remove these rows");
             }
             if (problems.Count == 0) return true;
             MessageBox.Show("This statement can't be saved yet:\n\n• " + string.Join("\n• ", problems) + "\n\nRemove those rows or fix the dispatches, then save again.", "Check the dispatches", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -889,17 +969,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 CenterFormContent();
                 pnlFormBody.AutoScrollPosition = new Point(0, 0);
                 UpdateItemsSummary();
+                OnSoaFormOpened();
             }
+            else OnSoaFormClosed();
             MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
         private void OpenSoaTableEditor(Label bannerLabel)
         {
-            if (gridItems == null) return;
-
+            if (gridItems == null || !Features.On(Features.StoreTableEditHeader)) return;
             var colSpecs = new List<SpecialTripColumnDef>();
             foreach (DataGridViewColumn col in gridItems.Columns)
             {
+                if (col is DataGridViewButtonColumn) continue; // the "…" DR button is not data
                 colSpecs.Add(new SpecialTripColumnDef
                 {
                     Key = col.Name,
@@ -916,6 +998,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var dict = new Dictionary<string, string>();
                 foreach (DataGridViewColumn col in gridItems.Columns)
                 {
+                    if (col is DataGridViewButtonColumn) continue;
                     dict[col.Name] = row.Cells[col.Name].Value?.ToString() ?? "";
                 }
                 rowDicts.Add(dict);
@@ -958,9 +1041,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         var gRow = gridItems.Rows[rIdx];
                         foreach (var kv in rDict)
                         {
-                            if (gridItems.Columns.Contains(kv.Key))
+                            if (gridItems.Columns.Contains(kv.Key) && gridItems.Columns[kv.Key] is not DataGridViewButtonColumn)
                             {
-                                gRow.Cells[kv.Key].Value = kv.Value;
+                                gRow.Cells[kv.Key].Value = kv.Key == "colDr" ? DrList.Normalize(kv.Value) : kv.Value;
                             }
                         }
                     }
@@ -970,6 +1053,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     isBindingForm = false;
                 }
                 RecalculateTaxes(manualOverride: false);
+                SizeItemsGrid();
             }
         }
 
@@ -1029,12 +1113,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 allSoas = MJdatabase.GetStatementsOfAccount();
+                ShowPaymentStateInList(allSoas);
                 FilterGridData();
+                if (pnlForm == null || !pnlForm.Visible) RefreshSoaReadyBanner();
             }
             catch (Exception ex)
             { ErrLog.Error("StatementOfAccountView", ex); 
                 MessageBox.Show($"Failed to load Statements of Account: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+        /// <summary>
+        /// A statement is saved as Issued; whether it has been paid lives on its invoice. For the list only, an Issued
+        /// statement shows "Paid" / "Partly paid" from its invoice, or "No invoice" when it has no SI no. yet.
+        /// (Saving always writes Issued back, and a statement with payments can't be edited.)
+        /// </summary>
+        private static void ShowPaymentStateInList(List<StatementOfAccount> list)
+        {
+            try
+            {
+                var bySoa = MJdatabase.GetInvoices().Where(i => i.SoaId > 0).GroupBy(i => i.SoaId).ToDictionary(g => g.Key, g => g.OrderByDescending(i => i.Id).First().Status ?? "");
+                foreach (var soa in list)
+                {
+                    if (!string.Equals(soa.Status, "Issued", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (!bySoa.TryGetValue(soa.Id, out var st)) { if (string.IsNullOrWhiteSpace(soa.SalesInvoiceNo)) soa.Status = "No invoice"; continue; }
+                    if (st.Equals("Paid", StringComparison.OrdinalIgnoreCase)) soa.Status = "Paid";
+                    else if (st.StartsWith("Partial", StringComparison.OrdinalIgnoreCase)) soa.Status = "Partly paid";
+                }
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
         }
 
         private void FilterGridData()
@@ -1057,6 +1163,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             gridSoa.DataSource = null;
             gridSoa.DataSource = filtered;
+            UpdateSoaSummary(filtered.ToList());
         }
 
         private void GridSoa_SelectionChanged()
@@ -1100,7 +1207,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridItems.Rows.Clear();
             foreach (var it in items)
             {
-                gridItems.Rows.Add(it.TripNumber, it.DateReceived, it.Zone, it.DrNumbers, it.Destination, it.DeliveryType, it.PlateNumber, it.Tonnage, it.DropCount, it.Amount, it.FuelSurcharge, it.DriverHelper, it.DeliveryId > 0 ? it.DeliveryId.ToString() : "");
+                int r = gridItems.Rows.Add(it.TripNumber, it.DateReceived, it.Zone, it.DrNumbers, it.Destination, it.DeliveryType, it.PlateNumber, it.Tonnage, it.DropCount, it.Amount, it.FuelSurcharge, it.DriverHelper, it.DeliveryId > 0 ? it.DeliveryId.ToString() : "");
+                gridItems.Rows[r].Cells["colStoreCode"].Value = it.StoreCode;
+                gridItems.Rows[r].Cells["colTripReport"].Value = it.TripReportNumber;
+                gridItems.Rows[r].Cells["colCrates"].Value = it.TotalCrates;
+                gridItems.Rows[r].Cells["colSpecialTrip"].Value = it.SpecialTripId > 0 ? it.SpecialTripId.ToString() : "";
             }
 
             isBindingForm = false;
@@ -1148,7 +1259,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var ready = gridPicker.Rows.Cast<DataGridViewRow>().Where(r => r.Tag is PickRow pr && pr.State == PickState.Ready).Select(r => ((PickRow)r.Tag!).Delivery).ToList();
             if (ready.Count == 0)
             {
-                QuietBox.Show($"No completed trips are waiting to be billed for {(string.IsNullOrWhiteSpace(cbClient.Text) ? "this period" : cbClient.Text.Trim())}.\n\nThe list in step 2 shows which trips are already on this or another statement.", "Add trips", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                int needReport = pickerNeedReport;
+                QuietBox.Show($"No completed trip reports are waiting to be billed for {(string.IsNullOrWhiteSpace(cbClient.Text) ? "this period" : cbClient.Text.Trim())}.\n\n"
+                    + (needReport > 0 ? $"{needReport} completed trip{(needReport == 1 ? " still needs its" : "s still need their")} trip report (Operations → Trip reports) before {(needReport == 1 ? "it" : "they")} can be billed.\n\n" : "")
+                    + "The list in step 2 shows which trips are already on this or another statement.", "Add trips", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -1241,14 +1355,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (row.IsNewRow) continue;
                 // A line left completely blank is ignored.
-                bool blank = true;
-                for (int ci = 0; ci <= Math.Min(11, row.Cells.Count - 1); ci++)
-                    if (!string.IsNullOrWhiteSpace(row.Cells[ci].Value?.ToString())) { blank = false; break; }
+                bool blank = string.IsNullOrWhiteSpace(row.Cells["colStoreCode"].Value?.ToString()) && string.IsNullOrWhiteSpace(row.Cells["colTripReport"].Value?.ToString())
+                             && ((row.Cells["colCrates"].Value?.ToString() ?? "").Trim() is "" or "0");
+                for (int ci = 0; blank && ci <= Math.Min(11, row.Cells.Count - 1); ci++)
+                    if (!string.IsNullOrWhiteSpace(row.Cells[ci].Value?.ToString())) blank = false;
                 if (blank) continue;
                 int tripNo = int.TryParse(row.Cells[0].Value?.ToString(), out int t) ? t : list.Count + 1;
                 string dtRecv = row.Cells[1].Value?.ToString() ?? "";
                 string zone = row.Cells[2].Value?.ToString() ?? "";
-                string dr = row.Cells[3].Value?.ToString() ?? "";
+                string dr = DrList.Normalize(row.Cells[3].Value?.ToString());
                 string dest = row.Cells[4].Value?.ToString() ?? "";
                 string dtype = row.Cells[5].Value?.ToString() ?? "REF";
                 string plate = row.Cells[6].Value?.ToString() ?? "";
@@ -1273,7 +1388,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     Amount = amt,
                     FuelSurcharge = fuel,
                     DriverHelper = dh,
-                    DeliveryId = deliveryId
+                    DeliveryId = deliveryId,
+                    StoreCode = (row.Cells["colStoreCode"].Value?.ToString() ?? "").Trim(),
+                    TripReportNumber = (row.Cells["colTripReport"].Value?.ToString() ?? "").Trim(),
+                    TotalCrates = int.TryParse((row.Cells["colCrates"].Value?.ToString() ?? "").Replace(",", "").Trim(), out int tc) && tc > 0 ? tc : 0,
+                    SpecialTripId = gridItems.Columns.Contains("colSpecialTrip") && int.TryParse(row.Cells["colSpecialTrip"].Value?.ToString(), out int stid) && stid > 0 ? stid : 0,
+                    // Employee pay never goes on a statement (it stays with the trip report's crew pay).
+                    DriverWage = 0, HelperWage = 0, DistanceKm = 0, DieselCost = 0, Excess = 0
                 });
             }
             return list;
@@ -1281,6 +1402,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void BtnSaveSoa_Click(object? sender, EventArgs e)
         {
+            if (soaSaving) return;
+            // The checklist must be all green (the button is disabled otherwise; this also covers Enter / shortcuts).
+            gridItems.EndEdit();
+            UpdateSoaGuide();
+            if (soaChecklist != null && soaChecklist.Failed > 0)
+            {
+                MessageBox.Show(this.FindForm(), "This statement can't be saved yet:\n\n• " + string.Join("\n• ", soaChecklist.Checks.Where(c => !c.Passed).Select(c => c.Text)),
+                    "Check the statement", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                try { pnlFormBody.ScrollControlIntoView(soaChecklist); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+                return;
+            }
+            soaSaving = true;
+            btnSaveSoa.Enabled = false;
             try
             {
                 if (string.IsNullOrWhiteSpace(cbClient.Text))
@@ -1311,6 +1445,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
                 if (!CheckLinkedDispatchesBeforeSave()) return;
+                if (!CheckSpecialTripsBeforeSave()) return;
+                if (!CheckSalesInvoiceNoBeforeSave()) return;
+                if (!CheckRepeatedDrsBeforeSave()) return;
                 var items = CollectItemsFromGrid();
                 string period = $"{dtpPeriodFrom.Value:yyyy-MM-dd} to {dtpPeriodTo.Value:yyyy-MM-dd}";
 
@@ -1336,9 +1473,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 int savedId = MJdatabase.SaveStatementOfAccount(soa, items);
                 soa.Id = savedId;
+                try
+                {
+                    bool adjusted = SoaTotalsAdjusted(out var expectedDue, out var enteredDue);
+                    MJdatabase.SaveAdjustmentReason("StatementsOfAccount", savedId, soa.SoaNumber, adjusted ? txtSoaAdjustReason.Text.Trim() : "", expectedDue, enteredDue);
+                }
+                catch (Exception ex) { ErrLog.Error("StatementOfAccountView.AdjustmentReason", ex); }
                 selectedSoa = soa;
 
-                QuietBox.Show($"Statement of Account #{soa.SoaNumber} successfully saved and linked to Billing Invoice (SI NO. {soa.SalesInvoiceNo})!", "SOA Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                string siNo = soa.SalesInvoiceNo.Trim();
+                string siInv = siNo.StartsWith("SI", StringComparison.OrdinalIgnoreCase) ? siNo : $"SI-{siNo}";
+                QuietBox.Show(siNo.Length > 0
+                        ? $"Statement of Account #{soa.SoaNumber} is saved.\n\nBilling invoice {siInv} for PHP {soa.TotalAmount:N2} is linked to it (see Billing Invoices)."
+                        : $"Statement of Account #{soa.SoaNumber} is saved.\n\nNo billing invoice was created because the sales invoice no. is blank. Use Edit statement to add the SI no. when it is issued.",
+                    "SOA saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadData();
                 SetFormVisibility(false);
 
@@ -1348,6 +1496,104 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             { ErrLog.Error("StatementOfAccountView", ex); 
                 MessageBox.Show($"Failed to save Statement of Account: {ex.Message}", "Save Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            finally
+            {
+                soaSaving = false;
+                if (pnlForm.Visible) UpdateSoaGuide(); else btnSaveSoa.Enabled = true;
+            }
+        }
+        /// <summary>
+        /// The invoice is made from the sales invoice no. Blank: ask before saving without an invoice.
+        /// Already used by another statement's invoice: block, so that invoice is not moved onto this statement.
+        /// </summary>
+        private bool CheckSalesInvoiceNoBeforeSave()
+        {
+            string raw = txtSalesInvoiceNo.Text.Trim();
+            if (raw.Length == 0)
+            {
+                var ans = MessageBox.Show("The sales invoice no. (SI no.) is blank.\n\nThe statement can be saved, but no billing invoice is created until you add the SI no. (Edit statement), so it can't be collected yet.\n\nSave without an invoice?",
+                    "No sales invoice no.", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+                if (ans != DialogResult.Yes) { try { txtSalesInvoiceNo.Focus(); } catch { } return false; }
+                return true;
+            }
+            string invNum = raw.StartsWith("SI", StringComparison.OrdinalIgnoreCase) ? raw : $"SI-{raw}";
+            int selfId = isEditingExisting && selectedSoa != null ? selectedSoa.Id : 0;
+            try
+            {
+                var clash = MJdatabase.GetInvoices().FirstOrDefault(i => i.InvoiceNumber.Equals(invNum, StringComparison.OrdinalIgnoreCase) && (selfId == 0 || i.SoaId != selfId));
+                if (clash != null)
+                {
+                    string owner = clash.SoaId > 0 ? (MJdatabase.GetStatementsOfAccount().FirstOrDefault(x => x.Id == clash.SoaId)?.SoaNumber ?? "another statement") : "another record";
+                    MessageBox.Show($"Sales invoice no. {raw} is already used by invoice {clash.InvoiceNumber} ({clash.ClientName}, {owner}, {clash.Status}).\n\nEach statement needs its own SI no. Check the number on the printed sales invoice.",
+                        "SI no. already used", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    try { txtSalesInvoiceNo.Focus(); txtSalesInvoiceNo.SelectAll(); } catch { }
+                    return false;
+                }
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+            return true;
+        }
+        private int CurrentSoaId => isEditingExisting && selectedSoa != null ? selectedSoa.Id : 0;
+        private static string SoaLineLabel(DataGridViewRow r) => $"trip {r.Cells["colTripNo"].Value} {(r.Cells["colDest"].Value?.ToString() ?? "").Trim()}".Trim();
+        /// <summary>
+        /// A DR number can be billed only once. DRs just entered on <paramref name="row"/> that are already on another
+        /// line of this statement, or on another (not cancelled) statement, are taken out again and the person is told where.
+        /// </summary>
+        private void RejectDuplicateSoaDrs(DataGridViewRow row)
+        {
+            if (gridItems == null || row == null || row.Index < 0 || row.DataGridView != gridItems) return;
+            var drs = DrList.Parse(row.Cells["colDr"].Value?.ToString());
+            if (drs.Count == 0) return;
+            var here = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (DataGridViewRow other in gridItems.Rows)
+            {
+                if (other.IsNewRow || other == row) continue;
+                foreach (var dr in DrList.Parse(other.Cells["colDr"].Value?.ToString()))
+                    if (!here.ContainsKey(dr)) here[dr] = SoaLineLabel(other);
+            }
+            var billed = MJdatabase.FindDrOwnersOnOtherStatements(CurrentSoaId, drs.Where(d => !here.ContainsKey(d)));
+            var keep = new List<string>();
+            var refused = new List<string>();
+            foreach (var dr in drs)
+            {
+                if (here.TryGetValue(dr, out var line)) refused.Add($"{dr} is already on {line} of this statement");
+                else if (billed.TryGetValue(dr, out var soa)) refused.Add($"{dr} is already billed on {soa}");
+                else keep.Add(dr);
+            }
+            if (refused.Count == 0) return;
+            bool was = isBindingForm;
+            isBindingForm = true;
+            try { row.Cells["colDr"].Value = DrList.Join(keep); }
+            finally { isBindingForm = was; }
+            MessageBox.Show(this.FindForm(), $"A DR number can only be billed once, so {(refused.Count == 1 ? "this one was" : "these were")} not added:\n\n"
+                + string.Join("\n", refused.Take(10).Select(x => "• " + x)) + (refused.Count > 10 ? $"\n• … and {refused.Count - 10} more" : ""),
+                "DR number already used", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+        /// <summary>
+        /// Before saving: DR numbers must not repeat, neither on two lines of this statement nor on another (not cancelled)
+        /// statement. The save stops until they are corrected (no "save anyway").
+        /// </summary>
+        private bool CheckRepeatedDrsBeforeSave()
+        {
+            var where = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            foreach (DataGridViewRow row in gridItems.Rows)
+            {
+                if (row.IsNewRow) continue;
+                foreach (var dr in DrList.Parse(row.Cells["colDr"].Value?.ToString()))
+                {
+                    if (!where.TryGetValue(dr, out var l)) where[dr] = l = new List<string>();
+                    l.Add(SoaLineLabel(row));
+                }
+            }
+            var dups = where.Where(k => k.Value.Count > 1).Select(k => $"{k.Key} is on {string.Join(" and ", k.Value)}").ToList();
+            var billed = MJdatabase.FindDrOwnersOnOtherStatements(CurrentSoaId, where.Keys).Select(kv => $"{kv.Key} is already billed on {kv.Value}").ToList();
+            if (dups.Count == 0 && billed.Count == 0) return true;
+            string L(List<string> l) => string.Join("\n", l.Take(8).Select(x => "• " + x)) + (l.Count > 8 ? $"\n• … and {l.Count - 8} more" : "");
+            MessageBox.Show((dups.Count > 0 ? $"The same DR number is on more than one line:\n{L(dups)}\n\n" : "")
+                + (billed.Count > 0 ? $"These DR numbers are already on another statement:\n{L(billed)}\n\n" : "")
+                + "A DR number can only be billed once. Correct the DR numbers, then save again.",
+                "DR numbers repeated", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
         }
 
         private void BtnDeleteSoa_Click(object? sender, EventArgs e)

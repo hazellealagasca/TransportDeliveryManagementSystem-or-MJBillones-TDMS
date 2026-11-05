@@ -110,7 +110,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == Keys.Escape && pnlForm.Visible)
+            if (keyData == Keys.Escape && pnlForm.Visible && EscapeGuard.AllowClose(this))
             {
                 SetFormVisibility(false);
                 return true;
@@ -349,8 +349,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 selectedTruck = t;
                 txtPlate.Text = selectedTruck.PlateNumber;
-                cbType.Text = selectedTruck.TruckType;
-                cbCargoType.SelectedItem = string.IsNullOrEmpty(selectedTruck.CargoType) ? "Cold / Chilled" : selectedTruck.CargoType;
+                // The category list is pick-only: make sure this truck's own category is in it, otherwise the
+                // previous selection would stay and saving would silently move the truck to another category.
+                if (!string.IsNullOrWhiteSpace(selectedTruck.TruckType) && cbType.FindStringExact(selectedTruck.TruckType) < 0)
+                    cbType.Items.Add(selectedTruck.TruckType);
+                cbType.SelectedIndex = cbType.FindStringExact(selectedTruck.TruckType ?? "");
+                cbCargoType.SelectedItem = MJdatabase.NormalizeCargo(selectedTruck.CargoType);
                 numCapacity.Value = selectedTruck.CapacityCrates;
                 string curStatus = selectedTruck.Status;
                 if (curStatus.Equals("Available", StringComparison.OrdinalIgnoreCase)) curStatus = "Active";
@@ -407,7 +411,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (MJdatabase.IsPlateNumberExists(plateNumber, 0))
                 {
-                    MessageBox.Show($"DUPLICATE VEHICLE PLATE NUMBER BLOCKED:\nA truck with Plate Number '{plateNumber}' is already registered in the system. Duplicate plate numbers are strictly prohibited.", "Duplicate Plate Number Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    MessageBox.Show($"PLATE NUMBER ALREADY EXISTS:\nA truck with Plate Number '{plateNumber}' is already registered in the system. Each truck needs its own plate number.", "Plate Number Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                     txtPlate.Focus();
                     return;
                 }
@@ -484,7 +488,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (MJdatabase.IsPlateNumberExists(plateNumber, selectedTruck.Id))
                 {
-                    MessageBox.Show($"DUPLICATE VEHICLE PLATE NUMBER BLOCKED:\nA different truck with Plate Number '{plateNumber}' already exists in the system. Duplicate plate numbers are strictly prohibited.", "Duplicate Plate Number Blocked", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    MessageBox.Show($"PLATE NUMBER ALREADY EXISTS:\nA different truck with Plate Number '{plateNumber}' already exists in the system. Each truck needs its own plate number.", "Plate Number Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                     txtPlate.Focus();
                     return;
                 }
@@ -647,8 +651,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     isBindingForm = true;
                     selectedTruck = filtered[0];
                     txtPlate.Text = selectedTruck.PlateNumber;
-                    cbType.Text = selectedTruck.TruckType;
-                    cbCargoType.SelectedItem = string.IsNullOrEmpty(selectedTruck.CargoType) ? "Cold / Chilled" : selectedTruck.CargoType;
+                    if (!string.IsNullOrWhiteSpace(selectedTruck.TruckType) && cbType.FindStringExact(selectedTruck.TruckType) < 0)
+                        cbType.Items.Add(selectedTruck.TruckType);
+                    cbType.SelectedIndex = cbType.FindStringExact(selectedTruck.TruckType ?? "");
+                    cbCargoType.SelectedItem = MJdatabase.NormalizeCargo(selectedTruck.CargoType);
                     numCapacity.Value = selectedTruck.CapacityCrates;
                     cbStatus.SelectedItem = selectedTruck.Status;
                     txtRemarks.Text = selectedTruck.Remarks;
