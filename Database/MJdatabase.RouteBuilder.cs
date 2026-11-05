@@ -118,5 +118,75 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (var c in clients)
                 try { RecomputeStoreRouteLabels(c); } catch (Exception ex) { ErrLog.Swallowed(ex); }
         }
+            // ---- Rule 16d: which store rows of an order came from its route (🔒 locked) and which were added (➕).
+        private static bool stopTypesReady;
+        private static void EnsureStopTypes(SqliteConnection conn)
+        {
+            if (stopTypesReady) return;
+            using var c = conn.CreateCommand();
+            c.CommandText = "CREATE TABLE IF NOT EXISTS DispatchStopTypes (DeliveryId INTEGER NOT NULL, StoreKey TEXT NOT NULL, IsBaselineRouteStore INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (DeliveryId, StoreKey))";
+            c.ExecuteNonQuery();
+            stopTypesReady = true;
+        }
+        /// <summary>The key a store row is remembered by: its code, or its name when it has no code.</summary>
+        public static string StopKey(string? code, string? name)
+        {
+            string c = CleanStoreCode(code ?? "");
+            return c.Length > 0 ? "C:" + c.ToUpperInvariant() : "N:" + NormPlace(name ?? "");
+        }
+        /// <summary>Saves the row types of an order (replaces what was there).</summary>
+        public static void SetStopTypes(int deliveryId, IEnumerable<(string Code, string Name, bool Baseline)> rows)
+        {
+            if (deliveryId <= 0) return;
+            using var conn = new SqliteConnection(connectionString);
+            conn.Open();
+            EnsureStopTypes(conn);
+            using var tx = conn.BeginTransaction();
+            using (var del = conn.CreateCommand()) { del.Transaction = tx; del.CommandText = "DELETE FROM DispatchStopTypes WHERE DeliveryId = @d"; del.Parameters.AddWithValue("@d", deliveryId); del.ExecuteNonQuery(); }
+            foreach (var r in rows)
+            {
+                string key = StopKey(r.Code, r.Name);
+                if (key.Length <= 2) continue;
+                using var ins = conn.CreateCommand();
+                ins.Transaction = tx;
+                ins.CommandText = "INSERT OR REPLACE INTO DispatchStopTypes (DeliveryId, StoreKey, IsBaselineRouteStore) VALUES (@d, @k, @b)";
+                ins.Parameters.AddWithValue("@d", deliveryId);
+                ins.Parameters.AddWithValue("@k", key);
+                ins.Parameters.AddWithValue("@b", r.Baseline ? 1 : 0);
+                ins.ExecuteNonQuery();
+            }
+            tx.Commit();
+        }
+        /// <summary>Saved row types of an order (store key → is a route store). Empty for orders saved before rule 16.</summary>
+        public static Dictionary<string, bool> GetStopTypes(int deliveryId)
+        {
+            var map = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            if (deliveryId <= 0) return map;
+            try
+            {
+                using var conn = new SqliteConnection(connectionString);
+                conn.Open();
+                EnsureStopTypes(conn);
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT StoreKey, IsBaselineRouteStore FROM DispatchStopTypes WHERE DeliveryId = @d";
+                cmd.Parameters.AddWithValue("@d", deliveryId);
+                using var r = cmd.ExecuteReader();
+                while (r.Read()) map[r.GetString(0)] = r.GetInt32(1) == 1;
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+            return map;
+        }
+        /// <summary>
+        /// Is this row a route store? Uses the saved type; for older orders (nothing saved) it matches the store against the
+        /// order's route, as approved on Nov 6, 2026 (on the route = 🔒 route store, otherwise ➕ added).
+        /// </summary>
+        public static bool IsRouteStoreRow(Dictionary<string, bool> saved, DeliveryRoute? route, string? code, string? name)
+        {
+            if (saved.TryGetValue(StopKey(code, name), out var b)) return b;
+            if (route == null) return false;
+            var st = new ClientStore { StoreCode = code ?? "", StoreName = name ?? "" };
+            return route.PlacesList.Any(p => PlaceIsStore(p, st));
+        }
+
     }
 }

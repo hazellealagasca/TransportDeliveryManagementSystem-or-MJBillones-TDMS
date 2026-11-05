@@ -1872,15 +1872,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var btnAddStoreRow = new Button
             {
-                Text = "➕ Add",
-                Height = Dpi(34),
-
+                Text = "+ Add Extra Store (Same Client Company)",
+                Height = Dpi(LargePrint.Px(44, 34)),
                 AutoSize = true,
-                Padding = new Padding(Dpi(8), 0, Dpi(8), 0),
-
-                Font = new Font("Segoe UI Semibold", 9F),
-
-                BackColor = Pal.C(14, 116, 144),
+                Padding = new Padding(Dpi(10), 0, Dpi(10), 0),
+                Font = LargePrint.Bold(14F, 9F),
+                BackColor = AppTheme.Success,
 
                 ForeColor = Pal.White,
 
@@ -1981,9 +1978,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SelectionMode = DataGridViewSelectionMode.CellSelect,
                 EditMode = DataGridViewEditMode.EditOnEnter,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                ColumnHeadersHeight = 28,
-                RowTemplate = { Height = 28 },
-                Font = new Font("Segoe UI", 9F),
+                ColumnHeadersHeight = Dpi(LargePrint.Px(36, 28)),
+                RowTemplate = { Height = Dpi(LargePrint.Px(44, 28)) },
+                Font = LargePrint.Bold(13F, 9F),
+                GridColor = AppTheme.BorderStrong,
+                CellBorderStyle = DataGridViewCellBorderStyle.Single,
                 EnableHeadersVisualStyles = false
             };
             gridRouteStores.ColumnHeadersDefaultCellStyle.BackColor = Pal.C(219, 234, 254);
@@ -2005,6 +2004,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             storeGuard.RowChanged += row => { RecalculateTotalsFromRouteStoresGrid(); UpdateSaveStoresToRouteButton(); };
 
             gridRouteStores.RowsAdded += (s, e) => SizeStoreBreakdown(gridRouteStores.Rows.Count);
+            // Rule 16d: rows added by other paths (table editor, draft) get their type from the route once their values are in.
+            gridRouteStores.RowsAdded += (s, e) => { if (IsHandleCreated) BeginInvoke(new Action(ClassifyUnsetStoreRows)); };
+            gridRouteStores.CellFormatting += GridRouteStores_RowTypeFormatting;
+            gridRouteStores.CellEnter += (s, e) =>
+            {
+                // Route rows: code and name are locked, so focus goes straight to the crate cells.
+                if (e.RowIndex < 0 || !IsRouteStoreRow(gridRouteStores.Rows[e.RowIndex])) return;
+                string cn = gridRouteStores.Columns[e.ColumnIndex].Name;
+                if ((cn == "colStoreCode" || cn == "colStoreName") && gridRouteStores.Columns.Contains("colECrate"))
+                    BeginInvoke(new Action(() => { try { gridRouteStores.CurrentCell = gridRouteStores.Rows[e.RowIndex].Cells["colECrate"]; } catch (Exception ex) { ErrLog.Swallowed(ex); } }));
+            };
+            gridRouteStores.EditingControlShowing += (s, e) =>
+            {
+                // Crate cells: the content is selected on focus, so typing replaces the 0.
+                string cn = gridRouteStores.CurrentCell?.OwningColumn?.Name ?? "";
+                if ((cn == "colECrate" || cn == "colGCrate") && e.Control is TextBox tb) BeginInvoke(new Action(() => { try { tb.SelectAll(); } catch (Exception ex) { ErrLog.Swallowed(ex); } }));
+            };
 
             gridRouteStores.RowsRemoved += (s, e) => SizeStoreBreakdown(gridRouteStores.Rows.Count);
 
@@ -2025,9 +2041,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (gridRouteStores == null || e.RowIndex < 0 || e.ColumnIndex < 0) return;
                 if (gridRouteStores.Columns[e.ColumnIndex].Name == "colDelStore")
                 {
-                    string label = gridRouteStores.Columns.Contains("colStoreName") ? gridRouteStores.Rows[e.RowIndex].Cells["colStoreName"].Value?.ToString() ?? "" : "";
-
-                    if (MessageBox.Show(this.FindForm(), $"Are you sure you want to remove {(label.Length > 0 ? "\"" + label + "\"" : "this store")} from this dispatch's store table?", "Remove store row", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+                string label = gridRouteStores.Columns.Contains("colStoreName") ? gridRouteStores.Rows[e.RowIndex].Cells["colStoreName"].Value?.ToString() ?? "" : "";
+                if (IsRouteStoreRow(gridRouteStores.Rows[e.RowIndex]))
+                {
+                    // Rule 16d (approved Nov 6): a locked route store can be removed only with a reason (at least 10 characters), which is logged.
+                    string code0 = gridRouteStores.Columns.Contains("colStoreCode") ? gridRouteStores.Rows[e.RowIndex].Cells["colStoreCode"].Value?.ToString() ?? "" : "";
+                    string? why = PromptRouteRowRemovalReason(label.Length > 0 ? label : code0);
+                    if (why == null) return;
+                    try { MJdatabase.LogAuditTrail("UPDATE", "Deliveries", selectedDelivery?.Id ?? 0, selectedDelivery?.DispatchNumber ?? "(new order)", "RouteStoreRemoved", $"{code0} - {label}", "", why); } catch (Exception ax) { ErrLog.Swallowed(ax); }
+                    gridRouteStores.Rows.RemoveAt(e.RowIndex);
+                    RecalculateTotalsFromRouteStoresGrid();
+                    return;
+                }
+                if (MessageBox.Show(this.FindForm(), $"Are you sure you want to remove {(label.Length > 0 ? "\"" + label + "\"" : "this store")} from this dispatch's store table?", "Remove store row", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
 
                     gridRouteStores.Rows.RemoveAt(e.RowIndex);
                     RecalculateTotalsFromRouteStoresGrid();
@@ -2110,9 +2136,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
+            // Rule 16d: row type badge first, and a hidden flag (true = store from the order's route, locked).
+            var colType = new DataGridViewTextBoxColumn { Name = "colRowType", HeaderText = "Row Type", FillWeight = 105, MinimumWidth = Dpi(150), ReadOnly = true };
+            colType.DefaultCellStyle.Font = LargePrint.Bold(10F, 8F);
+            colType.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            gridRouteStores.Columns.Add(colType);
+            gridRouteStores.Columns.Add(new DataGridViewCheckBoxColumn { Name = "colBaseline", Visible = false, ReadOnly = true });
             foreach (var colDef in storeGridColumns)
             {
-                bool isNumeric = colDef.Key == "colECrate" || colDef.Key == "colGCrate" || colDef.Key == "colStoreTotal";
+            bool isNumeric = colDef.Key == "colECrate" || colDef.Key == "colGCrate" || colDef.Key == "colStoreTotal";
                 // Code and name are typed (or picked) and checked against the client's stores; the route comes with the
 
                 // store and the total is calculated, so those two can't be typed.
@@ -2132,7 +2164,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         Alignment = isNumeric ? DataGridViewContentAlignment.MiddleRight : DataGridViewContentAlignment.MiddleLeft,
                         BackColor = isTotal ? Pal.C(241, 245, 249) : Pal.C(254, 252, 232),
 
-                        Font = isTotal ? new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold) : new Font("Segoe UI", 8.5F)
+                        Font = isNumeric ? LargePrint.Bold(15F, 9F) : isTotal ? LargePrint.Bold(13F, 8.5F) : LargePrint.Bold(13F, 8.5F)
                     }
                 };
                 gridRouteStores.Columns.Add(col);
@@ -2141,16 +2173,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var colDel = new DataGridViewButtonColumn
             {
                 Name = "colDelStore",
-                HeaderText = "",
-                Text = "🗑️",
-                UseColumnTextForButtonValue = true,
-                FillWeight = 38,
-                MinimumWidth = 34,
+                HeaderText = "Action",
+                Text = "",
+                UseColumnTextForButtonValue = false, // text per row: "🗑 Remove" on added rows, "Remove…" (with a reason) on route rows
+                FillWeight = 60,
+                MinimumWidth = Dpi(96),
                 FlatStyle = FlatStyle.Flat
             };
-            colDel.DefaultCellStyle.ForeColor = Pal.C(220, 38, 38);
-
-            colDel.DefaultCellStyle.BackColor = Pal.C(254, 242, 242);
+            colDel.DefaultCellStyle.ForeColor = Color.White;
+            colDel.DefaultCellStyle.BackColor = AppTheme.Danger;
+            colDel.DefaultCellStyle.Font = LargePrint.Bold(12F, 8.5F);
 
             gridRouteStores.Columns.Add(colDel);
         }
@@ -2190,6 +2222,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // A new row is completely empty: type or pick the store code or name; the rest fills in from Master Data.
 
             int rIdx = gridRouteStores.Rows.Add();
+            SetStoreRowType(gridRouteStores.Rows[rIdx], false); // rule 16d: an added company store (editable, removable)
             SizeStoreBreakdown(gridRouteStores.Rows.Count);
 
             if (rIdx >= 0 && gridRouteStores.Columns.Contains("colStoreName"))
@@ -2287,7 +2320,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
 
             if (gridRouteStores == null || storeGuard == null) return true;
-
+            // Rule 16d: an added row can't be left blank.
+            foreach (DataGridViewRow r in gridRouteStores.Rows)
+            {
+                if (IsRouteStoreRow(r)) continue;
+                string c0 = gridRouteStores.Columns.Contains("colStoreCode") ? (r.Cells["colStoreCode"].Value?.ToString() ?? "").Trim() : "";
+                string n0 = gridRouteStores.Columns.Contains("colStoreName") ? (r.Cells["colStoreName"].Value?.ToString() ?? "").Trim() : "";
+                if (c0.Length == 0 && n0.Length == 0)
+                {
+                    try { gridRouteStores.CurrentCell = r.Cells["colStoreName"]; gridRouteStores.FirstDisplayedScrollingRowIndex = r.Index; } catch (Exception ex) { ErrLog.Swallowed(ex); }
+                    MessageBox.Show(this.FindForm(), $"Row {r.Index + 1} is an added store with no store picked. Pick a store of this client, or remove the row, then save.", "Added store is blank", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return false;
+                }
+            }
             return storeGuard.ValidateForSave(this.FindForm());
 
         }
@@ -3026,6 +3071,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         : $"🏪 Stores & crates for this order  ·  {savedStops.Count} store{(savedStops.Count == 1 ? "" : "s")}";
 
                     var masterSaved = (savedStops.Any(x => string.IsNullOrWhiteSpace(x.StoreCode))) ? StoresForRoute(route) : new List<ClientStore>();
+                    var savedTypes = MJdatabase.GetStopTypes(selectedDelivery?.Id ?? 0);
 
                     foreach (var st in savedStops)
                     {
@@ -3044,7 +3090,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         if (gridRouteStores.Columns.Contains("colGCrate")) row.Cells["colGCrate"].Value = st.GCrate;
                         if (gridRouteStores.Columns.Contains("colStoreTotal")) row.Cells["colStoreTotal"].Value = st.ECrate + st.GCrate;
                         if (gridRouteStores.Columns.Contains("colDrNumbers")) row.Cells["colDrNumbers"].Value = st.DrNumbers;
-                    }
+                        SetStoreRowType(row, MJdatabase.IsRouteStoreRow(savedTypes, route, savedCode, st.Destination));
+                        }
                     SizeStoreBreakdown(savedStops.Count);
 
                     pnlRouteStoresBreakdown.Visible = true;
@@ -3089,7 +3136,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         if (gridRouteStores.Columns.Contains("colGCrate")) row.Cells["colGCrate"].Value = gc;
                         if (gridRouteStores.Columns.Contains("colStoreTotal")) row.Cells["colStoreTotal"].Value = ec + gc;
                         if (gridRouteStores.Columns.Contains("colDrNumbers")) row.Cells["colDrNumbers"].Value = "";
-                    }
+                        SetStoreRowType(row, true); // rule 16d: the route's own stores are locked
+                        }
                     SizeStoreBreakdown(cnt);
 
                     pnlRouteStoresBreakdown.Visible = true;
@@ -3117,6 +3165,86 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
+        // ---- Rule 16d: 🔒 route store rows (locked) vs ➕ added company store rows
+        private bool IsRouteStoreRow(DataGridViewRow r) =>
+            gridRouteStores != null && gridRouteStores.Columns.Contains("colBaseline") && r.Cells["colBaseline"].Value is bool b && b;
+        private void SetStoreRowType(DataGridViewRow row, bool routeStore)
+        {
+            if (gridRouteStores == null || !gridRouteStores.Columns.Contains("colBaseline")) return;
+            row.Cells["colBaseline"].Value = routeStore;
+            row.Cells["colRowType"].Value = routeStore ? "🔒 ROUTE STORE (LOCKED)" : "➕ ADDED COMPANY STORE";
+            foreach (var key in new[] { "colStoreCode", "colStoreName" })
+                if (gridRouteStores.Columns.Contains(key)) row.Cells[key].ReadOnly = routeStore;
+            row.Height = Dpi(LargePrint.Px(44, 28));
+        }
+        /// <summary>Rows that came in without a type (table editor, saved draft): on the route = route store, otherwise added.</summary>
+        private void ClassifyUnsetStoreRows()
+        {
+            if (gridRouteStores == null || !gridRouteStores.Columns.Contains("colBaseline")) return;
+            var none = new Dictionary<string, bool>();
+            foreach (DataGridViewRow r in gridRouteStores.Rows)
+            {
+                if (r.Cells["colBaseline"].Value is bool) continue;
+                string c = gridRouteStores.Columns.Contains("colStoreCode") ? r.Cells["colStoreCode"].Value?.ToString() ?? "" : "";
+                string n = gridRouteStores.Columns.Contains("colStoreName") ? r.Cells["colStoreName"].Value?.ToString() ?? "" : "";
+                SetStoreRowType(r, (c.Trim().Length > 0 || n.Trim().Length > 0) && MJdatabase.IsRouteStoreRow(none, storeListRoute, c, n));
+            }
+        }
+        private List<(string Code, string Name, bool Baseline)> CollectStopTypes()
+        {
+            var list = new List<(string, string, bool)>();
+            if (gridRouteStores == null) return list;
+            foreach (DataGridViewRow r in gridRouteStores.Rows)
+            {
+                string c = gridRouteStores.Columns.Contains("colStoreCode") ? r.Cells["colStoreCode"].Value?.ToString() ?? "" : "";
+                string n = gridRouteStores.Columns.Contains("colStoreName") ? r.Cells["colStoreName"].Value?.ToString() ?? "" : "";
+                if (c.Trim().Length == 0 && n.Trim().Length == 0) continue;
+                list.Add((c, n, IsRouteStoreRow(r)));
+            }
+            return list;
+        }
+        private void GridRouteStores_RowTypeFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (gridRouteStores == null || e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            var row = gridRouteStores.Rows[e.RowIndex];
+            bool locked = IsRouteStoreRow(row);
+            string cn = gridRouteStores.Columns[e.ColumnIndex].Name;
+            if (cn == "colDelStore")
+            {
+                e.Value = locked ? "Remove…" : "🗑 Remove";
+                e.CellStyle.BackColor = locked ? AppTheme.SurfaceAlt : AppTheme.Danger;
+                e.CellStyle.ForeColor = locked ? AppTheme.TextSecondary : Color.White;
+                return;
+            }
+            if (cn == "colRowType")
+            {
+                e.CellStyle.BackColor = locked ? AppTheme.InfoSoft : AppTheme.SuccessSoft;
+                e.CellStyle.ForeColor = locked ? AppTheme.InfoText : AppTheme.SuccessText;
+                return;
+            }
+            if (cn == "colECrate" || cn == "colGCrate" || cn == "colStoreTotal") return; // keep the crate cells' own look
+            // Route rows: steel-blue tint; added rows: soft mint.
+            e.CellStyle.BackColor = locked ? Pal.C(226, 232, 240) : Pal.C(236, 253, 245);
+            e.CellStyle.ForeColor = AppTheme.TextPrimary;
+        }
+        /// <summary>Reason for taking a locked route store off this order (at least 10 characters), or null when kept.</summary>
+        private string? PromptRouteRowRemovalReason(string store)
+        {
+            using var f = new Form { Text = "Remove route store", FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterParent, MinimizeBox = false, MaximizeBox = false, ShowInTaskbar = false, ClientSize = new Size(Dpi(520), Dpi(230)), BackColor = AppTheme.Surface };
+            var lbl = new Label { Text = $"\"{store}\" is one of this route's stores (🔒). Why is it not getting a delivery on this order?", Dock = DockStyle.Top, Height = Dpi(56), Font = LargePrint.Semibold(11F, 9.5F), ForeColor = AppTheme.TextPrimary, Padding = new Padding(Dpi(12), Dpi(10), Dpi(12), 0), UseMnemonic = false };
+            var txt = new TextBox { Multiline = true, Dock = DockStyle.Top, Height = Dpi(80), Font = LargePrint.Semibold(12F, 10F), MaxLength = 300, PlaceholderText = "Reason (at least 10 characters), e.g. store closed for inventory today" };
+            var bar = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = Dpi(56), FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(Dpi(10)), BackColor = AppTheme.SurfaceAlt };
+            var ok = new Button { Text = "Remove from this order", AutoSize = true, Enabled = false, BackColor = AppTheme.Danger, ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = LargePrint.Bold(11F, 9F) };
+            var keep = new Button { Text = "Keep store", AutoSize = true, DialogResult = DialogResult.Cancel, FlatStyle = FlatStyle.Flat, Font = LargePrint.Bold(11F, 9F) };
+            txt.TextChanged += (s, e) => ok.Enabled = txt.Text.Trim().Length >= 10;
+            ok.Click += (s, e) => { if (txt.Text.Trim().Length >= 10) { f.DialogResult = DialogResult.OK; f.Close(); } };
+            bar.Controls.Add(ok); bar.Controls.Add(keep);
+            var pad = new Panel { Dock = DockStyle.Top, Height = Dpi(8) };
+            f.Controls.Add(txt); f.Controls.Add(pad); f.Controls.Add(lbl); f.Controls.Add(bar);
+            f.CancelButton = keep;
+            f.Shown += (s, e) => txt.Focus();
+            return f.ShowDialog(this.FindForm()) == DialogResult.OK ? txt.Text.Trim() : null;
+        }
         private void RecalculateTotalsFromRouteStoresGrid()
         {
             if (isUpdatingRouteStores || gridRouteStores == null || pnlRouteStoresBreakdown == null || !pnlRouteStoresBreakdown.Visible) return;
@@ -5136,7 +5264,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
                 MJdatabase.SaveDelivery(d);
-
+                try { MJdatabase.SetStopTypes(d.Id, CollectStopTypes()); } catch (Exception stx) { ErrLog.Swallowed(stx); }
+                AppEvents.Raise(AppDataKind.Dispatch);
                 try { MJdatabase.SetDeliveryCapacityInfo(d.Id, d.DispatchNumber, capCold, capDry, capOver, capReason); } catch (Exception cx) { ErrLog.Swallowed(cx); }
 
                 MJdatabase.ClearFormDraft("Dispatch", SessionContext.CurrentUsername);
@@ -5586,6 +5715,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
                 MJdatabase.SaveDelivery(selectedDelivery);
+                try { MJdatabase.SetStopTypes(selectedDelivery.Id, CollectStopTypes()); } catch (Exception stx) { ErrLog.Swallowed(stx); }
+                AppEvents.Raise(AppDataKind.Dispatch);
                 if (cancelChargeChosen) MJdatabase.SetDeliveryCancelCharge(selectedDelivery.Id, cancelChargeable, cancelFee);
                 try { MJdatabase.SetDeliveryCapacityInfo(selectedDelivery.Id, selectedDelivery.DispatchNumber, capCold, capDry, capOver, capReason); } catch (Exception cx) { ErrLog.Swallowed(cx); }
 
