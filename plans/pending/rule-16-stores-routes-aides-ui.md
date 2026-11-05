@@ -100,8 +100,8 @@ Verified when: the chargeable / no-charge cancel is tested on a test dispatch. T
 | 4 Aides (2 slots + trim) | built, not yet tested in the app; the one-time trim ran Nov 6 01:01 and made a backup first (a37828e) |
 | 1+2 Store↔route + Clients tabs | built, not yet tested in the app (aeef905). **Deviation:** no new RouteStores table. A route's own store list (ConnectedPlaces) already allows one store on many routes; DestinationRoute now mirrors the first route |
 | 3 Dispatch rows | built, not yet tested in the app (e2b0ef4). Row types saved in DispatchStopTypes |
-| 3c Trip Report Intact / Missing / Damaged | not started |
+| 3c Trip Report Intact / Missing / Damaged | **deferred to after the demo** (Hazel, Nov 6 1:10 am) |
 | 6 Refresh event | built (AppEvents + cache version) |
 | 7 Large print | built (5500259) |
-| 9 Rule 13 | not started |
-| 8 Full test | waiting for login |
+| 9 Rule 13 | **deferred to after the demo** (Hazel, Nov 6 1:10 am) |
+| 8 Full test | view-only test in the app on real data, Nov 6 1:05–1:09 am: Clients tabs, Dispatch rows, aide slots and Special Trip opened; display fixes in f277f04. No saves were tested (Hazel chose view only) |
