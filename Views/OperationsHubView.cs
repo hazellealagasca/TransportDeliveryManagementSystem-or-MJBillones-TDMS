@@ -25,7 +25,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetupTabs();
             UIThemeHelper.ApplyTheme(this);
             SelectTab(defaultTab);
-        }
+            }
+            /// <summary>Full-screen form mode: hides the Operations tab strip while a page's form is open.</summary>
+            public void SetTabsVisible(bool visible) { if (pnlTopNav.Visible != visible) pnlTopNav.Visible = visible; }
 
         private void SetupTabs()
         {

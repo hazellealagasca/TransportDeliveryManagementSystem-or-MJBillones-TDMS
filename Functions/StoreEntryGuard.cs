@@ -61,6 +61,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public event Action<DataGridViewRow>? RowChanged;
         /// <summary>Optional: does this row hold data (e.g. crates) even without a store? Such rows can't be saved without a store.</summary>
         public Func<DataGridViewRow, bool>? RowHasData { get; set; }
+        /// <summary>
+        /// When true, the Route cell of every store row shows the order's own route (the default route label), not the
+        /// store's first route, and the search list has no Route column. Used by the dispatch store table.
+        /// </summary>
+        public bool UseOrderRoute { get => useOrderRoute; set { useOrderRoute = value; popup.ShowRoute = !value; } }
+        private bool useOrderRoute;
+        private string RouteFor(ClientStore? st) { if (useOrderRoute) { string r = StoreDirectory.Norm(defaultRoute()); if (r.Length > 0) return r; } return StoreDirectory.Route(st); }
 
 
 
@@ -393,7 +400,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 row.Cells[codeCol].Value = StoreDirectory.Norm(st.StoreCode);
                 row.Cells[nameCol].Value = StoreDirectory.Norm(st.StoreName);
-                if (routeCol != null && grid.Columns.Contains(routeCol)) row.Cells[routeCol].Value = StoreDirectory.Route(st);
+                if (routeCol != null && grid.Columns.Contains(routeCol)) row.Cells[routeCol].Value = RouteFor(st);
                 Mark(row, null);
             }
             finally { syncing = false; }
@@ -514,7 +521,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     string oc = StoreDirectory.Norm(chk.Store.StoreCode), on = StoreDirectory.Norm(chk.Store.StoreName);
                     if (code != oc) row.Cells[codeCol].Value = oc;
                     if (name != on) row.Cells[nameCol].Value = on;
-                    if (routeCol != null && grid.Columns.Contains(routeCol)) { string rt = StoreDirectory.Route(chk.Store); if (Val(row, routeCol) != rt) row.Cells[routeCol].Value = rt; }
+                    if (routeCol != null && grid.Columns.Contains(routeCol)) { string rt = RouteFor(chk.Store); if (Val(row, routeCol) != rt) row.Cells[routeCol].Value = rt; }
                     Mark(row, null);
                 }
                 finally { syncing = false; }

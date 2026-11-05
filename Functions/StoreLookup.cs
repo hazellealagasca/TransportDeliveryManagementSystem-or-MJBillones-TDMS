@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -113,6 +113,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     /// </summary>
     public sealed class StoreLookupPopup : Form
     {
+        /// <summary>Show the Route column (off in the dispatch store table: there every row takes the order's route).</summary>
+        [System.ComponentModel.Browsable(false)]
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        public bool ShowRoute { get; set; } = true;
         private const int WS_EX_NOACTIVATE = 0x08000000, WS_EX_TOOLWINDOW = 0x00000080, WM_MOUSEACTIVATE = 0x0021, MA_NOACTIVATE = 3;
         private const int MaxRows = 8;
         private readonly RowsView view;
@@ -219,7 +223,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
                 g.Clear(AppTheme.Surface);
                 int h = p.RowH, w = Width;
-                int c1 = (int)(w * 0.24), c2 = (int)(w * 0.46);
+                int c1 = (int)(w * (p.ShowRoute ? 0.24 : 0.30)), c2 = p.ShowRoute ? (int)(w * 0.46) : w - (int)(w * 0.30);
                 var pad = p.D(8);
                 using var headFont = new Font("Segoe UI Semibold", 9F);
                 using var font = new Font("Segoe UI", 9.5F);
@@ -229,7 +233,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     => TextRenderer.DrawText(g, t, f, new Rectangle(x + pad, y, Math.Max(0, cw - pad * 2), h), c, TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
                 Cell("Store Code", headFont, AppTheme.TextSecondary, 0, 0, c1);
                 Cell("Store Name", headFont, AppTheme.TextSecondary, c1, 0, c2);
-                Cell("Route", headFont, AppTheme.TextSecondary, c1 + c2, 0, w - c1 - c2);
+                if (p.ShowRoute) Cell("Route", headFont, AppTheme.TextSecondary, c1 + c2, 0, w - c1 - c2);
                 using (var lp = new Pen(AppTheme.Border)) g.DrawLine(lp, 0, h - 1, w, h - 1);
                 if (p.noMatch)
                 {
@@ -247,6 +251,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     Color fc = AppTheme.TextPrimary;
                     Cell(StoreDirectory.Norm(st.StoreCode), bold, fc, 0, y, c1);
                     Cell(StoreDirectory.Norm(st.StoreName), font, fc, c1, y, c2);
+                    if (!p.ShowRoute) continue;
                     string route = StoreDirectory.Route(st);
                     Cell(route.Length > 0 ? route : "(no route)", font, route.Length > 0 ? AppTheme.TextSecondary : AppTheme.TextMuted, c1 + c2, y, w - c1 - c2);
                 }

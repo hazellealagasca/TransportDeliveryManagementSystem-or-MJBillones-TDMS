@@ -926,8 +926,58 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+        /// <summary>Turns the app's full-screen form mode on or off (left menu, top bar and the Operations tabs).</summary>
+        private void SetFullScreen(bool on)
+        {
+            try
+            {
+                MainForm.Instance?.SetFocusMode(on);
+                Control? c = Parent;
+                while (c != null && !(c is OperationsHubView)) c = c.Parent;
+                (c as OperationsHubView)?.SetTabsVisible(!on);
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+        }
+        /// <summary>Nov 6: changing the route clears the store table; ask first when stores were added or crates typed. False = keep the old route.</summary>
+        private bool ConfirmRouteSwitch(DeliveryRoute? next)
+        {
+            if (gridRouteStores == null || next == null || isBindingForm) return true;
+            if (storeListRoute != null && storeListRoute.Id == next.Id) return true;
+            int added = 0, crates = 0;
+            foreach (DataGridViewRow r in gridRouteStores.Rows)
+            {
+                string c0 = gridRouteStores.Columns.Contains("colStoreCode") ? (r.Cells["colStoreCode"].Value?.ToString() ?? "").Trim() : "";
+                string n0 = gridRouteStores.Columns.Contains("colStoreName") ? (r.Cells["colStoreName"].Value?.ToString() ?? "").Trim() : "";
+                if (!IsRouteStoreRow(r) && (c0.Length > 0 || n0.Length > 0)) added++;
+                crates += CratesOf(r);
+            }
+            if (added == 0 && crates == 0) return true;
+            string what = added > 0 && crates > 0 ? $"{added} added store(s) and the crates you typed" : added > 0 ? $"{added} added store(s)" : "the crates you typed";
+            return MessageBox.Show(this.FindForm(), $"Changing the route to {next.RouteCode} - {next.RouteName} clears the store table, including {what}, and loads that route's stores.\n\nChange the route?", "Change delivery route", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
+        }
+        /// <summary>True when switching needs no question (no added stores and no crates typed).</summary>
+        private bool ConfirmRouteSwitchQuiet(DeliveryRoute next)
+        {
+            if (gridRouteStores == null) return true;
+            foreach (DataGridViewRow r in gridRouteStores.Rows)
+            {
+                if (CratesOf(r) > 0) return false;
+                string c0 = gridRouteStores.Columns.Contains("colStoreCode") ? (r.Cells["colStoreCode"].Value?.ToString() ?? "").Trim() : "";
+                string n0 = gridRouteStores.Columns.Contains("colStoreName") ? (r.Cells["colStoreName"].Value?.ToString() ?? "").Trim() : "";
+                if (!IsRouteStoreRow(r) && (c0.Length > 0 || n0.Length > 0)) return false;
+            }
+            return true;
+        }
+        /// <summary>Puts the route dropdown back on the route the table was loaded from (after "No").</summary>
+        private void RevertRouteDropdown()
+        {
+            if (storeListRoute == null) return;
+            bool was = isBindingForm;
+            isBindingForm = true;
+            try { cbDestination.Text = $"{storeListRoute.RouteCode} - {storeListRoute.RouteName}"; }
+            finally { isBindingForm = was; }
+        }
         private void SetFormVisibility(bool visible)
-
         {
 
             if (visible && !pnlForm.Visible && selectedDelivery == null && string.IsNullOrWhiteSpace(cbClient.Text)) BeginInvoke(new Action(CheckAndPromptDraft));
@@ -963,10 +1013,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             pnlForm.Margin = new Padding(0);
-
             tblMasterContent.ResumeLayout(true);
-
             if (visible) CenterFormContent();
+            // Nov 6: the order form is full screen (no menu, top bar or Operations tabs) while it is open.
+            if (IsHandleCreated) BeginInvoke(new Action(() => SetFullScreen(pnlForm.Visible && Visible)));
 
             pnlGridCard.PerformLayout();
 
@@ -1245,9 +1295,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (matched != null && (selected.Equals(matched.RouteName, StringComparison.OrdinalIgnoreCase) || selected.Equals(matched.RouteCode, StringComparison.OrdinalIgnoreCase)))
                     {
                         cbDestination.Text = $"{matched.RouteCode} - {matched.RouteName}";
-                    }
-                    PopulateRouteStoresGrid(matched);
-                    FillClientFromRoute(matched);
+                        }
+                        if (!ConfirmRouteSwitch(matched)) { BeginInvoke(new Action(RevertRouteDropdown)); UpdateDestinationHint(); return; }
+                        PopulateRouteStoresGrid(matched);
+                        FillClientFromRoute(matched);
 
                 }
                 UpdateDestinationHint();
@@ -1263,6 +1314,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         cbDestination.Text = $"{matched.RouteCode} - {matched.RouteName}";
                         cbDestination.SelectionStart = cbDestination.Text.Length;
+                        if (!ConfirmRouteSwitch(matched)) { RevertRouteDropdown(); e.Handled = true; e.SuppressKeyPress = true; return; }
                         PopulateRouteStoresGrid(matched);
                         e.Handled = true;
                         e.SuppressKeyPress = true;
@@ -1277,9 +1329,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     string txt = cbDestination.Text.Trim();
                     var matched = MJdatabase.FindRouteByNameOrCode(txt);
-                    if (matched != null)
+                    // While typing, only switch when it is safe (no added stores or typed crates); otherwise wait for Enter / a pick, which ask first.
+                    if (matched != null && (storeListRoute == null || storeListRoute.Id != matched.Id) && ConfirmRouteSwitchQuiet(matched))
                     {
-                        PopulateRouteStoresGrid(matched);
+                    PopulateRouteStoresGrid(matched);
                     }
                 }
             };
@@ -2001,6 +2054,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 () => cbClient.Text, () => storeListRoute != null ? $"{storeListRoute.RouteCode} - {storeListRoute.RouteName}" : cbDestination.Text, ShowStoreWarning);
 
             storeGuard.RowHasData = row => CratesOf(row) > 0;
+            storeGuard.UseOrderRoute = true;
+            VisibleChanged += (s, e) => SetFullScreen(Visible && pnlForm.Visible); // leaving the page ends full screen // Nov 6: every row shows the route picked in Delivery Route; the store list has no Route column
 
             storeGuard.RowChanged += row => { RecalculateTotalsFromRouteStoresGrid(); UpdateSaveStoresToRouteButton(); };
 
@@ -2547,6 +2602,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             btnAddRoute.FlatAppearance.BorderSize = 0;
             btnAddRoute.Click += BtnAddRoute_Click;
+            btnAddRoute.Visible = false; // Nov 6: routes are made in Master Data → Clients → Delivery routes, not in the order form
 
             storeTips.SetToolTip(btnAddRoute, "Create a brand-new delivery route (code, name and its stores). Pick an existing route from the list instead if it already exists.");
 
