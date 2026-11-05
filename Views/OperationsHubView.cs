@@ -184,6 +184,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void ActivateTab(Button btn, UserControl view)
         {
+            // Nov 6: leaving a tab with unsaved typing asks first (Yes clears the form).
+            if (pnlContentHost.Controls.Count > 0 && pnlContentHost.Controls[0] != view && !FormGuard.ConfirmLeave(pnlContentHost.Controls[0])) return;
             if (activeTabBtn != null)
             {
                 activeTabBtn.BackColor = Pal.White;

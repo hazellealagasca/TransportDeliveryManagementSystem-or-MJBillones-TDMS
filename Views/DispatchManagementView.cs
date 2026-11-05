@@ -24,7 +24,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 {
 
-    public partial class DispatchManagementView : UserControl, IRefreshable
+    public partial class DispatchManagementView : UserControl, IRefreshable, IUnsavedForm
 
     {
 
@@ -221,7 +221,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnPrint.Visible = false;
 
-            btnCloseForm.Click += (s, e) => SetFormVisibility(false);
+            btnCloseForm.Click += (s, e) => { if (FormGuard.ConfirmDiscard(this)) SetFormVisibility(false); };
 
 
 
@@ -977,8 +977,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try { cbDestination.Text = $"{storeListRoute.RouteCode} - {storeListRoute.RouteName}"; }
             finally { isBindingForm = was; }
         }
+        // Nov 6: unsaved-typing tracking for the add / edit form (see FormGuard).
+        private FormDirtyTracker? formDirty;
+        public bool FormIsOpenAndDirty => pnlForm.Visible && (formDirty?.IsDirty ?? false);
+        public void DiscardAndCloseForm() => SetFormVisibility(false);
         private void SetFormVisibility(bool visible)
         {
+            // Nov 6: a form is blank whenever it is opened or left.
+            if (!visible && pnlForm.Visible && IsHandleCreated) ClearFields();
+            if (visible) formDirty ??= new FormDirtyTracker(pnlForm);
+            formDirty?.Reset();
 
             if (visible && !pnlForm.Visible && selectedDelivery == null && string.IsNullOrWhiteSpace(cbClient.Text)) BeginInvoke(new Action(CheckAndPromptDraft));
 

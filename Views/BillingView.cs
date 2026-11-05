@@ -9,7 +9,7 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.M
 
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
 {
-    public partial class BillingView : UserControl, IRefreshable
+    public partial class BillingView : UserControl, IRefreshable, IUnsavedForm
     {
         private Invoice? selectedInvoice = null;
         private List<Invoice> allInvoices = new List<Invoice>();
@@ -122,7 +122,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 4, 8, 4)
             };
             btnToggleForm.FlatAppearance.BorderSize = 0;
-            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) SetFormVisibility(false); else OpenNewRecordForm(); };
+            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) { if (FormGuard.ConfirmDiscard(this)) SetFormVisibility(false); } else OpenNewRecordForm(); };
             pnlGridActionsFlow.Controls.Add(btnToggleForm);
             pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
 
@@ -139,7 +139,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Cursor = Cursors.Hand
             };
             btnCloseForm.FlatAppearance.BorderSize = 0;
-            btnCloseForm.Click += (s, e) => SetFormVisibility(false);
+            btnCloseForm.Click += (s, e) => { if (FormGuard.ConfirmDiscard(this)) SetFormVisibility(false); };
             pnlFormHeaderBar.Controls.Add(btnCloseForm);
 
             SetFormVisibility(false);
@@ -177,8 +177,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblFormHeader.Text = "New invoice";
             SetFormVisibility(true);
         }
+        // Nov 6: unsaved-typing tracking for the add / edit form (see FormGuard).
+        private FormDirtyTracker? formDirty;
+        public bool FormIsOpenAndDirty => pnlForm.Visible && (formDirty?.IsDirty ?? false);
+        public void DiscardAndCloseForm() => SetFormVisibility(false);
         private void SetFormVisibility(bool visible)
         {
+            // Nov 6: a form is blank whenever it is opened or left.
+            if (!visible && pnlForm.Visible && IsHandleCreated) ClearFields();
+            if (visible) formDirty ??= new FormDirtyTracker(pnlForm);
+            formDirty?.Reset();
             if (formKit != null) formKit.Show(visible);
             else pnlForm.Visible = visible;
             if (btnToggleForm != null) btnToggleForm.Visible = !visible;

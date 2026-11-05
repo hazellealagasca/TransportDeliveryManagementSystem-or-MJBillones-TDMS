@@ -1079,10 +1079,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (lstSearchDropdown != null) lstSearchDropdown.Visible = false;
             HideNavFlyout();
 
-            if (panelMainContent.Controls.Count > 0 && panelMainContent.Controls[0] is OperationsHubView oph)
-            {
-                if (!oph.CheckAndPromptUnsavedBeforeLeaving()) return;
-            }
+            if (panelMainContent.Controls.Count > 0 && !FormGuard.ConfirmLeave(panelMainContent.Controls[0])) return; // Nov 6: any module's unsaved form
 
             if (!viewCache.TryGetValue(cacheKey, out UserControl? view))
             {
@@ -1110,10 +1107,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (pnlNotificationMenu != null) pnlNotificationMenu.Visible = false;
             if (lstSearchDropdown != null) lstSearchDropdown.Visible = false;
 
-            if (panelMainContent.Controls.Count > 0 && panelMainContent.Controls[0] is OperationsHubView oph)
-            {
-                if (!oph.CheckAndPromptUnsavedBeforeLeaving()) return;
-            }
+            if (panelMainContent.Controls.Count > 0 && !FormGuard.ConfirmLeave(panelMainContent.Controls[0])) return; // Nov 6: any module's unsaved form
 
             panelMainContent.SuspendLayout();
             panelMainContent.Controls.Clear();

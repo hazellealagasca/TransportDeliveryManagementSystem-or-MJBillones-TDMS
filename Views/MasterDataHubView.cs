@@ -103,6 +103,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var allowed = AllowedTab(key);
             if (allowed == null || !cachedViews.ContainsKey(allowed)) return;
             key = allowed;
+            // Nov 6: leaving a tab with unsaved typing asks first (Yes clears the form).
+            if (pnlContentHost.Controls.Count > 0 && pnlContentHost.Controls[0] != cachedViews[key] && !FormGuard.ConfirmLeave(pnlContentHost.Controls[0])) return;
             foreach (var kvp in tabButtons)
             {
                 bool isSelected = kvp.Key == key;

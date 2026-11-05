@@ -12,7 +12,7 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.M
 
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
 {
-    public partial class StatementOfAccountView : UserControl, IRefreshable
+    public partial class StatementOfAccountView : UserControl, IRefreshable, IUnsavedForm
     {
         private List<StatementOfAccount> allSoas = new List<StatementOfAccount>();
         private StatementOfAccount? selectedSoa = null;
@@ -337,7 +337,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Font = new Font("Segoe UI Semibold", 9.5F),
                 Cursor = Cursors.Hand
             };
-            btnCloseForm.Click += (s, e) => SetFormVisibility(false);
+            btnCloseForm.Click += (s, e) => { if (FormGuard.ConfirmDiscard(this)) SetFormVisibility(false); };
 
             pnlHeaderSpacer = new Panel { Dock = DockStyle.Left, Width = Dpi(16), BackColor = AppTheme.Canvas };
             pnlFormHeaderBar.Controls.Add(lblFormHeader);
@@ -950,9 +950,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (pnlForm.Visible) SetFormVisibility(false);
             RowMenu.Search(txtGridSearch, text);
         }
+        // Nov 6: unsaved-typing tracking for the add / edit form (see FormGuard).
+        private FormDirtyTracker? formDirty;
+        public bool FormIsOpenAndDirty => pnlForm.Visible && (formDirty?.IsDirty ?? false);
+        public void DiscardAndCloseForm() => SetFormVisibility(false);
 
         private void SetFormVisibility(bool visible)
         {
+            // Nov 6: a form is blank whenever it is opened or left.
+            if (!visible && pnlForm.Visible && IsHandleCreated) ClearForm();
+            if (visible) formDirty ??= new FormDirtyTracker(pnlForm);
+            formDirty?.Reset();
             tblMasterContent.SuspendLayout();
             // The statement form is a full page of its own: it replaces the list instead of sitting beside it.
             pnlForm.Visible = visible;

@@ -11,7 +11,7 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.M
 
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
 {
-    public partial class TripReportView : UserControl, IRefreshable
+    public partial class TripReportView : UserControl, IRefreshable, IUnsavedForm
     {
         public Action<int, string, int, DateTime>? OnLogIncidentRequested;
         private TripReport? selectedTripReport = null;
@@ -144,7 +144,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 4, 8, 4)
             };
             btnToggleForm.FlatAppearance.BorderSize = 0;
-            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) SetFormVisibility(false); else OpenNewTripReport(); };
+            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) { if (FormGuard.ConfirmDiscard(this)) SetFormVisibility(false); } else OpenNewTripReport(); };
             UIThemeHelper.SetButtonRole(btnToggleForm, "primary");
             pnlGridActionsFlow.Controls.Add(btnToggleForm);
             pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
@@ -162,7 +162,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Cursor = Cursors.Hand
             };
             btnCloseForm.FlatAppearance.BorderSize = 0;
-            btnCloseForm.Click += (s, e) => SetFormVisibility(false);
+            btnCloseForm.Click += (s, e) => { if (FormGuard.ConfirmDiscard(this)) SetFormVisibility(false); };
             pnlFormHeaderBar.Controls.Add(btnCloseForm);
 
             SetFormVisibility(false);

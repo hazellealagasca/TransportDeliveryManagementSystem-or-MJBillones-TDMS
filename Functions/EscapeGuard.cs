@@ -17,8 +17,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (p is ComboBox cb && cb.DroppedDown) return false;
                 if (p == view) break;
             }
+            if (view is IUnsavedForm u && !u.FormIsOpenAndDirty) return true; // nothing typed: leave without asking (Nov 6)
             var owner = view.FindForm();
-            return MessageBox.Show(owner, "Leave this form?\n\nAnything you haven't saved will be lost.", "Leave form",
+            return MessageBox.Show(owner, "Discard your unsaved changes?\n\nWhat you typed in this form will be cleared.", "Unsaved changes",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
         }
 

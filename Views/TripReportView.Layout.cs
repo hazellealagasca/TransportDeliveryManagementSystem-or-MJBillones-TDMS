@@ -266,8 +266,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlFormActionsBar.Height = Dpi(66);
         }
         // ------------------------------------------------------------------ New / edit modes
+        // Nov 6: unsaved-typing tracking for the add / edit form (see FormGuard).
+        private FormDirtyTracker? formDirty;
+        public bool FormIsOpenAndDirty => pnlForm.Visible && (formDirty?.IsDirty ?? false);
+        public void DiscardAndCloseForm() => SetFormVisibility(false);
         private void SetFormVisibility(bool visible)
         {
+            // Nov 6: a form is blank whenever it is opened or left.
+            if (!visible && pnlForm.Visible && IsHandleCreated) ClearFields();
+            if (visible) formDirty ??= new FormDirtyTracker(pnlForm);
+            formDirty?.Reset();
             tblMasterContent.SuspendLayout();
             pnlForm.Visible = visible;
             pnlGridCard.Visible = !visible;
