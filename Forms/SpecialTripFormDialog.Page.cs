@@ -18,6 +18,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private FullPageFormKit? pageKit;
         private Button btnBack = null!;
         private TableLayoutPanel flowBar = null!;
+        private Panel? pageBody;
         private FormDirtyTracker? dirtyTracker;
         private bool shownFired;
         /// <summary>Where to go after the form closes (a flow-bar step); run by the page that hosts the form.</summary>
@@ -54,11 +55,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pageKit.Build(sections.Select(s => new FullPageFormKit.Section(s.Title, s.Subtitle, s.Block)), new Control[] { actions });
             flowBar = BuildFlowBar();
             foreach (var cb in new[] { chkPaymentWithReport, chkWithInvoice, chkWithSOA, chkWithCollection }) cb.CheckedChanged += (s, e) => RefreshFlowBar();
-            pageKit.AddBodyTop(new Panel { Dock = DockStyle.Top, Height = Px(10), BackColor = AppTheme.Canvas });
-            pageKit.AddBodyTop(flowBar); // Nov 6: scrolls with the form, so the whole page scrolls as one
+            // Nov 6: the step boxes are not shown on the form (the trip's details window shows its steps).
+            pageBody = body;
             Controls.Add(tblFull);
             tblFull.BringToFront();
             pageKit.Show(true);
+        }
+
+        /// <summary>The form always opens at its first card.</summary>
+        private void ScrollToTop()
+        {
+            if (pageBody == null || pageBody.IsDisposed) return;
+            pageBody.AutoScrollPosition = new Point(0, 0);
+            BeginInvoke(new Action(() => { if (!pageBody.IsDisposed) { pageBody.AutoScrollPosition = new Point(0, 0); if (cbCompany.CanFocus) cbCompany.Focus(); pageBody.AutoScrollPosition = new Point(0, 0); } }));
         }
 
         // ------------------------------------------------------------------ Flow bar
@@ -169,6 +178,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!shownFired) OnShown(EventArgs.Empty);
                 pageKit?.Restyle();
                 RefreshFlowBar();
+                ScrollToTop();
                 dirtyTracker ??= new FormDirtyTracker(this);
                 dirtyTracker.Reset();
             }));
