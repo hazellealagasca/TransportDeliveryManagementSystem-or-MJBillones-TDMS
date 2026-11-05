@@ -30,9 +30,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             del = DispatchGate.Fresh(del);
             if (!DispatchGate.RequireCompleted(FindForm(), del, "bill it")) return;
             // Strict binding: only a trip with a saved trip report, not billed on a statement or another invoice.
-            string? block = !MJdatabase.HasTripReport(del.Id) ? $"{del.DispatchNumber} has no saved trip report yet. File it first (Operations → Trip reports), then invoice the trip."
+            string? block = !(del.Id < 0 ? SpecialTripHasReport(-del.Id) : MJdatabase.HasTripReport(del.Id)) ? $"{del.DispatchNumber} has no saved trip report yet. File it first (Operations → Trip reports), then invoice the trip."
                 : MJdatabase.GetBilledDeliveryIds(0).TryGetValue(del.Id, out var soaNo) ? $"{del.DispatchNumber} is already billed on statement {soaNo}. Its invoice comes from that statement."
                 : MJdatabase.GetDirectlyInvoicedDeliveryIds().TryGetValue(del.Id, out var invNo) ? $"{del.DispatchNumber} is already invoiced ({invNo})."
+                : del.Id < 0 && MJdatabase.SpecialTripHasActiveInvoice(-del.Id) ? $"{del.DispatchNumber} already has its service invoice."
                 : null;
             if (block != null) { MessageBox.Show(FindForm(), block, "Can't invoice this trip", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
             SetFormVisibility(true);
@@ -47,6 +48,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbDelivery.Items.Insert(0, $"{del.DispatchNumber} - {del.LoadingScheduleInfo} (Driver: {del.DriverName})");
                 cbDelivery.SelectedIndex = 0;
             }
+            if (del.Id < 0) cbDelivery.Enabled = false; // Nov 6: opened from the special trip: this invoice is for that trip only
         }
 
         public BillingView()
@@ -330,6 +332,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     RecalculateNet(sender, e);
                     return;
                 }
+                if (del.Id < 0) // Nov 6: a special trip is billed its trip charge
+                {
+                    calculatedAmount = SpecialCharge(del);
+                    lblTariffMatch.Text = $"Special trip charge -> PHP {calculatedAmount:N2}";
+                    lblTariffMatch.Visible = true;
+                    if (calculatedAmount > numTotalAmount.Maximum) numTotalAmount.Maximum = calculatedAmount * 2;
+                    numTotalAmount.Value = Math.Max(numTotalAmount.Minimum, Math.Min(numTotalAmount.Maximum, calculatedAmount));
+                    numDeductions.Value = 0;
+                    RecalculateNet(sender, e);
+                    return;
+                }
                 calculatedAmount = MJdatabase.CalculateDeliveryTariff(del, out tariffDesc);
                 lblTariffMatch.Text = calculatedAmount > 0 ? $"✓ {tariffDesc} -> PHP {calculatedAmount:N2}" : tariffDesc;
                 lblTariffMatch.Visible = true;
@@ -498,6 +511,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 chargeFees = MJdatabase.GetChargeableCancelledFees();
                 // Billable: completed trips with a trip report, plus cancelled trips marked chargeable. Cancelled no-charge trips never appear.
                 completedDeliveries = MJdatabase.GetDeliveries().FindAll(d => ((d.Status == "Completed" && reportedIds.Contains(d.Id)) || IsChargeableCancelled(d)) && !invoicedDeliveryIds.Contains(d.Id) && !onStatement.ContainsKey(d.Id));
+                completedDeliveries.AddRange(SpecialTripsToInvoice()); // Nov 6: completed special trips with a trip report
                 var schedulesList = MJdatabase.GetLoadingSchedules();
                 var schedDict = schedulesList.ToDictionary(s => s.Id, s => s);
 
@@ -589,6 +603,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     MessageBox.Show($"INVOICE ALREADY EXISTS:\nDelivery #{selDel.DispatchNumber} has already been invoiced under Invoice #{duplicateInvoice.InvoiceNumber} (Date: {duplicateInvoice.IssueDate:MMM dd, yyyy}). A delivery trip can be invoiced only once.", "Invoice Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                     return;
                 }
+                if (selDel.Id < 0 && MJdatabase.SpecialTripHasActiveInvoice(-selDel.Id)) { MessageBox.Show($"Special trip {selDel.DispatchNumber} already has its service invoice.", "Invoice Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop); return; }
 
                 string invNum = txtInvoiceNumber.Text.Trim();
                 var siWhy = MJdatabase.CheckSiNumber(invNum, selectedInvoice?.Id ?? 0); // Nov 6: typed, required, never repeated
@@ -624,7 +639,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     InvoiceNumber = invNum,
                     SoaId = 0,
-                    DeliveryId = selDel.Id,
+                    DeliveryId = selDel.Id > 0 ? selDel.Id : 0, // a special trip is linked by its SpecialTripId (Nov 6)
                     ClientName = cbClient.Text.Trim(),
                     IssueDate = DateTime.Now,
                     DueDate = DateTime.Now.AddDays(15),
@@ -635,6 +650,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 };
 
                 MJdatabase.SaveInvoice(inv);
+                if (selDel.Id < 0) MJdatabase.LinkSpecialTripInvoice(inv.Id, -selDel.Id);
                 BillAfterSave(inv.Id, inv.InvoiceNumber);
                 QuietBox.Show("Service Invoice generated and issued with 15-day credit terms!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
@@ -855,6 +871,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void ClearFields()
         {
+            cbDelivery.Enabled = true; // Nov 6: unlocked after a special-trip invoice
             selectedInvoice = null;
             txtInvoiceNumber.Text = "";
             lblFormHeader.Text = "Generate Service Invoice";

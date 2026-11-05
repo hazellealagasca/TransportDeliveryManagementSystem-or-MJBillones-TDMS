@@ -10,7 +10,7 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.M
 
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Forms
 {
-    public class SpecialTripFormDialog : Form
+    public partial class SpecialTripFormDialog : Form
     {
         public int SavedSpecialTripId { get; private set; } = 0;
         public bool IsSaved { get; private set; } = false;
@@ -80,6 +80,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             UIThemeHelper.ApplyTheme(this);
             RestoreCustomFormStyling();
+            pageKit?.Restyle(); // Nov 6: full-page look after the theme
+            foreach (var b in new[] { btnSave, btnUpdate }) UIThemeHelper.SetButtonRole(b, "primary");
+            foreach (var b in new[] { btnReschedule, btnClear, btnClose }) UIThemeHelper.SetButtonRole(b, "secondary");
+            RefreshFlowBar();
         }
 
         private void InitializeCustomComponent()
@@ -574,17 +578,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlRightBlock.Controls.Add(clbAides);
             tblBottomSections.Controls.Add(pnlRightBlock, 1, 0);
 
-            pnlCard.Controls.Add(tblBottomSections);
-            pnlCard.Controls.Add(pnlTableSection);
-            pnlCard.Controls.Add(tblTripDetails);
-            pnlCard.Controls.Add(tblHeaderFields);
-
-            pnlScrollBody.Controls.Add(pnlCard);
-
-            this.Controls.Add(pnlScrollBody);
-            this.Controls.Add(pnlFooter);
-            this.Controls.Add(pnlHeader);
-            pnlScrollBody.BringToFront();
+            // Nov 6: a full page like the dispatch order form; the four "With ..." ticks are replaced by the flow bar.
+            pnlLeftBlock.Controls.Remove(pnlPaymentBox);
+            tblBottomSections.Controls.Remove(pnlLeftBlock);
+            tblBottomSections.Controls.Remove(pnlRightBlock);
+            pnlLeftBlock.Height = 128; pnlLeftBlock.Margin = new Padding(0);
+            pnlRightBlock.Height = 300; pnlRightBlock.Margin = new Padding(0);
+            pnlTableSection.Height = 300;
+            pnlFooter.Controls.Remove(flowActions);
+            BuildFullPage(flowActions,
+                ("Company & date", "Who the trip is for, when it leaves and the billing address.", tblHeaderFields),
+                ("Where the truck goes & the charge", "Destination address and the trip charge (billed on its service invoice).", tblTripDetails),
+                ("Stops / delivery details", "One line per stop. Double-click the table title to change its columns.", pnlTableSection),
+                ("Truck, driver & aides", "Who goes, and with which truck.", pnlRightBlock),
+                ("Status & payment", "Trip status and how the client pays.", pnlLeftBlock));
         }
 
         private void RestoreCustomFormStyling()
@@ -921,7 +928,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ApplySelectedAides(trip);
             using (var dlg = new RescheduleDeliveryDialog(trip))
             {
-                if (dlg.ShowDialog(this) == DialogResult.OK)
+                if (dlg.ShowDialog(OwnerWindow) == DialogResult.OK)
                 {
                     LoadExistingTrip(trip.Id);
                     cbStatus.Text = "Rescheduled";
@@ -967,7 +974,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 rowsSnapshot,
                 cbDepartureTime.Text))
             {
-                if (dlg.ShowDialog(this) == DialogResult.OK)
+                if (dlg.ShowDialog(OwnerWindow) == DialogResult.OK)
                 {
                     lblTableTitle.Text = dlg.EditedTableTitle;
                     lblTableDesc.Text = dlg.EditedTableDescription;
@@ -1190,6 +1197,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void SaveTripInternal(bool isNew)
         {
+            // Nov 6: every special trip follows the flow Trip report -> Service invoice (Billing) -> SOA -> Collection receipt.
+            chkPaymentWithReport.Checked = true; chkWithSOA.Checked = true; chkWithInvoice.Checked = true; chkWithCollection.Checked = true;
             gridDeliveryDetails.EndEdit();
 
             string orderRef = txtOrderRef.Text.Trim();
@@ -1200,7 +1209,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbCompany.Focus();
                 return;
             }
-            if (cbServiceType.SelectedIndex < 0 && (loadedTrip == null || string.IsNullOrWhiteSpace(loadedTrip.ServiceType))) { MessageBox.Show("Please choose the Service Type.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbServiceType.Focus(); return; } // Nov 6
 
             string depText = cbDepartureTime.Text.Trim();
             if (!System.Text.RegularExpressions.Regex.IsMatch(depText, @"^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
@@ -1253,7 +1261,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bool billed = chkWithSOA.Checked || chkWithInvoice.Checked || chkWithCollection.Checked;
             if (billed && !cancelling && numTripCharge.Value <= 0)
             {
-                MessageBox.Show("Please enter the trip charge. It is needed for the SOA, the service invoice and the collection you ticked.", "Trip Charge Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Please enter the trip charge. It is billed on the trip's service invoice.", "Trip Charge Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 numTripCharge.Focus();
                 numTripCharge.Select(0, numTripCharge.Text.Length);
                 return;
@@ -1264,13 +1272,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 chkWithInvoice.Focus();
                 return;
             }
-            // Nov 6: "With Service Invoice" asks for the typed SI No. when the trip has no invoice yet.
-            string? siNumber = null;
-            if (chkWithInvoice.Checked && !cancelling && (isNew || !MJdatabase.SpecialTripHasActiveInvoice(currentTripId)))
-            {
-                siNumber = NumberPrompt.Ask(this, "Service Invoice No.", $"\"With Service Invoice\" is ticked, so a service invoice is made for this trip (PHP {numTripCharge.Value:N2}).\nType its Service Invoice No. from the printed invoice:", "e.g. 2451", MJdatabase.SiNumberMaxLength, n => MJdatabase.CheckSiNumber(n));
-                if (siNumber == null) return;
-            }
+            string? siNumber = null; // Nov 6: the SI No. is typed in Billing after the trip report (flow bar: Make service invoice)
             SpecialTrip trip = new SpecialTrip
             {
                 Id = isNew ? 0 : currentTripId,

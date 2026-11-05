@@ -13,6 +13,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     {
         public const int SiNumberMaxLength = 30;
         private static bool DraftsOff => true;
+        /// <summary>Links a service invoice made in Billing to its special trip (Nov 6).</summary>
+        public static void LinkSpecialTripInvoice(int invoiceId, int tripId) { if (invoiceId > 0 && tripId > 0) LinkInvoiceToSpecialTrip(invoiceId, tripId); }
 
         /// <summary>Why this SI number can't be used, or null when it is fine. <paramref name="exceptInvoiceId"/> is the invoice being edited.</summary>
         public static string? CheckSiNumber(string? number, int exceptInvoiceId = 0)

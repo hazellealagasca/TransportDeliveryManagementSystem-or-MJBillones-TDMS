@@ -12,7 +12,7 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.M
 
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
 {
-    public class SpecialTripHistoryView : UserControl, IRefreshable
+    public partial class SpecialTripHistoryView : UserControl, IRefreshable, IUnsavedForm
     {
         private TextBox txtSearch = null!;
         private ComboBox cbStatusFilter = null!;
@@ -672,17 +672,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
-        public void OpenSpecialTripDialog(int tripId = 0, Action<SpecialTripFormDialog>? prefill = null)
-        {
-            using (var dlg = new SpecialTripFormDialog(tripId))
-            {
-                prefill?.Invoke(dlg);
-                if (dlg.ShowDialog(this.FindForm()) == DialogResult.OK)
-                {
-                    LoadData();
-                }
-            }
-        }
+        // Nov 6: OpenSpecialTripDialog now opens the form as a full page (SpecialTripHistoryView.Page.cs).
 
         private void BtnExportCsv_Click(object? sender, EventArgs e)
         {

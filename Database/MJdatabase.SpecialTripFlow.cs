@@ -330,7 +330,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     if (inv == null && string.IsNullOrWhiteSpace(siNumber))
                     {
-                        notes.Add("Service invoice not made yet: no Service Invoice No. was typed. Make it in Billing and type its SI No."); // Nov 6
+                        notes.Add("Next: file its trip report (once completed), then make its service invoice in Billing (type the SI No.)."); // Nov 6
                     }
                     else if (inv == null)
                     {
@@ -354,7 +354,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         if (created.Id > 0) LinkInvoiceToSpecialTrip(created.Id, trip.Id);
                         notes.Add($"Service invoice {created.InvoiceNumber} created for ₱{trip.TripCharge:N2} (Billing Invoices).");
                     }
-                    else if (collected <= 0 && !string.Equals(inv.Status, "Paid", StringComparison.OrdinalIgnoreCase))
+                    else if (collected <= 0 && inv.SoaId == 0 && !string.Equals(inv.Status, "Paid", StringComparison.OrdinalIgnoreCase)) // Nov 6: on a statement it keeps its amount
                     {
                         bool changed = inv.TotalAmount != trip.TripCharge || inv.Deductions != 0 || !string.Equals(inv.ClientName, trip.Company, StringComparison.Ordinal) || !invActive;
                         if (changed)
@@ -371,7 +371,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                     else if (inv.NetAmount != trip.TripCharge)
                     {
-                        notes.Add($"Service invoice {inv.InvoiceNumber} already has payments, so its amount (₱{inv.NetAmount:N2}) was not changed. Adjust it in Billing if needed.");
+                        notes.Add($"Service invoice {inv.InvoiceNumber} is paid or on a statement, so its amount (₱{inv.NetAmount:N2}) was not changed.");
                     }
                 }
                 else if (invActive && inv != null)

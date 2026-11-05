@@ -99,6 +99,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 billReported = MJdatabase.GetTripReportDeliveryIds();
+                foreach (var kv in MJdatabase.GetSpecialTripLinks()) if (kv.Value.HasReport) billReported.Add(-kv.Key); // Nov 6: special trips
                 billOnSoa = MJdatabase.GetBilledDeliveryIds(0);
                 billReports = MJdatabase.GetTripReportsByDelivery();
                 billPaid = selectedInvoice != null ? MJdatabase.GetTotalCollectedForInvoice(selectedInvoice.Id) : 0;
@@ -164,6 +165,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private (decimal Gross, decimal Deductions) ExpectedFor(Delivery d)
         {
             if (billExpected.TryGetValue(d.Id, out var v)) return v;
+            if (d.Id < 0) return billExpected[d.Id] = (SpecialCharge(d), 0m); // Nov 6: special trip charge
             if (IsChargeableCancelled(d)) return billExpected[d.Id] = (chargeFees[d.Id], 0m); // agreed cancellation fee, no incident deductions
             decimal gross = 0, ded = 0;
             try
