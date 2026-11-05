@@ -571,6 +571,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlBranchesHost.Controls.Add(gridBranches);
             // Rule 16c: two large tabs, company stores (code + name, no route) and the split-pane route builder.
             storesRoutes = new ClientStoresRoutesPanel(() => selectedClient?.CompanyName ?? "", gridBranches, () => { if (selectedClient != null) LoadClientBranches(selectedClient.CompanyName); });
+            storesRoutes.SetPendingCheck(() => isNewClient || selectedClient == null); // Nov 6: stores and routes of a new client wait for Create client
+            storesRoutes.PendingChanged += MarkDirty;
             if (gridBranches.Columns["DestinationRoute"] is DataGridViewColumn destCol) destCol.Visible = false;
             pnlStoresCard = CreateSectionCard(2, "Stores & delivery routes", "The client's stores (code and name), and which of its routes each store is on.", bar, lblStoresHint, storesRoutes);
             // Card 3: trips
@@ -783,6 +785,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             isDirty = false;
             currentStores = new List<ClientStore>();
             gridBranches.DataSource = null;
+            storesRoutes?.ClearPending();
             LoadActivity(null);
             ApplyProfileMode();
             ShowProfile(true);
@@ -821,7 +824,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlBillingCard.Visible = hasClient;
             lblStoresHint.Text = hasClient
                 ? "Type each store's own code and name (nothing is filled in for you). Put stores on routes in tab 2. Changes save automatically."
-                : "Create the client first, then add its stores here.";
+                : "Type the client's stores now (and its routes in tab 2). They are saved together with the client when you click Create client.";
             UpdateSaveState();
         }
         private void MarkDirty()
@@ -1014,12 +1017,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 client.ContactPersonMiddleName = sp.MiddleName;
                 MJdatabase.SaveClient(client);
                 bool wasNew = isNewClient;
+                // Nov 6: the stores and routes typed for a new client are saved now, with the client.
+                int pendStores = storesRoutes?.PendingStoreCount ?? 0, pendRoutes = storesRoutes?.PendingRouteCount ?? 0;
+                string? pendErr = wasNew && storesRoutes != null && storesRoutes.HasPending ? storesRoutes.SavePending(name) : null;
                 isDirty = false;
                 LoadClients();
                 var saved = allClients.FirstOrDefault(c => string.Equals(c.CompanyName.Trim(), name, StringComparison.OrdinalIgnoreCase)) ?? client;
                 isNewClient = false;
                 BindClient(saved);
-                ToastHelper.ShowToast(this, wasNew ? $"Client \"{name}\" created. You can add its stores now." : $"Client \"{name}\" saved", ToastType.Success);
+                ToastHelper.ShowToast(this, wasNew ? $"Client \"{name}\" created" + (pendStores + pendRoutes > 0 ? $" with {pendStores} store(s) and {pendRoutes} route(s)" : "") : $"Client \"{name}\" saved", ToastType.Success);
+                if (pendErr != null) MessageBox.Show($"The client was created, but some stores or routes could not be saved:\n\n{pendErr}\n\nAdd them again in Stores & delivery routes.", "Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return true;
             }
             catch (Exception ex)

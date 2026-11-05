@@ -15,7 +15,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     /// 2. Delivery Routes: the client's routes on the left (with a store count), and on the right every store of the same
     ///    client with a checkbox to include it on the selected route. A store can be on any number of the client's routes.
     /// </summary>
-    public sealed class ClientStoresRoutesPanel : Panel
+    public sealed partial class ClientStoresRoutesPanel : Panel
     {
         private readonly Func<string> client;
         private readonly Action reloadStores;
@@ -60,6 +60,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             StyleGrid(storesGrid as DataGridView);
             page1.Controls.Add(storesGrid);
             page1.Controls.Add(quick);
+            BuildPendingGrid(storesGrid); // Nov 6: a new client's stores before it is saved
 
             // ---- page 2: split view
             page2 = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Surface, Visible = false };
@@ -210,6 +211,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void AddStore()
         {
+            if (isPending()) { AddPendingStore(); return; } // Nov 6: client not saved yet
             string c = client();
             try
             {
@@ -224,6 +226,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void AddRoute()
         {
+            if (isPending()) { AddPendingRoute(); return; } // Nov 6: client not saved yet
             string c = client();
             string code = MJdatabase.CleanStoreCode(txtNewCode.Text), name = MJdatabase.CleanStoreText(txtNewName.Text);
             if (c.Length == 0) { Say("✕ Save the client first.", true); return; }
@@ -241,10 +244,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>Called when another client is opened.</summary>
-        public void RefreshForClient() { txtCode.Clear(); txtName.Clear(); lblMsg.Text = ""; if (page2.Visible) LoadRoutes(); }
+        public void RefreshForClient() { txtCode.Clear(); txtName.Clear(); lblMsg.Text = ""; ApplyPendingMode(); if (page2.Visible) LoadRoutes(); }
 
         public void LoadRoutes(string? selectCode = null)
         {
+            if (isPending()) { LoadPendingRoutes(selectCode); return; } // Nov 6: client not saved yet
             string c = client();
             string keep = selectCode ?? (gridRoutes.CurrentRow?.Cells["colCode"].Value?.ToString() ?? "");
             binding = true;
@@ -276,6 +280,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void RenderAssign()
         {
+            if (isPending()) { RenderPendingAssign(); return; } // Nov 6: client not saved yet
             var r = SelectedRoute();
             lblAssignTitle.Text = r == null ? "Stores on this route — pick a route on the left" : $"Stores on route {r.RouteCode} — tick the stores it serves (same client only)";
             string q = txtSearch.Text.Trim();
@@ -297,6 +302,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void ToggleStore(int rowIndex)
         {
+            if (isPending()) { TogglePendingStore(rowIndex); return; } // Nov 6: client not saved yet
             var r = SelectedRoute();
             if (r == null || !(gridAssign.Rows[rowIndex].Tag is ClientStore st)) return;
             bool include = gridAssign.Rows[rowIndex].Cells["colOn"].Value is bool b && b;
