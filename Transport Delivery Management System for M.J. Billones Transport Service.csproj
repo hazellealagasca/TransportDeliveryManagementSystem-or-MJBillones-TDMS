@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -42,4 +42,15 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <!-- Stray copies of source files (e.g. "MJdatabase-1.cs", "X - Copy.cs", "X (1).cs") made by sync, download or copy tools
+       would be compiled twice and break the build with hundreds of "already contains a definition" errors (Nov 6, 2026).
+       They are left out of the build and listed in a warning so they can be moved out of the project folder. -->
+  <ItemGroup>
+    <StrayCopy Include="**\*-1.cs;**\*-2.cs;**\*-3.cs;**\* - Copy*.cs;**\*(1).cs;**\*(2).cs;**\*(3).cs" Exclude="bin\**;obj\**" />
+    <Compile Remove="@(StrayCopy)" />
+  </ItemGroup>
+  <Target Name="WarnStrayCopies" BeforeTargets="BeforeBuild" Condition="'@(StrayCopy)' != ''">
+    <Warning Text="Left out of the build because they are duplicate copies of source files. Move them out of the project folder: @(StrayCopy)" />
+  </Target>
 </Project>
