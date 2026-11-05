@@ -76,7 +76,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string onSoaNo = r.GetString(6);
                 decimal paid = Centavos(Convert.ToDecimal(r.GetValue(7)));
                 if (onSoa > 0 && onSoa != soaId) problems.Add($"{label}: SI {no} is already on {onSoaNo}.");
-                else if (paid > 0 || st.Equals("Paid", StringComparison.OrdinalIgnoreCase)) problems.Add($"{label}: SI {no} is already paid, so it is collected on its own receipt.");
+                else if (paid > 0 || st.Equals("Paid", StringComparison.OrdinalIgnoreCase)) problems.Add($"{label}: SI {no} already has a collection receipt, so it can't go on a statement.");
                 else if (st.Equals("Draft", StringComparison.OrdinalIgnoreCase) || net <= 0) problems.Add($"{label}: SI {no} has no amount yet. Finish it in Billing.");
                 else if (!string.Equals(client.Trim(), (soa.ClientName ?? "").Trim(), StringComparison.OrdinalIgnoreCase)) problems.Add($"{label}: SI {no} is for {client}, not {soa.ClientName}.");
                 else found.Add((id, no, net));
@@ -101,7 +101,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 while (r.Read()) if (!keep.Contains(r.GetInt32(0))) drop.Add((r.GetInt32(0), r.IsDBNull(1) ? "" : r.GetString(1), Centavos(Convert.ToDecimal(r.GetValue(2)))));
             }
             var paidDrop = drop.Where(d => d.Paid > 0).ToList();
-            if (paidDrop.Count > 0) throw new InvalidOperationException($"SI {string.Join(", ", paidDrop.Select(d => d.No))} on this statement is already paid, so its trip can't be taken off.");
+            if (paidDrop.Count > 0) throw new InvalidOperationException($"SI {string.Join(", ", paidDrop.Select(d => d.No))} on this statement already has a collection receipt, so its trip can't be taken off.");
             foreach (var d in drop)
             {
                 using var u = conn.CreateCommand();

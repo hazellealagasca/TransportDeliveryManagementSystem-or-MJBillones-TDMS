@@ -95,7 +95,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (inv == null) return "No service invoice yet (make it in Billing)";
             if (inv.SoaId > 0 && inv.SoaId != thisSoaId) return $"On {inv.SoaNumber}";
             if (inv.IsStatus("Draft") || inv.Net <= 0) return $"SI {inv.Number} has no amount yet";
-            if (inv.Collected > 0 || inv.IsStatus("Paid")) return $"SI {inv.Number} is already paid";
+            if (inv.Collected > 0 || inv.IsStatus("Paid")) return $"SI {inv.Number} already has a collection receipt";
             return null;
         }
 

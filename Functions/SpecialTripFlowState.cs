@@ -12,6 +12,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string Title = "";
         public string Status = "";
         public bool Done;
+        /// <summary>Not done and not needed any more (e.g. the invoice already has its receipt, so it can't go on a statement).</summary>
+        public bool Skipped;
         /// <summary>What the step's button does: complete / report / invoice / soa / receipt (null = no button).</summary>
         public string? ActionKey;
         public string? ActionText;
@@ -75,8 +77,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (withSoa)
             {
                 bool on = ti != null && ti.SoaId > 0, can = ti != null && ti.Open && !on, paidAlone = ti != null && !ti.Open && !on;
-                f.Steps.Add(new StFlowStep { Key = "soa", Title = "Statement (SOA)", Done = on || paidAlone,
-                    Status = on ? $"On {ti!.SoaNumber}" : can ? "Needed now" : paidAlone ? "Paid on its own" : "After the service invoice",
+                f.Steps.Add(new StFlowStep { Key = "soa", Title = "Statement (SOA)", Done = on, Skipped = paidAlone,
+                    Status = on ? $"On {ti!.SoaNumber}" : can ? "Needed now" : paidAlone ? "Not on a statement" : "After the service invoice",
                     ActionKey = on || can ? "soa" : null, ActionText = on ? "Show" : can ? "Add to a statement" : null, Number = on ? ti!.SoaNumber : null });
             }
             if (withCollection)
@@ -95,7 +97,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 f.NextText = "This special trip was cancelled.";
                 return f;
             }
-            var next = f.Steps.FirstOrDefault(s => !s.Done);
+            var next = f.Steps.FirstOrDefault(s => !s.Done && !s.Skipped);
             if (next == null)
             {
                 f.Tone = "success";

@@ -157,7 +157,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         action = "CANCEL";
                         LastDeleteSummary = invCancelled > 0
                             ? $"Statement {ident} and its invoice were cancelled. Its trips are free to go on a new statement."
-                            : invFreed > 0 ? $"Statement {ident} was cancelled. Its {invFreed} service invoice(s) are free to go on a new statement or be collected on their own."
+                            : invFreed > 0 ? $"Statement {ident} was cancelled. Its {invFreed} service invoice(s) are free to go on a new statement."
                             : $"Statement {ident} was cancelled. Its trips are free to go on a new statement.";
                         break;
                     }

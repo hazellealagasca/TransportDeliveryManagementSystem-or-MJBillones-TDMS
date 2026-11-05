@@ -162,7 +162,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private Control BuildTracker()
         {
-            var steps = flow.Steps.Select(s => new DispatchDetailsDialog.Tracker.Step(s.Title, s.Done ? s.Status : (s.ActionKey != null && !s.Done ? s.Status : ""), s.Done)).ToList();
+            var steps = flow.Steps.Where(s => !s.Skipped).Select(s => new DispatchDetailsDialog.Tracker.Step(s.Title, s.Done ? s.Status : (s.ActionKey != null && !s.Done ? s.Status : ""), s.Done)).ToList();
             var host = new Panel { Dock = DockStyle.Top, Height = D(86), BackColor = AppTheme.Surface, Padding = new Padding(D(24), D(8), D(24), D(6)) };
             host.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawLine(pen, 0, host.Height - 1, host.Width, host.Height - 1); };
             host.Controls.Add(new DispatchDetailsDialog.Tracker(steps, IsCancelled) { Dock = DockStyle.Fill });

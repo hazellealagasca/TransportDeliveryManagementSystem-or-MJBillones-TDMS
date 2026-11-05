@@ -81,7 +81,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 var trip = currentTripId > 0 ? MJdatabase.GetSpecialTripById(currentTripId) : null;
                 var flow = SpecialTripFlowState.Compute(trip, chkPaymentWithReport.Checked, chkWithInvoice.Checked, chkWithSOA.Checked, chkWithCollection.Checked);
-                var current = flow.Steps.FirstOrDefault(s => !s.Done);
+                var current = flow.Steps.FirstOrDefault(s => !s.Done && !s.Skipped);
                 int n = 1;
                 foreach (var s in flow.Steps)
                 {
