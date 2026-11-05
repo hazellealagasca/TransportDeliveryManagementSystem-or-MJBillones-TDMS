@@ -81,6 +81,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             left.Controls.Add(BuildModeSection());
             left.Controls.Add(BuildAccentSection());
             left.Controls.Add(BuildSidebarSection());
+            left.Controls.Add(BuildLargePrintSection());
             // Right: live preview + actions
             var right = new Card { Dock = DockStyle.Top, Height = S(470), Padding = new Padding(S(20)), Margin = new Padding(S(0)) };
             var lblPrev = SectionTitle("Live preview", "This is how the system will look. Nothing changes until you apply.");
@@ -216,6 +217,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 row.Controls.Add(oc);
             }
             card.Controls.Add(row);
+            card.Controls.Add(title);
+            return card;
+        }
+        /// <summary>Rule 16: large print on the redesigned screens (on by default).</summary>
+        private Card BuildLargePrintSection()
+        {
+            var card = new Card { Height = S(150), Padding = new Padding(S(20), S(18), S(20), S(18)), Margin = new Padding(S(0), S(0), S(0), S(16)) };
+            var title = SectionTitle("Large print", "Bigger bold text, taller rows and thicker borders on Clients (stores & routes), Dispatch stores, Aides and Special Trip.");
+            title.Dock = DockStyle.Top;
+            var chk = new CheckBox { Text = "Use large print", Checked = LargePrint.On, AutoSize = true, Font = new Font("Segoe UI Semibold", 11F), ForeColor = AppTheme.TextPrimary, BackColor = AppTheme.Surface, Dock = DockStyle.Top, Padding = new Padding(S(0), S(8), S(0), S(0)) };
+            var note = new Label { Dock = DockStyle.Top, Height = S(24), Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.TextMuted, BackColor = AppTheme.Surface, Text = "Saved at once. Screens already open change when you open them again." };
+            chk.CheckedChanged += (s, e) =>
+            {
+                try { LargePrint.Set(chk.Checked); note.Text = chk.Checked ? "✓ Large print is on. Reopen a screen to see it." : "Large print is off. Reopen a screen to see it."; }
+                catch (Exception ex) { ErrLog.Error("AppearanceSettingsView.LargePrint", ex); note.Text = "Couldn't save the setting: " + ex.Message; }
+            };
+            card.Controls.Add(note);
+            card.Controls.Add(chk);
             card.Controls.Add(title);
             return card;
         }

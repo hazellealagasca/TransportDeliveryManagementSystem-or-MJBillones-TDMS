@@ -333,7 +333,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Panel pnlDest = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8) };
             Label lblDest = new Label { Text = "Destination Address *  (where the truck goes)", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Dock = DockStyle.Top, Height = 20 };
             // Rule 16a: wide, high-visibility destination box (14 pt semibold, ~40 px).
-            txtDestination = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI Semibold", 14F), MaxLength = 300, PlaceholderText = "Street, barangay, town / city, province" };
+            txtDestination = new TextBox { Dock = DockStyle.Top, Font = LargePrint.Semibold(14F, 10F), MaxLength = 300, PlaceholderText = "Street, barangay, town / city, province" };
             pnlDest.Controls.Add(txtDestination);
             pnlDest.Controls.Add(lblDest);
             tblTripDetails.Controls.Add(pnlDest, 0, 0);
@@ -487,8 +487,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Rule 16a: each option is a large toggle card (44 px, 13 pt bold, 2 px border): slate with [   ] when off, emerald with [ ✔ ] when on.
             CheckBox Check(string text, int y)
             {
-                var cb = new CheckBox { Tag = text, Appearance = Appearance.Button, FlatStyle = FlatStyle.Flat, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 13F, FontStyle.Bold), Location = new Point(12, y), Size = new Size(394, 44), Cursor = Cursors.Hand, UseMnemonic = false, Padding = new Padding(8, 0, 0, 0) };
-                cb.FlatAppearance.BorderSize = 2;
+                var cb = new CheckBox { Tag = text, Appearance = Appearance.Button, FlatStyle = FlatStyle.Flat, TextAlign = ContentAlignment.MiddleLeft, Font = LargePrint.Bold(13F, 10.5F), Location = new Point(12, y), Size = new Size(394, LargePrint.Px(44, 30)), Cursor = Cursors.Hand, UseMnemonic = false, Padding = new Padding(8, 0, 0, 0) };
+                cb.FlatAppearance.BorderSize = LargePrint.Border;
                 void Paint()
                 {
                     bool on = cb.Checked;
@@ -526,7 +526,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Mode of Payment: one of the four choices, picked from the list (no typing). Service Type is no longer asked.
             Label lblPay = new Label { Text = "Mode of Payment *", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Location = new Point(0, 65), AutoSize = true };
             // Rule 16a: Mode of Payment in 14 pt bold with tall items (owner-drawn) for easy picking.
-            cbPayment = new ComboBox { Location = new Point(0, 85), Size = new Size(420, 34), DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 14F, FontStyle.Bold), DrawMode = DrawMode.OwnerDrawFixed, ItemHeight = 34 };
+            cbPayment = new ComboBox { Location = new Point(0, 85), Size = new Size(420, 34), DropDownStyle = ComboBoxStyle.DropDownList, Font = LargePrint.Bold(14F, 9.5F), DrawMode = DrawMode.OwnerDrawFixed, ItemHeight = LargePrint.Px(34, 22) };
             cbPayment.DrawItem += (s, e) =>
             {
                 if (e.Index < 0) return;

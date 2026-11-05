@@ -6410,7 +6410,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 DropDownStyle = ComboBoxStyle.DropDown,
                 AutoCompleteMode = AutoCompleteMode.SuggestAppend,
                 AutoCompleteSource = AutoCompleteSource.ListItems,
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                Font = LargePrint.Bold(14F, 9.5F),
                 Width = Dpi(330),
                 Margin = new Padding(0, 0, Dpi(6), 0),
                 IntegralHeight = false,
