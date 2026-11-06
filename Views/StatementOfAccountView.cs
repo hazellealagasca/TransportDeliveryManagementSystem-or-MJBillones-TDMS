@@ -45,6 +45,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private DateTimePicker dtpPeriodFrom = null!;
         private DateTimePicker dtpPeriodTo = null!;
         private Button btnPopulateTrips = null!;
+        /// <summary>Nov 6 workflow: "Normal Operations SOA" (dispatches) or "Special Trips SOA". Never both on one statement.</summary>
+        private ComboBox cbSoaType = null!;
+        private string CurrentSoaType => cbSoaType != null && cbSoaType.SelectedIndex == 1 ? SoaTypes.Special : SoaTypes.Normal;
 
         private DataGridView gridItems = null!;
         private Button btnAddRow = null!;
@@ -469,6 +472,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbDeliveryType = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 10F) };
             cbDeliveryType.Items.AddRange(new object[] { "REF", "DRY" });
             cbDeliveryType.SelectedIndex = -1;
+            cbSoaType = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI Semibold", 10F) };
+            cbSoaType.Items.AddRange(new object[] { "Normal Operations SOA", "Special Trips SOA" });
+            cbSoaType.SelectedIndex = 0;
+            cbSoaType.SelectedIndexChanged += (s, e) => { if (!isBindingForm) SchedulePickerRefresh(); };
             dtpIssueDate = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Font = new Font("Segoe UI", 10F) };
             var pnlDates = new TableLayoutPanel { Height = Dpi(30), ColumnCount = 3, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             pnlDates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -501,17 +508,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblPopulateHint = new Label
             {
                 Height = Dpi(26),
-                Text = "The client's completed trip reports in this period are listed in step 2. Add them all here, or tick the ones you want below.",
+                Text = "The client's unpaid service invoices of this SOA type are listed in step 2. Tick the ones to put on this statement (for example the whole week or month).",
                 Font = new Font("Segoe UI", 8.75F),
                 ForeColor = AppTheme.TextMuted,
                 TextAlign = ContentAlignment.MiddleLeft,
                 AutoEllipsis = true
             };
+            // Nov 6 workflow: the statement is filled from the client's service invoices, so the period is taken from them
+            // (it can still be changed for the print). The old "import trips by period" buttons are no longer shown.
+            _ = flowPeriodPresets;
             var gridClient = CreateFieldGrid(2,
-                ("Billed to (client company)", cbClient), ("Client address", txtClientAddress),
-                ("Client TIN", txtClientTin), ("Delivery type", cbDeliveryType),
-                ("Statement date", dtpIssueDate), ("Period covered", pnlDates),
-                ("Quick period", flowPeriodPresets), ("Import trips", btnPopulateTrips));
+                ("Billed to (client company)", cbClient), ("SOA type", cbSoaType),
+                ("Client address", txtClientAddress), ("Client TIN", txtClientTin),
+                ("Delivery type", cbDeliveryType), ("Statement date", dtpIssueDate),
+                ("Period covered (from the invoices)", pnlDates), null);
             // ---------------- Trips & stores grid
             var bar = new TableLayoutPanel { Height = Dpi(46), ColumnCount = 7, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
@@ -615,6 +625,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridItems.Columns["colTripReport"]!.DisplayIndex = gridItems.Columns["colTripNo"]!.DisplayIndex + 1;
             gridItems.Columns["colCrates"]!.DisplayIndex = gridItems.Columns["colDrops"]!.DisplayIndex + 1;
             InputGuards.DigitsOnlyColumns(gridItems, "colCrates");
+            // Nov 6 workflow: the statement shows only the billed line items (DR no., store, plate, tons, drops, freight tariff,
+            // fuel surcharge) and the crew names. The other columns stay in the table (hidden) so the saved lines keep their data.
+            foreach (var hide in new[] { "colDate", "colZone", "colType", "colTripReport", "colCrates", "colStoreCode" }) gridItems.Columns[hide]!.Visible = false;
+            gridItems.Columns["colTripNo"]!.HeaderText = "No.";
+            gridItems.Columns["colAmount"]!.HeaderText = "Freight tariff";
+            gridItems.Columns["colFuel"]!.HeaderText = "Fuel surcharge";
+            gridItems.Columns["colDriver"]!.HeaderText = "Driver / helper (names)";
             DrCellSupport.Attach((MultiValueGrid)gridItems, "colDr", "colDrBtn",
                 row => (row.Cells["colDest"].Value?.ToString() ?? "").Trim(),
                 row => { RejectDuplicateSoaDrs(row); SizeItemsGrid(); });
@@ -711,8 +728,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
 
             // ---------------- Cards
-            var card1 = CreateSectionCard(1, "Client & period", "Who the statement is for and which delivery dates it covers.", gridClient, lblPopulateHint);
-            var cardPicker = CreateSectionCard(2, "Completed trip reports", "Pick which completed trip reports go on this statement, or type a trip report or dispatch number.", BuildDispatchPicker());
+            var card1 = CreateSectionCard(1, "Client & SOA type", "Who the statement is for, and whether it bills normal dispatches or special trips (never both).", gridClient, lblPopulateHint);
+            var cardPicker = CreateSectionCard(2, "Unpaid service invoices", "Tick the client's service invoices to put on this statement, or type a trip report or dispatch number.", BuildDispatchPicker());
             var card2 = CreateSectionCard(3, "Trips & stores", "Every trip and store billed on this statement.", bar, lblItemsHint, pnlItemsGridHost, lblItemsTotals);
             var card3 = CreateSectionCard(4, "Taxes & total", "VAT, withholding tax and the amount the client pays.", taxLayout, BuildSoaAdjustPanel());
             var card4 = CreateSectionCard(5, "Sales invoice & sign-off", "The SI number and the people who prepare and receive the statement.", gridSign, lblSiHint);
@@ -728,7 +745,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlFormBody.Controls.Add(txtSoaNumber);
             pnlFormBody.ResumeLayout(true);
             // ---------------- Action bar (right-to-left: main action at the far right)
-            btnSaveSoa = MakeFormButton("💾  Save & create invoice", "primary", Dpi(210));
+            btnSaveSoa = MakeFormButton("💾  Save statement", "primary", Dpi(210));
             btnSaveSoa.Height = Dpi(40);
             btnSaveSoa.Click += BtnSaveSoa_Click;
             btnPrintDrawer = MakeFormButton("🖨  Print SOA", "secondary", Dpi(150));
@@ -774,6 +791,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void UpdateItemsSummary()
         {
+            UpdateSoaTypeLock();
             if (lblItemsTotals == null || gridItems == null) return;
             SizeItemsGrid();
             if (gridItems.Rows.Count == 0)
@@ -1137,20 +1155,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// </summary>
         private static void ShowPaymentStateInList(List<StatementOfAccount> list)
         {
+            // Nov 6 workflow: a statement's status is stored (Unpaid until its receipt makes it Paid). The list only marks
+            // statements that have no service invoice yet, and old statements that hold both normal and special trips.
             try
             {
-                var bySoa = MJdatabase.GetInvoices().Where(i => i.SoaId > 0).GroupBy(i => i.SoaId).ToDictionary(g => g.Key, g => g.OrderByDescending(i => i.Id).First().Status ?? "");
+                var withInvoices = MJdatabase.GetInvoices().Where(i => i.SoaId > 0).Select(i => i.SoaId).ToHashSet();
                 foreach (var soa in list)
                 {
-                    if (!string.Equals(soa.Status, "Issued", StringComparison.OrdinalIgnoreCase)) continue;
-                    if (!bySoa.TryGetValue(soa.Id, out var st)) { if (string.IsNullOrWhiteSpace(soa.SalesInvoiceNo)) soa.Status = "No invoice"; continue; }
-                    if (st.Equals("Paid", StringComparison.OrdinalIgnoreCase)) soa.Status = "Paid";
-                    else if (st.StartsWith("Partial", StringComparison.OrdinalIgnoreCase)) soa.Status = "Partly paid";
+                    if (soa.Status.Equals(PayStatus.Unpaid, StringComparison.OrdinalIgnoreCase) && !withInvoices.Contains(soa.Id) && string.IsNullOrWhiteSpace(soa.SalesInvoiceNo)) soa.Status = "No invoice";
+                    if (soa.SoaType == SoaTypes.Mixed) soa.Status += " · Mixed (old)";
                 }
             }
             catch (Exception ex) { ErrLog.Swallowed(ex); }
         }
-
         private void FilterGridData()
         {
             string q = txtGridSearch?.Text.Trim().ToLower() ?? "";
@@ -1199,6 +1216,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 dtpPeriodTo.Value = pTo;
             }
             cbDeliveryType.SelectedItem = string.IsNullOrEmpty(soa.DeliveryType) ? "REF" : soa.DeliveryType;
+            cbSoaType.SelectedIndex = soa.SoaType == SoaTypes.Special ? 1 : 0;
             txtSalesInvoiceNo.Text = soa.SalesInvoiceNo;
             txtPreparedBy.Text = soa.PreparedBy ?? "";
             txtReceivedBy1.Text = soa.ReceivedBy1 ?? "";
@@ -1233,6 +1251,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbClient.SelectedIndex = -1; cbClient.Text = ""; txtClientAddress.Text = ""; txtClientTin.Text = ""; // Nov 6: blank until a client is picked
             dtpIssueDate.Value = DateTime.Today;
             cbDeliveryType.SelectedIndex = -1;
+            cbSoaType.SelectedIndex = 0;
             gridItems.Rows.Clear();
             txtSalesInvoiceNo.Text = "";
             txtPreparedBy.Text = "";
@@ -1478,7 +1497,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 soa.PreparedBy = txtPreparedBy.Text.Trim();
                 soa.ReceivedBy1 = txtReceivedBy1.Text.Trim();
                 soa.ReceivedBy2 = txtReceivedBy2.Text.Trim();
-                soa.Status = "Issued";
+                if (!isEditingExisting) { soa.Status = PayStatus.Unpaid; soa.SoaType = CurrentSoaType; }
 
                 int savedId = MJdatabase.SaveStatementOfAccount(soa, items);
                 soa.Id = savedId;
@@ -1492,14 +1511,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 string siNo = soa.SalesInvoiceNo.Trim();
                 string siInv = siNo.StartsWith("SI", StringComparison.OrdinalIgnoreCase) ? siNo : $"SI-{siNo}";
-                QuietBox.Show(IsLegacySoa(savedId)
-                        ? (siNo.Length > 0 ? $"Statement of Account #{soa.SoaNumber} is saved.\n\nBilling invoice {siInv} for PHP {soa.TotalAmount:N2} is linked to it (see Billing Invoices)." : $"Statement of Account #{soa.SoaNumber} is saved.")
-                        : $"Statement of Account #{soa.SoaNumber} is saved with its service invoice(s): {soa.SalesInvoiceNo}.\n\nCollect it in Collections with ONE receipt for PHP {soa.TotalAmount:N2}.",
-                    "SOA saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                LoadData();
-                SetFormVisibility(false);
-
-                PrintOfficialSoa(soa);
+                if (IsLegacySoa(savedId))
+                {
+                    QuietBox.Show(IsLegacySoa(savedId)
+                            ? (siNo.Length > 0 ? $"Statement of Account #{soa.SoaNumber} is saved.\n\nBilling invoice {siInv} for PHP {soa.TotalAmount:N2} is linked to it (see Billing Invoices)." : $"Statement of Account #{soa.SoaNumber} is saved.")
+                            : $"Statement of Account #{soa.SoaNumber} is saved with its service invoice(s): {soa.SalesInvoiceNo}.\n\nCollect it in Collections with ONE receipt for PHP {soa.TotalAmount:N2}.",
+                        "SOA saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    LoadData();
+                    SetFormVisibility(false);
+                    PrintOfficialSoa(soa);
+                }
+                else
+                {
+                    LoadData();
+                    SetFormVisibility(false);
+                    // Nov 6 workflow: straight on to the one Collection Receipt for this statement's full amount.
+                    int next = ChoiceDialog.Show(FindForm(), "SOA saved", $"Statement of Account {soa.SoaNumber} is saved",
+                        $"{(soa.SoaType == SoaTypes.Special ? "Special Trips SOA" : "Normal Operations SOA")} for {soa.ClientName} with service invoice(s) {soa.SalesInvoiceNo}.\n\nTotal amount due: PHP {soa.TotalAmount:N2}. It is collected with ONE receipt for the full amount.",
+                        "➜  Proceed to Collection Receipt", "🖨  Print SOA", "Close");
+                    if (next == 0) FinanceHubView.Of(this)?.ProceedToCollection(savedId);
+                    else if (next == 1) PrintOfficialSoa(soa);
+                }
             }
             catch (Exception ex)
             { ErrLog.Error("StatementOfAccountView", ex); 

@@ -530,6 +530,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtReceiptNo?.Focus();
         }
         /// <summary>Opens a new receipt with the invoice already picked (from Billing → Record payment).</summary>
+        /// <summary>Nov 6 workflow: a new receipt for this statement's full amount (from "Proceed to Collection Receipt" on the SOA).</summary>
+        public void PrefillForSoa(int soaId)
+        {
+            LoadData();
+            int idx = payTargets.FindIndex(t => t.SoaId == soaId);
+            if (idx < 0)
+            {
+                QuietBox.Show("This statement has nothing left to collect (it may already be paid).", "Nothing to collect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            OpenNewRecordForm();
+            cbInvoice.SelectedIndex = idx;
+            txtReceiptNo?.Focus();
+        }
+
         public void PrefillForInvoice(Invoice inv)
         {
             LoadData();

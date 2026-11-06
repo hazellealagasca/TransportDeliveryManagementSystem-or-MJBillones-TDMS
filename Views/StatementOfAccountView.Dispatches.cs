@@ -36,6 +36,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             public TripReport? Report;
             /// <summary>Set when the row is a special trip ticked "With SOA" (Delivery is then a stand-in with Id = −trip Id).</summary>
             public SpecialTrip? Special;
+            /// <summary>The service invoice that puts the trip on the statement (Nov 6 workflow: the picker lists invoices).</summary>
+            public TripInvoice? Invoice;
             public PickState State;
             public string BilledOn = "";
         }
@@ -81,6 +83,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblPickerInfo = new Label { Dock = DockStyle.Fill, Font = new Font("Segoe UI Semibold", 10F), ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, UseMnemonic = false, Text = "Completed trip reports" };
             chkPickerAllClients = new CheckBox { Text = "All clients", AutoSize = true, Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextSecondary, Margin = new Padding(0, Dpi(12), Dpi(12), 0) };
             chkPickerAllClients.CheckedChanged += (s, e) => RefreshPicker();
+            chkPickerAllClients.Visible = false; // Nov 6 workflow: a statement lists one client's invoices only
             btnPickAllReady = MakeFormButton("Tick all ready", "secondary");
             btnPickAllReady.Margin = new Padding(0, Dpi(4), Dpi(8), 0);
             btnPickAllReady.Click += (s, e) => TickAllReady();
@@ -124,23 +127,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Name = name, HeaderText = header, FillWeight = weight, ReadOnly = true,
                 DefaultCellStyle = right ? new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleRight } : new DataGridViewCellStyle()
             };
+            gridPicker.Columns.Add(Ro("pkSi", "SI No.", 80));
+            gridPicker.Columns.Add(Ro("pkDate", "Issue date", 80));
             gridPicker.Columns.Add(Ro("pkReport", "Trip report #", 170));
             // Wide enough for a whole number such as TRIP-20261105-022839-71078.
             gridPicker.Columns["pkReport"]!.MinimumWidth = TextRenderer.MeasureText("TRIP-20261105-022839-71078", gridPicker.Font).Width + Dpi(16);
-            gridPicker.Columns.Add(Ro("pkDate", "Trip date", 80));
-            gridPicker.Columns.Add(Ro("pkDispatch", "Dispatch #", 110));
-            gridPicker.Columns.Add(Ro("pkClient", "Client", 110));
-            gridPicker.Columns.Add(Ro("pkTruck", "Truck", 110));
-            gridPicker.Columns.Add(Ro("pkStores", "Stores", 50, right: true));
-            gridPicker.Columns.Add(Ro("pkCrates", "Crates", 55, right: true));
-            gridPicker.Columns.Add(Ro("pkRate", "Rate", 80, right: true));
-            gridPicker.Columns.Add(Ro("pkState", "Billing", 110));
+            gridPicker.Columns.Add(Ro("pkDispatch", "Dispatch / reference", 110));
+            gridPicker.Columns.Add(Ro("pkDest", "Destination", 150));
+            gridPicker.Columns.Add(Ro("pkNet", "Net amount", 90, right: true));
+            gridPicker.Columns.Add(Ro("pkState", "On a statement", 110));
             gridPicker.CurrentCellDirtyStateChanged += (s, e) => { if (gridPicker.IsCurrentCellDirty) gridPicker.CommitEdit(DataGridViewDataErrorContexts.Commit); };
             gridPicker.CellValueChanged += (s, e) => UpdatePickerButtons();
             gridPicker.CellDoubleClick += (s, e) =>
             {
                 if (e.RowIndex < 0 || gridPicker.Rows[e.RowIndex].Tag is not PickRow pr) return;
-                if (pr.State == PickState.Ready) AddDeliveriesToStatement(new List<Delivery> { pr.Delivery });
+                if (pr.State != PickState.Ready) return;
+                if (pr.Special != null) { AppendSpecialTrips(new List<SpecialTrip> { pr.Special }); AfterLinesAdded(); }
+                else AddDeliveriesToStatement(new List<Delivery> { pr.Delivery });
             };
             gridPicker.KeyDown += (s, e) =>
             {
@@ -162,7 +165,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ForeColor = AppTheme.TextMuted,
                 TextAlign = ContentAlignment.BottomLeft,
                 AutoEllipsis = true,
-                Text = "Tick the trip reports to bill (Shift/Ctrl-click to highlight several, then Space to tick them), or double-click one to add it straight away."
+                Text = "Tick the service invoices to bill (Shift/Ctrl-click to highlight several, then Space to tick them), or double-click one to add it straight away."
             };
             pickerRefreshTimer.Tick += (s, e) => { pickerRefreshTimer.Stop(); RefreshPicker(); };
             pickerReady = true;
@@ -249,47 +252,45 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var src = new AutoCompleteStringCollection();
             src.AddRange(reports.Values.Select(t => t.TripReportNumber).Concat(deliveryCache.Select(d => d.DispatchNumber)).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().ToArray());
             txtAddDispatch.AutoCompleteCustomSource = src;
-            string client = chkPickerAllClients.Checked ? "" : cbClient.Text.Trim();
-            DateTime from = dtpPeriodFrom.Value.Date, to = dtpPeriodTo.Value.Date;
-            var billed = MJdatabase.GetBilledDeliveryIds(isEditingExisting && selectedSoa != null ? selectedSoa.Id : 0);
-            // Nov 6: a trip's own service invoice is now required before it goes on a statement (it is no longer "billed directly").
+            string client = cbClient.Text.Trim();
+            string type = CurrentSoaType;
+            bool special = type == SoaTypes.Special;
+            UpdateSoaTypeLock();
+            // Nov 6 workflow: the statement's source is the client's Unpaid service invoices of this SOA type.
+            var candidates = MJdatabase.GetSoaCandidateInvoices(client, type, CurrentSoaId);
             var inTable = DeliveryIdsInTable();
-            var tripInvoices = MJdatabase.GetTripInvoices(); // Nov 6: a trip goes on a statement through its service invoice
-            var completed = deliveryCache
-                .Where(d => string.Equals(d.Status, "Completed", StringComparison.OrdinalIgnoreCase)
-                            && d.DispatchDate.Date >= from && d.DispatchDate.Date <= to && ClientMatches(d, client))
-                .OrderBy(d => d.DispatchDate).ThenBy(d => d.Id).ToList();
-            int needReport = completed.Count(d => !reports.ContainsKey(d.Id));
-            pickerNeedReport = needReport;
-            var rows = completed.Where(d => reports.ContainsKey(d.Id))
-                .Select(d => new PickRow
-                {
-                    Delivery = d,
-                    Report = reports[d.Id],
-                    State = inTable.Contains(d.Id) ? PickState.OnThisStatement : billed.ContainsKey(d.Id) ? PickState.BilledElsewhere
-                          : MJdatabase.WhyTripNotReadyForSoa(MJdatabase.TripInvoiceFor(tripInvoices, d.Id, 0), CurrentSoaId) != null ? PickState.NoInvoice : PickState.Ready,
-                    BilledOn = billed.TryGetValue(d.Id, out var soaNo) ? soaNo : MJdatabase.WhyTripNotReadyForSoa(MJdatabase.TripInvoiceFor(tripInvoices, d.Id, 0), CurrentSoaId) ?? ""
-                }).ToList();
-            var ticked = new HashSet<int>(gridPicker.Rows.Cast<DataGridViewRow>().Where(r => r.Cells["pkPick"].Value is true && r.Tag is PickRow).Select(r => ((PickRow)r.Tag!).Delivery.Id));
+            var inTableSpecial = SpecialTripIdsInTable();
+            var specials = special ? MJdatabase.GetSpecialTrips().GroupBy(t => t.Id).ToDictionary(g => g.Key, g => g.First()) : new Dictionary<int, SpecialTrip>();
+            var links = special ? MJdatabase.GetSpecialTripLinks() : new Dictionary<int, SpecialTripLinks>();
+            var ticked = new HashSet<int>(gridPicker.Rows.Cast<DataGridViewRow>().Where(r => r.Cells["pkPick"].Value is true && r.Tag is PickRow pr && pr.Invoice != null).Select(r => ((PickRow)r.Tag!).Invoice!.Id));
+            var rows = new List<PickRow>();
             gridPicker.SuspendLayout();
             gridPicker.Rows.Clear();
-            foreach (var pr in rows)
+            foreach (var inv in candidates)
             {
-                var d = pr.Delivery;
-                var tr = pr.Report!;
-                int stores = BuildTripLines(d, out _).Count;
-                if (stores == 0) stores = d.TotalStopsCount > 0 ? d.TotalStopsCount : 1;
-                int crates = tr.DeliveredCrates > 0 ? tr.DeliveredCrates : tr.DeliveredGCrates + tr.DeliveredECrates;
-                decimal rate = RateFor(d);
-                string state = pr.State switch
+                PickRow pr;
+                string reportNo, dispatchNo, dest;
+                if (!special)
                 {
-                    PickState.OnThisStatement => "✓ On this statement",
-                    PickState.BilledElsewhere => $"Billed on {pr.BilledOn}",
-                    PickState.NoInvoice => pr.BilledOn,
-                    _ => "Ready to bill"
-                };
-                int i = gridPicker.Rows.Add(pr.State == PickState.Ready && ticked.Contains(d.Id), tr.TripReportNumber, d.DispatchDate.ToString("MMM d, yyyy"), d.DispatchNumber, d.ClientName, d.TruckInfo, stores,
-                    crates.ToString("N0"), rate > 0 ? $"₱{rate:N2}" : "no rate", state);
+                    var d = deliveryCache.FirstOrDefault(x => x.Id == inv.DeliveryId);
+                    if (d == null) continue;
+                    reports.TryGetValue(d.Id, out var tr);
+                    pr = new PickRow { Delivery = d, Report = tr, Invoice = inv, State = inTable.Contains(d.Id) ? PickState.OnThisStatement : tr == null ? PickState.NoInvoice : PickState.Ready, BilledOn = tr == null ? "No trip report (voided?)" : "" };
+                    reportNo = tr?.TripReportNumber ?? "—";
+                    dispatchNo = d.DispatchNumber;
+                    dest = d.CleanRouteDisplay;
+                }
+                else
+                {
+                    if (!specials.TryGetValue(inv.SpecialTripId, out var t)) continue;
+                    pr = new PickRow { Special = t, Invoice = inv, Delivery = new Delivery { Id = -t.Id, DispatchNumber = t.OrderReference, ClientName = t.Company, DispatchDate = t.DispatchDate },
+                                       State = inTableSpecial.Contains(t.Id) ? PickState.OnThisStatement : PickState.Ready };
+                    reportNo = links.TryGetValue(t.Id, out var l) && l.HasReport ? l.TripReportNumber : "—";
+                    dispatchNo = t.OrderReference;
+                    dest = string.IsNullOrWhiteSpace(t.DestinationAddress) ? t.Address : t.DestinationAddress;
+                }
+                string state = pr.State switch { PickState.OnThisStatement => "✓ On this statement", PickState.NoInvoice => pr.BilledOn, _ => "Not yet" };
+                int i = gridPicker.Rows.Add(pr.State == PickState.Ready && ticked.Contains(inv.Id), inv.Number, inv.IssueDate.ToString("MMM d, yyyy"), reportNo, dispatchNo, dest, $"₱{inv.Net:N2}", state);
                 var row = gridPicker.Rows[i];
                 row.Tag = pr;
                 if (pr.State != PickState.Ready)
@@ -298,72 +299,46 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     row.DefaultCellStyle.ForeColor = AppTheme.TextMuted;
                     row.Cells["pkState"].Style.ForeColor = pr.State == PickState.OnThisStatement ? AppTheme.SuccessText : AppTheme.WarningText;
                 }
-                else
-                {
-                    row.Cells["pkState"].Style.ForeColor = AppTheme.InfoText;
-                    if (rate <= 0) row.Cells["pkRate"].Style.ForeColor = AppTheme.WarningText;
-                }
+                else row.Cells["pkState"].Style.ForeColor = AppTheme.InfoText;
+                rows.Add(pr);
             }
-            // Special trips ticked "With SOA" for this client and period: one line each (its destination and trip charge).
-            int specialCount = 0;
-            try
-            {
-                var links = MJdatabase.GetSpecialTripLinks();
-                var inTableSpecial = SpecialTripIdsInTable();
-                string thisSoa = isEditingExisting && selectedSoa != null ? selectedSoa.SoaNumber : "";
-                var specials = MJdatabase.GetSpecialTrips()
-                    .Where(t => t.WithSOA && !RowMenu.Is(t.Status, "Cancelled") && t.DispatchDate.Date >= from && t.DispatchDate.Date <= to
-                                && (client.Length == 0 || string.Equals(t.Company?.Trim(), client, StringComparison.OrdinalIgnoreCase)))
-                    .OrderBy(t => t.DispatchDate).ThenBy(t => t.Id).ToList();
-                foreach (var t in specials)
-                {
-                    var l = links.TryGetValue(t.Id, out var x) ? x : new SpecialTripLinks();
-                    bool done = RowMenu.Is(t.Status, "Completed");
-                    var pr = new PickRow
-                    {
-                        Special = t,
-                        Delivery = new Delivery { Id = -t.Id, DispatchNumber = t.OrderReference, ClientName = t.Company, DispatchDate = t.DispatchDate },
-                        State = inTableSpecial.Contains(t.Id) ? PickState.OnThisStatement
-                              : (l.OnSoa && !string.Equals(l.SoaNumber, thisSoa, StringComparison.OrdinalIgnoreCase)) ? PickState.BilledElsewhere
-                              : MJdatabase.WhyTripNotReadyForSoa(MJdatabase.TripInvoiceFor(tripInvoices, 0, t.Id), CurrentSoaId) != null ? PickState.NoInvoice : PickState.Ready,
-                        BilledOn = l.OnSoa ? l.SoaNumber : MJdatabase.WhyTripNotReadyForSoa(MJdatabase.TripInvoiceFor(tripInvoices, 0, t.Id), CurrentSoaId) ?? ""
-                    };
-                    bool canTick = pr.State == PickState.Ready && done && t.TripCharge > 0;
-                    string state = pr.State switch
-                    {
-                        PickState.OnThisStatement => "✓ On this statement",
-                        PickState.BilledElsewhere => $"Billed on {pr.BilledOn}",
-                    PickState.NoInvoice => pr.BilledOn,
-                        _ => !done ? $"Special trip · {t.Status} (not completed yet)" : t.TripCharge <= 0 ? "Special trip · no trip charge" : "Special trip · ready to bill"
-                    };
-                    int i = gridPicker.Rows.Add(canTick && ticked.Contains(-t.Id), l.HasReport ? l.TripReportNumber : "Special trip", t.DispatchDate.ToString("MMM d, yyyy"), t.OrderReference, t.Company,
-                        string.IsNullOrWhiteSpace(t.TruckPlate) ? "—" : t.TruckPlate, Math.Max(1, t.TotalStopsCount), "—", t.TripCharge > 0 ? $"₱{t.TripCharge:N2}" : "no charge", state);
-                    var row = gridPicker.Rows[i];
-                    row.Tag = pr;
-                    row.Cells["pkDispatch"].ToolTipText = "Destination: " + t.DestinationAddress;
-                    if (!canTick)
-                    {
-                        row.Cells["pkPick"].ReadOnly = true;
-                        row.DefaultCellStyle.ForeColor = AppTheme.TextMuted;
-                        row.Cells["pkState"].Style.ForeColor = pr.State == PickState.OnThisStatement ? AppTheme.SuccessText : AppTheme.WarningText;
-                    }
-                    else row.Cells["pkState"].Style.ForeColor = AppTheme.InfoText;
-                    rows.Add(pr);
-                    specialCount++;
-                }
-            }
-            catch (Exception ex) { ErrLog.Swallowed(ex); }
             gridPicker.ResumeLayout();
+            pickerNeedReport = 0;
             pnlPickerHost.Height = Math.Clamp(Dpi(36) + Math.Max(3, rows.Count) * Dpi(32) + Dpi(4), Dpi(150), Dpi(420));
-            int ready = rows.Count(r => r.State == PickState.Ready && (r.Special == null || (RowMenu.Is(r.Special.Status, "Completed") && r.Special.TripCharge > 0)));
-            string who = client.Length == 0 ? "all clients" : client;
-            string waiting = needReport > 0 ? $"  ·  {needReport} completed trip{(needReport == 1 ? " still needs its" : "s still need their")} trip report" : "";
-            lblPickerInfo.Text = rows.Count == 0
-                ? $"No completed trip reports for {who} from {from:MMM d} to {to:MMM d, yyyy}" + waiting
-                : $"{rows.Count - specialCount} completed trip report{(rows.Count - specialCount == 1 ? "" : "s")}" + (specialCount > 0 ? $" and {specialCount} special trip{(specialCount == 1 ? "" : "s")}" : "") + $" for {who}  ·  {ready} ready to bill" + waiting;
+            string kind = special ? "special trip" : "normal dispatch";
+            decimal readyTotal = rows.Where(r => r.State == PickState.Ready).Sum(r => r.Invoice?.Net ?? 0m);
+            lblPickerInfo.Text = client.Length == 0
+                ? "Pick the client first: its unpaid service invoices are listed here."
+                : rows.Count == 0
+                    ? $"No unpaid {kind} service invoices for {client} that are not on a statement yet. Make them in Billing first."
+                    : $"{rows.Count} unpaid {kind} service invoice{(rows.Count == 1 ? "" : "s")} for {client}  ·  ₱{readyTotal:N2} not on a statement yet";
             UpdatePickerButtons();
             ScheduleSoaGuide();
         }
+
+        /// <summary>The SOA type can't change once the statement has trip lines (or is saved), so normal and special trips never mix.</summary>
+        private void UpdateSoaTypeLock()
+        {
+            if (cbSoaType == null || gridItems == null) return;
+            bool hasLines = DeliveryIdsInTable().Count > 0 || SpecialTripIdsInTable().Count > 0;
+            cbSoaType.Enabled = !hasLines && !isEditingExisting;
+        }
+
+        /// <summary>After invoices were added: the period covered runs from the first to the last trip date on the statement.</summary>
+        private void AfterLinesAdded()
+        {
+            var dates = gridItems.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow)
+                .Select(r => DateTime.TryParse(r.Cells["colDate"].Value?.ToString(), out var d) ? d.Date : (DateTime?)null)
+                .Where(d => d.HasValue).Select(d => d!.Value).ToList();
+            if (dates.Count > 0)
+            {
+                dtpPeriodFrom.Value = dates.Min();
+                dtpPeriodTo.Value = dates.Max();
+            }
+            RecalculateTaxes(manualOverride: false);
+            RefreshPicker();
+        }
+
         private void UpdatePickerButtons()
         {
             if (btnAddSelected == null) return;
@@ -407,8 +382,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             else if (specials.Count == 0) return;
             else
             {
-                RecalculateTaxes(manualOverride: false);
-                RefreshPicker();
+                AfterLinesAdded();
                 ToastHelper.ShowToast(this, $"Added {specials.Count} special trip{(specials.Count == 1 ? "" : "s")} to the statement", ToastType.Success);
             }
             btnPickAllReady.Text = "Tick all ready";
@@ -636,8 +610,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (fresh.Count == 0) return;
             }
             int unpriced = AppendDeliveries(fresh);
-            RecalculateTaxes(manualOverride: false);
-            RefreshPicker();
+            AfterLinesAdded();
             string msg = $"Added {fresh.Count} dispatch{(fresh.Count == 1 ? "" : "es")} to the statement";
             if (unpriced > 0) msg += $"; {unpriced} need an amount (no rate found)";
             ToastHelper.ShowToast(this, msg, unpriced > 0 ? ToastType.Warning : ToastType.Success);
@@ -665,6 +638,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     lblAddDispatchResult.ForeColor = AppTheme.WarningText;
                     return;
                 }
+            }
+            if (CurrentSoaType == SoaTypes.Special)
+            {
+                lblAddDispatchResult.Text = $"{del.DispatchNumber} is a normal dispatch. This is a Special Trips SOA: make a Normal Operations SOA for dispatches.";
+                lblAddDispatchResult.ForeColor = AppTheme.WarningText;
+                return;
             }
             if (DeliveryIdsInTable().Contains(del.Id))
             {
@@ -715,7 +694,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 return;
             }
-            if (del.DispatchDate.Date < dtpPeriodFrom.Value.Date || del.DispatchDate.Date > dtpPeriodTo.Value.Date) issues.Add($"its date ({del.DispatchDate:MMM d}) is outside the period covered");
+            // Nov 6 workflow: the period is taken from the trips on the statement, so a trip's date never blocks it.
             if (issues.Count > 0)
             {
                 var r = MessageBox.Show($"Add {del.DispatchNumber} anyway?\n\n• " + string.Join("\n• ", issues), "Add trip", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);

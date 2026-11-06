@@ -97,6 +97,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return cachedViews.TryGetValue(key, out var v) ? v as T : null;
         }
         public void RecordPaymentFor(Invoice inv) => OpenTab<CollectionView>("Collections")?.PrefillForInvoice(inv);
+        /// <summary>Nov 6 workflow: right after an SOA is saved, opens its one Collection Receipt (full amount due).</summary>
+        public void ProceedToCollection(int soaId) => OpenTab<CollectionView>("Collections")?.PrefillForSoa(soaId);
         public void ShowInvoices(string search) => OpenTab<BillingView>("Billing")?.FilterByText(search);
         /// <summary>Opens a new receipt for a special trip's payment (Mode of Payment and destination pre-filled).</summary>
         public void RecordSpecialTripCollection(Models.SpecialTrip trip) => OpenTab<CollectionView>("Collections")?.PrefillForSpecialTrip(trip);
