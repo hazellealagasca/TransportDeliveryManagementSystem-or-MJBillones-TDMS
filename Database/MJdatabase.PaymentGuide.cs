@@ -199,6 +199,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try { EnsureReceiptSchemaForSoa(); RunPaymentCleanupOnce(); } catch (Exception ex) { ErrLog.Error("RunOneTimeMigrations.Payments", ex); }
             // Nov 6 workflow: trip report Draft/Completed/Invoiced, SOA Normal/Special, no Partial or stored Overdue (after a backup, once).
             try { EnsureWorkflowSchema(); } catch (Exception ex) { ErrLog.Error("RunOneTimeMigrations.Workflow", ex); }
+            // Nov 6: trips billed by an older statement's single invoice are Invoiced too (re-checked once for databases already updated).
+            try
+            {
+                if (GetSystemSetting("Nov6_LegacySoaTripSync", "0") != "1")
+                {
+                    ResyncTripReportStatuses();
+                    SetSystemSetting("Nov6_LegacySoaTripSync", "1", "Nov 6 workflow: trip reports billed by an older statement's invoice marked Invoiced");
+                }
+            }
+            catch (Exception ex) { ErrLog.Error("RunOneTimeMigrations.LegacySoaTrips", ex); }
         }
 
     }

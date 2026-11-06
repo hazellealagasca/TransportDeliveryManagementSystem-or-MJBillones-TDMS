@@ -27,6 +27,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string Remarks { get; set; } = "";
         public decimal? Amount { get; set; }
         public string InvoiceNo { get; set; } = "";
+        /// <summary>Trip report → invoice → statement → receipt of this trip (only loaded for people who may see finance).</summary>
+        public OrderChain? Chain { get; set; }
+        public string TripReportNo => Chain?.TripReportNo ?? "";
+        public string SoaNo => Chain?.SoaNumber ?? "";
+        public string ReceiptNo => Chain?.ReceiptNo ?? "";
+        public DateTime? PaidOn => Chain?.PaidOn;
+        public string BillingStage => Chain?.Stage ?? "";
         public object? Source { get; set; }
         public string Key => Kind + "|" + Number;
         public string Crew => string.Join(" · ", new[] { Driver, Aides }.Where(x => !string.IsNullOrWhiteSpace(x)));
@@ -46,7 +53,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Everything a person might remember about the record, lower-case, including the date written several ways.</summary>
         public string SearchText => search ??= string.Join("  ", new[]
         {
-            Kind, Number, Client, Route, Truck, Driver, Aides, Status, StatusGroup, Cargo, Remarks, InvoiceNo,
+            Kind, Number, Client, Route, Truck, Driver, Aides, Status, StatusGroup, Cargo, Remarks, InvoiceNo, TripReportNo, SoaNo, ReceiptNo, BillingStage,
             Crates > 0 ? Crates + " crates" : "",
             Amount.HasValue ? Amount.Value.ToString("0.##", CultureInfo.InvariantCulture) + " " + Amount.Value.ToString("N2", CultureInfo.InvariantCulture) : "",
             Date.ToString("MMM d yyyy", CultureInfo.InvariantCulture), Date.ToString("MMMM d yyyy", CultureInfo.InvariantCulture),
@@ -59,23 +66,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static List<TxRecord> LoadAll(bool withAmounts)
         {
             var list = new List<TxRecord>();
-            List<Delivery> dels; List<LoadingSchedule> sch; List<SpecialTrip> sts; List<Invoice> inv;
+            List<Delivery> dels; List<LoadingSchedule> sch; List<SpecialTrip> sts;
+            // Where each trip stands: trip report, its live invoice (its own or an old statement's; a cancelled one never shows), statement, receipt.
+            var chainByDelivery = new Dictionary<int, OrderChain>(); var chainBySpecial = new Dictionary<int, OrderChain>();
             try { dels = MJdatabase.GetDeliveries(); } catch { dels = new List<Delivery>(); }
             try { sch = MJdatabase.GetLoadingSchedules(); } catch { sch = new List<LoadingSchedule>(); }
             try { sts = MJdatabase.GetSpecialTrips(); } catch { sts = new List<SpecialTrip>(); }
-            try { inv = withAmounts ? MJdatabase.GetInvoices() : new List<Invoice>(); } catch { inv = new List<Invoice>(); }
-            var invByDelivery = inv.Where(i => i.DeliveryId > 0).GroupBy(i => i.DeliveryId).ToDictionary(g => g.Key, g => g.OrderByDescending(i => i.Id).First());
+            if (withAmounts)
+            {
+                try { (chainByDelivery, chainBySpecial) = MJdatabase.GetOrderChains(); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            }
             var dispatchedSchedules = new HashSet<int>(dels.Where(d => d.LoadingScheduleId > 0).Select(d => d.LoadingScheduleId));
             foreach (var d in dels)
             {
-                invByDelivery.TryGetValue(d.Id, out var iv);
+                chainByDelivery.TryGetValue(d.Id, out var ch);
+                var iv = ch?.Invoice;
                 list.Add(new TxRecord
                 {
+                    Chain = ch,
                     Kind = TxRecord.KDispatch, Number = d.DispatchNumber ?? "", Date = d.DispatchDate, Time = d.DepartureTime ?? "",
                     Client = d.ClientName ?? "", Route = d.Destination ?? "", Truck = d.TruckInfo ?? "", Driver = d.DriverName ?? "",
                     Aides = !string.IsNullOrWhiteSpace(d.AideNames) ? d.AideNames : d.AideName ?? "",
                     Crates = d.TotalCrates > 0 ? d.TotalCrates : d.GCrate + d.ECrate, Status = d.Status ?? "", Cargo = d.CargoType ?? "",
-                    Remarks = d.Remarks ?? "", Amount = iv?.NetAmount, InvoiceNo = iv?.InvoiceNumber ?? "", Source = d,
+                    Remarks = d.Remarks ?? "", Amount = iv?.Net, InvoiceNo = iv?.Number ?? "", Source = d,
                     AideCount = Math.Max(0, MJdatabase.GetDeliveryCrewIds(d).Count() - (d.DriverId > 0 ? 1 : 0))
                 });
             }
@@ -90,8 +103,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             foreach (var t in sts)
             {
+                chainBySpecial.TryGetValue(t.Id, out var sch2);
+                var siv = sch2?.Invoice;
                 list.Add(new TxRecord
                 {
+                    Chain = sch2, Amount = siv?.Net, InvoiceNo = siv?.Number ?? "",
                     Kind = TxRecord.KSpecial, Number = t.OrderReference ?? "", Date = t.DispatchDate, Time = t.DepartureTime ?? "",
                     Client = t.Company ?? "", Route = t.Address ?? "", Truck = t.TruckPlate ?? "", Driver = t.DriverName ?? "", Aides = t.AideName ?? "",
                     Status = t.Status ?? "", Cargo = "Special trip", Remarks = t.Remarks ?? "", Source = t, AideCount = t.AllAideIds.Count

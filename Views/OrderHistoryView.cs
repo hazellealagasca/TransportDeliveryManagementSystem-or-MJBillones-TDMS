@@ -620,7 +620,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 F("Aides", r.Aides);
                 F("Crates", r.Crates > 0 ? r.Crates.ToString("N0") : "");
                 F("Cargo", r.Cargo);
-                if (CanFin) { F("Invoice", r.InvoiceNo); F("Amount", r.Amount.HasValue ? "₱" + r.Amount.Value.ToString("N2") : ""); }
+                if (CanFin)
+                {
+                    // The whole story of a completed trip: trip report → invoice → statement → receipt.
+                    if (r.Chain != null && r.StatusGroup == "Completed") F("Billing", r.BillingStage);
+                    F("Trip report", r.TripReportNo);
+                    F("Invoice", r.InvoiceNo);
+                    F("Amount", r.Amount.HasValue ? "₱" + r.Amount.Value.ToString("N2") : "");
+                    F("Statement", r.SoaNo);
+                    F("Receipt", r.ReceiptNo.Length > 0 ? r.ReceiptNo + (r.PaidOn.HasValue ? $" · paid {r.PaidOn.Value:MMM d, yyyy}" : "") + (r.Chain != null && r.Chain.PayMethod.Length > 0 ? $" · {r.Chain.PayMethod}" : "") : "");
+                }
                 F("Remarks", r.Remarks);
                 stack.Controls.Add(facts);
                 var rel = new Label { Text = "Find related", AutoSize = true, Font = new Font("Segoe UI Semibold", 9.5F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, D(14), 0, D(4)) };
@@ -745,11 +754,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (dlg.ShowDialog(FindForm()) != DialogResult.OK) return;
             static string Q(string? s) => "\"" + (s ?? "").Replace("\"", "\"\"") + "\"";
             var sb = new StringBuilder();
-            sb.AppendLine(string.Join(",", new[] { "Date", "Time", "Type", "Number", "Client", "Route / address", "Truck", "Driver", "Aides", "Crates", "Status" }.Concat(CanFin ? new[] { "Invoice", "Amount" } : Array.Empty<string>())));
+            sb.AppendLine(string.Join(",", new[] { "Date", "Time", "Type", "Number", "Client", "Route / address", "Truck", "Driver", "Aides", "Crates", "Status" }.Concat(CanFin ? new[] { "Trip report", "Invoice", "Amount", "Statement", "Receipt", "Paid on" } : Array.Empty<string>())));
             foreach (var r in shown)
             {
                 var cells = new List<string> { r.Date.ToString("yyyy-MM-dd"), Q(r.Time), Q(r.Kind), Q(r.Number), Q(r.Client), Q(r.Route), Q(r.Truck), Q(r.Driver), Q(r.Aides), r.Crates.ToString(), Q(r.Status) };
-                if (CanFin) { cells.Add(Q(r.InvoiceNo)); cells.Add(r.Amount.HasValue ? r.Amount.Value.ToString("0.00") : ""); }
+                if (CanFin) { cells.Add(Q(r.TripReportNo)); cells.Add(Q(r.InvoiceNo)); cells.Add(r.Amount.HasValue ? r.Amount.Value.ToString("0.00") : ""); cells.Add(Q(r.SoaNo)); cells.Add(Q(r.ReceiptNo)); cells.Add(r.PaidOn.HasValue ? r.PaidOn.Value.ToString("yyyy-MM-dd") : ""); }
                 sb.AppendLine(string.Join(",", cells));
             }
             try

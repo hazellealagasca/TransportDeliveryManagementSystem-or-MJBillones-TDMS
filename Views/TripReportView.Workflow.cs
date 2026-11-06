@@ -24,6 +24,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Button btnIssueExisting = null!;
         private bool issueAfterUpdate;
         private bool showHistory;
+        /// <summary>Default view on open: completed dispatches that still need a trip report.</summary>
+        private bool showAwaiting = true;
+        private Button? btnViewAwaiting;
+        private DataGridView? gridAwaiting;
+        private int awaitingLoadId;
         private Button? btnViewActive, btnViewHistory, btnIssueSelected;
         private List<Truck>? overviewTrucks;
 
@@ -73,6 +78,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return tripStepper;
         }
 
+        private const string TripOverviewPlaceholder = "Pick a dispatch order above: its trip and crate overview shows here.";
+        /// <summary>No dispatch picked: the overview, the stores table and the step bar start empty (nothing left from the last trip).</summary>
+        private void ResetTripOverview()
+        {
+            if (txtTripOverview != null)
+            {
+                txtTripOverview.Text = TripOverviewPlaceholder;
+                txtTripOverview.ForeColor = AppTheme.TextSecondary;
+                txtTripOverview.Height = Dpi(10) + 2 * TextRenderer.MeasureText("X", txtTripOverview.Font).Height;
+            }
+            if (gridStores != null && gridStores.DataSource == null) gridStores.Rows.Clear();
+            UpdateTripStepper();
+        }
+
         private TextBox BuildTripOverview()
         {
             txtTripOverview = new TextBox
@@ -80,7 +99,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Multiline = true, ReadOnly = true, WordWrap = false, ScrollBars = ScrollBars.None, TabStop = false,
                 BorderStyle = BorderStyle.FixedSingle, BackColor = AppTheme.Canvas, ForeColor = AppTheme.TextPrimary,
                 Font = new Font("Consolas", 9.5F), Height = Dpi(118), Margin = new Padding(0, Dpi(6), 0, 0),
-                Text = "Pick a dispatch order above: its trip and crate overview shows here."
+                Text = TripOverviewPlaceholder
             };
             return txtTripOverview;
         }
@@ -166,8 +185,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 UIThemeHelper.SetButtonRole(b, active ? "primary" : "secondary");
                 return b;
             }
-            btnViewActive = Seg("Active", true);
+            btnViewAwaiting = Seg("Awaiting report", true);
+            btnViewActive = Seg("Active", false);
             btnViewHistory = Seg("History (invoiced)", false);
+            btnViewAwaiting.Click += (s, e) => SetAwaitingMode();
             btnViewActive.Click += (s, e) => SetHistoryMode(false);
             btnViewHistory.Click += (s, e) => SetHistoryMode(true);
             btnIssueSelected = new Button { Text = "🧾 Issue Invoice (Selected)", AutoSize = true, MinimumSize = new Size(Dpi(150), Dpi(30)), FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Margin = new Padding(Dpi(8), Dpi(4), Dpi(4), Dpi(4)) };
@@ -179,14 +200,175 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridActionsFlow.Controls.SetChildIndex(btnIssueSelected, 0);
             pnlGridActionsFlow.Controls.SetChildIndex(btnViewHistory, 0);
             pnlGridActionsFlow.Controls.SetChildIndex(btnViewActive, 0);
+            pnlGridActionsFlow.Controls.Add(btnViewAwaiting);
+            pnlGridActionsFlow.Controls.SetChildIndex(btnViewAwaiting, 0);
+            BuildAwaitingGrid();
+            // Startup: open on the awaiting list once the screen exists.
+            // (The handle may already exist when this is built, in which case HandleCreated would never fire.)
+            if (IsHandleCreated) SetAwaitingMode(); else HandleCreated += (s, e) => SetAwaitingMode();
             gridTripReports.MultiSelect = true;
             gridTripReports.SelectionChanged += (s, e) => UpdateIssueSelectedButton();
             if (!gridTripReports.Columns.Contains("colStatus"))
                 gridTripReports.Columns.Insert(Math.Min(1, gridTripReports.Columns.Count), new DataGridViewTextBoxColumn { Name = "colStatus", DataPropertyName = "Status", HeaderText = "Status", FillWeight = 70, MinimumWidth = Dpi(80), ReadOnly = true });
         }
 
+        private void BuildAwaitingGrid()
+        {
+            gridAwaiting = new DataGridView
+            {
+                Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false, RowHeadersVisible = false,
+                AutoGenerateColumns = false, SelectionMode = DataGridViewSelectionMode.FullRowSelect, MultiSelect = false,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, Visible = false
+            };
+            UIThemeHelper.ApplyGridTheme(gridAwaiting);
+            void Col(string prop, string header, int weight, string? format = null) => gridAwaiting.Columns.Add(new DataGridViewTextBoxColumn
+            { DataPropertyName = prop, HeaderText = header, FillWeight = weight, DefaultCellStyle = { Format = format ?? "" } });
+            Col(nameof(AwaitingReportRow.DispatchNumber), "Dispatch #", 90);
+            Col(nameof(AwaitingReportRow.DispatchDate), "Date", 70, "MM/dd/yyyy");
+            Col(nameof(AwaitingReportRow.ClientName), "Client", 120);
+            Col(nameof(AwaitingReportRow.Destination), "Destination", 120);
+            Col(nameof(AwaitingReportRow.TruckInfo), "Truck", 90);
+            Col(nameof(AwaitingReportRow.DriverName), "Driver", 100);
+            Col(nameof(AwaitingReportRow.ReportState), "Trip report", 120);
+            gridAwaiting.Columns[gridAwaiting.Columns.Count - 1].MinimumWidth = Dpi(150);
+            Col(nameof(AwaitingReportRow.ReportNumber), "Report #", 110);
+            gridAwaiting.Columns.Add(new DataGridViewButtonColumn { Name = "colCreate", HeaderText = "", FillWeight = 110, MinimumWidth = Dpi(190), FlatStyle = FlatStyle.Flat, UseColumnTextForButtonValue = false });
+            WireAwaitingButton();
+            // Every column keeps enough width for its text; a narrow window scrolls sideways instead of cutting details off.
+            var minWidth = new Dictionary<string, int>
+            {
+                [nameof(AwaitingReportRow.DispatchNumber)] = 120, [nameof(AwaitingReportRow.DispatchDate)] = 100,
+                [nameof(AwaitingReportRow.ClientName)] = 180, [nameof(AwaitingReportRow.Destination)] = 230,
+                [nameof(AwaitingReportRow.TruckInfo)] = 190, [nameof(AwaitingReportRow.DriverName)] = 170,
+                [nameof(AwaitingReportRow.ReportState)] = 170, [nameof(AwaitingReportRow.ReportNumber)] = 240,
+            };
+            foreach (DataGridViewColumn c in gridAwaiting.Columns)
+                if (minWidth.TryGetValue(c.DataPropertyName, out int w)) c.MinimumWidth = Dpi(w);
+            gridAwaiting.ScrollBars = ScrollBars.Both;
+            gridAwaiting.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            gridAwaiting.RowTemplate.Height = Dpi(40);
+            // Red = no trip report yet; amber = a draft is saved. The button is Create (no report yet) or Open (draft).
+            gridAwaiting.CellFormatting += (s, e) =>
+            {
+                if (e.RowIndex < 0 || gridAwaiting.Rows[e.RowIndex].DataBoundItem is not AwaitingReportRow row) return;
+                bool none = row.ReportNumber.Length == 0;
+                string col = gridAwaiting.Columns[e.ColumnIndex].Name;
+                if (col == "colCreate") { e.Value = none ? "Create trip report" : "Open draft"; e.FormattingApplied = true; }
+                if (e.ColumnIndex == gridAwaiting.Columns.Count - 3 && e.CellStyle != null)
+                {
+                    e.CellStyle.ForeColor = none ? AppTheme.DangerText : AppTheme.WarningText;
+                    e.CellStyle.Font = new Font(gridAwaiting.Font, FontStyle.Bold);
+                }
+            };
+            gridAwaiting.CellContentClick += (s, e) =>
+            {
+                if (e.RowIndex >= 0 && gridAwaiting.Columns[e.ColumnIndex].Name == "colCreate"
+                    && gridAwaiting.Rows[e.RowIndex].DataBoundItem is AwaitingReportRow row) CreateReportFor(row);
+            };
+            gridAwaiting.CellDoubleClick += (s, e) =>
+            {
+                if (e.RowIndex >= 0 && gridAwaiting.Columns[e.ColumnIndex].Name != "colCreate"
+                    && gridAwaiting.Rows[e.RowIndex].DataBoundItem is AwaitingReportRow row) CreateReportFor(row);
+            };
+            gridTripReports.Parent!.Controls.Add(gridAwaiting);
+            gridAwaiting.BringToFront();
+        }
+
+        private int btnHoverRow = -1, btnPressRow = -1;
+
+        /// <summary>Draws the per-row button: light red; dark red while the mouse is over it; grey while it is pressed.</summary>
+        private void WireAwaitingButton()
+        {
+            var g = gridAwaiting!;
+            void Redraw(int row, int col) { if (row >= 0 && col >= 0) g.InvalidateCell(col, row); }
+            bool IsBtn(int col) => col >= 0 && g.Columns[col].Name == "colCreate";
+            g.CellMouseEnter += (s, e) => { if (IsBtn(e.ColumnIndex)) { btnHoverRow = e.RowIndex; g.Cursor = Cursors.Hand; Redraw(e.RowIndex, e.ColumnIndex); } };
+            g.CellMouseLeave += (s, e) => { if (IsBtn(e.ColumnIndex)) { btnHoverRow = -1; btnPressRow = -1; g.Cursor = Cursors.Default; Redraw(e.RowIndex, e.ColumnIndex); } };
+            g.CellMouseDown += (s, e) => { if (IsBtn(e.ColumnIndex) && e.Button == MouseButtons.Left) { btnPressRow = e.RowIndex; Redraw(e.RowIndex, e.ColumnIndex); } };
+            g.CellMouseUp += (s, e) => { if (IsBtn(e.ColumnIndex)) { btnPressRow = -1; Redraw(e.RowIndex, e.ColumnIndex); } };
+            g.CellPainting += (s, e) =>
+            {
+                if (e.RowIndex < 0 || !IsBtn(e.ColumnIndex) || e.Graphics == null) return;
+                e.Paint(e.CellBounds, DataGridViewPaintParts.Background | DataGridViewPaintParts.Border);
+                if (g.Rows[e.RowIndex].DataBoundItem is not AwaitingReportRow row) { e.Handled = true; return; }
+                bool create = row.ReportNumber.Length == 0;
+                bool pressed = btnPressRow == e.RowIndex, hover = btnHoverRow == e.RowIndex;
+                Color back = pressed ? Color.FromArgb(205, 205, 208)
+                           : hover ? (create ? Color.FromArgb(150, 20, 35) : Color.FromArgb(150, 90, 10))
+                           : (create ? Color.FromArgb(252, 222, 225) : Color.FromArgb(253, 238, 205));
+                Color fore = pressed ? Color.FromArgb(50, 50, 55)
+                           : hover ? Color.White
+                           : (create ? Color.FromArgb(160, 20, 35) : Color.FromArgb(150, 90, 10));
+                var r = Rectangle.Inflate(e.CellBounds, -Dpi(10), -Dpi(7));
+                using (var b = new SolidBrush(back)) e.Graphics.FillRectangle(b, r);
+                using (var pen = new Pen(pressed ? Color.FromArgb(170, 170, 175) : create ? Color.FromArgb(230, 160, 168) : Color.FromArgb(230, 200, 140)))
+                    e.Graphics.DrawRectangle(pen, r.X, r.Y, r.Width - 1, r.Height - 1);
+                TextRenderer.DrawText(e.Graphics, create ? "Create trip report" : "Open draft", new Font(g.Font, FontStyle.Bold), r, fore,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
+                e.Handled = true;
+            };
+        }
+
+        /// <summary>Creates the dispatch's trip report (which gives it its number) if it has none yet, then opens it to fill in.</summary>
+        private void CreateReportFor(AwaitingReportRow row)
+        {
+            try
+            {
+                bool wasNew = row.ReportNumber.Length == 0;
+                string number = MJdatabase.CreateTripReportForDispatch(row.DeliveryId);
+                if (wasNew) ToastHelper.ShowToast(this, $"Trip report {number} created for dispatch {row.DispatchNumber}.", ToastType.Success);
+                RefreshAfterCreate(row.DispatchNumber);
+            }
+            catch (Exception ex)
+            {
+                ErrLog.Error("TripReportView.CreateForDispatch", ex);
+                ToastHelper.ShowToast(this, "Couldn't create the trip report: " + ex.Message, ToastType.Error);
+            }
+        }
+
+        /// <summary>Reloads the reports, then opens the dispatch's (new) report for editing.</summary>
+        private void RefreshAfterCreate(string dispatchNumber)
+        {
+            pendingOpenDispatch = dispatchNumber;
+            dataLoaded = false;
+            LoadData();
+        }
+
+        private async void LoadAwaitingGrid()
+        {
+            if (gridAwaiting == null) return;
+            int my = ++awaitingLoadId;
+            try
+            {
+                var rows = await System.Threading.Tasks.Task.Run(MJdatabase.GetDispatchesAwaitingReport);
+                if (my != awaitingLoadId || IsDisposed || !showAwaiting) return;
+                gridAwaiting.DataSource = rows;
+            }
+            catch (Exception ex)
+            {
+                ErrLog.Error("TripReportView.Awaiting", ex);
+                ToastHelper.ShowToast(this, "Couldn't load the dispatches awaiting a report: " + ex.Message, ToastType.Error);
+            }
+        }
+
+        private void SetAwaitingMode()
+        {
+            showAwaiting = true;
+            if (btnViewAwaiting != null) UIThemeHelper.SetButtonRole(btnViewAwaiting, "primary");
+            if (btnViewActive != null) UIThemeHelper.SetButtonRole(btnViewActive, "secondary");
+            if (btnViewHistory != null) UIThemeHelper.SetButtonRole(btnViewHistory, "secondary");
+            if (btnIssueSelected != null) btnIssueSelected.Visible = false;
+            gridTripReports.Visible = false;
+            if (gridAwaiting != null) gridAwaiting.Visible = true;
+            LoadAwaitingGrid();
+        }
+
         private void SetHistoryMode(bool history)
         {
+            showAwaiting = false;
+            gridTripReports.Visible = true;
+            if (gridAwaiting != null) gridAwaiting.Visible = false;
+            if (btnViewAwaiting != null) UIThemeHelper.SetButtonRole(btnViewAwaiting, "secondary");
             showHistory = history;
             if (btnViewActive != null) UIThemeHelper.SetButtonRole(btnViewActive, history ? "secondary" : "primary");
             if (btnViewHistory != null) UIThemeHelper.SetButtonRole(btnViewHistory, history ? "primary" : "secondary");
@@ -279,7 +461,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 using (var p = new Pen(done[i] ? AppTheme.Success : AppTheme.Border, 1.5f * dpi)) g.DrawEllipse(p, cx - r, cy - r, 2 * r, 2 * r);
                 TextRenderer.DrawText(g, done[i] ? "✓" : (i + 1).ToString(), numFont, new Rectangle((int)(cx - r), (int)(cy - r), (int)(2 * r), (int)(2 * r)), fore, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
                 TextRenderer.DrawText(g, $"Step {i + 1}: {Titles[i]}", font, new Rectangle((int)(w * i), (int)(cy + r + 3 * dpi), (int)w, (int)(20 * dpi)),
-                    done[i] ? AppTheme.SuccessText : i == current ? AppTheme.TextPrimary : AppTheme.TextMuted, TextFormatFlags.HorizontalCenter | TextFormatFlags.EndEllipsis);
+                    done[i] ? AppTheme.SuccessText : i == current ? AppTheme.TextPrimary : AppTheme.TextMuted, TextFormatFlags.HorizontalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
             }
         }
     }

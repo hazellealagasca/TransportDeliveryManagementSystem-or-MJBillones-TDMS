@@ -3,6 +3,8 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows</TargetFramework>
+    <!-- Windows-only app: tells the platform analyzer (CA1416) every API call runs on Windows 7+ -->
+    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
     <RootNamespace>Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service</RootNamespace>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

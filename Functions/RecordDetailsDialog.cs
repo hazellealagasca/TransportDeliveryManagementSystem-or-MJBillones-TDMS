@@ -396,7 +396,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else { badgeBg = Pal.C(241, 245, 249); badgeFg = Pal.C(51, 65, 85); }
                 var matchReceipts = MJdatabase.GetCollectionReceipts().Where(c => c.InvoiceId == inv.Id).ToList();
                 decimal totalPaid = matchReceipts.Sum(c => c.AmountPaid);
-                decimal balance = Math.Max(0, inv.NetAmount - totalPaid);
 
                 keyValues.Add(("Invoice Number", inv.InvoiceNumber));
                 if (!string.IsNullOrEmpty(inv.LoadingScheduleNumber))
@@ -413,8 +412,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 keyValues.Add(("Gross Delivery Rate", $"₱{inv.TotalAmount:N2}"));
                 keyValues.Add(("Damage Deductions", $"-₱{inv.Deductions:N2}"));
                 keyValues.Add(("Net Total Amount Due", $"₱{inv.NetAmount:N2}"));
-                keyValues.Add(("Total Amount Paid", $"₱{totalPaid:N2}"));
-                keyValues.Add(("Outstanding Balance", $"₱{balance:N2}"));
+                keyValues.Add(("Amount Paid", totalPaid > 0 ? $"₱{totalPaid:N2} (in full)" : "Not yet paid"));
                 keyValues.Add(("Payment Settlement Status", inv.Status));
 
                 historyTitle = $"Payment Receipts Log ({matchReceipts.Count} Collections)";

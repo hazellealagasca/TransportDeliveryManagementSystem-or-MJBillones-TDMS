@@ -29,6 +29,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private bool billSaving;
         private HashSet<int> billReported = new HashSet<int>();
         private Dictionary<int, string> billOnSoa = new Dictionary<int, string>();
+        /// <summary>Dispatch id → the live invoice that already bills it (a cancelled invoice does not count).</summary>
+        private Dictionary<int, LiveTripInvoice> billLive = new Dictionary<int, LiveTripInvoice>();
         private Dictionary<int, TripReport> billReports = new Dictionary<int, TripReport>();
         private readonly Dictionary<int, (decimal Gross, decimal Deductions)> billExpected = new Dictionary<int, (decimal, decimal)>();
         private decimal billPaid;
@@ -60,7 +62,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 "2. A trip is billed once: either on a statement of account or on a direct invoice here. Trips already on a statement don't appear.\n" +
                 "3. The client is always the trip's client.\n" +
                 "4. If you change the amount or the deductions, write the adjustment reason — it is kept with the invoice and in the audit log.\n" +
-                "5. All checks must be green before Issue invoice. Payments are then recorded in Collections & Receipts and can't exceed the balance.");
+                "5. All checks must be green before Issue invoice. Payments are then recorded in full in Collections & Receipts (no part payments).");
             billChecklist = new ValidationChecklist();
             formKit.AddBodyTop(new Panel { Height = Dpi(8), BackColor = AppTheme.Canvas });
             formKit.AddBodyTop(billHelp);
@@ -101,6 +103,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 billReported = MJdatabase.GetTripReportDeliveryIds();
                 foreach (var kv in MJdatabase.GetSpecialTripLinks()) if (kv.Value.HasReport) billReported.Add(-kv.Key); // Nov 6: special trips
                 billOnSoa = MJdatabase.GetBilledDeliveryIds(0);
+                billLive = MJdatabase.GetLiveInvoicesByDelivery();
                 billReports = MJdatabase.GetTripReportsByDelivery();
                 billPaid = selectedInvoice != null ? MJdatabase.GetTotalCollectedForInvoice(selectedInvoice.Id) : 0;
             }
@@ -212,8 +215,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (!chargeable) // a cancelled trip has no trip report
                         checks.Add(new PaymentCheck(billReported.Contains(d.Id) ? "Its trip report is saved" : $"{d.DispatchNumber} has no saved trip report — file it first", billReported.Contains(d.Id)));
                     bool onSoa = billOnSoa.TryGetValue(d.Id, out var soaNo);
-                    var dupInv = allInvoices.FirstOrDefault(i => i.DeliveryId == d.Id);
-                    checks.Add(new PaymentCheck(onSoa ? $"{d.DispatchNumber} is already on statement {soaNo}" : dupInv != null ? $"{d.DispatchNumber} is already invoiced ({dupInv.InvoiceNumber})" : "Not billed on a statement or another invoice", !onSoa && dupInv == null));
+                    billLive.TryGetValue(d.Id, out var dupInv); // a cancelled invoice is not a duplicate; an old statement's invoice is
+                    checks.Add(new PaymentCheck(dupInv != null ? $"{d.DispatchNumber} is already invoiced: {dupInv.Describe()}" : onSoa ? $"{d.DispatchNumber} is already on statement {soaNo}" : "Not billed yet: no live invoice or statement for this trip", !onSoa && dupInv == null));
                     bool clientOk = string.Equals((d.ClientName ?? "").Trim(), client, StringComparison.OrdinalIgnoreCase);
                     checks.Add(new PaymentCheck(clientOk ? $"Client is the trip's client ({d.ClientName})" : $"Client must be {d.ClientName} (the trip's client)", clientOk));
                     bool datesOk = d.DispatchDate.Date <= DateTime.Today && (!billReports.TryGetValue(d.Id, out var tr) || (tr.ReportDate.Date <= DateTime.Today));
@@ -236,7 +239,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else if (selectedInvoice.DeliveryId <= 0 && string.IsNullOrWhiteSpace(selectedInvoice.DispatchNumber)) // special-trip invoices carry their ST- number
                     checks.Add(new PaymentCheck("This invoice bills no trip — a direct invoice needs a completed (or chargeable cancelled) trip", false));
                 decimal net0 = numTotalAmount.Value - numDeductions.Value;
-                checks.Add(new PaymentCheck(net0 >= billPaid ? $"Net covers the ₱{billPaid:N2} already collected" : $"Net ₱{net0:N2} is less than the ₱{billPaid:N2} already collected", net0 >= billPaid));
+                if (billPaid > 0)
+                {
+                    // Payments are in full: once a receipt exists the amounts stay as paid (void the receipt first to change them).
+                    bool unchanged = Math.Abs(numTotalAmount.Value - selectedInvoice.TotalAmount) < 0.005m && Math.Abs(numDeductions.Value - selectedInvoice.Deductions) < 0.005m;
+                    checks.Add(new PaymentCheck(unchanged ? $"Amounts stay as paid (₱{billPaid:N2} collected)" : $"₱{billPaid:N2} is already collected, so the amounts can't change — void the receipt in Collections & Receipts first", unchanged));
+                }
+                else
+                    checks.Add(new PaymentCheck(net0 >= 0 ? "Net amount is not negative" : $"Net ₱{net0:N2} is negative", net0 >= 0));
             }
             // Invoice number: present, unique.
             string invNum = txtInvoiceNumber.Text.Trim();

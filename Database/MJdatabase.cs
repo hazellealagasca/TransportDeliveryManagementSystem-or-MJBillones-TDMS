@@ -619,23 +619,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         var cmd = conn.CreateCommand();
 
-                        cmd.CommandText = "SELECT InvoiceNumber FROM Invoices WHERE DeliveryId = @id AND Status <> 'Cancelled'";
-
-                        cmd.Parameters.AddWithValue("@id", id);
-
-                        using (var r = cmd.ExecuteReader())
-
-                        {
-
-                            if (r.Read())
-
-                            {
-
-                                return $"CANNOT DELETE DISPATCH ORDER:\nThis delivery has an official invoice billed (#{r.GetString(0)}). Please void or delete the invoice first.";
-
-                            }
-
-                        }
+                        // The trip's own invoice, or an old statement's invoice that bills it through the statement's lines.
+                        var liveInv = GetLiveInvoiceForTrip(id);
+                        if (liveInv != null)
+                            return $"CANNOT DELETE DISPATCH ORDER:\nThis delivery has an official invoice billed (#{liveInv.Number}{(liveInv.SoaNumber.Length > 0 ? ", statement " + liveInv.SoaNumber : "")}). Please void or delete the invoice first.";
 
                         var trCmd = conn.CreateCommand();
 
@@ -11059,7 +11046,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
-        public static void SaveInvoice(Invoice inv)
+        /// <param name="reviveCancelled">Only the special-trip flow passes true: a reopened special trip gets ITS OWN cancelled invoice back.</param>
+        public static void SaveInvoice(Invoice inv, bool reviveCancelled = false)
 
         {
 
@@ -11072,6 +11060,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (!isDraft && (inv.Deductions < 0 || inv.Deductions > inv.TotalAmount)) throw new InvalidOperationException("Deductions must be between PHP 0.00 and the invoice amount. Nothing was saved.");
 
+            // A cancelled invoice is history: it is never re-used or changed (a new trip gets a new invoice).
+            if (inv.Id > 0 && !reviveCancelled)
+            {
+                using var gc = new SqliteConnection(connectionString);
+                gc.Open();
+                using var gq = gc.CreateCommand();
+                gq.CommandText = "SELECT COALESCE(Status,''), COALESCE(InvoiceNumber,'') FROM Invoices WHERE Id = @id";
+                gq.Parameters.AddWithValue("@id", inv.Id);
+                using var gr = gq.ExecuteReader();
+                if (gr.Read() && string.Equals(gr.GetString(0), PayStatus.Cancelled, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException($"Invoice {gr.GetString(1)} was cancelled, so it can't be changed. Start a new invoice for this trip. Nothing was saved.");
+            }
+            // The same rules hold whichever screen or flow saves the invoice (the Billing screen shows these messages earlier).
+            if (!reviveCancelled && !string.Equals(inv.Status, PayStatus.Cancelled, StringComparison.OrdinalIgnoreCase)) CheckInvoiceBeforeSave(inv);
             bool wasNew = inv.Id <= 0;
 
             if (wasNew && inv.DeliveryId > 0)
@@ -11573,6 +11575,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (soa.Id > 0) { try { EnsureWorkflowColumns(); using var tc = new SqliteConnection(connectionString); tc.Open(); using var tq = tc.CreateCommand(); tq.CommandText = "SELECT COALESCE(SoaType,'Normal') FROM StatementsOfAccount WHERE Id = @i"; tq.Parameters.AddWithValue("@i", soa.Id); savedType = Convert.ToString(tq.ExecuteScalar()) ?? savedType; } catch (Exception ex) { ErrLog.Swallowed(ex); } }
             if (savedType.Equals(SoaTypes.Mixed, StringComparison.OrdinalIgnoreCase))
                 return $"Statement {soa.SoaNumber} was saved before Nov 6 with both normal and special trips, so it can't be edited. It can still be collected or printed.";
+            // Nov 7: a statement that made its own whole-statement invoice (before the per-trip service invoices) is frozen.
+            if (soa.Id > 0 && SoaHasOwnInvoice(soa.Id))
+                return $"Statement {soa.SoaNumber} was made before Nov 6 with its own invoice, so it is frozen and can't be edited. It can still be collected or printed. To change it, cancel it and make a new statement from the trips' service invoices.";
 
             try
 
@@ -11833,146 +11838,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         }
 
-                        string invoiceLog = "";
-                        // Nov 6: a statement groups its trips' service invoices. Only statements saved before (with their own SI invoice) keep making one.
-                        bool legacyOwnInvoice = SoaHasOwnInvoice(conn, tx, soaId);
-                        if (!legacyOwnInvoice) LinkTripInvoicesToSoa(conn, tx, soa, soaId, items ?? new List<StatementOfAccountItem>());
-
-                        if (legacyOwnInvoice && !string.IsNullOrWhiteSpace(soa.SalesInvoiceNo))
-
-                        {
-
-                            string rawSi = soa.SalesInvoiceNo.Trim();
-
-                            string invNum = rawSi.StartsWith("SI", StringComparison.OrdinalIgnoreCase) ? rawSi : $"SI-{rawSi}";
-
-                            decimal gross = soa.TotalSalesVatInc > 0 ? soa.TotalSalesVatInc : soa.TotalAmount;
-
-                            decimal ded = soa.WithholdingTax;
-
-                            decimal net = soa.TotalAmount;
-
-                            var chkInvCmd = conn.CreateCommand();
-
-                            chkInvCmd.Transaction = tx;
-
-                            // This statement's own invoice first; an SI no. already on another statement's invoice is refused.
-
-                            chkInvCmd.CommandText = "SELECT Id FROM Invoices WHERE SoaId = @sid ORDER BY Id LIMIT 1";
-
-                            chkInvCmd.Parameters.AddWithValue("@sid", soaId);
-
-                            var existingInvObj = chkInvCmd.ExecuteScalar();
-
-                            var clashCmd = conn.CreateCommand();
-
-                            clashCmd.Transaction = tx;
-
-                            clashCmd.CommandText = "SELECT Id, SoaId FROM Invoices WHERE InvoiceNumber = @invNum COLLATE NOCASE AND SoaId <> @sid LIMIT 1";
-
-                            clashCmd.Parameters.AddWithValue("@invNum", invNum);
-
-                            clashCmd.Parameters.AddWithValue("@sid", soaId);
-
-                            using (var cr = clashCmd.ExecuteReader())
-
-                            {
-
-                                if (cr.Read())
-
-                                {
-
-                                    int otherSoa = cr.IsDBNull(1) ? 0 : cr.GetInt32(1);
-
-                                    if (otherSoa > 0) throw new InvalidOperationException($"Sales invoice no. {rawSi} is already used by another statement's invoice ({invNum}).");
-
-                                    if (existingInvObj == null || existingInvObj == DBNull.Value) existingInvObj = cr.GetInt32(0); // an unlinked invoice with this SI no. gets linked
-
-                                }
-
-                            }
-
-                            if (existingInvObj != null && existingInvObj != DBNull.Value)
-
-                            {
-
-                                int existingInvId = Convert.ToInt32(existingInvObj);
-
-                                var updInvCmd = conn.CreateCommand();
-
-                                updInvCmd.Transaction = tx;
-
-                                updInvCmd.CommandText = @"UPDATE Invoices SET
-
-                                    InvoiceNumber = @invNum, ClientName = @cn, IssueDate = @id, DueDate = @dd,
-
-                                    TotalAmount = @ta, Deductions = @ded, NetAmount = @net, SoaId = @sid
-
-                                    WHERE Id = @iid";
-
-                                updInvCmd.Parameters.AddWithValue("@invNum", invNum);
-
-                                updInvCmd.Parameters.AddWithValue("@cn", soa.ClientName);
-
-                                updInvCmd.Parameters.AddWithValue("@id", soa.IssueDate.ToString("yyyy-MM-dd"));
-
-                                updInvCmd.Parameters.AddWithValue("@dd", soa.IssueDate.AddDays(15).ToString("yyyy-MM-dd"));
-
-                                updInvCmd.Parameters.AddWithValue("@ta", gross);
-
-                                updInvCmd.Parameters.AddWithValue("@ded", ded);
-
-                                updInvCmd.Parameters.AddWithValue("@net", net);
-
-                                updInvCmd.Parameters.AddWithValue("@sid", soaId);
-
-                                updInvCmd.Parameters.AddWithValue("@iid", existingInvId);
-
-                                updInvCmd.ExecuteNonQuery();
-
-                                RecalculateInvoiceStatus(conn, tx, existingInvId);
-
-                            }
-
-                            else
-
-                            {
-
-                                var insInvCmd = conn.CreateCommand();
-
-                                insInvCmd.Transaction = tx;
-
-                                insInvCmd.CommandText = @"INSERT INTO Invoices
-
-                                    (InvoiceNumber, SoaId, DeliveryId, ClientName, IssueDate, DueDate, TotalAmount, Deductions, NetAmount, Status)
-
-                                    VALUES
-
-                                    (@invNum, @sid, 0, @cn, @id, @dd, @ta, @ded, @net, 'Unpaid');";
-
-                                insInvCmd.Parameters.AddWithValue("@invNum", invNum);
-
-                                insInvCmd.Parameters.AddWithValue("@sid", soaId);
-
-                                insInvCmd.Parameters.AddWithValue("@cn", soa.ClientName);
-
-                                insInvCmd.Parameters.AddWithValue("@id", soa.IssueDate.ToString("yyyy-MM-dd"));
-
-                                insInvCmd.Parameters.AddWithValue("@dd", soa.IssueDate.AddDays(15).ToString("yyyy-MM-dd"));
-
-                                insInvCmd.Parameters.AddWithValue("@ta", gross);
-
-                                insInvCmd.Parameters.AddWithValue("@ded", ded);
-
-                                insInvCmd.Parameters.AddWithValue("@net", net);
-
-                                insInvCmd.ExecuteNonQuery();
-
-                                invoiceLog = invNum;
-
-                            }
-
-                        }
+                        // Nov 6: a statement groups its trips' service invoices. (Statements saved before Nov 6 with their own invoice are frozen: see WhySoaCannotBeEdited.)
+                        LinkTripInvoicesToSoa(conn, tx, soa, soaId, items ?? new List<StatementOfAccountItem>());
 
                         bool wasEdit = cmd.CommandText.TrimStart().StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase);
 
@@ -11980,10 +11847,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         try { LogAuditTrail(wasEdit ? "UPDATE" : "ADD", "StatementsOfAccount", soaId, soa.SoaNumber, "TotalAmount", "", soa.TotalAmount.ToString("N2"), $"Statement {soa.SoaNumber} for {soa.ClientName} {(wasEdit ? "edited" : "created")}: {items?.Count ?? 0} line(s), PHP {soa.TotalAmount:N2}"); } catch (Exception swxA) { ErrLog.Swallowed(swxA); }
 
-                        if (invoiceLog.Length > 0)
-
-                            try { LogAuditTrail("ADD", "Invoices", 0, invoiceLog, "NetAmount", "", soa.TotalAmount.ToString("N2"), $"Invoice {invoiceLog} for {soa.ClientName} created from statement {soa.SoaNumber}: PHP {soa.TotalAmount:N2}"); } catch (Exception swxI) { ErrLog.Swallowed(swxI); }
-
+                        
                         try
 
                         {
@@ -12029,136 +11893,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
 
             return await Task.Run(() => GetStatementsOfAccount());
-
-        }
-
-        public static int SaveStatementOfAccount(StatementOfAccount soa, List<int> invoiceIds)
-
-        {
-
-            using (var conn = new SqliteConnection(connectionString))
-
-            {
-
-                conn.Open();
-
-                using (var tx = conn.BeginTransaction())
-
-                {
-
-                    try
-
-                    {
-
-                        var cmd = conn.CreateCommand();
-
-                        cmd.Transaction = tx;
-
-                        if (soa.Id == 0)
-
-                        {
-
-                            soa.SoaNumber = $"SOA-{DateTime.Now:yyyyMMdd-HHmmss}-{DateTime.Now.Millisecond:D3}{Random.Shared.Next(10, 99)}";
-
-                            cmd.CommandText = @"INSERT INTO StatementsOfAccount (SoaNumber, ClientName, PeriodCovered, IssueDate, TotalAmount, Status)
-
-                                                VALUES (@sn, @cn, @pc, @issueDate, @ta, @st);
-
-                                                SELECT last_insert_rowid();";
-
-                        }
-
-                        else
-
-                        {
-
-                            cmd.CommandText = @"UPDATE StatementsOfAccount SET ClientName=@cn, PeriodCovered=@pc, IssueDate=@issueDate, TotalAmount=@ta, Status=@st WHERE Id=@rowId;
-
-                                                SELECT @rowId;";
-
-                            cmd.Parameters.AddWithValue("@rowId", soa.Id);
-
-                        }
-
-                        cmd.Parameters.AddWithValue("@sn", soa.SoaNumber);
-
-                        cmd.Parameters.AddWithValue("@cn", soa.ClientName);
-
-                        cmd.Parameters.AddWithValue("@pc", soa.PeriodCovered);
-
-                        cmd.Parameters.AddWithValue("@issueDate", soa.IssueDate.ToString("yyyy-MM-dd"));
-
-                        cmd.Parameters.AddWithValue("@ta", soa.TotalAmount);
-
-                        cmd.Parameters.AddWithValue("@st", soa.Status);
-
-                        int soaId = Convert.ToInt32(cmd.ExecuteScalar() ?? 0);
-
-                        soa.Id = soaId;
-
-                        if (invoiceIds != null && invoiceIds.Count > 0)
-
-                        {
-
-                            var clearCmd = conn.CreateCommand();
-
-                            clearCmd.Transaction = tx;
-
-                            clearCmd.CommandText = "UPDATE Invoices SET SoaId = 0 WHERE SoaId = @soaId";
-
-                            clearCmd.Parameters.AddWithValue("@soaId", soaId);
-
-                            clearCmd.ExecuteNonQuery();
-
-                            foreach (int invId in invoiceIds)
-
-                            {
-
-                                var linkCmd = conn.CreateCommand();
-
-                                linkCmd.Transaction = tx;
-
-                                linkCmd.CommandText = "UPDATE Invoices SET SoaId = @soaId WHERE Id = @invId";
-
-                                linkCmd.Parameters.AddWithValue("@soaId", soaId);
-
-                                linkCmd.Parameters.AddWithValue("@invId", invId);
-
-                                linkCmd.ExecuteNonQuery();
-
-                            }
-
-                        }
-
-                        tx.Commit();
-
-                        try
-
-                        {
-
-                            EventNotificationService.Publish("SOA Saved", $"Statement #{soa.SoaNumber} for {soa.ClientName} (PHP {soa.TotalAmount:N2})", ToastType.Success);
-
-                        }
-
-                        catch (System.Exception swx54) { ErrLog.Swallowed(swx54); }
-
-                        return soaId;
-
-                    }
-
-                    catch
-
-                    {
-
-                        tx.Rollback();
-
-                        throw;
-
-                    }
-
-                }
-
-            }
 
         }
 

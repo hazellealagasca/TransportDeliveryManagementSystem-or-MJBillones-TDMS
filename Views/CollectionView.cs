@@ -113,7 +113,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit.Build(new[]
             {
                 new FullPageFormKit.Section("Statement or invoice being paid", "Pick the statement (all its service invoices) or the service invoice this receipt pays in full.", lblInv, cbInvoice, pnlLinkedInvoice),
-                new FullPageFormKit.Section("Payment", "Receipt no., the full amount due, method and reference.", BuildReceiptNoField()[0], txtReceiptNo, tblPaymentRow, BuildCollCapLabel(), lblRef, txtRefNo, lblNotes, txtNotes)
+                new FullPageFormKit.Section("Payment", "Receipt no., the full amount due, method and reference.", BuildReceiptNoField()[0], txtReceiptNo, tblPaymentRow, BuildCollCapLabel(), BuildPaymentDateField()[0], dtpPaymentDate, lblRef, txtRefNo, lblNotes, txtNotes)
             });
             InitCollGuide();
             if (btnToggleForm != null)
@@ -237,6 +237,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             selectedCollection = cr;
             editTargetInvoice = EditInvoiceFor(cr);
             if (txtReceiptNo != null) txtReceiptNo.Text = cr.ReceiptNumber;
+            SetPaymentDate(cr.PaymentDate);
             lblFormHeader.Text = $"Receipt #{selectedCollection.ReceiptNumber}";
             lblLinkedInvoiceInfo.Text = !string.IsNullOrEmpty(selectedCollection.InvoiceNumber)
                 ? $"📄 Linked invoice: {selectedCollection.InvoiceNumber}"
@@ -403,6 +404,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbPaymentMethod.SelectedIndex = -1; cbPaymentMethod.Text = ""; // Nov 6: blank until picked
             editTargetInvoice = null;
             if (txtReceiptNo != null) txtReceiptNo.Text = "";
+            SetPaymentDate(DateTime.Today); // a new receipt is dated today unless the person picks the earlier day the money came in
             if (cbInvoice.SelectedIndex >= 0) { cbInvoice.SelectedIndex = -1; cbInvoice.Text = ""; }
             txtRefNo.Text = "";
             txtNotes.Text = "";
@@ -551,7 +553,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int idx = payTargets.FindIndex(t => t.Invoices.Any(x => x.Id == inv.Id)); // on a statement: the receipt pays the whole statement
             if (idx < 0)
             {
-                QuietBox.Show($"Invoice {inv.InvoiceNumber} has no balance left to collect (status: {inv.Status}).", "Nothing to collect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"Invoice {inv.InvoiceNumber} is already paid in full (status: {inv.Status}).", "Nothing to collect", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             OpenNewRecordForm();

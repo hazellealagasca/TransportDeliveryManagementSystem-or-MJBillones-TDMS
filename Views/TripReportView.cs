@@ -1099,6 +1099,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 RefreshCenterData();
                 ApplyPendingPicks();
                 FilterGridData();
+                if (showAwaiting) LoadAwaitingGrid(); // keep the awaiting list current after saves
                 var reports = allTripReports;
 
                 int totalDel = reports.Sum(r => r.DeliveredCrates);
@@ -1730,6 +1731,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (txtDrCheckedBy != null) txtDrCheckedBy.Text = "";
             if (txtGuardName != null) txtGuardName.Text = "";
             cbDelivery.SelectedIndex = -1; // Nov 6: no trip picked until the person picks one
+            ResetTripOverview();
             if (pnlMultiDropInfo != null) pnlMultiDropInfo.Visible = false;
             if (tripCrateSummary != null) tripCrateSummary.Visible = false; // shown again with the store table
         }

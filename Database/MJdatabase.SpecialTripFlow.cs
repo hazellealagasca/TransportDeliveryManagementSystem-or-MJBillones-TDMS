@@ -366,7 +366,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             inv.Deductions = 0;
                             inv.NetAmount = trip.TripCharge;
                             inv.Status = trip.TripCharge > 0 ? "Unpaid" : "Draft";
-                            SaveInvoice(inv);
+                            SaveInvoice(inv, reviveCancelled: true); // this trip's own invoice (it may have been cancelled with the trip)
                             notes.Add($"Service invoice {inv.InvoiceNumber} updated to ₱{trip.TripCharge:N2}.");
                         }
                         if (inv.Id > 0) LinkInvoiceToSpecialTrip(inv.Id, trip.Id);

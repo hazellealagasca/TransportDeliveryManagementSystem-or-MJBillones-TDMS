@@ -415,8 +415,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     "💰  PAYMENTS",
                     new (string, Action)[]
                     {
-                        ("📑  Statement of Account", () => NavigateToFinance("StatementOfAccount")),
                         ("🧾  Billing Invoices", () => NavigateToFinance("Billing")),
+                        ("📑  Statement of Account", () => NavigateToFinance("StatementOfAccount")),
                         ("💵  Collections & Receipts", () => NavigateToFinance("Collections")),
                         ("📜  Finance History", () => NavigateToFinance("History"))
                     }
@@ -1315,7 +1315,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             NavigateToFinance("Collections");
             if (viewCache.TryGetValue("FinanceHubView", out var fv) && fv is FinanceHubView fhv) fhv.RecordSpecialTripCollection(trip);
         }
-        public void NavigateToFinance(string tab = "StatementOfAccount")
+        public void NavigateToFinance(string tab = "Billing")
         {
             skipNextViewRefresh = true; // the tab selection below refreshes the visible page once
                 btnNavFinance_Click(this, EventArgs.Empty);

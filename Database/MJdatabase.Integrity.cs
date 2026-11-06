@@ -165,6 +165,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         // Nov 6: only a statement's OWN invoice (made before Nov 6) is cancelled with it; its trips' service invoices are freed for a new statement.
                         int invCancelled = Exec("UPDATE Invoices SET Status = 'Cancelled' WHERE SoaId = @id AND Status <> 'Cancelled' AND COALESCE(DeliveryId,0) = 0 AND COALESCE(SpecialTripId,0) = 0");
                         int invFreed = Exec("UPDATE Invoices SET SoaId = 0 WHERE SoaId = @id AND Status <> 'Cancelled'");
+                        // Trips whose only invoice was this statement's own go back to Completed (their trip reports were left "Invoiced"
+                        // with no live invoice, so they could not be invoiced again). Trips with their own service invoice stay Invoiced.
+                        ResyncTripReports(conn, tx, $"(COALESCE(t.DeliveryId,0) IN (SELECT COALESCE(DeliveryId,0) FROM StatementOfAccountItems WHERE SoaId = {id} AND COALESCE(DeliveryId,0) > 0)"
+                            + $" OR COALESCE(t.SpecialTripId,0) IN (SELECT COALESCE(SpecialTripId,0) FROM StatementOfAccountItems WHERE SoaId = {id} AND COALESCE(SpecialTripId,0) > 0))");
                         action = "CANCEL";
                         LastDeleteSummary = invCancelled > 0
                             ? $"Statement {ident} and its invoice were cancelled. Its trips are free to go on a new statement."

@@ -31,12 +31,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (!DispatchGate.RequireCompleted(FindForm(), del, "bill it")) return false;
             // Strict binding: only a trip with a saved trip report, not billed on a statement or another invoice.
             string? block = !(del.Id < 0 ? SpecialTripHasReport(-del.Id) : MJdatabase.HasTripReport(del.Id)) ? $"{del.DispatchNumber} has no saved trip report yet. File it first (Operations → Trip reports), then invoice the trip."
-                : MJdatabase.GetBilledDeliveryIds(0).TryGetValue(del.Id, out var soaNo) ? $"{del.DispatchNumber} is already billed on statement {soaNo}. Its invoice comes from that statement."
-                : MJdatabase.GetDirectlyInvoicedDeliveryIds().TryGetValue(del.Id, out var invNo) ? $"{del.DispatchNumber} is already invoiced ({invNo})."
+                : del.Id > 0 && MJdatabase.GetLiveInvoiceForTrip(del.Id) is LiveTripInvoice liveInv ? $"{del.DispatchNumber} is already invoiced: {liveInv.Describe()}."
+                : MJdatabase.GetBilledDeliveryIds(0).TryGetValue(del.Id, out var soaNo) ? $"{del.DispatchNumber} is already on statement {soaNo}."
                 : del.Id < 0 && MJdatabase.SpecialTripHasActiveInvoice(-del.Id) ? $"{del.DispatchNumber} already has its service invoice."
                 : null;
             if (block != null) { MessageBox.Show(FindForm(), block, "Can't invoice this trip", MessageBoxButtons.OK, MessageBoxIcon.Information); return false; }
             SetFormVisibility(true);
+            // Always a NEW invoice for this trip: nothing carried over from the invoice that was selected in the list.
+            ClearFields();
             int idx = completedDeliveries.FindIndex(d => d.Id == del.Id);
             if (idx >= 0 && idx < cbDelivery.Items.Count)
             {
@@ -122,11 +124,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             LoadData();
 
-            btnGenerateSoa.Visible = false;
             btnPrint.Visible = false;
 
             var menuActions = new ContextMenuStrip();
-            menuActions.Items.Add("🧾 Generate statement of account (SOA)", null, (s, e) => BtnGenerateSoa_Click(this, EventArgs.Empty));
+            menuActions.Items.Add("🧾 Make a statement of account (SOA)", null, (s, e) => OpenStatementOfAccount());
             menuActions.Items.Add("📊 Export invoices to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridInvoices, "Billing_Invoices", "Invoices and Accounts Receivable"));
             menuActions.Items.Add("🖨️ Print invoice register", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
@@ -448,7 +449,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
 
-            var matched = allInvoices.FirstOrDefault(i => !string.IsNullOrWhiteSpace(i.InvoiceNumber) && i.InvoiceNumber.Equals(invNum, StringComparison.OrdinalIgnoreCase));
+            // A cancelled invoice is never opened for editing from its number (the checklist shows the number as taken).
+            var matched = allInvoices.FirstOrDefault(i => !string.IsNullOrWhiteSpace(i.InvoiceNumber) && i.InvoiceNumber.Equals(invNum, StringComparison.OrdinalIgnoreCase) && !RowMenu.Is(i.Status, PayStatus.Cancelled));
             if (matched != null)
             {
                 BindInvoiceToForm(matched);
@@ -636,10 +638,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var selDel = completedDeliveries[cbDelivery.SelectedIndex];
                 if (!DispatchGate.RequireCompleted(this, DispatchGate.Fresh(selDel), "bill it")) return;
                 var existingInvoices = MJdatabase.GetInvoices();
-                var duplicateInvoice = existingInvoices.Find(i => (selectedInvoice == null || i.Id != selectedInvoice.Id) && i.DeliveryId == selDel.Id);
+                // A cancelled invoice does not count; an old statement's invoice that bills the trip does.
+                var duplicateInvoice = selDel.Id > 0 ? MJdatabase.GetLiveInvoiceForTrip(selDel.Id, 0, selectedInvoice?.Id ?? 0) : null;
                 if (duplicateInvoice != null)
                 {
-                    MessageBox.Show($"INVOICE ALREADY EXISTS:\nDelivery #{selDel.DispatchNumber} has already been invoiced under Invoice #{duplicateInvoice.InvoiceNumber} (Date: {duplicateInvoice.IssueDate:MMM dd, yyyy}). A delivery trip can be invoiced only once.", "Invoice Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    MessageBox.Show($"INVOICE ALREADY EXISTS:\nDelivery #{selDel.DispatchNumber} has already been invoiced under {duplicateInvoice.Describe()}{(duplicateInvoice.IssueDate > DateTime.MinValue ? $" (Date: {duplicateInvoice.IssueDate:MMM dd, yyyy})" : "")}. A delivery trip can be invoiced only once.", "Invoice Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                     return;
                 }
                 if (selDel.Id < 0 && MJdatabase.SpecialTripHasActiveInvoice(-selDel.Id)) { MessageBox.Show($"Special trip {selDel.DispatchNumber} already has its service invoice.", "Invoice Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop); return; }
@@ -891,13 +894,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtGridSearch.Focus();
         }
 
-        private void BtnGenerateSoa_Click(object? sender, EventArgs e)
+        /// <summary>
+        /// Statements are made in Statement of Account, from trips that already have their service invoice (Nov 6 workflow).
+        /// With a client, a new statement for that client opens with its ready trips added.
+        /// </summary>
+        private void OpenStatementOfAccount(string? client = null, DateTime? around = null)
         {
-            GenerateSoaDialog dialog = new GenerateSoaDialog();
-            if (dialog.ShowDialog(this.FindForm() ?? this.ParentForm) == DialogResult.OK)
-            {
-                LoadData();
-            }
+            var hub = FinanceHubView.Of(this);
+            var soa = hub?.OpenTab<StatementOfAccountView>("StatementOfAccount");
+            if (soa == null || hub!.CurrentTabKey != "StatementOfAccount") return; // no access, or the person stayed on this screen
+            if (!string.IsNullOrWhiteSpace(client)) soa.StartSoaFor(client.Trim(), (around ?? DateTime.Today).Date.AddDays(-31), DateTime.Today);
         }
 
         private void BtnPrint_Click(object? sender, EventArgs e)
@@ -985,7 +991,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.Item($"Open dispatch {inv.DispatchNumber}", () => RowMenu.OpenDispatch(this, inv.DeliveryId, inv.DispatchNumber), "", inv.DeliveryId > 0 || !string.IsNullOrWhiteSpace(inv.DispatchNumber)));
                 m.Items.Add(RowMenu.Item("Open client profile", () => MainForm.Instance?.OpenClientProfile(inv.ClientName), "", !string.IsNullOrWhiteSpace(inv.ClientName)));
-                m.Items.Add(RowMenu.Item("Generate statement of account…", () => BtnGenerateSoa_Click(this, EventArgs.Empty)));
+                m.Items.Add(RowMenu.Item("Make a statement for this client…", () => OpenStatementOfAccount(inv.ClientName, inv.IssueDate), "", !string.IsNullOrWhiteSpace(inv.ClientName)));
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.Sub("🖨️  Print",
                     RowMenu.Item("End-to-end delivery dossier", () => PrintHelper.PrintEndToEndDeliveryDossier(inv.DeliveryId, inv.DispatchNumber), "", inv.DeliveryId > 0),
@@ -993,7 +999,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     RowMenu.Item("Whole invoice register", () => BtnPrint_Click(this, EventArgs.Empty))));
                 m.Items.Add(RowMenu.CopySub(this, ("Invoice number", inv.InvoiceNumber), ("Dispatch number", inv.DispatchNumber), ("Client", inv.ClientName),
                     ("Amount due", balance.ToString("N2")),
-                    ("Payment reminder", $"Invoice {inv.InvoiceNumber} for {inv.ClientName}: {RowMenu.Money(inv.NetAmount)}, balance {RowMenu.Money(balance)}, due {inv.DueDate:MMMM d, yyyy}.")));
+                    ("Payment reminder", $"Invoice {inv.InvoiceNumber} for {inv.ClientName}: {RowMenu.Money(inv.NetAmount)}, amount due {RowMenu.Money(balance)}, due {inv.DueDate:MMMM d, yyyy}.")));
                 m.Items.Add(RowMenu.Sub("🔎  Find",
                     RowMenu.Item("Other invoices for this client", () => RowMenu.Search(txtGridSearch, inv.ClientName)),
                     RowMenu.Item("Statements of account for this client", () => FinanceHubView.Of(this)?.ShowStatements(inv.ClientName))));

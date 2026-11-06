@@ -75,15 +75,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var btnReset = new Button { Text = "↺  Use standard rates", AutoSize = true, MinimumSize = new Size(D(150), D(34)), Cursor = Cursors.Hand, Margin = new Padding(0, 0, D(8), 0) };
             var btnSave = new Button { Text = "💾  Save crew pay", AutoSize = true, MinimumSize = new Size(D(140), D(34)), Cursor = Cursors.Hand, Margin = new Padding(0, 0, D(8), 0) };
             var btnClose = new Button { Text = "Close", AutoSize = true, MinimumSize = new Size(D(90), D(34)), Cursor = Cursors.Hand, DialogResult = DialogResult.Cancel };
+            btnClose.Click += (s, e) => Close();
             UIThemeHelper.SetButtonRole(btnReset, "secondary");
             UIThemeHelper.SetButtonRole(btnSave, "primary");
             UIThemeHelper.SetButtonRole(btnClose, "secondary");
             btnReset.Click += (s, e) => ResetToStandardRates();
             btnSave.Click += (s, e) => Save();
-            var buttons = new FlowLayoutPanel { Dock = DockStyle.Right, AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Padding = new Padding(0, D(8), D(8), 0) };
-            buttons.Controls.Add(btnReset); buttons.Controls.Add(btnSave); buttons.Controls.Add(btnClose);
-            var footer = new Panel { Dock = DockStyle.Bottom, Height = D(54), Padding = new Padding(D(12), 0, 0, 0), BackColor = AppTheme.Surface };
-            footer.Controls.Add(lblTotal); footer.Controls.Add(buttons);
+            // Same footer as the profile windows: buttons docked right with fixed widths, the total fills the rest.
+            var footer = new Panel { Dock = DockStyle.Bottom, Height = D(60), BackColor = AppTheme.Surface, Padding = new Padding(D(16), D(12), D(16), D(12)) };
+            footer.Paint += (s, e) => { using var p = new Pen(AppTheme.Border); e.Graphics.DrawLine(p, 0, 0, footer.Width, 0); };
+            footer.Controls.Add(lblTotal);
+            btnReset.AutoSize = false; btnReset.MinimumSize = Size.Empty; btnReset.Dock = DockStyle.Right; btnReset.Width = D(180); btnReset.Margin = Padding.Empty;
+            footer.Controls.Add(btnReset);
+            footer.Controls.Add(new Panel { Dock = DockStyle.Right, Width = D(8), BackColor = AppTheme.Surface });
+            btnSave.AutoSize = false; btnSave.MinimumSize = Size.Empty; btnSave.Dock = DockStyle.Right; btnSave.Width = D(160); btnSave.Margin = Padding.Empty;
+            footer.Controls.Add(btnSave);
+            footer.Controls.Add(new Panel { Dock = DockStyle.Right, Width = D(8), BackColor = AppTheme.Surface });
+            btnClose.AutoSize = false; btnClose.MinimumSize = Size.Empty; btnClose.Dock = DockStyle.Right; btnClose.Width = D(100); btnClose.Margin = Padding.Empty;
+            footer.Controls.Add(btnClose);
             Controls.Add(grid); Controls.Add(footer); Controls.Add(hint);
             CancelButton = btnClose;
             Load += (s, e) => Bind();

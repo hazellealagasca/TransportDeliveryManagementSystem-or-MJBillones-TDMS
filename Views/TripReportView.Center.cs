@@ -35,7 +35,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Nov 6 workflow: no "Crates delivered" or "Return rate" tiles; the list is about proof of delivery (kept off the strip).
             tDelivered = new StatTile("Crates delivered", AppTheme.Success, "");
             tReturnRate = new StatTile("Return rate", AppTheme.Info, "returned ÷ delivered");
-            tShort = trTiles.Add(new StatTile("Short deliveries", AppTheme.Danger, "delivered less than planned") { Clickable = true, Key = "short" });
+            tShort = trTiles.Add(new StatTile("Drafts", AppTheme.Warning, "saved, not yet completed") { Clickable = true, Key = "short" }); // Nov 6: no delivered-crate metrics
             tNoPod = trTiles.Add(new StatTile("Missing POD", AppTheme.Warning, "no proof-of-delivery file") { Clickable = true, Key = "nopod" });
             tAwaiting = trTiles.Add(new StatTile("Awaiting a report", AppTheme.Warning, "completed, no report yet") { Clickable = true, Key = "awaiting" });
             trTiles.FilterChanged += t =>
@@ -65,8 +65,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbClientF = Combo(170, "All clients");
             cbDriverF = Combo(150, "All drivers");
             cbTruckF = Combo(120, "All trucks");
-            cbShowF = Combo(180, "All reports", "Short deliveries", "With returned crates", "With incidents", "Missing POD file", "On target (no issues)");
-            cbSortF = Combo(170, "Newest first", "Oldest first", "Most crates returned", "Biggest shortfall", "Client A–Z", "Report number");
+            cbShowF = Combo(180, "All reports", "Drafts", "With returned crates", "With incidents", "Missing POD file", "No issues");
+            cbSortF = Combo(170, "Newest first", "Oldest first", "Most crates returned", "Drafts first", "Client A–Z", "Report number");
             cbSortF.SelectedIndexChanged += (s, e) => { if (!applyingView && currentSortColumn.Length > 0) { currentSortColumn = ""; FilterGridData(); } };
             var btnReset = new Button { Text = "Reset filters", AutoSize = true, MinimumSize = new Size(0, Dc(28)), Cursor = Cursors.Hand, Margin = new Padding(0, 0, Dc(8), 0) };
             UIThemeHelper.SetButtonRole(btnReset, "secondary");
@@ -178,7 +178,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static int Planned(Delivery? d) => d == null ? 0 : (d.TotalCrates > 0 ? d.TotalCrates : d.GCrate + d.ECrate);
         private static int Delivered(TripReport t) => t.DeliveredCrates > 0 ? t.DeliveredCrates : t.DeliveredGCrates + t.DeliveredECrates;
         private static int Returned(TripReport t) => t.ReturnedCrates > 0 ? t.ReturnedCrates : t.ReturnedGCrates + t.ReturnedECrates;
-        private int Variance(TripReport t) { var d = DeliveryOf(t); return d == null ? 0 : Delivered(t) - Planned(d); }
         private bool HasPod(TripReport t) { var d = DeliveryOf(t); return d != null && fileCounts.TryGetValue(d.Id, out var c) && c.Pods > 0; }
         private bool HasIncident(TripReport t) { var d = DeliveryOf(t); return d != null && incidentCounts.ContainsKey(d.Id); }
         /// <summary>Applies the period / client / driver / truck / problem filters and the chosen sort order.</summary>
@@ -205,18 +204,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UpdateCenterTiles(periodSet);
             q = cbShowF.SelectedIndex switch
             {
-                1 => periodSet.Where(t => Variance(t) < 0),
+                1 => periodSet.Where(t => RowMenu.Is(t.Status, TripReportStatus.Draft)),
                 2 => periodSet.Where(t => Returned(t) > 0),
                 3 => periodSet.Where(HasIncident),
                 4 => periodSet.Where(t => !HasPod(t)),
-                5 => periodSet.Where(t => Variance(t) >= 0 && !HasIncident(t)),
+                5 => periodSet.Where(t => !HasIncident(t) && HasPod(t) && Returned(t) == 0),
                 _ => periodSet
             };
             q = cbSortF.SelectedIndex switch
             {
                 1 => q.OrderBy(t => t.ReportDate).ThenBy(t => t.Id),
                 2 => q.OrderByDescending(Returned).ThenByDescending(t => t.ReportDate),
-                3 => q.OrderBy(Variance).ThenByDescending(t => t.ReportDate),
+                3 => q.OrderByDescending(t => RowMenu.Is(t.Status, TripReportStatus.Draft)).ThenByDescending(t => t.ReportDate),
                 4 => q.OrderBy(t => DeliveryOf(t)?.ClientName ?? "", StringComparer.OrdinalIgnoreCase).ThenByDescending(t => t.ReportDate),
                 5 => q.OrderBy(t => t.TripReportNumber, StringComparer.OrdinalIgnoreCase),
                 _ => q.OrderByDescending(t => t.ReportDate).ThenByDescending(t => t.Id)
@@ -232,9 +231,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tDelivered.Note = $"{set.Sum(t => Planned(DeliveryOf(t))):N0} planned";
             tReturnRate!.Value = del == 0 ? "—" : $"{ret * 100.0 / del:0.#}%";
             tReturnRate.Note = $"{ret:N0} crate(s) returned";
-            int shortCount = set.Count(t => Variance(t) < 0);
+            int shortCount = set.Count(t => RowMenu.Is(t.Status, TripReportStatus.Draft));
             tShort!.Value = shortCount.ToString("N0");
-            tShort.ValueColor = shortCount > 0 ? AppTheme.DangerText : null;
+            tShort.ValueColor = null;
             int noPod = set.Count(t => !HasPod(t));
             tNoPod!.Value = noPod.ToString("N0");
             tNoPod.ValueColor = noPod > 0 ? AppTheme.WarningText : null;

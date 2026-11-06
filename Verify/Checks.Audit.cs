@@ -54,10 +54,10 @@ public static partial class Checks
            FROM TripReports t LEFT JOIN Deliveries d ON d.Id = t.DeliveryId
            WHERE COALESCE(t.IsVoid,0) = 0 AND COALESCE(t.DeliveryId,0) > 0 GROUP BY t.DeliveryId HAVING COUNT(*) > 1"),
         ("report-status-drift", "Trip reports whose status disagrees with their invoice (Invoiced without an invoice, or invoiced but not marked)",
-         @"SELECT t.TripReportNumber || ' · ' || COALESCE(t.Status,'') FROM TripReports t
-           WHERE COALESCE(t.IsVoid,0) = 0 AND COALESCE(t.DeliveryId,0) > 0 AND (
-                 (t.Status = 'Invoiced' AND NOT EXISTS (SELECT 1 FROM Invoices i WHERE i.DeliveryId = t.DeliveryId AND COALESCE(i.Status,'') <> 'Cancelled'))
-              OR (t.Status = 'Completed' AND EXISTS (SELECT 1 FROM Invoices i WHERE i.DeliveryId = t.DeliveryId AND COALESCE(i.Status,'') <> 'Cancelled')))"),
+         $@"SELECT t.TripReportNumber || ' · ' || COALESCE(t.Status,'') FROM TripReports t
+           WHERE COALESCE(t.IsVoid,0) = 0 AND (
+                 (t.Status = 'Invoiced' AND NOT {MJdatabase.TripInvoicedSql("t")})
+              OR (t.Status = 'Completed' AND {MJdatabase.TripInvoicedSql("t")}))"),
         ("soa-line-dead", "Statement lines (on statements not cancelled) pointing to a dispatch that no longer exists",
          @"SELECT s.SoaNumber || ' line ' || x.Id || ' (dispatch #' || x.DeliveryId || ')' FROM StatementOfAccountItems x JOIN StatementsOfAccount s ON s.Id = x.SoaId
            WHERE COALESCE(s.Status,'') <> 'Cancelled' AND COALESCE(x.DeliveryId,0) > 0 AND NOT EXISTS (SELECT 1 FROM Deliveries d WHERE d.Id = x.DeliveryId)"),

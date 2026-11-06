@@ -452,7 +452,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             stops ??= new List<DispatchStop>();
             Invoice? inv = null;
-            try { inv = MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == d.Id); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
+            // The live invoice (not a cancelled one), also when an old statement's invoice bills the trip.
+            OrderChain chain = new OrderChain();
+            try { chain = MJdatabase.GetOrderChainForTrip(d.Id); if (chain.Invoice != null) inv = MJdatabase.GetInvoices().FirstOrDefault(i => i.Id == chain.Invoice.InvoiceId); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
             var o = NewOptions("DeliveryDossier", "Delivery Dossier", $"Dispatch {d.DispatchNumber} · {d.Status}");
             o.Fields = new List<PrintField>
             {
@@ -504,7 +506,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     sb.Append(SectionTitle("Billing"));
                     sb.Append(inv == null ? "<p class='empty'>Not billed yet.</p>"
-                        : $"<table class='kv'><tr><td class='k'>Invoice #</td><td class='v'>{Esc(inv.InvoiceNumber)}</td><td class='k'>Status</td><td class='v'>{Esc(inv.Status)}</td></tr><tr><td class='k'>Net amount</td><td class='v'><b>{Money(inv.NetAmount)}</b></td><td class='k'>Due</td><td class='v'>{D(inv.DueDate)}</td></tr></table>");
+                        : $"<table class='kv'><tr><td class='k'>Invoice #</td><td class='v'>{Esc(inv.InvoiceNumber)}</td><td class='k'>Status</td><td class='v'>{Esc(inv.Status)}</td></tr><tr><td class='k'>Net amount</td><td class='v'><b>{Money(inv.NetAmount)}</b></td><td class='k'>Due</td><td class='v'>{D(inv.DueDate)}</td></tr><tr><td class='k'>Statement</td><td class='v'>{Esc(chain.SoaNumber.Length > 0 ? chain.SoaNumber : "—")}</td><td class='k'>Stage</td><td class='v'>{Esc(chain.Stage)}</td></tr><tr><td class='k'>Collection receipt</td><td class='v'>{Esc(chain.ReceiptNo.Length > 0 ? chain.ReceiptNo : "—")}</td><td class='k'>Paid on</td><td class='v'>{(chain.PaidOn.HasValue ? D(chain.PaidOn.Value) : "—")}</td></tr>{(chain.ReceiptNo.Length > 0 ? $"<tr><td class='k'>Payment method</td><td class='v'>{Esc(chain.PayMethod)}</td><td class='k'>Reference</td><td class='v'>{Esc(chain.PayReference.Length > 0 ? chain.PayReference : "—")}</td></tr>" : "")}</table>");
                 }
                 return sb.ToString();
             };

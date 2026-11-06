@@ -489,7 +489,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     new("Billed", AllInOneSummaryBar.Money(billed), SummaryTone.Blue, $"{invInPeriod.Count:N0} invoices · {period}", Strong: true),
                     new("Collected", AllInOneSummaryBar.Money(collected), SummaryTone.Green, $"{recInPeriod.Count:N0} receipts · {period}", Strong: true),
-                    new("Outstanding now", AllInOneSummaryBar.Money(outstanding), SummaryTone.Amber, "all unpaid balances", Strong: outstanding > 0),
+                    new("Outstanding now", AllInOneSummaryBar.Money(outstanding), SummaryTone.Amber, "all unpaid invoices", Strong: outstanding > 0),
                     new("Overdue now", overdue.Count.ToString("N0"), SummaryTone.Red, overdue.Count > 0 ? AllInOneSummaryBar.Money(overdue.Sum(Balance)) + " past due" : "none past due", Strong: overdue.Count > 0),
                     new("Statements", soaInPeriod.Count.ToString("N0"), SummaryTone.Teal, $"{AllInOneSummaryBar.Money(soaInPeriod.Sum(x => x.TotalAmount))} · {period}"),
                     new("Last payment", last == null ? "—" : last.PaymentDate.ToString("MMM d"), SummaryTone.Neutral, last == null ? "no receipts yet" : $"{last.ReceiptNumber} · {AllInOneSummaryBar.Money(last.AmountPaid)}"),

@@ -42,14 +42,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit.Restyle();
             collStrip = new PaymentSummaryStrip { Cursor = Cursors.Hand };
             collStrip.Click += (s, e) => formKit?.ScrollTo(collChecklist);
-            new ToolTip().SetToolTip(collStrip, "The invoice being paid: amount, paid so far and the balance after this payment. Click to see the checklist.");
+            new ToolTip().SetToolTip(collStrip, "The invoice being paid and its full amount due (payments are always in full). Click to see the checklist.");
             formKit.AddStrip(collStrip);
             collStepper = new WorkflowStepper("Trip report completed", "Invoice issued", "Payment filled", "Review", "Validated & ready");
             collHelp = new HelpDrawer("How this works",
                 "1. One receipt pays a whole statement of account (all its service invoices) or one service invoice that is not on a statement. Only those with nothing paid yet are listed.\n" +
                 "2. Type the Collection Receipt No. from the printed receipt: 4 to 8 digits, never used before. The amount is always the full amount due (no partial payments).\n" +
                 "3. Cash needs no reference. Cheque, bank transfer, online and other payments need the cheque / transaction number, and the same number can't be recorded twice.\n" +
-                "4. The payment date is today, which is always on or after the invoice date.\n" +
+                "4. The payment date is the day the money was received: today by default, or an earlier day (for example a cheque collected on Friday). It can't be in the future or before the invoice date.\n" +
                 "5. All checks must be green before Save. Every invoice it pays turns Paid.");
             collChecklist = new ValidationChecklist();
             formKit.AddBodyTop(new Panel { Height = Dpi(8), BackColor = AppTheme.Canvas });
@@ -100,12 +100,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (bal <= 0) continue;
                     var target = inv;
                     items.Add(($"{inv.InvoiceNumber}  ·  {inv.ClientName}  ·  ₱{bal:N2} due{(inv.DueDate.Date < DateTime.Today ? " (overdue)" : "")}   ▸ Record payment",
-                        $"Opens a new receipt for invoice {inv.InvoiceNumber} with the balance filled in. Nothing is saved until you save it.",
+                        $"Opens a new receipt for invoice {inv.InvoiceNumber} with the full amount due filled in. Nothing is saved until you save it.",
                         (Action)(() => OpenTarget(target))));
                 }
             }
             catch (Exception ex) { ErrLog.Swallowed(ex); }
-            collReady.SetItems($"{items.Count} invoice{(items.Count == 1 ? "" : "s")} with a balance to collect:",
+            collReady.SetItems($"{items.Count} invoice{(items.Count == 1 ? "" : "s")} waiting for payment:",
                 "Nothing is waiting for payment. Statements of account and service invoices (Billing) with nothing paid yet are listed here.", items, 4);
         }
         private IEnumerable<LookupItem> ReceiptSuggestions(string q)
@@ -172,10 +172,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 bool issued = !RowMenu.Is(inv.Status, "Draft") && inv.NetAmount > 0;
                 checks.Add(new PaymentCheck(issued ? "Invoice is issued with an amount" : "Invoice is still a draft without an amount — finish it in Billing first", issued));
-                decimal balance = Math.Max(0, inv.NetAmount - collPaidOthers);
-                checks.Add(new PaymentCheck(amt <= balance ? $"Not more than the balance (₱{balance:N2})" : $"₱{amt:N2} is more than the balance of ₱{balance:N2}", amt <= balance));
-                bool dateOk = inv.IssueDate.Date <= DateTime.Today;
-                checks.Add(new PaymentCheck(dateOk ? "Payment date (today) is on or after the invoice date" : $"Invoice is dated {inv.IssueDate:MMM d, yyyy}, after today", dateOk));
+                // Nov 6: payments are always the full amount due (no part payments, no balance).
+                decimal due = Math.Max(0, inv.NetAmount - collPaidOthers);
+                checks.Add(new PaymentCheck(amt == due ? $"Full amount due (₱{due:N2})" : $"₱{amt:N2} is not the full amount due of ₱{due:N2}", amt == due));
+                var dateWhy = MJdatabase.CheckPaymentDate(dtpPaymentDate.Value.Date, inv.IssueDate);
+                checks.Add(new PaymentCheck(dateWhy ?? (dtpPaymentDate.Value.Date == DateTime.Today ? "Payment date is today, on or after the invoice date" : $"Payment date {dtpPaymentDate.Value:MMM d, yyyy} is on or after the invoice date"), dateWhy == null));
             }
             checks.Add(new PaymentCheck(amt > 0 ? "Amount is more than ₱0.00" : "Enter the amount paid", amt > 0));
             string method = cbPaymentMethod.Text.Trim();
@@ -210,7 +211,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             else collStepper.SetProgress(4, "✓ Validated — Payment Completed records the full amount and marks the statement and its invoices Paid.");
             string method = cbPaymentMethod.Text.Trim();
             FieldMarks.Mark(txtRefNo, checks.Any(c => !c.Passed && c.Text.StartsWith("Reference") || !c.Passed && c.Text.StartsWith("Enter the reference")) ? FieldState.Bad : txtRefNo.Text.Trim().Length > 0 ? FieldState.Ok : FieldState.None);
-            FieldMarks.Mark(numAmountPaid, checks.Any(c => !c.Passed && (c.Text.Contains("balance") || c.Text.StartsWith("Enter the amount"))) ? FieldState.Bad : amt > 0 ? FieldState.Ok : FieldState.None);
+            FieldMarks.Mark(numAmountPaid, checks.Any(c => !c.Passed && (c.Text.Contains("full amount due") || c.Text.StartsWith("Enter the amount"))) ? FieldState.Bad : amt > 0 ? FieldState.Ok : FieldState.None);
             bool ok = fails == 0 && !collSaving;
             if (btnSave.Visible) { btnSave.Enabled = ok; ApplyButtonVisualState(btnSave, ok, Pal.C(13, 110, 253), Pal.White); }
             if (btnUpdate.Visible) { btnUpdate.Enabled = ok; ApplyButtonVisualState(btnUpdate, ok, Pal.C(25, 135, 84), Pal.White); }

@@ -426,7 +426,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     case "Operations": NavigateToOperations(tab ?? "Dispatch"); break;
                     case "Resources": NavigateToResources(tab ?? "Trucks"); break;
-                    case "Finance": NavigateToFinance(tab ?? "StatementOfAccount"); break;
+                    case "Finance": NavigateToFinance(tab ?? "Billing"); break;
                     case "MasterData": NavigateToMasterData(tab ?? "Clients"); break;
                     case "Settings": OpenSettingsTab(tab ?? "DispatchRules"); break;
                 }

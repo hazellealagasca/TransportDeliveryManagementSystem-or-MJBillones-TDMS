@@ -545,7 +545,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         int daysOverdue = (DateTime.Today - inv.DueDate.Date).Days;
                         if (!HasRecentAlert("Overdue Invoice Alert", inv.InvoiceNumber))
                         {
-                            Publish("Overdue Invoice Alert", $"Invoice #{inv.InvoiceNumber} for {inv.ClientName} is overdue by {daysOverdue} day(s) (Balance: PHP {inv.NetAmount:N2}).", ToastType.Warning, null, "Payments", "Invoices", inv.InvoiceNumber);
+                            Publish("Overdue Invoice Alert", $"Invoice #{inv.InvoiceNumber} for {inv.ClientName} is overdue by {daysOverdue} day(s) (Amount due: PHP {inv.NetAmount:N2}).", ToastType.Warning, null, "Payments", "Invoices", inv.InvoiceNumber);
                         }
                     }
                 }

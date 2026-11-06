@@ -121,7 +121,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tCrew = tiles.Add(new StatTile("Available crew", AppTheme.Warning) { NavigateOnClick = CanRes, Label1 = "drivers", Label2 = "aides" });
             tCrates = new StatTile("Crates to deliver", AppTheme.Accent);
             tTrucks = new StatTile("Trucks ready", AppTheme.Success);
-            tFifth = new StatTile("Outstanding balance", AppTheme.Danger);
+            tFifth = new StatTile("Unpaid invoices", AppTheme.Danger);
             tDispatch.Click += (s, e) => { if (CanOps) GoOps("Dispatch"); };
             tCrates.Click += (s, e) => { if (CanOps) GoOps("Dispatch"); };
             tTrucks.Click += (s, e) => { if (CanRes) MainForm.Instance?.NavigateToResources("Trucks"); };
@@ -627,7 +627,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var billedOnSoa = SafeBilled();
                 unbilled = unbilled.Where(d => !billedOnSoa.ContainsKey(d.Id)).ToList();
                 if (unbilled.Count > 0)
-                    items.Add(new ActionList.Item(AppTheme.Warning, $"{unbilled.Count} delivered trip{(unbilled.Count == 1 ? "" : "s")} not billed yet", $"{unbilled.Select(d => d.ClientName).Distinct().Count()} client{(unbilled.Select(d => d.ClientName).Distinct().Count() == 1 ? "" : "s")} · put them on a statement of account", "Bill", () => MainForm.Instance?.NavigateToFinance("StatementOfAccount"), "Billing", 1, unbilled.Min(d => d.DispatchDate), unbilled.Count));
+                    items.Add(new ActionList.Item(AppTheme.Warning, $"{unbilled.Count} delivered trip{(unbilled.Count == 1 ? "" : "s")} not billed yet", $"{unbilled.Select(d => d.ClientName).Distinct().Count()} client{(unbilled.Select(d => d.ClientName).Distinct().Count() == 1 ? "" : "s")} · make their service invoices (Billing), then group them on a statement", "Bill", () => MainForm.Instance?.NavigateToFinance("Billing"), "Billing", 1, unbilled.Min(d => d.DispatchDate), unbilled.Count));
+                List<DuplicateBilling> billedTwice; try { billedTwice = MJdatabase.GetTripsBilledMoreThanOnce(); } catch { billedTwice = new List<DuplicateBilling>(); }
+                if (billedTwice.Count > 0)
+                {
+                    var dup = billedTwice[0];
+                    items.Add(new ActionList.Item(AppTheme.Danger, $"{billedTwice.Count} trip{(billedTwice.Count == 1 ? " is" : "s are")} billed more than once", $"{dup.TripLabel}: {string.Join(" and ", dup.Invoices)}{(billedTwice.Count > 1 ? $" (+{billedTwice.Count - 1} more)" : "")} · cancel the extra invoice", "Review", () => MainForm.Instance?.ShowFinanceRecords("Billing", dup.Invoices[0]), "Billing", 0, null, billedTwice.Count));
+                }
                 int drafts = data.Invoices.Count(i => RowMenu.Is(i.Status, "Draft"));
                 if (drafts > 0)
                     items.Add(new ActionList.Item(AppTheme.Info, $"{drafts} draft invoice(s) to finish", "From completed special trips — add the amount to issue them", "Open", () => MainForm.Instance?.ShowFinanceRecords("Billing", "Draft"), "Billing", 2, null, drafts));

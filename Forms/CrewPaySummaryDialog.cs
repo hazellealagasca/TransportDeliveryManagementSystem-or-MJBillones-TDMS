@@ -56,13 +56,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblSummary = new Label { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI Semibold", 10F) };
             var btnPrint = new Button { Text = "📄  Print pay record", AutoSize = true, MinimumSize = new Size(D(150), D(34)), Cursor = Cursors.Hand, Margin = new Padding(0, 0, D(8), 0) };
             var btnClose = new Button { Text = "Close", AutoSize = true, MinimumSize = new Size(D(90), D(34)), Cursor = Cursors.Hand, DialogResult = DialogResult.Cancel };
+            btnClose.Click += (s, e) => Close();
             UIThemeHelper.SetButtonRole(btnPrint, "primary");
             UIThemeHelper.SetButtonRole(btnClose, "secondary");
             btnPrint.Click += (s, e) => PrintSelected();
-            var buttons = new FlowLayoutPanel { Dock = DockStyle.Right, AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Padding = new Padding(0, D(8), D(8), 0) };
-            buttons.Controls.Add(btnPrint); buttons.Controls.Add(btnClose);
-            var footer = new Panel { Dock = DockStyle.Bottom, Height = D(54), Padding = new Padding(D(12), 0, 0, 0), BackColor = AppTheme.Surface };
-            footer.Controls.Add(lblSummary); footer.Controls.Add(buttons);
+            // Same footer as the profile windows: buttons docked right with fixed widths, the total fills the rest.
+            var footer = new Panel { Dock = DockStyle.Bottom, Height = D(60), BackColor = AppTheme.Surface, Padding = new Padding(D(16), D(12), D(16), D(12)) };
+            footer.Paint += (s, e) => { using var p = new Pen(AppTheme.Border); e.Graphics.DrawLine(p, 0, 0, footer.Width, 0); };
+            footer.Controls.Add(lblSummary);
+            btnPrint.AutoSize = false; btnPrint.MinimumSize = Size.Empty; btnPrint.Dock = DockStyle.Right; btnPrint.Width = D(170); btnPrint.Margin = Padding.Empty;
+            footer.Controls.Add(btnPrint);
+            footer.Controls.Add(new Panel { Dock = DockStyle.Right, Width = D(8), BackColor = AppTheme.Surface });
+            btnClose.AutoSize = false; btnClose.MinimumSize = Size.Empty; btnClose.Dock = DockStyle.Right; btnClose.Width = D(100); btnClose.Margin = Padding.Empty;
+            footer.Controls.Add(btnClose);
             Controls.Add(grid); Controls.Add(footer); Controls.Add(hint);
             CancelButton = btnClose;
             Load += async (s, e) => await LoadSummary();

@@ -3854,8 +3854,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TruckInfo", HeaderText = "Truck", FillWeight = 80, MinimumWidth = 58, ReadOnly = true });
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DriverName", HeaderText = "Driver", FillWeight = 80, MinimumWidth = 58, ReadOnly = true });
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "AideDisplay", HeaderText = "Helper / Aide", FillWeight = 80, MinimumWidth = 58, ReadOnly = true });
-            gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ECrate", HeaderText = "E-Crates", DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }, FillWeight = 52, MinimumWidth = 42, ReadOnly = true });
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "GCrate", HeaderText = "G-Crates", DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }, FillWeight = 52, MinimumWidth = 42, ReadOnly = true });
+            gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ECrate", HeaderText = "E-Crates", DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }, FillWeight = 52, MinimumWidth = 42, ReadOnly = true });
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TotalCrates", HeaderText = "Total", DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }, FillWeight = 52, MinimumWidth = 42, ReadOnly = true });
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }, FillWeight = 82, MinimumWidth = 60, ReadOnly = true });
 

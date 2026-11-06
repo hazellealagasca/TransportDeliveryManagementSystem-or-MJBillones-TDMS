@@ -248,7 +248,7 @@ public static partial class Checks
             {
                 ("Operations","Dispatch"),("Operations","SpecialTrips"),("Operations","Incidents"),("Operations","TripReports"),("Operations","History"),
                 ("Resources","Trucks"),("Resources","Crew"),("Resources","CrewHistory"),
-                ("Finance","StatementOfAccount"),("Finance","Billing"),("Finance","Collections"),("Finance","History"),
+                ("Finance","Billing"),("Finance","StatementOfAccount"),("Finance","Collections"),("Finance","History"),
                 ("MasterData","Clients"),("MasterData","Routes"),("MasterData","Rates"),("MasterData","Archive"),("MasterData","History"),
             };
             foreach (var (area, tab) in tabs)
@@ -313,7 +313,7 @@ public static partial class Checks
             {
                 ("Operations","Dispatch"),("Operations","SpecialTrips"),("Operations","Incidents"),("Operations","TripReports"),("Operations","History"),
                 ("Resources","Trucks"),("Resources","Crew"),("Resources","CrewHistory"),
-                ("Finance","StatementOfAccount"),("Finance","Billing"),("Finance","Collections"),("Finance","History"),
+                ("Finance","Billing"),("Finance","StatementOfAccount"),("Finance","Collections"),("Finance","History"),
                 ("MasterData","Clients"),("MasterData","Routes"),("MasterData","Rates"),
             };
             foreach (var (area, tab) in tabs)

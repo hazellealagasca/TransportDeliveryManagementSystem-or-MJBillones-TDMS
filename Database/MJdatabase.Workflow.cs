@@ -96,11 +96,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                   FROM Invoices i WHERE COALESCE(i.Status,'') NOT IN ('Draft','Unpaid','Paid','Cancelled')"))
                         Set("Invoices", "Status", id, status, settled == "1" ? PayStatus.Paid : PayStatus.Unpaid);
 
-                    // 2. Trip reports: Invoiced when the trip has a service invoice that is not cancelled, else Completed.
-                    foreach (var (id, status, invoiced) in Rows(@"SELECT t.Id, COALESCE(t.Status,''),
-                                    CASE WHEN EXISTS (SELECT 1 FROM Invoices i WHERE COALESCE(i.Status,'') <> 'Cancelled' COLLATE NOCASE AND (
-                                         (COALESCE(t.DeliveryId,0) > 0 AND COALESCE(i.DeliveryId,0) = t.DeliveryId) OR
-                                         (COALESCE(t.SpecialTripId,0) > 0 AND COALESCE(i.SpecialTripId,0) = t.SpecialTripId))) THEN 1 ELSE 0 END
+                    // 2. Trip reports: Invoiced when the trip is billed by an invoice that is not cancelled (its own, or the
+                    //    whole-statement invoice of an older statement it is on), else Completed.
+                    foreach (var (id, status, invoiced) in Rows($@"SELECT t.Id, COALESCE(t.Status,''), CASE WHEN {TripInvoicedSql("t")} THEN 1 ELSE 0 END
                                   FROM TripReports t WHERE COALESCE(t.IsVoid,0) = 0"))
                         Set("TripReports", "Status", id, status, invoiced == "1" ? TripReportStatus.Invoiced : TripReportStatus.Completed);
 
@@ -151,28 +149,53 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// </summary>
         private static void SyncTripReportStatus(SqliteConnection conn, SqliteTransaction? tx, int deliveryId, int specialTripId)
         {
+            var keys = new List<string>();
+            if (deliveryId > 0) keys.Add($"COALESCE(t.DeliveryId,0) = {deliveryId}");
+            if (specialTripId > 0) keys.Add($"COALESCE(t.SpecialTripId,0) = {specialTripId}");
+            if (keys.Count > 0) ResyncTripReports(conn, tx, "(" + string.Join(" OR ", keys) + ")");
+        }
+
+        /// <summary>
+        /// SQL that is true when trip report <paramref name="t"/> is billed by a service invoice that is not cancelled: its own
+        /// invoice (dispatch or special trip), or the single whole-statement invoice of an older statement the trip is a line of.
+        /// </summary>
+        public static string TripInvoicedSql(string t) => $@"EXISTS (SELECT 1 FROM Invoices i WHERE COALESCE(i.Status,'') <> 'Cancelled' COLLATE NOCASE AND (
+                 (COALESCE({t}.DeliveryId,0) > 0 AND COALESCE(i.DeliveryId,0) = {t}.DeliveryId)
+              OR (COALESCE({t}.SpecialTripId,0) > 0 AND COALESCE(i.SpecialTripId,0) = {t}.SpecialTripId)
+              OR (COALESCE(i.DeliveryId,0) = 0 AND COALESCE(i.SpecialTripId,0) = 0 AND COALESCE(i.SoaId,0) > 0 AND EXISTS (
+                      SELECT 1 FROM StatementOfAccountItems x JOIN StatementsOfAccount s ON s.Id = x.SoaId
+                      WHERE x.SoaId = i.SoaId AND COALESCE(s.Status,'') <> 'Cancelled' COLLATE NOCASE AND (
+                            (COALESCE({t}.DeliveryId,0) > 0 AND COALESCE(x.DeliveryId,0) = {t}.DeliveryId)
+                         OR (COALESCE({t}.SpecialTripId,0) > 0 AND COALESCE(x.SpecialTripId,0) = {t}.SpecialTripId))))))";
+
+        /// <summary>Sets the (non-void) trip reports matching <paramref name="where"/> (alias t) to Invoiced or back to Completed.
+        /// Draft reports stay Draft until they are billed.</summary>
+        private static void ResyncTripReports(SqliteConnection conn, SqliteTransaction? tx, string where)
+        {
             EnsureWorkflowColumns();
-            void One(string key, int id)
+            string billed = TripInvoicedSql("t");
+            foreach (var sql in new[]
             {
-                if (id <= 0) return;
-                bool invoiced;
-                using (var c = conn.CreateCommand())
-                {
-                    c.Transaction = tx;
-                    c.CommandText = $"SELECT COUNT(*) FROM Invoices WHERE COALESCE({key},0) = @id AND COALESCE(Status,'') <> 'Cancelled' COLLATE NOCASE";
-                    c.Parameters.AddWithValue("@id", id);
-                    invoiced = Convert.ToInt32(c.ExecuteScalar() ?? 0) > 0;
-                }
+                $"UPDATE TripReports AS t SET Status = 'Invoiced' WHERE COALESCE(t.IsVoid,0) = 0 AND {where} AND COALESCE(t.Status,'') <> 'Invoiced' AND {billed}",
+                $"UPDATE TripReports AS t SET Status = 'Completed' WHERE COALESCE(t.IsVoid,0) = 0 AND {where} AND COALESCE(t.Status,'') = 'Invoiced' AND NOT {billed}",
+            })
+            {
                 using var u = conn.CreateCommand();
                 u.Transaction = tx;
-                u.CommandText = invoiced
-                    ? $"UPDATE TripReports SET Status = 'Invoiced' WHERE COALESCE({key},0) = @id AND COALESCE(IsVoid,0) = 0 AND COALESCE(Status,'') <> 'Invoiced'"
-                    : $"UPDATE TripReports SET Status = 'Completed' WHERE COALESCE({key},0) = @id AND COALESCE(IsVoid,0) = 0 AND COALESCE(Status,'') = 'Invoiced'";
-                u.Parameters.AddWithValue("@id", id);
+                u.CommandText = sql;
                 u.ExecuteNonQuery();
             }
-            One("DeliveryId", deliveryId);
-            One("SpecialTripId", specialTripId);
+        }
+
+        /// <summary>Re-checks every trip report against its invoices (safe to repeat). Used once for databases that took the
+        /// workflow update before older whole-statement invoices were recognised.</summary>
+        public static void ResyncTripReportStatuses()
+        {
+            using var conn = new SqliteConnection(connectionString);
+            conn.Open();
+            using var tx = conn.BeginTransaction();
+            ResyncTripReports(conn, tx, "1 = 1");
+            tx.Commit();
         }
 
         /// <summary>Re-reads an invoice's trip and syncs that trip report (used after the invoice is linked, cancelled or changed elsewhere).</summary>
@@ -187,6 +210,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 deliveryId = Convert.ToInt32(c.ExecuteScalar() ?? 0);
             }
             SyncTripReportStatus(conn, tx, deliveryId, SpecialTripIdOfInvoice(conn, tx, invoiceId));
+            // An older whole-statement invoice bills every trip on its statement.
+            ResyncTripReports(conn, tx, $"(COALESCE(t.DeliveryId,0) IN (SELECT COALESCE(x.DeliveryId,0) FROM StatementOfAccountItems x JOIN Invoices iv ON iv.SoaId = x.SoaId WHERE iv.Id = {invoiceId} AND COALESCE(iv.SoaId,0) > 0 AND COALESCE(x.DeliveryId,0) > 0)" +
+                                         $" OR COALESCE(t.SpecialTripId,0) IN (SELECT COALESCE(x.SpecialTripId,0) FROM StatementOfAccountItems x JOIN Invoices iv ON iv.SoaId = x.SoaId WHERE iv.Id = {invoiceId} AND COALESCE(iv.SoaId,0) > 0 AND COALESCE(x.SpecialTripId,0) > 0))");
         }
         /// <summary>Normal, Special or Mixed: what kind of trips a collection target pays (chooses the receipt slip).</summary>
         public static string PayTargetKind(PayTarget t)

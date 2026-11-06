@@ -363,7 +363,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridClients.Columns.Add(TextCol("Stores", "Stores", 55, Dpi(60), right: true));
             gridClients.Columns.Add(TextCol("CompletedTrips", "Trips", 80, Dpi(90), right: true));
             gridClients.Columns.Add(TextCol("LastTrip", "Last trip", 80, Dpi(90)));
-            gridClients.Columns.Add(TextCol("Unpaid", "Balance due", 90, Dpi(100), right: true));
+            gridClients.Columns.Add(TextCol("Unpaid", "Unpaid amount", 90, Dpi(100), right: true));
             gridClients.Columns["CompanyName"]!.DefaultCellStyle.Font = new Font("Segoe UI Semibold", 9.5F);
             gridClients.Cursor = Cursors.Hand;
             gridClients.DataBindingComplete += (s, e) => FillClientCustomCells();

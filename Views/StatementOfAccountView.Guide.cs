@@ -77,7 +77,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 "2. Pick the client and period: the completed trip reports for that client appear in step 2. ⚡ Add all ready trips fills the lines, amounts and DR numbers for you.\n" +
                 "3. Only trips of the statement's client can be added, and a trip can be billed once (on one statement or one direct invoice).\n" +
                 "4. The totals are worked out from the lines. If you change one by hand, say why in Adjustment reason — it is kept with the statement and in the audit log.\n" +
-                "5. The checklist at the bottom must be all green before Save. Saving with an SI no. creates the client's billing invoice; collections are then recorded against that invoice and can never exceed its balance.");
+                "5. The checklist at the bottom must be all green before Save. The saved statement is Unpaid until \u201cProceed to Collection Receipt\u201d records its full payment in one receipt (no part payments).");
             soaChecklist = new ValidationChecklist();
             pnlFormBody.SuspendLayout();
             var spacerTop = CreateSectionSpacer();

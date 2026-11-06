@@ -35,6 +35,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return new Control[] { lblReceiptNo, txtReceiptNo };
         }
 
+        private Label lblPaymentDate = null!;
+        private DateTimePicker dtpPaymentDate = null!;
+
+        /// <summary>"Payment date": the day the money was received. Today by default, earlier allowed, never in the future.</summary>
+        private Control[] BuildPaymentDateField()
+        {
+            lblPaymentDate = new Label { Text = "Payment date (day the money was received) *", AutoSize = true, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextSecondary, Margin = new Padding(0, 0, 0, 2) };
+            dtpPaymentDate = new DateTimePicker { Dock = DockStyle.Top, Font = new Font("Segoe UI", 10.5F), Format = DateTimePickerFormat.Long, MaxDate = DateTime.Today, Value = DateTime.Today };
+            dtpPaymentDate.ValueChanged += (s, e) => ScheduleCollGuide();
+            return new Control[] { lblPaymentDate, dtpPaymentDate };
+        }
+
+        /// <summary>Puts the picker on a day (clamped to today at most) and refreshes its upper limit, which moves at midnight.</summary>
+        private void SetPaymentDate(DateTime day)
+        {
+            if (dtpPaymentDate == null) return;
+            dtpPaymentDate.MaxDate = DateTime.Today;
+            DateTime d = day.Date;
+            if (d > DateTime.Today) d = DateTime.Today;
+            if (d < dtpPaymentDate.MinDate) d = dtpPaymentDate.MinDate;
+            dtpPaymentDate.Value = d;
+        }
+
         /// <summary>A stand-in invoice for one pay target (a statement adds up its invoices), so the checklist and summary strip can show it.</summary>
         private static Invoice TargetAsInvoice(PayTarget t) => new Invoice
         {
@@ -154,6 +177,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             var rWhy = MJdatabase.CheckReceiptNumber(txtReceiptNo.Text, editing ? selectedCollection?.ReceiptNumber : null);
             if (rWhy != null) { ValidationHelper.ApplyValidationState(txtReceiptNo, false, rWhy); valErrors.Add(rWhy); firstInvalid ??= txtReceiptNo; }
+            DateTime issued = editing ? (editTargetInvoice?.IssueDate ?? DateTime.MinValue) : (cbInvoice.SelectedIndex >= 0 && cbInvoice.SelectedIndex < payTargets.Count ? payTargets[cbInvoice.SelectedIndex].IssueDate : DateTime.MinValue);
+            var dateWhy = MJdatabase.CheckPaymentDate(dtpPaymentDate.Value.Date, issued);
+            if (dateWhy != null) { ValidationHelper.ApplyValidationState(dtpPaymentDate, false, dateWhy); valErrors.Add(dateWhy); firstInvalid ??= dtpPaymentDate; }
             string method = cbPaymentMethod.Text.Trim();
             if (method.Length == 0) { ValidationHelper.ApplyValidationState(cbPaymentMethod, false, "Payment method is required."); valErrors.Add("Payment method is required."); firstInvalid ??= cbPaymentMethod; }
             string refNum = txtRefNo.Text.Trim();
@@ -180,7 +206,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string method = cbPaymentMethod.Text.Trim();
             MJdatabase.SaveLookupItem("Payment Method", method);
             string rno = txtReceiptNo.Text.Trim();
-            var rows = MJdatabase.SaveOneReceipt(rno, target, method, txtRefNo.Text.Trim(), txtNotes.Text.Trim());
+            var rows = MJdatabase.SaveOneReceipt(rno, target, method, txtRefNo.Text.Trim(), txtNotes.Text.Trim(), dtpPaymentDate.Value.Date);
             ClearFields();
             LoadData();
             SetFormVisibility(false);
@@ -202,7 +228,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (!CheckReceiptForm(editing: true)) return;
             string method = cbPaymentMethod.Text.Trim();
             MJdatabase.SaveLookupItem("Payment Method", method);
-            MJdatabase.UpdateReceiptDetails(selectedCollection.ReceiptNumber, txtReceiptNo.Text.Trim(), method, txtRefNo.Text.Trim(), txtNotes.Text.Trim());
+            MJdatabase.UpdateReceiptDetails(selectedCollection.ReceiptNumber, txtReceiptNo.Text.Trim(), method, txtRefNo.Text.Trim(), txtNotes.Text.Trim(), dtpPaymentDate.Value.Date);
             QuietBox.Show($"Collection Receipt {txtReceiptNo.Text.Trim()} is updated. (The amount is the full amount paid and does not change.)", "Receipt updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
             ClearFields();
             LoadData();

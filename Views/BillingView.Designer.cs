@@ -57,7 +57,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlGridActionsFlow = new System.Windows.Forms.FlowLayoutPanel();
             this.txtGridSearch = new System.Windows.Forms.TextBox();
             this.btnClearSearch = new System.Windows.Forms.Button();
-            this.btnGenerateSoa = new System.Windows.Forms.Button();
             this.btnPrint = new System.Windows.Forms.Button();
             this.gridInvoices = new System.Windows.Forms.DataGridView();
             this.pnlSummary = new System.Windows.Forms.Panel();
@@ -517,7 +516,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlGridActionsFlow.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.pnlGridActionsFlow.Controls.Add(this.txtGridSearch);
             this.pnlGridActionsFlow.Controls.Add(this.btnClearSearch);
-            this.pnlGridActionsFlow.Controls.Add(this.btnGenerateSoa);
             this.pnlGridActionsFlow.Controls.Add(this.btnPrint);
             this.pnlGridActionsFlow.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlGridActionsFlow.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
@@ -553,20 +551,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnClearSearch.UseVisualStyleBackColor = false;
             this.btnClearSearch.Click += new System.EventHandler(this.BtnClearSearch_Click);
 
-            this.btnGenerateSoa.BackColor = System.Drawing.Color.FromArgb(153, 27, 27);
-            this.btnGenerateSoa.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnGenerateSoa.FlatAppearance.BorderSize = 0;
-            this.btnGenerateSoa.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnGenerateSoa.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold);
-            this.btnGenerateSoa.ForeColor = System.Drawing.Color.White;
-            this.btnGenerateSoa.Location = new System.Drawing.Point(238, 4);
-            this.btnGenerateSoa.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
-            this.btnGenerateSoa.Name = "btnGenerateSoa";
-            this.btnGenerateSoa.Size = new System.Drawing.Size(150, 28);
-            this.btnGenerateSoa.TabIndex = 2;
-            this.btnGenerateSoa.Text = "📄 Generate SOA";
-            this.btnGenerateSoa.UseVisualStyleBackColor = false;
-            this.btnGenerateSoa.Click += new System.EventHandler(this.BtnGenerateSoa_Click);
 
             this.btnPrint.BackColor = System.Drawing.Color.FromArgb(71, 85, 105);
             this.btnPrint.Cursor = System.Windows.Forms.Cursors.Hand;
@@ -699,7 +683,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private System.Windows.Forms.FlowLayoutPanel pnlGridActionsFlow;
         private System.Windows.Forms.TextBox txtGridSearch;
         private System.Windows.Forms.Button btnClearSearch;
-        private System.Windows.Forms.Button btnGenerateSoa;
         private System.Windows.Forms.Button btnPrint;
         private System.Windows.Forms.DataGridView gridInvoices;
         private System.Windows.Forms.Panel pnlSummary;

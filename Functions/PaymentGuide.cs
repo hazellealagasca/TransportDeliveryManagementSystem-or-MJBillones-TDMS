@@ -10,12 +10,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
     /// <summary>
-    /// Slim strip at the top of a Payments form with the live totals: Gross · Deductions / advances · Paid to date ·
-    /// Balance · Validation status. Updates as the form is filled in.
+    /// Slim strip at the top of a Payments form with the live totals: Gross · Deductions / advances · Net due ·
+    /// Payment (Unpaid / Paid in full: payments are always in full) · Validation status. Updates as the form is filled in.
     /// </summary>
     public sealed class PaymentSummaryStrip : Control
     {
-        private decimal gross, deductions, paid, balance;
+        private decimal gross, deductions, paid;
         private int problems, warnings;
         private string status = "";
         public PaymentSummaryStrip()
@@ -30,7 +30,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         protected override void OnPaddingChanged(EventArgs e) { base.OnPaddingChanged(e); Invalidate(); }
         public void SetTotals(decimal gross, decimal deductions, decimal paid, decimal balance, int problems, int warnings = 0, string? status = null)
         {
-            this.gross = gross; this.deductions = deductions; this.paid = paid; this.balance = balance;
+            this.gross = gross; this.deductions = deductions; this.paid = paid; _ = balance; // payments are in full: no balance is shown
             this.problems = problems; this.warnings = warnings; this.status = status ?? "";
             Invalidate();
         }
@@ -47,8 +47,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 ("Gross", Money(gross), AppTheme.TextPrimary),
                 ("Deductions / advances", Money(deductions), AppTheme.TextPrimary),
-                ("Paid to date", Money(paid), AppTheme.SuccessText),
-                ("Balance", Money(balance), balance > 0 ? AppTheme.WarningText : AppTheme.TextPrimary),
+                ("Net due", Money(Math.Max(0m, gross - deductions)), AppTheme.TextPrimary),
+                ("Payment", gross - deductions > 0 && paid >= gross - deductions ? "Paid in full" : "Unpaid", gross - deductions > 0 && paid >= gross - deductions ? AppTheme.SuccessText : AppTheme.WarningText),
             };
             string vs = status.Length > 0 ? status : problems > 0 ? $"✗ {problems} to fix" : warnings > 0 ? $"⚠ {warnings} to review" : "✓ Ready to save";
             Color vc = problems > 0 ? AppTheme.DangerText : warnings > 0 ? AppTheme.WarningText : AppTheme.SuccessText;

@@ -16,7 +16,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly Dictionary<string, UserControl> cachedViews = new Dictionary<string, UserControl>();
         private readonly Models.Delivery? prefillDelivery;
 
-        public FinanceHubView(string defaultTab = "StatementOfAccount", Models.Delivery? prefillDelivery = null)
+        public FinanceHubView(string defaultTab = "Billing", Models.Delivery? prefillDelivery = null)
         {
             this.prefillDelivery = prefillDelivery;
             InitializeComponent();
@@ -33,8 +33,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void SetupTabs()
         {
-            AddTab("StatementOfAccount", "📑  Statement of Account", () => new StatementOfAccountView());
-
+            // The tabs follow the work: a completed trip report is invoiced first, invoices are grouped on a statement,
+            // the statement is collected with one receipt, and the settled order goes to history.
             AddTab("Billing", "🧾  Billing Invoices", () =>
             {
                 var bv = new BillingView();
@@ -45,6 +45,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 return bv;
             });
+
+            AddTab("StatementOfAccount", "📑  Statement of Account", () => new StatementOfAccountView());
 
             AddTab("Collections", "💵  Collections & Receipts", () => new CollectionView());
             AddTab("History", "📜  Finance History", () => new FinanceHistoryView());

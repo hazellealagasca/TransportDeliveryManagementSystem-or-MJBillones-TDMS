@@ -113,6 +113,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return list.OrderBy(t => t.DueDate).ThenBy(t => t.Title).ToList();
         }
 
+        /// <summary>Why a payment can't be dated <paramref name="paid"/>, or null: not in the future, and not before the invoice it pays.</summary>
+        public static string? CheckPaymentDate(DateTime paid, DateTime invoiceIssued)
+        {
+            if (paid.Date > DateTime.Today) return $"The payment date ({paid:MMM d, yyyy}) can't be after today.";
+            if (invoiceIssued > DateTime.MinValue && paid.Date < invoiceIssued.Date) return $"The payment date ({paid:MMM d, yyyy}) is before the invoice date ({invoiceIssued:MMM d, yyyy}).";
+            return null;
+        }
+
         /// <summary>All rows (one per invoice) of a receipt number that are not voided.</summary>
         public static List<CollectionReceipt> GetReceiptRows(string receiptNumber)
             => GetCollectionReceipts().Where(r => string.Equals(r.ReceiptNumber?.Trim(), receiptNumber?.Trim(), StringComparison.OrdinalIgnoreCase)).OrderBy(r => r.Id).ToList();
@@ -121,12 +129,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// Records ONE collection receipt for the full amount of the statement (every open invoice on it) or of the lone invoice.
         /// Each invoice turns Paid. Returns the rows written.
         /// </summary>
-        public static List<CollectionReceipt> SaveOneReceipt(string receiptNumber, PayTarget target, string method, string reference, string notes)
+        public static List<CollectionReceipt> SaveOneReceipt(string receiptNumber, PayTarget target, string method, string reference, string notes, DateTime? paymentDate = null)
         {
             string no = (receiptNumber ?? "").Trim();
             var why = CheckReceiptNumber(no);
             if (why != null) throw new InvalidOperationException(why);
             if (target == null || target.Invoices.Count == 0) throw new InvalidOperationException("Pick the statement or the invoice being paid.");
+            // The day the money was received: today or earlier (a check collected on Friday is entered on Friday's date), never before the invoice.
+            DateTime payDate = (paymentDate ?? DateTime.Today).Date;
+            var dateWhy = CheckPaymentDate(payDate, target.Invoices.Max(i => i.IssueDate));
+            if (dateWhy != null) throw new InvalidOperationException(dateWhy);
             if (string.IsNullOrWhiteSpace(method)) throw new InvalidOperationException("Choose the payment method.");
             if (target.Invoices.Count > 1) EnsureReceiptSchemaForSoa();
             EnsureWorkflowColumns();
@@ -173,7 +185,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             ReceiptNumber = no,
                             InvoiceId = ti.Id,
                             InvoiceNumber = ti.Number,
-                            PaymentDate = DateTime.Now,
+                            PaymentDate = payDate,
                             AmountPaid = ti.Net,
                             PaymentMethod = method.Trim(),
                             ReferenceNumber = (reference ?? "").Trim(),
@@ -219,7 +231,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>Changes the receipt number, method, reference and notes of every row of one receipt (the amounts never change).</summary>
-        public static void UpdateReceiptDetails(string oldNumber, string newNumber, string method, string reference, string notes)
+        public static void UpdateReceiptDetails(string oldNumber, string newNumber, string method, string reference, string notes, DateTime? paymentDate = null)
         {
             string oldNo = (oldNumber ?? "").Trim(), newNo = (newNumber ?? "").Trim();
             if (!string.Equals(oldNo, newNo, StringComparison.OrdinalIgnoreCase))
@@ -232,8 +244,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             using (var conn = new SqliteConnection(connectionString))
             {
                 conn.Open();
+                if (paymentDate.HasValue)
+                {
+                    // Not in the future, and not before the invoice(s) this receipt paid.
+                    using var q = conn.CreateCommand();
+                    q.CommandText = "SELECT MAX(i.IssueDate) FROM CollectionReceipts r JOIN Invoices i ON i.Id = r.InvoiceId WHERE TRIM(r.ReceiptNumber) = @on COLLATE NOCASE AND COALESCE(r.IsVoid,0) = 0";
+                    q.Parameters.AddWithValue("@on", oldNo);
+                    DateTime issued = DateTime.TryParse(Convert.ToString(q.ExecuteScalar()), out var iss) ? iss : DateTime.MinValue;
+                    var dateWhy = CheckPaymentDate(paymentDate.Value.Date, issued);
+                    if (dateWhy != null) throw new InvalidOperationException(dateWhy);
+                }
                 using var c = conn.CreateCommand();
-                c.CommandText = "UPDATE CollectionReceipts SET ReceiptNumber=@nn, PaymentMethod=@pm, ReferenceNumber=@rf, Notes=@n WHERE TRIM(ReceiptNumber) = @on COLLATE NOCASE AND COALESCE(IsVoid,0) = 0";
+                c.CommandText = "UPDATE CollectionReceipts SET ReceiptNumber=@nn, PaymentMethod=@pm, ReferenceNumber=@rf, Notes=@n" + (paymentDate.HasValue ? ", PaymentDate=@pd" : "") + " WHERE TRIM(ReceiptNumber) = @on COLLATE NOCASE AND COALESCE(IsVoid,0) = 0";
+                if (paymentDate.HasValue) c.Parameters.AddWithValue("@pd", paymentDate.Value.Date.ToString("yyyy-MM-dd"));
                 c.Parameters.AddWithValue("@nn", newNo);
                 c.Parameters.AddWithValue("@pm", method.Trim());
                 c.Parameters.AddWithValue("@rf", (reference ?? "").Trim());

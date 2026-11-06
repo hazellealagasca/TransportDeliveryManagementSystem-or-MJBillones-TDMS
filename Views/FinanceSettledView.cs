@@ -64,6 +64,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly DataGridView grid;
         private readonly Label lblSummary;
         private List<(StatementOfAccount? Soa, List<TripInvoice> Invoices, string ReceiptNo, DateTime PaidOn)> records = new();
+        /// <summary>The trips (dispatch and trip report) behind each record, in the same order as <see cref="records"/>.</summary>
+        private List<List<SettledTrip>> recordTrips = new();
+        private List<DuplicateBilling> billedTwice = new();
         private int loadId;
 
         public FinanceSettledView()
@@ -74,7 +77,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Label L(string t) => new Label { Text = t, AutoSize = true, Margin = new Padding(0, D(6), D(6), 0), ForeColor = AppTheme.TextSecondary };
             dtFrom = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = D(120), Value = DateTime.Today.AddMonths(-3), Margin = new Padding(0, 0, D(12), 0) };
             dtTo = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = D(120), Value = DateTime.Today, Margin = new Padding(0, 0, D(12), 0) };
-            txtSearch = new TextBox { Width = D(240), PlaceholderText = "Search client, SOA, SI or receipt no.", Margin = new Padding(0, D(2), 0, 0) };
+            txtSearch = new TextBox { Width = D(300), PlaceholderText = "Search client, dispatch, trip report, SOA, SI or receipt no.", Margin = new Padding(0, D(2), 0, 0) };
             filters.Controls.Add(L("Paid from")); filters.Controls.Add(dtFrom); filters.Controls.Add(L("to")); filters.Controls.Add(dtTo); filters.Controls.Add(txtSearch);
             dtFrom.ValueChanged += (s, e) => RefreshData();
             dtTo.ValueChanged += (s, e) => RefreshData();
@@ -92,13 +95,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Name = name, HeaderText = header, FillWeight = weight,
                 DefaultCellStyle = money ? new DataGridViewCellStyle { Format = "N2", Alignment = DataGridViewContentAlignment.MiddleRight } : new DataGridViewCellStyle()
             });
-            Col("colPaid", "Paid on", 70); Col("colReceipt", "Receipt No.", 70); Col("colClient", "Client", 130); Col("colSoa", "SOA No.", 80);
-            Col("colType", "Type", 60); Col("colInvoices", "Service invoices", 170); Col("colAmount", "Amount paid", 80, true);
+            Col("colPaid", "Paid on", 70); Col("colReceipt", "Receipt No.", 70); Col("colClient", "Client", 120); Col("colSoa", "SOA No.", 80);
+            Col("colType", "Type", 55); Col("colInvoices", "Service invoices", 120); Col("colTrips", "Dispatch · trip report", 190); Col("colAmount", "Amount paid", 80, true);
             grid.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0) OpenRecord(e.RowIndex); };
 
             var menu = new ContextMenuStrip();
             menu.Items.Add("Open the statement", null, (s, e) => { if (grid.CurrentRow != null) OpenRecord(grid.CurrentRow.Index); });
             menu.Items.Add("Open the receipt", null, (s, e) => { if (grid.CurrentRow?.Tag is int i) FinanceHubView.Of(this)?.ShowCollections(records[i].ReceiptNo); });
+            // One "Open order" item per trip of the selected record: opens that dispatch in Order History / Operations.
+            menu.Opening += (s, e) =>
+            {
+                for (int k = menu.Items.Count - 1; k >= 0; k--) if (menu.Items[k].Tag as string == "order") menu.Items.RemoveAt(k);
+                if (grid.CurrentRow?.Tag is not int i || i >= recordTrips.Count) return;
+                int at = 2;
+                foreach (var t in recordTrips[i])
+                {
+                    var trip = t;
+                    var item = new ToolStripMenuItem($"Open order {trip.Number}" + (trip.TripReportNo.Length > 0 ? $" · {trip.TripReportNo}" : "")) { Tag = "order", Enabled = trip.DeliveryId > 0 };
+                    item.Click += (a, b) => RowMenu.OpenDispatch(this, trip.DeliveryId, trip.Number);
+                    menu.Items.Insert(at++, item);
+                }
+            };
             menu.Items.Add("📊 Export table to CSV...", null, (s, e) => DataExportHelper.ExportToCsv(grid, "Settled_Records", "Settled records"));
             grid.ContextMenuStrip = menu;
 
@@ -113,9 +130,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             DateTime from = dtFrom.Value.Date, to = dtTo.Value.Date;
             try
             {
-                var list = await Task.Run(() => MJdatabase.GetSettledRecords(from, to));
+                var (list, trips, twice) = await Task.Run(() =>
+                {
+                    var l = MJdatabase.GetSettledRecords(from, to);
+                    List<DuplicateBilling> dup = new();
+                    try { dup = MJdatabase.GetTripsBilledMoreThanOnce(); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+                    return (l, MJdatabase.ResolveSettledTrips(l), dup);
+                });
                 if (my != loadId || IsDisposed) return;
-                records = list;
+                records = list; recordTrips = trips; billedTwice = twice;
                 Bind();
             }
             catch (Exception ex)
@@ -144,13 +167,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string client = r.Soa?.ClientName ?? r.Invoices.FirstOrDefault()?.Client ?? "";
                 string soaNo = r.Soa?.SoaNumber ?? "—";
                 string sis = string.Join(", ", r.Invoices.Select(x => x.Number));
-                if (q.Length > 0 && !(Match(client) || Match(soaNo) || Match(sis) || Match(r.ReceiptNo))) continue;
+                var tripList = i < recordTrips.Count ? recordTrips[i] : new List<SettledTrip>();
+                string trips = string.Join("; ", tripList.Select(t => t.TripReportNo.Length > 0 ? $"{t.Number} · {t.TripReportNo}" : t.Number));
+                if (q.Length > 0 && !(Match(client) || Match(soaNo) || Match(sis) || Match(r.ReceiptNo) || Match(trips))) continue;
                 decimal amount = r.Invoices.Sum(x => x.Net);
-                int row = grid.Rows.Add(r.PaidOn.ToString("MMM d, yyyy"), r.ReceiptNo, client, soaNo, TypeOf(r), sis, amount);
+                int row = grid.Rows.Add(r.PaidOn.ToString("MMM d, yyyy"), r.ReceiptNo, client, soaNo, TypeOf(r), sis, trips, amount);
                 grid.Rows[row].Tag = i;
                 total += amount; shown++;
             }
-            lblSummary.Text = shown == 0 ? "Nothing was fully paid in this period." : $"{shown:N0} settled record{(shown == 1 ? "" : "s")} · PHP {total:N2} collected";
+            string twiceNote = billedTwice.Count == 0 ? "" : $"   ·   ⚠ {billedTwice.Count} trip{(billedTwice.Count == 1 ? " is" : "s are")} billed more than once: {string.Join("; ", billedTwice.Take(3).Select(d => $"{d.TripLabel} ({string.Join(" + ", d.Invoices)})"))}{(billedTwice.Count > 3 ? "…" : "")}";
+            lblSummary.Text = (shown == 0 ? $"Nothing was fully paid between {dtFrom.Value:MMM d, yyyy} and {dtTo.Value:MMM d, yyyy}." : $"{shown:N0} settled record{(shown == 1 ? "" : "s")} · PHP {total:N2} collected") + twiceNote;
+            lblSummary.ForeColor = billedTwice.Count > 0 ? AppTheme.DangerText : AppTheme.TextSecondary;
         }
 
         private void OpenRecord(int rowIndex)
