@@ -188,5 +188,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             SyncTripReportStatus(conn, tx, deliveryId, SpecialTripIdOfInvoice(conn, tx, invoiceId));
         }
+        /// <summary>Normal, Special or Mixed: what kind of trips a collection target pays (chooses the receipt slip).</summary>
+        public static string PayTargetKind(PayTarget t)
+        {
+            if (t == null || t.Invoices.Count == 0) return SoaTypes.Normal;
+            bool special = t.Invoices.Any(i => i.SpecialTripId > 0), normal = t.Invoices.Any(i => i.SpecialTripId <= 0);
+            return special && normal ? SoaTypes.Mixed : special ? SoaTypes.Special : SoaTypes.Normal;
+        }
+
+        /// <summary>A statement is Paid when every invoice on it is paid, otherwise Unpaid. A cancelled statement stays cancelled.</summary>
+        private static void SyncSoaStatus(SqliteConnection conn, SqliteTransaction? tx, int soaId)
+        {
+            if (soaId <= 0) return;
+            using var c = conn.CreateCommand();
+            c.Transaction = tx;
+            c.CommandText = @"UPDATE StatementsOfAccount SET Status =
+                                CASE WHEN EXISTS (SELECT 1 FROM Invoices i WHERE COALESCE(i.SoaId,0) = @s AND COALESCE(i.Status,'') <> 'Cancelled' COLLATE NOCASE)
+                                      AND NOT EXISTS (SELECT 1 FROM Invoices i WHERE COALESCE(i.SoaId,0) = @s AND COALESCE(i.Status,'') NOT IN ('Paid','Cancelled'))
+                                     THEN 'Paid' ELSE 'Unpaid' END
+                              WHERE Id = @s AND COALESCE(Status,'') <> 'Cancelled' COLLATE NOCASE";
+            c.Parameters.AddWithValue("@s", soaId);
+            c.ExecuteNonQuery();
+        }
     }
 }

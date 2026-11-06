@@ -127,6 +127,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (target == null || target.Invoices.Count == 0) throw new InvalidOperationException("Pick the statement or the invoice being paid.");
             if (string.IsNullOrWhiteSpace(method)) throw new InvalidOperationException("Choose the payment method.");
             if (target.Invoices.Count > 1) EnsureReceiptSchemaForSoa();
+            EnsureWorkflowColumns();
             var rows = new List<CollectionReceipt>();
             using (var conn = new SqliteConnection(connectionString))
             {
@@ -134,6 +135,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 using var tx = conn.BeginTransaction();
                 try
                 {
+                    if (target.IsSoa)
+                    {
+                        // Nov 6 workflow: a statement is collected once, in full. A paid or cancelled one can't get another receipt.
+                        using var sc = conn.CreateCommand();
+                        sc.Transaction = tx;
+                        sc.CommandText = "SELECT COALESCE(Status,'') FROM StatementsOfAccount WHERE Id = @s";
+                        sc.Parameters.AddWithValue("@s", target.SoaId);
+                        string soaStatus = Convert.ToString(sc.ExecuteScalar()) ?? "";
+                        if (soaStatus.Equals(PayStatus.Paid, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException($"Statement {target.SoaNumber} is already paid.");
+                        if (soaStatus.Equals(PayStatus.Cancelled, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException($"Statement {target.SoaNumber} was cancelled, so it can't be collected.");
+                    }
                     foreach (var ti in target.Invoices)
                     {
                         // Re-read inside the transaction: still open, still on this statement, nothing paid.
@@ -169,8 +181,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         using (var ins = conn.CreateCommand())
                         {
                             ins.Transaction = tx;
-                            ins.CommandText = @"INSERT INTO CollectionReceipts (ReceiptNumber, InvoiceId, InvoiceNumber, PaymentDate, AmountPaid, PaymentMethod, ReferenceNumber, Notes, SoaId)
-                                                VALUES (@rn, @iid, @in, @pd, @ap, @pm, @rf, @n, @sid); SELECT last_insert_rowid();";
+                            ins.CommandText = @"INSERT INTO CollectionReceipts (ReceiptNumber, InvoiceId, InvoiceNumber, PaymentDate, AmountPaid, PaymentMethod, ReferenceNumber, Notes, SoaId, Status)
+                                                VALUES (@rn, @iid, @in, @pd, @ap, @pm, @rf, @n, @sid, 'Completed'); SELECT last_insert_rowid();";
                             ins.Parameters.AddWithValue("@rn", cr.ReceiptNumber);
                             ins.Parameters.AddWithValue("@iid", cr.InvoiceId);
                             ins.Parameters.AddWithValue("@in", cr.InvoiceNumber);
@@ -185,6 +197,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         RecalculateInvoiceStatus(conn, tx, ti.Id);
                         rows.Add(cr);
                     }
+                    if (target.IsSoa) SyncSoaStatus(conn, tx, target.SoaId); // every invoice is Paid now, so the statement is Paid
                     tx.Commit();
                 }
                 catch

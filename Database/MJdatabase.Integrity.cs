@@ -118,9 +118,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 case "CollectionReceipts":
                     {
                         ident = Scalar("SELECT ReceiptNumber FROM CollectionReceipts WHERE Id = @id");
-                        int invoiceId = int.TryParse(Scalar("SELECT InvoiceId FROM CollectionReceipts WHERE Id = @id"), out var iv) ? iv : 0;
-                        Exec("UPDATE CollectionReceipts SET IsVoid = 1, VoidedAt = @now, VoidedBy = @user WHERE Id = @id");
-                        RecalculateInvoiceStatus(conn, tx, invoiceId);
+                        // Nov 6: one receipt number pays a whole statement (one row per invoice), so the whole receipt is voided together.
+                        var voidRows = new List<(int InvoiceId, int SoaId)>();
+                        using (var vr = conn.CreateCommand())
+                        {
+                            vr.Transaction = tx;
+                            vr.CommandText = "SELECT InvoiceId, COALESCE(SoaId,0) FROM CollectionReceipts WHERE COALESCE(IsVoid,0) = 0 AND (Id = @id OR TRIM(ReceiptNumber) = (SELECT TRIM(ReceiptNumber) FROM CollectionReceipts WHERE Id = @id) COLLATE NOCASE)";
+                            vr.Parameters.AddWithValue("@id", id);
+                            using var rr = vr.ExecuteReader();
+                            while (rr.Read()) voidRows.Add((rr.GetInt32(0), rr.GetInt32(1)));
+                        }
+                        Exec("UPDATE CollectionReceipts SET IsVoid = 1, VoidedAt = @now, VoidedBy = @user WHERE COALESCE(IsVoid,0) = 0 AND (Id = @id OR TRIM(ReceiptNumber) = (SELECT TRIM(ReceiptNumber) FROM CollectionReceipts WHERE Id = @id) COLLATE NOCASE)");
+                        foreach (var v in voidRows) RecalculateInvoiceStatus(conn, tx, v.InvoiceId);
+                        foreach (int soaId in voidRows.Select(v => v.SoaId).Where(x => x > 0).Distinct()) SyncSoaStatus(conn, tx, soaId);
                         action = "VOID";
                         LastDeleteSummary = $"Receipt {ident} was voided. Its amount no longer counts toward the invoice; the record stays in the audit log.";
                         break;
