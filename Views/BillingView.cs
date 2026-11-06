@@ -24,18 +24,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Button btnCloseForm = null!;
         private float currentFormWidth = 420F;
 
-        public void PrefillForDelivery(Delivery del)
+        public bool PrefillForDelivery(Delivery del)
         {
-            if (del == null) return;
+            if (del == null) return false;
             del = DispatchGate.Fresh(del);
-            if (!DispatchGate.RequireCompleted(FindForm(), del, "bill it")) return;
+            if (!DispatchGate.RequireCompleted(FindForm(), del, "bill it")) return false;
             // Strict binding: only a trip with a saved trip report, not billed on a statement or another invoice.
             string? block = !(del.Id < 0 ? SpecialTripHasReport(-del.Id) : MJdatabase.HasTripReport(del.Id)) ? $"{del.DispatchNumber} has no saved trip report yet. File it first (Operations → Trip reports), then invoice the trip."
                 : MJdatabase.GetBilledDeliveryIds(0).TryGetValue(del.Id, out var soaNo) ? $"{del.DispatchNumber} is already billed on statement {soaNo}. Its invoice comes from that statement."
                 : MJdatabase.GetDirectlyInvoicedDeliveryIds().TryGetValue(del.Id, out var invNo) ? $"{del.DispatchNumber} is already invoiced ({invNo})."
                 : del.Id < 0 && MJdatabase.SpecialTripHasActiveInvoice(-del.Id) ? $"{del.DispatchNumber} already has its service invoice."
                 : null;
-            if (block != null) { MessageBox.Show(FindForm(), block, "Can't invoice this trip", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            if (block != null) { MessageBox.Show(FindForm(), block, "Can't invoice this trip", MessageBoxButtons.OK, MessageBoxIcon.Information); return false; }
             SetFormVisibility(true);
             int idx = completedDeliveries.FindIndex(d => d.Id == del.Id);
             if (idx >= 0 && idx < cbDelivery.Items.Count)
@@ -49,6 +49,58 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbDelivery.SelectedIndex = 0;
             }
             if (del.Id < 0) cbDelivery.Enabled = false; // Nov 6: opened from the special trip: this invoice is for that trip only
+            return true;
+        }
+
+        // ------------------------------------------------------------------ Nov 6 workflow: invoices issued from Trip Reports
+        private List<Delivery> batchQueue = new List<Delivery>();
+        private int batchIndex;
+        private Action? backToTripReports;
+
+        /// <summary>
+        /// Opens the invoice form for each trip in turn (one service invoice per trip): the next one opens after each save.
+        /// "Back to Trip Reports" stops the queue; trips not saved yet get no invoice (nothing is made until Save).
+        /// </summary>
+        public void StartBatch(IReadOnlyList<Delivery> trips, Action backToTripReports)
+        {
+            this.backToTripReports = backToTripReports;
+            batchQueue = (trips ?? new List<Delivery>()).Where(t => t != null).ToList();
+            batchIndex = 0;
+            SetBackLabel(true);
+            OpenBatchItem();
+        }
+
+        private void OpenBatchItem()
+        {
+            while (batchIndex < batchQueue.Count)
+            {
+                if (PrefillForDelivery(batchQueue[batchIndex]))
+                {
+                    if (batchQueue.Count > 1) lblFormHeader.Text = $"Invoice {batchIndex + 1} of {batchQueue.Count} · {batchQueue[batchIndex].DispatchNumber}";
+                    return;
+                }
+                batchIndex++; // this trip can't be invoiced (the message said why): go on with the next one
+            }
+            if (batchQueue.Count > 1) ToastHelper.ShowToast(this, $"Done: invoices were issued for the selected trips", ToastType.Success);
+            ReturnToTripReportsIfOpenedFromThere();
+        }
+
+        /// <summary>Ends the queue and goes back to Trip Reports when Billing was opened from there.</summary>
+        private void ReturnToTripReportsIfOpenedFromThere()
+        {
+            var back = backToTripReports;
+            batchQueue = new List<Delivery>();
+            batchIndex = 0;
+            backToTripReports = null;
+            SetBackLabel(false);
+            back?.Invoke();
+        }
+
+        private void SetBackLabel(bool fromTripReports)
+        {
+            if (btnCloseForm == null) return;
+            btnCloseForm.Text = fromTripReports ? "←  Back to Trip Reports" : "←  Back to invoices";
+            btnCloseForm.Width = Math.Max(btnCloseForm.Width, TextRenderer.MeasureText(btnCloseForm.Text, btnCloseForm.Font).Width + 36);
         }
 
         public BillingView()
@@ -137,7 +189,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Cursor = Cursors.Hand
             };
             btnCloseForm.FlatAppearance.BorderSize = 0;
-            btnCloseForm.Click += (s, e) => { if (FormGuard.ConfirmDiscard(this)) SetFormVisibility(false); };
+            btnCloseForm.Click += (s, e) => { if (FormGuard.ConfirmDiscard(this)) { SetFormVisibility(false); ReturnToTripReportsIfOpenedFromThere(); } };
             pnlFormHeaderBar.Controls.Add(btnCloseForm);
 
             SetFormVisibility(false);
@@ -218,16 +270,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridInvoices.CellFormatting += GridInvoices_CellFormatting;
         }
 
-        private decimal OverduePaid(int invoiceId)
-        {
-            if (billingPaid.Count == 0)
-            {
-                try { billingPaid = MJdatabase.GetCollectionReceipts().Where(r => r.InvoiceId > 0).GroupBy(r => r.InvoiceId).ToDictionary(g => g.Key, g => MJdatabase.Centavos(g.Sum(r => r.AmountPaid))); }
-                catch (Exception ex) { ErrLog.Swallowed(ex); }
-                if (billingPaid.Count == 0) billingPaid[-1] = 0m; // loaded, nothing paid: don't re-query on every paint
-            }
-            return billingPaid.TryGetValue(invoiceId, out var p) ? p : 0m;
-        }
         private void GridInvoices_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
             if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
@@ -240,23 +282,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     e.CellStyle.ForeColor = Pal.C(22, 101, 52);
                     e.CellStyle.Font = FontCache.Get(gridInvoices.Font, FontStyle.Bold);
                 }
-                else if (status.Equals("Partial", StringComparison.OrdinalIgnoreCase))
+                else if (status.Equals("Draft", StringComparison.OrdinalIgnoreCase))
                 {
                     e.CellStyle.BackColor = Pal.C(254, 243, 199);
                     e.CellStyle.ForeColor = Pal.C(180, 83, 9);
                     e.CellStyle.Font = FontCache.Get(gridInvoices.Font, FontStyle.Bold);
                 }
-                else if (status.Equals("Overdue", StringComparison.OrdinalIgnoreCase))
+                else if (status.Equals("Unpaid", StringComparison.OrdinalIgnoreCase) && gridInvoices.Rows[e.RowIndex].DataBoundItem is Invoice od && od.DueDate.Date < DateTime.Today)
                 {
+                    // Nov 6 workflow: "Overdue" is shown from the due date; the stored status stays Unpaid until it is Paid.
+                    e.Value = "Unpaid · overdue";
+                    e.FormattingApplied = true;
                     e.CellStyle.BackColor = Pal.C(254, 226, 226);
                     e.CellStyle.ForeColor = Pal.C(185, 28, 28);
                     e.CellStyle.Font = FontCache.Get(gridInvoices.Font, FontStyle.Bold);
-                    // Past due but partly paid: keep Overdue and show what has come in.
-                    if (gridInvoices.Rows[e.RowIndex].DataBoundItem is Invoice od && OverduePaid(od.Id) is var odPaid && odPaid > 0)
-                    {
-                        e.Value = $"Overdue · ₱{odPaid:N2} paid";
-                        e.FormattingApplied = true;
-                    }
                 }
                 else if (status.Equals("Unpaid", StringComparison.OrdinalIgnoreCase))
                 {
@@ -542,14 +581,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (!pnlForm.Visible) RefreshBillReady();
                 int unpaid = allInvoices.Count(i => i.Status == "Unpaid");
-                int partial = allInvoices.Count(i => i.Status == "Partial");
-                int overdue = allInvoices.Count(i => i.Status == "Overdue");
+                int drafts = allInvoices.Count(i => i.Status == "Draft");
+                int overdue = allInvoices.Count(i => i.Status == "Unpaid" && i.DueDate.Date < DateTime.Today);
                 int paid = allInvoices.Count(i => i.Status == "Paid");
                 int cancelled = allInvoices.Count(i => i.Status == "Cancelled");
                 // Cancelled invoices are not money billed.
                 decimal totalNet = allInvoices.Where(i => i.Status != "Cancelled").Sum(i => i.NetAmount);
 
-                lblSummary.Text = $"{allInvoices.Count:N0} invoice{(allInvoices.Count == 1 ? "" : "s")}  ·  {unpaid} unpaid  ·  {partial} partly paid  ·  {overdue} overdue  ·  {paid} paid{(cancelled > 0 ? $"  ·  {cancelled} cancelled" : "")}  ·  ₱{totalNet:N2} billed";
+                lblSummary.Text = $"{allInvoices.Count:N0} invoice{(allInvoices.Count == 1 ? "" : "s")}  ·  {unpaid} unpaid ({overdue} overdue)  ·  {drafts} draft  ·  {paid} paid{(cancelled > 0 ? $"  ·  {cancelled} cancelled" : "")}  ·  ₱{totalNet:N2} billed";
             }
             catch (Exception ex)
             { ErrLog.Error("BillingView", ex); 
@@ -621,11 +660,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 decimal total = numTotalAmount.Value;
                 decimal ded = numDeductions.Value;
 
-                if (total <= 0)
-                {
-                    MessageBox.Show("Invoice gross amount must be greater than PHP 0.00. Please verify the crate count or rate matrix.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
+                // Nov 6 workflow: no amount yet (no rate) is allowed; the invoice is kept as a Draft until it gets its amount.
 
                 if (ded > total)
                 {
@@ -646,16 +681,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     TotalAmount = total,
                     Deductions = ded,
                     NetAmount = net,
-                    Status = "Unpaid"
+                    Status = total > 0 ? PayStatus.Unpaid : PayStatus.Draft
                 };
 
                 MJdatabase.SaveInvoice(inv);
                 if (selDel.Id < 0) MJdatabase.LinkSpecialTripInvoice(inv.Id, -selDel.Id);
                 BillAfterSave(inv.Id, inv.InvoiceNumber);
-                QuietBox.Show("Service Invoice generated and issued with 15-day credit terms!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (inv.Status == PayStatus.Draft) ToastHelper.ShowToast(this, $"Invoice {inv.InvoiceNumber} saved as a draft — add its amount before it can go on a statement", ToastType.Warning);
+                else if (batchQueue.Count == 0) QuietBox.Show("Service Invoice generated and issued with 15-day credit terms!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                else ToastHelper.ShowToast(this, $"Invoice {inv.InvoiceNumber} issued (PHP {inv.NetAmount:N2})", ToastType.Success);
                 ClearFields();
                 LoadData();
                 SetFormVisibility(false);
+                if (batchQueue.Count > 0) { batchIndex++; OpenBatchItem(); }
             }
             catch (Exception ex)
             { ErrLog.Error("BillingView", ex); 
@@ -706,11 +744,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 decimal total = numTotalAmount.Value;
                 decimal ded = numDeductions.Value;
 
-                if (total <= 0)
-                {
-                    MessageBox.Show("Invoice gross amount must be greater than PHP 0.00.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
+                // Nov 6 workflow: an amount of PHP 0.00 keeps (or makes) the invoice a Draft instead of being refused.
 
                 if (ded > total)
                 {
@@ -731,7 +765,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedInvoice.Deductions = ded;
                 selectedInvoice.NetAmount = net;
 
-                if (string.Equals(selectedInvoice.Status, "Draft", StringComparison.OrdinalIgnoreCase))
+                if (total <= 0) selectedInvoice.Status = PayStatus.Draft;
+                else if (string.Equals(selectedInvoice.Status, "Draft", StringComparison.OrdinalIgnoreCase))
                 {
                     // A draft (e.g. from a completed special trip) becomes a real invoice once it has an amount.
                     selectedInvoice.Status = "Unpaid";
@@ -941,10 +976,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 bool isPaid = RowMenu.Is(inv.Status, "Paid") || (inv.NetAmount > 0 && balance <= 0);
                 bool isDraft = RowMenu.Is(inv.Status, "Draft");
                 m.Items.AddRange(RowMenu.Header($"🧾  Invoice {inv.InvoiceNumber}",
-                    $"{RowMenu.Short(inv.ClientName, 28)} · {RowMenu.Money(inv.NetAmount)} · {inv.Status}{(isPaid || isDraft ? "" : $" · balance {RowMenu.Money(balance)}")} · due {inv.DueDate:MMM d}"));
+                    $"{RowMenu.Short(inv.ClientName, 28)} · {RowMenu.Money(inv.NetAmount)} · {inv.Status} · due {inv.DueDate:MMM d}"));
                 m.Items.Add(RowMenu.Item("Open details", () => RecordDetailsDialog.ShowDetails(this, inv)));
                 m.Items.Add(RowMenu.Item(isDraft ? "Complete this draft invoice" : "Edit invoice", () => { SetFormVisibility(true); cbDelivery.Focus(); }));
-                if (!isPaid && !isDraft) m.Items.Add(RowMenu.Good($"Record payment ({RowMenu.Money(balance)} due)", () => OnRecordPaymentRequested?.Invoke(inv)));
+                if (!isPaid && !isDraft) m.Items.Add(RowMenu.Good($"Collect payment in full ({RowMenu.Money(inv.NetAmount)})", () => OnRecordPaymentRequested?.Invoke(inv)));
                 if (paid > 0) m.Items.Add(RowMenu.Item($"Show payments ({RowMenu.Money(paid)} received)", () => FinanceHubView.Of(this)?.ShowCollections(inv.InvoiceNumber)));
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.Item($"Open dispatch {inv.DispatchNumber}", () => RowMenu.OpenDispatch(this, inv.DeliveryId, inv.DispatchNumber), "", inv.DeliveryId > 0 || !string.IsNullOrWhiteSpace(inv.DispatchNumber)));

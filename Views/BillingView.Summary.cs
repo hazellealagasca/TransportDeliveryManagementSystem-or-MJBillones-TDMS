@@ -43,7 +43,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 decimal outstanding = list.Sum(Balance);
                 var overdue = list.Where(i => Balance(i) > 0 && i.DueDate.Date < DateTime.Today).ToList();
                 int paidCount = list.Count(i => Balance(i) == 0 && i.NetAmount > 0);
-                int partial = list.Count(i => Balance(i) > 0 && Paid(i) > 0);
                 int unpaid = list.Count(i => Balance(i) > 0 && Paid(i) == 0);
                 var m = new List<SummaryMetric>
                 {
@@ -53,7 +52,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     new("Outstanding", AllInOneSummaryBar.Money(outstanding), SummaryTone.Amber, "still to collect", Strong: outstanding > 0),
                     new("Overdue", overdue.Count.ToString("N0"), SummaryTone.Red, overdue.Count > 0 ? AllInOneSummaryBar.Money(overdue.Sum(Balance)) + " past due" : "none past due", Strong: overdue.Count > 0),
                     new("Paid in full", paidCount.ToString("N0"), SummaryTone.Green, "invoices"),
-                    new("Partly paid", partial.ToString("N0"), SummaryTone.Amber, "invoices"),
                     new("Unpaid", unpaid.ToString("N0"), SummaryTone.Purple, "invoices"),
                 };
                 string context = $"Invoices shown: {billingSummaryShown.Count:N0} (follows your search and filters)";
@@ -63,7 +61,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     m.Add(new SummaryMetric("Selected invoice", sel.InvoiceNumber, SummaryTone.Purple, $"{sel.Status} · {sel.ClientName}", Strong: true));
                     m.Add(new SummaryMetric("Its amount", AllInOneSummaryBar.Money(sel.NetAmount), SummaryTone.Teal, $"due {sel.DueDate:MMM d, yyyy}"));
-                    m.Add(new SummaryMetric("Its balance", AllInOneSummaryBar.Money(Balance(sel)), SummaryTone.Amber, $"paid {AllInOneSummaryBar.Money(Paid(sel))}", Strong: Balance(sel) > 0));
+                    m.Add(new SummaryMetric(Paid(sel) > 0 ? "Paid in full" : "To collect in full", AllInOneSummaryBar.Money(Paid(sel) > 0 ? Paid(sel) : Balance(sel)), Paid(sel) > 0 ? SummaryTone.Green : SummaryTone.Amber, Paid(sel) > 0 ? "collected" : "one receipt for the full amount", Strong: Balance(sel) > 0));
                     context = $"Selected invoice {sel.InvoiceNumber} — {sel.ClientName} · {sel.Status}   ·   Invoices shown: {billingSummaryShown.Count:N0}";
                 }
                 billingSummary.SetMetrics(m, preview, context);

@@ -1222,6 +1222,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (!DispatchGate.AllowIncident(this, delivery)) return;
             GetOperationsHub("Incidents")?.PrefillIncidentFromTrip(delivery.Id, delivery.DispatchNumber, 0, delivery.DispatchDate);
         }
+        /// <summary>
+        /// Nov 6 workflow: "Issue Invoice" on Trip Reports. Opens Billing on each trip in turn (one service invoice per trip);
+        /// "Back to Trip Reports" returns here without making anything that was not saved.
+        /// </summary>
+        public void OpenBillingFromTripReports(IReadOnlyList<Delivery> trips)
+        {
+            if (trips == null || trips.Count == 0) return;
+            NavigateToFinance("Billing");
+            if (viewCache.TryGetValue("FinanceHubView", out var fv) && fv is FinanceHubView fhv)
+                fhv.OpenTab<BillingView>("Billing")?.StartBatch(trips, () => NavigateToOperations("TripReports"));
+        }
         public void CreateInvoiceForDelivery(Delivery delivery)
         {
             delivery = DispatchGate.Fresh(delivery);

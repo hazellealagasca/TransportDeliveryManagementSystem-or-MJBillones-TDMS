@@ -77,4 +77,18 @@ public static partial class Checks
         MJdatabase.RunOperationalLifecycleAutomation();
         return InvStatus(id) == PayStatus.Unpaid ? "" : "got " + InvStatus(id);
     }
+
+    /// <summary>Task 8: a batch where one of three trips is saved and the user goes back leaves exactly one invoice and no drafts.</summary>
+    [Check]
+    public static string NoOrphanDraftInvoices()
+    {
+        Fresh(); RunBackfill();
+        var trips = Enumerable.Range(0, 3).Select(_ => { int d = Seed.Delivery(); Seed.TripReport(d); return d; }).ToList();
+        long before = Long("SELECT COUNT(*) FROM Invoices");
+        MJdatabase.SaveInvoice(NewInvoice(trips[0], 900m)); // the first trip is saved, then "Back to Trip Reports"
+        long after = Long("SELECT COUNT(*) FROM Invoices");
+        long others = Long("SELECT COUNT(*) FROM Invoices WHERE DeliveryId IN (@a, @b)", ("@a", trips[1]), ("@b", trips[2]));
+        long statusOthers = Long("SELECT COUNT(*) FROM TripReports WHERE DeliveryId IN (@a, @b) AND Status = 'Completed'", ("@a", trips[1]), ("@b", trips[2]));
+        return after - before == 1 && others == 0 && statusOthers == 2 ? "" : $"new {after - before}, others {others}, completed {statusOthers}";
+    }
 }

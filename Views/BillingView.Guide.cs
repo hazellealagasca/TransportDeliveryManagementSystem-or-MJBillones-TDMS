@@ -157,7 +157,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int n = 0;
             foreach (var inv in allInvoices.Where(i => (i.InvoiceNumber ?? "").Contains(q, StringComparison.OrdinalIgnoreCase)))
             {
-                var kind = RowMenu.Is(inv.Status, "Paid") ? BadgeKind.Good : RowMenu.Is(inv.Status, "Partial") ? BadgeKind.Warn : RowMenu.Is(inv.Status, "Overdue") ? BadgeKind.Bad : BadgeKind.Info;
+                var kind = RowMenu.Is(inv.Status, "Paid") ? BadgeKind.Good : RowMenu.Is(inv.Status, "Draft") ? BadgeKind.Warn : inv.DueDate.Date < DateTime.Today ? BadgeKind.Bad : BadgeKind.Info;
                 yield return new LookupItem(inv.InvoiceNumber, $"Existing · {inv.ClientName} · ₱{inv.NetAmount:N2} · {inv.IssueDate:MMM d, yyyy}{(inv.SoaId > 0 ? " · from a statement" : "")}", inv.Status, kind);
                 if (++n >= 20) yield break;
             }
