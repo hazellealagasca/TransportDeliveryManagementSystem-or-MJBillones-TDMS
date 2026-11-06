@@ -186,7 +186,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static string TripReportNos(List<StatementOfAccountItem> g) =>
             string.Join("<br/>", g.Select(x => (x.TripReportNumber ?? "").Trim()).Where(x => x.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)
                 .Select(x => Esc(x).Replace("-", "-<wbr>"))); // may break after a hyphen, so the table fits the page
+        /// <summary>The official SOA print: the Special Trip billing layout for a Special Trips SOA, else the multi-drop store DR layout.</summary>
         public static PrintFormDef StatementOfAccount(StatementOfAccount soa, List<StatementOfAccountItem> items)
+            => BuildStatementOfAccount(soa, items, soa.SoaType == SoaTypes.Special);
+
+        /// <summary>The Special Trip billing layout (one line per special trip: its reference, destination and trip charge).</summary>
+        public static PrintFormDef SpecialTripStatementOfAccount(StatementOfAccount soa, List<StatementOfAccountItem> items)
+            => BuildStatementOfAccount(soa, items, special: true);
+
+        private static PrintFormDef BuildStatementOfAccount(StatementOfAccount soa, List<StatementOfAccountItem> items, bool special)
         {
             var groups = items.GroupBy(i => i.TripNumber).OrderBy(g => g.Key).Select(g => g.ToList()).ToList();
             // A trip's amount and fuel surcharge are its lines added up (an amount typed on a later store line used to be left out).
@@ -200,7 +208,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             decimal fuel = soa.FuelSurchargeTotal > 0 ? soa.FuelSurchargeTotal : fuelSum;
             decimal wtax = soa.WithholdingTax > 0 ? soa.WithholdingTax : Math.Round(netOfVat * 0.02m, 2);
             decimal due = soa.TotalAmount > 0 ? soa.TotalAmount : Math.Round(netOfVat + vat - wtax, 2);
-            var o = NewOptions("SOA", "Statement of Account", $"{soa.SoaNumber} · {D(soa.IssueDate)}");
+            // Nov 6 workflow: new form keys, so layouts saved before (with zone, crates, trip report # columns) don't come back.
+            var o = NewOptions(special ? "SOA_Special" : "SOA_Official", special ? "Statement of Account — Special Trips" : "Statement of Account", $"{soa.SoaNumber} · {D(soa.IssueDate)}");
             o.Orientation = "Landscape";
             o.Fields = new List<PrintField>
             {
@@ -216,7 +225,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             o.Sections = new List<PrintChoice> { new("billto", "Billed-to details"), new("trips", "Trip lines table"), new("trip_total", "Trip totals row"), new("taxes", "VAT / withholding computation"), new("pay", "Payment instructions") };
             AddCommon(o);
-            o.Columns = new List<PrintChoice> { new("no", "No."), new("trip_report", "Trip report #"), new("date", "Date received"), new("zone", "Zone"), new("dr", "DR no."), new("code", "Store code", false), new("dest", "Destination"), new("crates", "Total crates"), new("type", "Type"), new("plate", "Plate no."), new("tons", "Tons"), new("drops", "Drops"), new("amount", "Amount"), new("fuel", "Fuel surcharge"), new("driver", "Driver / helper") };
+            // Commercial line items only. Crew appear by name as proof of who delivered, never with an amount.
+            o.Columns = special
+                ? new List<PrintChoice> { new("no", "No."), new("date", "Date"), new("trip_report", "Trip reference"), new("dest", "Destination"), new("plate", "Plate no."), new("tons", "Tons"), new("amount", "Trip charge"), new("fuel", "Fuel surcharge"), new("driver", "Driver / helper") }
+                : new List<PrintChoice> { new("no", "No."), new("dr", "DR no."), new("dest", "Destination store"), new("plate", "Plate no."), new("tons", "Tons"), new("drops", "Drops"), new("amount", "Freight tariff"), new("fuel", "Fuel surcharge"), new("driver", "Driver / helper") };
             o.Signatures = new List<PrintSig>
             {
                 new PrintSig("Prepared by", soa.PreparedBy, "Billing Officer", true),
@@ -224,19 +236,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 new PrintSig("Received by", soa.ReceivedBy2, "Accountant", true, !string.IsNullOrWhiteSpace(soa.ReceivedBy2)),
                 new PrintSig("Approved by", OwnerName, "Owner", false, false)
             };
-            var def = new PrintFormDef { Key = o.FormKey, Name = "Statement of account", FileName = $"SOA_{soa.SoaNumber}", Defaults = o };
+            var def = new PrintFormDef { Key = o.FormKey, Name = special ? "Statement of account (special trips)" : "Statement of account", FileName = $"SOA_{soa.SoaNumber}", Defaults = o };
             def.Body = opt =>
             {
                 var sb = new StringBuilder();
                 if (opt.On("billto")) sb.Append(FieldGrid(opt, 2, "billed_to", "soa_no", "client_address", "date", "client_tin", "period", "type", "si_no"));
                 if (opt.On("trips"))
                 {
-                    var cols = new (string Key, string Header, string Css, bool PerTrip)[]
-                    {
-                        ("no", "No.", "center", true), ("trip_report", "Trip report #", "center", true), ("date", "Date received", "center", true), ("zone", "Zone", "center", true), ("dr", "DR no.", "", false), ("code", "Store code", "center", false), ("dest", "Destination", "", false), ("crates", "Total crates", "num", false),
-                        ("type", "Type", "center", true), ("plate", "Plate no.", "center", true), ("tons", "Tons", "center", true), ("drops", "Drops", "center", true),
-                        ("amount", "Amount", "num", true), ("fuel", "Fuel surcharge", "num", true), ("driver", "Driver / helper", "", true)
-                    }.Where(c => opt.Col(c.Key)).ToList();
+                    var cols = (special
+                        ? new (string Key, string Header, string Css, bool PerTrip)[]
+                        {
+                            ("no", "No.", "center", true), ("date", "Date", "center", true), ("trip_report", "Trip reference", "center", true), ("dest", "Destination", "", false),
+                            ("plate", "Plate no.", "center", true), ("tons", "Tons", "center", true), ("amount", "Trip charge", "num", true), ("fuel", "Fuel surcharge", "num", true), ("driver", "Driver / helper", "", true)
+                        }
+                        : new (string Key, string Header, string Css, bool PerTrip)[]
+                        {
+                            ("no", "No.", "center", true), ("dr", "DR no.", "", false), ("dest", "Destination store", "", false), ("plate", "Plate no.", "center", true), ("tons", "Tons", "center", true),
+                            ("drops", "Drops", "center", true), ("amount", "Freight tariff", "num", true), ("fuel", "Fuel surcharge", "num", true), ("driver", "Driver / helper", "", true)
+                        }).Where(c => opt.Col(c.Key)).ToList();
                     sb.Append(SectionTitle("Trips"));
                     sb.Append("<table class='grid'><thead><tr>");
                     foreach (var c in cols) sb.Append($"<th class='{c.Css}'>{Esc(c.Header)}</th>");
@@ -283,8 +300,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (opt.On("taxes"))
                     sb.Append(Summary(new[]
                     {
-                        ("Total sales (VAT inclusive)", totalSales.ToString("N2")), ("Less: VAT (12%)", vat.ToString("N2")), ("Amount net of VAT", netOfVat.ToString("N2")),
-                        ("Fuel surcharge (included above)", fuel.ToString("N2")), ("Add: VAT", vat.ToString("N2")), ("Less: withholding tax", "- " + wtax.ToString("N2")), ("Total amount due", "₱" + due.ToString("N2"))
+                        ("Total sales (VAT inclusive)", totalSales.ToString("N2")), ("Less: VAT (12%)", vat.ToString("N2")), ("Net of VAT", netOfVat.ToString("N2")),
+                        ("Less: Expanded withholding tax (2%)", "- " + wtax.ToString("N2")), ("Total amount due", "₱" + due.ToString("N2"))
                     }, "Computation"));
                 if (opt.On("pay") && opt.FOn("pay_instr") && !string.IsNullOrWhiteSpace(opt.F("pay_instr"))) sb.Append($"<div class='note'><b>{Esc(opt.L("pay_instr"))}:</b> {Multi(opt.F("pay_instr"))}</div>");
                 return sb.ToString();
