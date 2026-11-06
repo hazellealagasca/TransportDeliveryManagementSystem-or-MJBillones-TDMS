@@ -91,4 +91,37 @@ public static partial class Checks
         long statusOthers = Long("SELECT COUNT(*) FROM TripReports WHERE DeliveryId IN (@a, @b) AND Status = 'Completed'", ("@a", trips[1]), ("@b", trips[2]));
         return after - before == 1 && others == 0 && statusOthers == 2 ? "" : $"new {after - before}, others {others}, completed {statusOthers}";
     }
+
+    // ---------------------------------------------------------------- Task 9: Draft trip reports
+
+    [Check]
+    public static string DraftReport_NotInvoiceable()
+    {
+        Fresh(); RunBackfill();
+        int d = Seed.Delivery(); int tr = Seed.TripReport(d);
+        Exec("UPDATE TripReports SET Status='Draft' WHERE Id=@i", ("@i", tr));
+        bool asDraft = MJdatabase.HasTripReport(d);
+        string refused = "";
+        try { MJdatabase.SaveInvoice(NewInvoice(d, 500m)); refused = "saved"; } catch (InvalidOperationException) { }
+        Exec("UPDATE TripReports SET Status='Completed' WHERE Id=@i", ("@i", tr));
+        bool asCompleted = MJdatabase.HasTripReport(d);
+        return !asDraft && refused.Length == 0 && asCompleted ? "" : $"draft counted {asDraft}, invoice {refused}, completed counted {asCompleted}";
+    }
+
+    [Check]
+    public static string SaveTripReport_KeepsDraftAndNeverUninvoices()
+    {
+        Fresh(); RunBackfill();
+        int d = Seed.Delivery();
+        string no = Str("SELECT DispatchNumber FROM Deliveries WHERE Id=@i", ("@i", d));
+        var tr = new TripReport { DeliveryId = d, DispatchNumber = no, StoreManagerLastName = "Santos", StoreManagerFirstName = "Ana", Status = TripReportStatus.Draft, DeliveredGCrates = 10, DeliveredECrates = 5 };
+        MJdatabase.SaveTripReport(tr);
+        int id = (int)Long("SELECT Id FROM TripReports WHERE DeliveryId=@d", ("@d", d));
+        string first = TrStatus(id);
+        Exec("UPDATE TripReports SET Status='Invoiced' WHERE Id=@i", ("@i", id));
+        var again = MJdatabase.GetTripReports().First(t => t.Id == id);
+        again.Status = TripReportStatus.Completed; again.Remarks = "edited";
+        MJdatabase.SaveTripReport(again);
+        return first == TripReportStatus.Draft && TrStatus(id) == TripReportStatus.Invoiced ? "" : $"first {first}, after edit {TrStatus(id)}";
+    }
 }

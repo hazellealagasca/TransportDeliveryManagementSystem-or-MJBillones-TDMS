@@ -32,8 +32,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             trTiles = new TileStrip();
             tReports = trTiles.Add(new StatTile("Trip reports", AppTheme.Accent, "in the selected period") { Clickable = true, Key = "all" });
-            tDelivered = trTiles.Add(new StatTile("Crates delivered", AppTheme.Success, ""));
-            tReturnRate = trTiles.Add(new StatTile("Return rate", AppTheme.Info, "returned ÷ delivered"));
+            // Nov 6 workflow: no "Crates delivered" or "Return rate" tiles; the list is about proof of delivery (kept off the strip).
+            tDelivered = new StatTile("Crates delivered", AppTheme.Success, "");
+            tReturnRate = new StatTile("Return rate", AppTheme.Info, "returned ÷ delivered");
             tShort = trTiles.Add(new StatTile("Short deliveries", AppTheme.Danger, "delivered less than planned") { Clickable = true, Key = "short" });
             tNoPod = trTiles.Add(new StatTile("Missing POD", AppTheme.Warning, "no proof-of-delivery file") { Clickable = true, Key = "nopod" });
             tAwaiting = trTiles.Add(new StatTile("Awaiting a report", AppTheme.Warning, "completed, no report yet") { Clickable = true, Key = "awaiting" });
@@ -104,7 +105,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 gridTripReports.Columns.Insert(Math.Min(3, gridTripReports.Columns.Count), c);
             }
             Extra("xFiles", "Files", 50, true);
-            Extra("xVariance", "Variance", 65, true);
             Extra("xPlanned", "Planned", 60, true);
             Extra("xDriver", "Driver", 110);
             Extra("xTruck", "Truck", 80);

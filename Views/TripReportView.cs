@@ -92,6 +92,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UIThemeHelper.ApplyTheme(this);
             StyleFullPageForm();
             InitReportCenter();
+            InitActiveHistoryBar(); // Nov 6 workflow: Active / History (invoiced) and Issue Invoice (Selected)
             FitStoreGridHeaders();
             ThemeManager.ThemeChanged += (s, e) => { try { if (!IsDisposed) BeginInvoke(new Action(FitStoreGridHeaders)); } catch (Exception ex) { ErrLog.Swallowed(ex); } };
         }
@@ -322,6 +323,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridStores.Columns.Add(Col("colRep", "Received by", 110, editStyle, 100));
             gridStores.Columns.Add(Locked("colLoadE", "Delivered E", 80, roNumStyle, 92));
             gridStores.Columns.Add(Locked("colLoadG", "Delivered G", 80, roNumStyle, 92));
+            // Nov 6 workflow: the trip report is proof of delivery (times, receiver, DRs). The delivered crates are the dispatched
+            // crates and stay in the table (hidden) for the totals; they are not shown or typed here.
+            gridStores.Columns["colLoadE"]!.Visible = false;
+            gridStores.Columns["colLoadG"]!.Visible = false;
             gridStores.Columns.Add(Locked("colRetE", "Returned E", 80, roNumStyle, 92));
             gridStores.Columns.Add(Locked("colRetG", "Returned G", 80, roNumStyle, 92));
             gridStores.Columns.Add(Col("colRem", "No. Drops", 66, editNumStyle, 80));
@@ -480,7 +485,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     int lines = lblDispatchInfoBanner.Text.Split('\n').Length;
                     lblDispatchInfoBanner.Height = Dpi(16) + lines * Dpi(21);
                 }
-                lblMultiDropDetails.Text = $"🏪 Stores & crates for this trip  ·  {routeTitle} ({stops.Count} stores)";
+                ShowTripOverview(d, refNum, routeTitle, stops.Count, incidents.Count > 0 ? string.Join(" | ", incidents.Select(i => $"{i.Cause}: {i.DamagedQuantity} damaged crates")) : "");
+                lblMultiDropDetails.Text = $"🏪 Stores for this trip  ·  {routeTitle} ({stops.Count} stores)";
                 foreach (var s in stops)
                 {
                     int loadE = (s.DeliveredECrates > 0 || s.DeliveredGCrates > 0) ? s.DeliveredECrates : s.ECrate;
@@ -997,9 +1003,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridTripReports.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ReportDate", HeaderText = "Date", DefaultCellStyle = { Format = "MM/dd/yyyy" }, FillWeight = 80, MinimumWidth = 85, ReadOnly = true });
             gridTripReports.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ArrivalTime", HeaderText = "Arrival", FillWeight = 80, MinimumWidth = 85, ReadOnly = true });
             gridTripReports.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DepartureTime", HeaderText = "Departure", FillWeight = 80, MinimumWidth = 85, ReadOnly = true });
-            gridTripReports.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DeliveredGCrates", HeaderText = "Del. G", FillWeight = 65, MinimumWidth = 65, ReadOnly = true });
-            gridTripReports.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DeliveredECrates", HeaderText = "Del. E", FillWeight = 65, MinimumWidth = 65, ReadOnly = true });
-            gridTripReports.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DeliveredCrates", HeaderText = "Total Del.", FillWeight = 75, MinimumWidth = 75, ReadOnly = true });
             gridTripReports.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ReturnedGCrates", HeaderText = "Ret. G", FillWeight = 65, MinimumWidth = 65, ReadOnly = true });
             gridTripReports.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ReturnedECrates", HeaderText = "Ret. E", FillWeight = 65, MinimumWidth = 65, ReadOnly = true });
             gridTripReports.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ReturnedCrates", HeaderText = "Total Ret.", FillWeight = 75, MinimumWidth = 75, ReadOnly = true });
@@ -1120,7 +1123,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
-        private void BtnSave_Click(object? sender, EventArgs e)
+        private void BtnSave_Click(object? sender, EventArgs e) => SaveNewReport(asDraft: false);
+
+        /// <summary>
+        /// Nov 6 workflow. "Issue Invoice": every step is checked, the report is saved as Completed and Billing opens on the trip.
+        /// "Save draft": only the dispatch is needed; the report is kept as a Draft (not billable) to finish later.
+        /// </summary>
+        private void SaveNewReport(bool asDraft)
         {
             try
             {
@@ -1134,7 +1143,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     valErrors.Add("Dispatch order selection is required.");
                     firstInvalid ??= cbDelivery;
                 }
-                if (string.IsNullOrWhiteSpace(txtStoreManagerLastName.Text) && string.IsNullOrWhiteSpace(txtStoreManagerFirstName.Text))
+                if (!asDraft && string.IsNullOrWhiteSpace(txtStoreManagerLastName.Text) && string.IsNullOrWhiteSpace(txtStoreManagerFirstName.Text))
                 {
                     // The name comes from the stores' "Received by" column (the manager name boxes are hidden on this form).
                     ValidationHelper.ApplyValidationState(txtStoreManagerLastName, false, "Store Manager / Representative is required.");
@@ -1143,14 +1152,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 int plannedDelivered = (int)numDeliveredGCrates.Value + (int)numDeliveredECrates.Value;
                 bool forSpecialTrip = (GetSelectedDelivery()?.Id ?? 0) < 0; // special trips may carry no crates
-                if (plannedDelivered <= 0 && !forSpecialTrip)
+                if (!asDraft && plannedDelivered <= 0 && !forSpecialTrip)
                 {
                     ValidationHelper.ApplyValidationState(numDeliveredGCrates, false, "Total delivered crates must be greater than zero.");
                     valErrors.Add("Total delivered crates must be greater than 0.");
                     firstInvalid ??= numDeliveredGCrates;
                 }
 
-                foreach (var (bfMsg, bfField) in BlankFormChecks()) { valErrors.Add(bfMsg); firstInvalid ??= bfField; } // Nov 6: times and sign-off names are typed
+                if (!asDraft) foreach (var (bfMsg, bfField) in BlankFormChecks()) { valErrors.Add(bfMsg); firstInvalid ??= bfField; } // Nov 6: times and sign-off names are typed
                 if (!ValidationHelper.ShowValidationSummaryIfAny(this, valErrors, firstInvalid))
                 {
                     return;
@@ -1171,103 +1180,105 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
-                if (!ConfirmDrNumbers(selDel)) return;
-                if (!ConfirmIncompleteStoresTwice()) return;
+                if (!asDraft && !ConfirmDrNumbers(selDel)) return;
+                if (!asDraft && !ConfirmIncompleteStoresTwice()) return;
                 var stopsToSave = CollectStopsFromGrid(selDel);
                 string smLastName = txtStoreManagerLastName.Text.Trim();
                 string smFirstName = txtStoreManagerFirstName.Text.Trim();
                 string smMiddleName = txtStoreManagerMiddleName.Text.Trim();
 
-                if (string.IsNullOrWhiteSpace(smLastName) && string.IsNullOrWhiteSpace(smFirstName))
+                if (!asDraft)
                 {
-                    var firstRepStop = stopsToSave.FirstOrDefault(st => !string.IsNullOrWhiteSpace(st.StoreManagerName));
-                    if (firstRepStop != null)
+                    if (string.IsNullOrWhiteSpace(smLastName) && string.IsNullOrWhiteSpace(smFirstName))
                     {
-                        var sp = NameHelper.SplitFullName(firstRepStop.StoreManagerName);
-                        smLastName = string.IsNullOrWhiteSpace(sp.LastName) ? firstRepStop.StoreManagerName : sp.LastName;
-                        smFirstName = string.IsNullOrWhiteSpace(sp.FirstName) ? "Store Rep" : sp.FirstName;
-                        smMiddleName = sp.MiddleName;
-                        txtStoreManagerLastName.Text = smLastName;
-                        txtStoreManagerFirstName.Text = smFirstName;
-                        txtStoreManagerMiddleName.Text = smMiddleName;
+                        var firstRepStop = stopsToSave.FirstOrDefault(st => !string.IsNullOrWhiteSpace(st.StoreManagerName));
+                        if (firstRepStop != null)
+                        {
+                            var sp = NameHelper.SplitFullName(firstRepStop.StoreManagerName);
+                            smLastName = string.IsNullOrWhiteSpace(sp.LastName) ? firstRepStop.StoreManagerName : sp.LastName;
+                            smFirstName = string.IsNullOrWhiteSpace(sp.FirstName) ? "Store Rep" : sp.FirstName;
+                            smMiddleName = sp.MiddleName;
+                            txtStoreManagerLastName.Text = smLastName;
+                            txtStoreManagerFirstName.Text = smFirstName;
+                            txtStoreManagerMiddleName.Text = smMiddleName;
+                        }
+                        else
+                        {
+                            smLastName = "Store";
+                            smFirstName = "Representative";
+                            txtStoreManagerLastName.Text = smLastName;
+                            txtStoreManagerFirstName.Text = smFirstName;
+                        }
                     }
-                    else
+
+                    if (string.IsNullOrWhiteSpace(smLastName) && string.IsNullOrWhiteSpace(smFirstName))
                     {
-                        smLastName = "Store";
-                        smFirstName = "Representative";
-                        txtStoreManagerLastName.Text = smLastName;
-                        txtStoreManagerFirstName.Text = smFirstName;
+                        var firstRepStop = stopsToSave.FirstOrDefault(st => !string.IsNullOrWhiteSpace(st.StoreManagerName));
+                        if (firstRepStop != null)
+                        {
+                            var sp = NameHelper.SplitFullName(firstRepStop.StoreManagerName);
+                            smLastName = string.IsNullOrWhiteSpace(sp.LastName) ? firstRepStop.StoreManagerName : sp.LastName;
+                            smFirstName = string.IsNullOrWhiteSpace(sp.FirstName) ? "Store Rep" : sp.FirstName;
+                            smMiddleName = sp.MiddleName;
+                            txtStoreManagerLastName.Text = smLastName;
+                            txtStoreManagerFirstName.Text = smFirstName;
+                            txtStoreManagerMiddleName.Text = smMiddleName;
+                        }
+                        else
+                        {
+                            smLastName = "Store";
+                            smFirstName = "Representative";
+                            txtStoreManagerLastName.Text = smLastName;
+                            txtStoreManagerFirstName.Text = smFirstName;
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(smLastName) && string.IsNullOrWhiteSpace(smFirstName))
+                    {
+                        var firstRepStop = stopsToSave.FirstOrDefault(st => !string.IsNullOrWhiteSpace(st.StoreManagerName));
+                        if (firstRepStop != null)
+                        {
+                            var sp = NameHelper.SplitFullName(firstRepStop.StoreManagerName);
+                            smLastName = string.IsNullOrWhiteSpace(sp.LastName) ? firstRepStop.StoreManagerName : sp.LastName;
+                            smFirstName = string.IsNullOrWhiteSpace(sp.FirstName) ? "Store Rep" : sp.FirstName;
+                            smMiddleName = sp.MiddleName;
+                            txtStoreManagerLastName.Text = smLastName;
+                            txtStoreManagerFirstName.Text = smFirstName;
+                            txtStoreManagerMiddleName.Text = smMiddleName;
+                        }
+                        else
+                        {
+                            smLastName = "Store";
+                            smFirstName = "Representative";
+                            txtStoreManagerLastName.Text = smLastName;
+                            txtStoreManagerFirstName.Text = smFirstName;
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(smLastName) || !SecurityHelper.IsValidName(smLastName))
+                    {
+                        MessageBox.Show("Store Manager / Receiving Personnel Last Name is required for delivery confirmation sign-off.", "Manager Sign-Off Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtStoreManagerLastName.Focus();
+                        return;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(smFirstName) || !SecurityHelper.IsValidName(smFirstName))
+                    {
+                        MessageBox.Show("Store Manager / Receiving Personnel First Name is required for delivery confirmation sign-off.", "Manager Sign-Off Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtStoreManagerFirstName.Focus();
+                        return;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(smMiddleName) && !SecurityHelper.IsValidName(smMiddleName))
+                    {
+                        MessageBox.Show("Please enter a valid middle name, or leave it blank.", "Manager Sign-Off Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtStoreManagerMiddleName.Focus();
+                        return;
                     }
                 }
-
-                if (string.IsNullOrWhiteSpace(smLastName) && string.IsNullOrWhiteSpace(smFirstName))
-                {
-                    var firstRepStop = stopsToSave.FirstOrDefault(st => !string.IsNullOrWhiteSpace(st.StoreManagerName));
-                    if (firstRepStop != null)
-                    {
-                        var sp = NameHelper.SplitFullName(firstRepStop.StoreManagerName);
-                        smLastName = string.IsNullOrWhiteSpace(sp.LastName) ? firstRepStop.StoreManagerName : sp.LastName;
-                        smFirstName = string.IsNullOrWhiteSpace(sp.FirstName) ? "Store Rep" : sp.FirstName;
-                        smMiddleName = sp.MiddleName;
-                        txtStoreManagerLastName.Text = smLastName;
-                        txtStoreManagerFirstName.Text = smFirstName;
-                        txtStoreManagerMiddleName.Text = smMiddleName;
-                    }
-                    else
-                    {
-                        smLastName = "Store";
-                        smFirstName = "Representative";
-                        txtStoreManagerLastName.Text = smLastName;
-                        txtStoreManagerFirstName.Text = smFirstName;
-                    }
-                }
-
-                if (string.IsNullOrWhiteSpace(smLastName) && string.IsNullOrWhiteSpace(smFirstName))
-                {
-                    var firstRepStop = stopsToSave.FirstOrDefault(st => !string.IsNullOrWhiteSpace(st.StoreManagerName));
-                    if (firstRepStop != null)
-                    {
-                        var sp = NameHelper.SplitFullName(firstRepStop.StoreManagerName);
-                        smLastName = string.IsNullOrWhiteSpace(sp.LastName) ? firstRepStop.StoreManagerName : sp.LastName;
-                        smFirstName = string.IsNullOrWhiteSpace(sp.FirstName) ? "Store Rep" : sp.FirstName;
-                        smMiddleName = sp.MiddleName;
-                        txtStoreManagerLastName.Text = smLastName;
-                        txtStoreManagerFirstName.Text = smFirstName;
-                        txtStoreManagerMiddleName.Text = smMiddleName;
-                    }
-                    else
-                    {
-                        smLastName = "Store";
-                        smFirstName = "Representative";
-                        txtStoreManagerLastName.Text = smLastName;
-                        txtStoreManagerFirstName.Text = smFirstName;
-                    }
-                }
-
-                if (string.IsNullOrWhiteSpace(smLastName) || !SecurityHelper.IsValidName(smLastName))
-                {
-                    MessageBox.Show("Store Manager / Receiving Personnel Last Name is required for delivery confirmation sign-off.", "Manager Sign-Off Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtStoreManagerLastName.Focus();
-                    return;
-                }
-
-                if (string.IsNullOrWhiteSpace(smFirstName) || !SecurityHelper.IsValidName(smFirstName))
-                {
-                    MessageBox.Show("Store Manager / Receiving Personnel First Name is required for delivery confirmation sign-off.", "Manager Sign-Off Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtStoreManagerFirstName.Focus();
-                    return;
-                }
-
-                if (!string.IsNullOrWhiteSpace(smMiddleName) && !SecurityHelper.IsValidName(smMiddleName))
-                {
-                    MessageBox.Show("Please enter a valid middle name, or leave it blank.", "Manager Sign-Off Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtStoreManagerMiddleName.Focus();
-                    return;
-                }
-
                 string storeManagerName = NameHelper.FormatFullName(smLastName, smFirstName, smMiddleName);
 
-                if (DateTime.TryParse(txtArrivalTime.Text.Trim(), out var arrTime) && DateTime.TryParse(txtDepartureTime.Text.Trim(), out var depTime))
+                if (!asDraft && DateTime.TryParse(txtArrivalTime.Text.Trim(), out var arrTime) && DateTime.TryParse(txtDepartureTime.Text.Trim(), out var depTime))
                 {
                     if (depTime < arrTime)
                     {
@@ -1288,7 +1299,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!EmptiesRecordedOrOk(rgc + rec, (int)numDeliveredGCrates.Value + (int)numDeliveredECrates.Value)) { numReturnedGCrates.Focus(); return; }
                 int totalDispatched = selDel.TotalCrates > 0 ? selDel.TotalCrates : (selDel.GCrate + selDel.ECrate);
                 int totalDelivered = dgc + dec;
-                if (totalDispatched > 0 && totalDelivered != totalDispatched)
+                if (!asDraft && totalDispatched > 0 && totalDelivered != totalDispatched)
                 {
                     var auditPrompt = MessageBox.Show(
                         $"Crate Variance Detected!\n\nDispatched Quantity: {totalDispatched} Crates\nDelivered Quantity: {totalDelivered} Crates\nDifference: {Math.Abs(totalDispatched - totalDelivered)} Crates\n\nDo you wish to proceed with completing this trip report?",
@@ -1325,7 +1336,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     DtrPreparedBy = txtDtrPreparedBy?.Text?.Trim() ?? "",
                     DrPreparedBy = txtDrPreparedBy?.Text?.Trim() ?? "",
                     DrCheckedBy = txtDrCheckedBy?.Text?.Trim() ?? "",
-                    GuardName = txtGuardName?.Text?.Trim() ?? ""
+                    GuardName = txtGuardName?.Text?.Trim() ?? "",
+                    Status = asDraft ? TripReportStatus.Draft : TripReportStatus.Completed
                 };
 
                 if (stopsToSave.Count > 0)
@@ -1336,7 +1348,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SaveCrewPayFor(selDel.Id);
                 MJdatabase.ClearFormDraft("TripReport", SessionContext.CurrentUsername);
                 if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
-                QuietBox.Show("Trip Report saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (asDraft)
+                {
+                    ToastHelper.ShowToast(this, $"Trip report for {selDel.DispatchNumber} saved as a draft. Finish it, then Issue Invoice.", ToastType.Info);
+                    ClearFields();
+                    LoadData();
+                    SetFormVisibility(false);
+                    return;
+                }
                 if (selDel.Id > 0 && totalDispatched > totalDelivered && Features.On(Features.Incidents))
                 {
                     int missing = totalDispatched - totalDelivered;
@@ -1351,6 +1370,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ClearFields();
                 LoadData();
                 SetFormVisibility(false);
+                // Step 4: the trip report is complete, so its service invoice is made next (Billing, with "Back to Trip Reports").
+                MainForm.Instance?.OpenBillingFromTripReports(new List<Delivery> { selDel });
             }
             catch (Exception ex)
             { ErrLog.Error("TripReportView", ex); 
@@ -1511,12 +1532,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     MJdatabase.SaveDispatchStops(selDel.Id, stopsToSave);
                 }
+                if (issueAfterUpdate) selectedTripReport.Status = TripReportStatus.Completed; // a Draft is finished here
                 MJdatabase.SaveTripReport(selectedTripReport);
                 if (selDel != null) SaveCrewPayFor(selDel.Id);
-                QuietBox.Show("Trip Report updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                var issueFor = issueAfterUpdate ? selDel : null;
+                if (issueFor == null) QuietBox.Show("Trip Report updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadData();
                 SetFormVisibility(false);
+                if (issueFor != null) MainForm.Instance?.OpenBillingFromTripReports(new List<Delivery> { issueFor });
             }
             catch (Exception ex)
             { ErrLog.Error("TripReportView", ex); 
@@ -1578,7 +1602,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     (DeliveryOf(t) is Delivery dq && ((dq.ClientName ?? "").ToLower().Contains(q) || (dq.DriverName ?? "").ToLower().Contains(q) || (dq.TruckInfo ?? "").ToLower().Contains(q)))
                 ).ToList();
 
-            filtered = ApplyCenter(filtered).ToList();
+            filtered = ApplyActiveOrHistory(ApplyCenter(filtered)).ToList();
             if (!string.IsNullOrEmpty(currentSortColumn))
             {
                 var prop = typeof(TripReport).GetProperty(currentSortColumn);

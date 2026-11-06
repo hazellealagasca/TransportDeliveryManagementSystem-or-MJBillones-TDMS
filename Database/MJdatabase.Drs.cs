@@ -62,18 +62,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return map;
         }
 
-        /// <summary>Ids of dispatches that have a saved (not voided) trip report.</summary>
+        /// <summary>Ids of dispatches that have a finished trip report (saved, not voided, not a Draft): the ones that can be billed.</summary>
         public static HashSet<int> GetTripReportDeliveryIds()
         {
             var set = new HashSet<int>();
             try
             {
+                EnsureWorkflowColumns();
                 using var conn = new SqliteConnection(connectionString);
                 conn.Open();
                 using var cmd = conn.CreateCommand();
                 cmd.CommandText = @"SELECT DISTINCT d.Id FROM Deliveries d
                                     JOIN TripReports t ON (t.DeliveryId = d.Id OR (COALESCE(t.DeliveryId, 0) = 0 AND t.DispatchNumber = d.DispatchNumber))
-                                    WHERE COALESCE(t.IsVoid, 0) = 0";
+                                    WHERE COALESCE(t.IsVoid, 0) = 0 AND COALESCE(t.Status, 'Completed') <> 'Draft'";
                 using var r = cmd.ExecuteReader();
                 while (r.Read()) set.Add(r.GetInt32(0));
             }

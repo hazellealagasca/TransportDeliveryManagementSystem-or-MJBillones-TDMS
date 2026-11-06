@@ -29,28 +29,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     gridTripReports.SelectionChanged += (s, e) => RenderTripListSummary();
                 }
                 var list = tripListSummaryShown;
-                int Del(TripReport t) => t.DeliveredCrates > 0 ? t.DeliveredCrates : Math.Max(0, t.DeliveredGCrates) + Math.Max(0, t.DeliveredECrates);
-                int Ret(TripReport t) => t.ReturnedCrates > 0 ? t.ReturnedCrates : Math.Max(0, t.ReturnedGCrates) + Math.Max(0, t.ReturnedECrates);
-                int Short(TripReport t) => Math.Max(0, t.DeliveredGCrates - t.ReturnedGCrates) + Math.Max(0, t.DeliveredECrates - t.ReturnedECrates);
-                int delivered = list.Sum(Del), returned = list.Sum(Ret), missing = list.Sum(Short);
-                int withShort = list.Count(t => Short(t) > 0);
+                // Nov 6 workflow: proof of delivery and billing progress, not delivered crates or return rates.
+                int drafts = list.Count(t => RowMenu.Is(t.Status, TripReportStatus.Draft));
+                int completed = list.Count(t => RowMenu.Is(t.Status, TripReportStatus.Completed));
+                int invoiced = list.Count(t => RowMenu.Is(t.Status, TripReportStatus.Invoiced));
+                int noGate = list.Count(t => string.IsNullOrWhiteSpace(t.TruckTimeIn) || string.IsNullOrWhiteSpace(t.TruckTimeOut));
                 var m = new List<SummaryMetric>
                 {
                     new("Reports shown", list.Count.ToString("N0"), SummaryTone.Blue, $"of {allTripReports.Count:N0} trip reports", Strong: true),
-                    new("Crates delivered", delivered.ToString("N0"), SummaryTone.Teal, "on the reports shown"),
-                    new("Crates returned", returned.ToString("N0"), SummaryTone.Green, "empties brought back"),
-                    new("Missing crates", missing.ToString("N0"), SummaryTone.Amber, "delivered but not returned", Strong: missing > 0),
-                    new("Trips with shortages", withShort.ToString("N0"), SummaryTone.Red, "reports", Strong: withShort > 0),
-                    new("Complete trips", (list.Count - withShort).ToString("N0"), SummaryTone.Green, "every crate returned"),
+                    new("Drafts", drafts.ToString("N0"), SummaryTone.Amber, "steps still to finish", Strong: drafts > 0),
+                    new("Ready to invoice", completed.ToString("N0"), SummaryTone.Teal, "completed, no invoice yet", Strong: completed > 0),
+                    new("Invoiced", invoiced.ToString("N0"), SummaryTone.Green, "in History"),
+                    new("No gate times", noGate.ToString("N0"), SummaryTone.Red, "time in / out missing", Strong: noGate > 0),
                 };
                 string context = $"Trip reports shown: {list.Count:N0} (follows your search and filters)";
-                string preview = $"{AllInOneSummaryBar.Count(list.Count, "report", "reports")}  ·  {delivered:N0} delivered  ·  {missing:N0} missing";
+                string preview = $"{AllInOneSummaryBar.Count(list.Count, "report", "reports")}  ·  {completed:N0} ready to invoice  ·  {drafts:N0} draft";
                 var sel = gridTripReports.SelectedRows.Count == 1 ? gridTripReports.SelectedRows[0].DataBoundItem as TripReport : null;
                 if (sel != null)
                 {
                     m.Add(new SummaryMetric("Selected report", sel.TripReportNumber, SummaryTone.Purple, $"{sel.DispatchNumber} · {sel.ReportDate:MMM d, yyyy}", Strong: true));
-                    m.Add(new SummaryMetric("Its crates", $"{Del(sel):N0} / {Ret(sel):N0}", SummaryTone.Teal, "delivered / returned"));
-                    m.Add(new SummaryMetric("Its missing crates", Short(sel).ToString("N0"), SummaryTone.Amber, Short(sel) > 0 ? "not returned" : "all returned", Strong: Short(sel) > 0));
+                    m.Add(new SummaryMetric("Its status", sel.Status, SummaryTone.Teal, $"gate {(string.IsNullOrWhiteSpace(sel.TruckTimeIn) ? "—" : sel.TruckTimeIn)} – {(string.IsNullOrWhiteSpace(sel.TruckTimeOut) ? "—" : sel.TruckTimeOut)}"));
                     context = $"Selected report {sel.TripReportNumber} — dispatch {sel.DispatchNumber}   ·   Trip reports shown: {list.Count:N0}";
                 }
                 tripListSummary.SetMetrics(m, preview, context);

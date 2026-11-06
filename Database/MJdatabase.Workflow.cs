@@ -232,5 +232,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bool special = l.Any(i => i.SpecialTripId > 0), normal = l.Any(i => i.SpecialTripId <= 0);
             return special && normal ? SoaTypes.Mixed : special ? SoaTypes.Special : SoaTypes.Normal;
         }
+
+        /// <summary>True when the dispatch has a trip report, but every (non-void) one is still a Draft.</summary>
+        public static bool HasOnlyDraftTripReport(int deliveryId)
+        {
+            if (deliveryId <= 0) return false;
+            EnsureWorkflowColumns();
+            using var conn = new SqliteConnection(connectionString);
+            conn.Open();
+            using var c = conn.CreateCommand();
+            c.CommandText = @"SELECT COUNT(*), COALESCE(SUM(CASE WHEN COALESCE(Status,'Completed') = 'Draft' THEN 1 ELSE 0 END),0)
+                              FROM TripReports WHERE COALESCE(DeliveryId,0) = @d AND COALESCE(IsVoid,0) = 0";
+            c.Parameters.AddWithValue("@d", deliveryId);
+            using var r = c.ExecuteReader();
+            if (!r.Read()) return false;
+            long all = r.GetInt64(0), drafts = r.GetInt64(1);
+            return all > 0 && drafts == all;
+        }
     }
 }

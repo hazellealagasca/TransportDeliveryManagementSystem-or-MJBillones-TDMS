@@ -11085,6 +11085,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     throw new InvalidOperationException($"Dispatch {d.DispatchNumber} was cancelled with no charge, so it can't be billed. Nothing was saved.");
                 if (d != null && !chargeableCancelled && !string.Equals(d.Status, "Completed", StringComparison.OrdinalIgnoreCase) && !string.Equals(d.Status, "Delivered", StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException($"Dispatch {d.DispatchNumber} is still \"{d.Status}\". Mark it completed in Dispatch before billing it.");
+                // Nov 6 workflow: a trip report saved as a Draft is not finished yet, so its trip can't be invoiced.
+                if (d != null && !chargeableCancelled && HasOnlyDraftTripReport(d.Id))
+                    throw new InvalidOperationException($"The trip report of {d.DispatchNumber} is still a Draft. Finish it (Issue Invoice on Trip Reports) before billing the trip. Nothing was saved.");
 
             }
 

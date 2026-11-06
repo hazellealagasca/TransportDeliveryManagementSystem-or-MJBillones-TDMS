@@ -100,12 +100,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnLogIncident.Height = Dpi(40);
             btnLogIncident.Font = new Font("Segoe UI Semibold", 9.5F);
             var card1 = CreateSectionCard(1, "Dispatch order", "Pick the delivery this report closes out. Its route, truck and crew load automatically.",
-                lblDel, cbDelivery, lblDispatchInfoBanner);
+                lblDel, cbDelivery, BuildTripOverview());
             tripCrateSummary = new TripCrateSummaryPanel();
-            var card2 = CreateSectionCard(2, "Stores & crates", "What each store received and what came back.",
-                pnlMultiDropInfo, CreateGap(Dpi(10)), tripCrateSummary, CreateGap(Dpi(12)), tblCrateTotals, CreateGap(Dpi(8)), btnLogIncident, tblTimes, tblManagerNames);
-            var card3 = CreateSectionCard(3, "Driver & aide pay", "Daily wage and meal allowance of each crew member on this trip, recorded with the report for reference.",
-                pnlCrewPay);
+            var card2 = CreateSectionCard(2, "Stores, times & signatures", "Each store's arrival and departure time, who received it, its DR numbers and the empties that came back.",
+                pnlMultiDropInfo, CreateGap(Dpi(8)), btnLogIncident, tblTimes, tblManagerNames);
+            _ = tblCrateTotals; // Nov 6 workflow: no delivered-crate totals or crate cards on the form (the values are still worked out)
+            // Nov 6 workflow: crew pay is internal and is recorded in Resources → Crew Trip History, not on the trip report.
             var card4 = CreateSectionCard(4, "Plant gate & sign-off", "Truck times at the plant, the people who signed, and any remarks.",
                 pnlTripFooter, lblRem, txtRemarks);
             tripAttachments = new AttachmentPanel("Proof of delivery (POD)") { Height = Dpi(250) };
@@ -115,15 +115,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlFormBody.Controls.Add(CreateSectionSpacer());
             pnlFormBody.Controls.Add(card4);
             pnlFormBody.Controls.Add(CreateSectionSpacer());
-            pnlFormBody.Controls.Add(card3);
-            var payGap = CreateSectionSpacer();
-            pnlFormBody.Controls.Add(payGap);
-            // Settings → Features & Pop-ups → "Crew pay on trip reports"
-            Features.Bind(card3, () => { bool on = Features.On(Features.CrewPay); card3.Visible = on; payGap.Visible = on; }, Features.CrewPay);
             pnlFormBody.Controls.Add(card2);
             pnlFormBody.Controls.Add(CreateSectionSpacer());
             pnlFormBody.Controls.Add(card1);
+            pnlFormBody.Controls.Add(CreateSectionSpacer());
+            pnlFormBody.Controls.Add(BuildTripStepper()); // the 4-step bar across the top
             pnlFormBody.ResumeLayout(true);
+            WireStepperRefresh();
         }
         private Panel CreateGap(int h) => new Panel { Height = h, BackColor = AppTheme.Surface };
         private Panel CreateSectionSpacer() => new Panel { Dock = DockStyle.Top, Height = Dpi(16), BackColor = AppTheme.Canvas };
@@ -241,7 +239,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblUpdateDelete.Visible = false;
             btnPrintFromForm = new Button { Text = "🖨  Print trip report", FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
             btnPrintFromForm.Click += (s, e) => PrintSelectedTripReport();
-            btnSave.Text = "✔  Complete trip";
+            btnSave.Text = "🧾  Issue Invoice";
             btnUpdate.Text = "💾  Save changes";
             btnClear.Text = "Clear form";
             foreach (var b in new[] { btnSave, btnUpdate, btnPrintFromForm, btnClear })
@@ -261,6 +259,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             flowFormActions.Controls.Add(btnUpdate);
             flowFormActions.Controls.Add(btnPrintFromForm);
             flowFormActions.Controls.Add(btnClear);
+            InitWorkflowButtons(flowFormActions);
             pnlFormActionsBar.Controls.Add(flowFormActions);
             flowFormActions.BringToFront();
             pnlFormActionsBar.Height = Dpi(66);
@@ -348,6 +347,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblFormHeader.Text = isEditingExistingReport && selectedTripReport != null
                 ? $"Trip Report  ·  {selectedTripReport.TripReportNumber}"
                 : "New Trip Report";
+            ApplyWorkflowFormMode();
         }
         private Delivery? GetSelectedDelivery()
         {
