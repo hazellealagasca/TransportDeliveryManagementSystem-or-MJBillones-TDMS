@@ -288,6 +288,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             c.Parameters.AddWithValue("@st", tripId);
             c.Parameters.AddWithValue("@id", invoiceId);
             c.ExecuteNonQuery();
+            SyncTripReportForInvoice(conn, null, invoiceId); // Nov 6: the special trip's report becomes Invoiced
         }
 
         private static void SetInvoiceStatusDirect(int invoiceId, string status, string number, string reason)
@@ -300,6 +301,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 c.Parameters.AddWithValue("@s", status);
                 c.Parameters.AddWithValue("@id", invoiceId);
                 c.ExecuteNonQuery();
+                SyncTripReportForInvoice(conn, null, invoiceId); // Nov 6: a cancelled invoice puts its trip report back to Completed
             }
             try { LogAuditTrail("UPDATE", "Invoices", invoiceId, number, "Status", "", status, reason); } catch (Exception ex) { ErrLog.Swallowed(ex); }
         }

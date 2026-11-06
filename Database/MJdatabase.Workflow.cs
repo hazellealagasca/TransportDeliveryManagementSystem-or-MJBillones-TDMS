@@ -131,5 +131,62 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try { LogAuditTrail("SCHEMA", l.Table, l.Id, l.Id.ToString(), l.Field, l.Old, l.New, $"Nov 6 workflow update: {l.Table}.{l.Field} {(l.Old.Length == 0 ? "(blank)" : l.Old)} → {l.New}. Backup: {backup}"); }
                 catch (Exception ex) { ErrLog.Swallowed(ex); }
         }
+        // ------------------------------------------------------------------ Trip report status follows the trip's service invoice
+
+        /// <summary>The special trip an invoice is linked to (0 when none).</summary>
+        private static int SpecialTripIdOfInvoice(SqliteConnection conn, SqliteTransaction? tx, int invoiceId)
+        {
+            if (invoiceId <= 0) return 0;
+            using var c = conn.CreateCommand();
+            c.Transaction = tx;
+            c.CommandText = "SELECT COALESCE(SpecialTripId,0) FROM Invoices WHERE Id = @i";
+            c.Parameters.AddWithValue("@i", invoiceId);
+            try { return Convert.ToInt32(c.ExecuteScalar() ?? 0); }
+            catch (SqliteException) { return 0; } // very old database without the column
+        }
+
+        /// <summary>
+        /// Sets the trip's (non-void) trip report to Invoiced while the trip has a service invoice that is not cancelled, and back to
+        /// Completed when it has none any more. Draft reports stay Draft until they get an invoice.
+        /// </summary>
+        private static void SyncTripReportStatus(SqliteConnection conn, SqliteTransaction? tx, int deliveryId, int specialTripId)
+        {
+            EnsureWorkflowColumns();
+            void One(string key, int id)
+            {
+                if (id <= 0) return;
+                bool invoiced;
+                using (var c = conn.CreateCommand())
+                {
+                    c.Transaction = tx;
+                    c.CommandText = $"SELECT COUNT(*) FROM Invoices WHERE COALESCE({key},0) = @id AND COALESCE(Status,'') <> 'Cancelled' COLLATE NOCASE";
+                    c.Parameters.AddWithValue("@id", id);
+                    invoiced = Convert.ToInt32(c.ExecuteScalar() ?? 0) > 0;
+                }
+                using var u = conn.CreateCommand();
+                u.Transaction = tx;
+                u.CommandText = invoiced
+                    ? $"UPDATE TripReports SET Status = 'Invoiced' WHERE COALESCE({key},0) = @id AND COALESCE(IsVoid,0) = 0 AND COALESCE(Status,'') <> 'Invoiced'"
+                    : $"UPDATE TripReports SET Status = 'Completed' WHERE COALESCE({key},0) = @id AND COALESCE(IsVoid,0) = 0 AND COALESCE(Status,'') = 'Invoiced'";
+                u.Parameters.AddWithValue("@id", id);
+                u.ExecuteNonQuery();
+            }
+            One("DeliveryId", deliveryId);
+            One("SpecialTripId", specialTripId);
+        }
+
+        /// <summary>Re-reads an invoice's trip and syncs that trip report (used after the invoice is linked, cancelled or changed elsewhere).</summary>
+        private static void SyncTripReportForInvoice(SqliteConnection conn, SqliteTransaction? tx, int invoiceId)
+        {
+            int deliveryId;
+            using (var c = conn.CreateCommand())
+            {
+                c.Transaction = tx;
+                c.CommandText = "SELECT COALESCE(DeliveryId,0) FROM Invoices WHERE Id = @i";
+                c.Parameters.AddWithValue("@i", invoiceId);
+                deliveryId = Convert.ToInt32(c.ExecuteScalar() ?? 0);
+            }
+            SyncTripReportStatus(conn, tx, deliveryId, SpecialTripIdOfInvoice(conn, tx, invoiceId));
+        }
     }
 }

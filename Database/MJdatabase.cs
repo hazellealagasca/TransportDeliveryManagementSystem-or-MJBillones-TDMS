@@ -329,13 +329,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             string newStatus;
 
-            if (netAmount > 0 && totalCollected >= netAmount) newStatus = "Paid";
-
-            else if (dueDate.Date < DateTime.Today) newStatus = "Overdue";
-
-            else if (totalCollected > 0) newStatus = "Partial";
-
-            else newStatus = "Unpaid";
+            // Nov 6 workflow: payments are always in full, so an invoice is Paid or Unpaid. "Overdue" is shown from the due date, never stored.
+            if (netAmount > 0 && totalCollected >= netAmount) newStatus = PayStatus.Paid;
+            else newStatus = PayStatus.Unpaid;
 
             using var updCmd = conn.CreateCommand();
 
@@ -7743,106 +7739,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
+        /// <summary>
+        /// Nov 6 workflow: "Overdue" is no longer stored (an invoice is Unpaid until it is Paid; the screens show an overdue badge from
+        /// the due date). Returns how many unpaid invoices passed their due date since the last check, for the start-up alert.
+        /// </summary>
         public static int UpdateOverdueInvoices()
-
         {
-
-            int updatedCount = 0;
-
             try
-
             {
-
+                const string key = "OverdueAlertCheckedThrough";
+                string today = DateTime.Today.ToString("yyyy-MM-dd");
+                string last = GetSystemSetting(key, "");
+                if (last == today) return 0;
+                int n;
                 using (var conn = new SqliteConnection(connectionString))
-
                 {
-
                     conn.Open();
-
-                    var cmd = conn.CreateCommand();
-
-                    cmd.CommandText = "SELECT Id, InvoiceNumber, DueDate, Status FROM Invoices WHERE Status IN ('Unpaid', 'Partial')";
-
-                    var toUpdate = new List<(int Id, string InvNum, string PrevStatus, DateTime DueDate)>();
-
-                    using (var reader = cmd.ExecuteReader())
-
-                    {
-
-                        DateTime today = DateTime.Today;
-
-                        while (reader.Read())
-
-                        {
-
-                            int id = reader.GetInt32(0);
-
-                            string invNum = reader.IsDBNull(1) ? "" : reader.GetString(1);
-
-                            DateTime dueDate = DateTime.TryParse(reader.GetString(2), out var dt) ? dt : today;
-
-                            string prevStatus = reader.IsDBNull(3) ? "Unpaid" : reader.GetString(3);
-
-                            if (dueDate.Date < today)
-
-                            {
-
-                                toUpdate.Add((id, invNum, prevStatus, dueDate));
-
-                            }
-
-                        }
-
-                    }
-
-                    if (toUpdate.Count > 0)
-
-                    {
-
-                        using (var tx = conn.BeginTransaction())
-
-                        {
-
-                            foreach (var item in toUpdate)
-
-                            {
-
-                                var uCmd = conn.CreateCommand();
-
-                                uCmd.Transaction = tx;
-
-                                uCmd.CommandText = "UPDATE Invoices SET Status = 'Overdue' WHERE Id = @id AND Status IN ('Unpaid', 'Partial')";
-
-                                uCmd.Parameters.AddWithValue("@id", item.Id);
-
-                                int rows = uCmd.ExecuteNonQuery();
-
-                                if (rows > 0) updatedCount++;
-
-                            }
-
-                            tx.Commit();
-
-                        }
-
-                        foreach (var item in toUpdate)
-
-                        {
-
-                            LogAuditTrail("AUTO_OVERDUE", "Invoices", item.Id, item.InvNum, "Status", item.PrevStatus, "Overdue", $"Invoice credit term expired on {item.DueDate:yyyy-MM-dd}: Automatic transition to Overdue");
-
-                        }
-
-                    }
-
+                    using var c = conn.CreateCommand();
+                    c.CommandText = "SELECT COUNT(*) FROM Invoices WHERE COALESCE(Status,'') = 'Unpaid' AND DueDate < @today" + (last.Length > 0 ? " AND DueDate >= @last" : "");
+                    c.Parameters.AddWithValue("@today", today);
+                    if (last.Length > 0) c.Parameters.AddWithValue("@last", last);
+                    n = Convert.ToInt32(c.ExecuteScalar() ?? 0);
                 }
-
+                SetSystemSetting(key, today, "Last day the overdue-invoice alert was checked");
+                return n;
             }
-
-            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] UpdateOverdueInvoices: {ex.Message}"); ErrLog.Swallowed(ex); }
-
-            return updatedCount;
-
+            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] UpdateOverdueInvoices: {ex.Message}"); ErrLog.Swallowed(ex); return 0; }
         }
 
         public static int UpdatePastDueLoadingSchedules()
@@ -11011,7 +10933,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         {
 
-            UpdateOverdueInvoices();
+            // Nov 6: no status is changed when invoices are read (overdue is shown from the due date)
 
             var list = new List<Invoice>();
 
@@ -11141,6 +11063,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         {
 
+            // Nov 6 workflow: an invoice with no amount yet (no rate) is kept as a Draft instead of being refused.
+            // Drafts can't go on a statement or be collected until they get their amount.
+            if (inv.TotalAmount <= 0 && !string.Equals(inv.Status, PayStatus.Cancelled, StringComparison.OrdinalIgnoreCase)) inv.Status = PayStatus.Draft;
             bool isDraft = string.Equals(inv.Status, "Draft", StringComparison.OrdinalIgnoreCase); // special-trip drafts get their amount later
 
             if (!isDraft && inv.TotalAmount <= 0) throw new InvalidOperationException("An invoice must be for more than PHP 0.00. Nothing was saved.");
@@ -11205,7 +11130,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 cmd.Parameters.AddWithValue("@soa", inv.SoaId);
 
-                cmd.Parameters.AddWithValue("@did", inv.DeliveryId);
+                cmd.Parameters.AddWithValue("@did", inv.DeliveryId > 0 ? inv.DeliveryId : DBNull.Value); // no dispatch (special trip): NULL, so the dispatch link stays valid
 
                 cmd.Parameters.AddWithValue("@c", inv.ClientName);
 
@@ -11221,11 +11146,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 cmd.Parameters.AddWithValue("@s", inv.Status);
 
+                int prevDeliveryId = 0;
+                if (!wasNew)
+                {
+                    using var pc = conn.CreateCommand();
+                    pc.CommandText = "SELECT COALESCE(DeliveryId,0) FROM Invoices WHERE Id = @i";
+                    pc.Parameters.AddWithValue("@i", inv.Id);
+                    prevDeliveryId = Convert.ToInt32(pc.ExecuteScalar() ?? 0);
+                }
                 var invIdObj = cmd.ExecuteScalar();
 
                 if (wasNew && invIdObj != null && invIdObj != DBNull.Value) inv.Id = Convert.ToInt32(invIdObj);
 
                 if (!wasNew) RecalculateInvoiceStatus(conn, null, inv.Id);
+                SyncTripReportStatus(conn, null, inv.DeliveryId, SpecialTripIdOfInvoice(conn, null, inv.Id)); // Nov 6: the trip report is Invoiced while the trip has an invoice
+                if (prevDeliveryId > 0 && prevDeliveryId != inv.DeliveryId) SyncTripReportStatus(conn, null, prevDeliveryId, 0); // the invoice moved off that trip
 
             }
 

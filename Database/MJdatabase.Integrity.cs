@@ -110,6 +110,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         if (!string.IsNullOrEmpty(onSoa))
                             throw new InvalidOperationException($"Invoice {ident} is on statement {onSoa}. Take its trip off that statement (or cancel the statement) first.");
                         Exec("UPDATE Invoices SET Status = 'Cancelled' WHERE Id = @id");
+                        SyncTripReportForInvoice(conn, tx, id); // Nov 6: its trip report goes back to Completed (active list)
                         action = "CANCEL";
                         LastDeleteSummary = $"Invoice {ident} was cancelled. It stays in the billing history and no longer counts as outstanding.";
                         break;
