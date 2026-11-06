@@ -26,3 +26,18 @@ public static partial class Checks
             ? "" : $"paid soa {hasPaidSoa}, lone {hasLone}, open listed {hasOpen}, count {list.Count}, outside range {outside.Count}";
     }
 }
+
+public static partial class Checks
+{
+    /// <summary>Final review: after the backfill, no invoice in the real data is left part-paid (a receipt below its net amount
+    /// blocks both a new receipt and the SOA picker, so such an invoice could never be settled).</summary>
+    [Check]
+    public static string RealCopy_NoPartPaidInvoiceLeft()
+    {
+        if (FromCopy() == null) return "no real database given";
+        MJdatabase.InitializeDatabase();
+        RunBackfill();
+        var stuck = MJdatabase.GetTripInvoices().Where(i => i.Collected > 0 && i.Collected < i.Net && !i.IsStatus(PayStatus.Cancelled)).Select(i => i.Number).ToList();
+        return stuck.Count == 0 ? "" : "part-paid invoices: " + string.Join(", ", stuck);
+    }
+}
