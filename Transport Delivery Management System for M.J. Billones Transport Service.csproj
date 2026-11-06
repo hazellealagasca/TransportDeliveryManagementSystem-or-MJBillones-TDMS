@@ -49,6 +49,9 @@
   <ItemGroup>
     <StrayCopy Include="**\*-1.cs;**\*-2.cs;**\*-3.cs;**\* - Copy*.cs;**\*(1).cs;**\*(2).cs;**\*(3).cs" Exclude="bin\**;obj\**" />
     <Compile Remove="@(StrayCopy)" />
+    <!-- The Verify checks are their own project (folder Verify). -->
+    <Compile Remove="Verify\**" />
+    <None Remove="Verify\**" />
   </ItemGroup>
   <Target Name="WarnStrayCopies" BeforeTargets="BeforeBuild" Condition="'@(StrayCopy)' != ''">
     <Warning Text="Left out of the build because they are duplicate copies of source files. Move them out of the project folder: @(StrayCopy)" />

@@ -48,6 +48,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public static string DbFilePath => dbFilePath;
 
+        /// <summary>
+        /// Points the data layer at another database file (used by the Verify checks on a copy, never by the app).
+        /// Also forgets the "schema already checked" flags so the next call checks the new file.
+        /// </summary>
+        public static void UseDatabaseFile(string path)
+        {
+            dbFilePath = path;
+            connectionString = $"Data Source={dbFilePath};Default Timeout=10;Foreign Keys=True;Pooling=False;";
+            attachmentsReady = marksReady = capacitySchemaReady = adjustmentColumnsReady = profileTablesReady = stopTypesReady = false;
+            receiptSchemaChecked = receiptSoaColumnChecked = false;
+        }
+
         // Single source of truth for status vocabulary used by conflict checks and resource locking.
 
         public const string ActiveDeliveryStatusesSql = "('Scheduled', 'Pending', 'In Transit', 'Rescheduled', 'Dispatched')";
