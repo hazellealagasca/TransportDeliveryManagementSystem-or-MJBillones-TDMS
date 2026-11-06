@@ -58,7 +58,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbInvoice.Items.Clear();
             foreach (var t in payTargets)
             {
-                string overdue = t.Invoices.Any(i => i.IsStatus("Overdue")) ? " [Overdue]" : "";
+                string overdue = t.DueDate.Date < DateTime.Today ? " [Overdue]" : ""; // shown from the due date (never a stored status)
                 cbInvoice.Items.Add($"{t.Title} - {t.Client} (PHP {t.Net:N2}){overdue}");
             }
             cbInvoice.SelectedIndex = -1; cbInvoice.Text = "";
@@ -181,13 +181,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             MJdatabase.SaveLookupItem("Payment Method", method);
             string rno = txtReceiptNo.Text.Trim();
             var rows = MJdatabase.SaveOneReceipt(rno, target, method, txtRefNo.Text.Trim(), txtNotes.Text.Trim());
-            QuietBox.Show(target.IsSoa
-                    ? $"Collection Receipt {rno} is saved: PHP {target.Net:N2} for statement {target.SoaNumber}.\n\nIts {rows.Count} service invoice(s) are now PAID: {string.Join(", ", target.Invoices.Select(i => i.Number))}."
-                    : $"Collection Receipt {rno} is saved: PHP {target.Net:N2} for service invoice {target.Invoices[0].Number}, which is now PAID.",
-                "Receipt saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
             ClearFields();
             LoadData();
             SetFormVisibility(false);
+            // Nov 6 workflow: the statement (or invoice) and its invoices are Paid now and move to Finance History.
+            string what = target.IsSoa
+                ? $"Collection Receipt {rno}: PHP {target.Net:N2} for statement {target.SoaNumber}. The statement and its {rows.Count} service invoice(s) are now PAID ({string.Join(", ", target.Invoices.Select(i => i.Number))})."
+                : $"Collection Receipt {rno}: PHP {target.Net:N2} for service invoice {target.Invoices[0].Number}, which is now PAID.";
+            var print = MessageBox.Show(FindForm(), what + "\n\nPayment recorded in full. Do you want to print the Official Collection Receipt now?", "Payment Completed", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
+            if (print == DialogResult.Yes && rows.Count > 0) PrintHelper.PrintOfficialCollectionReceipt(rows[0]); // the slip (normal or special trip) is chosen from what was paid
         }
 
         private void UpdateSelectedReceipt()

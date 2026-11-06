@@ -139,7 +139,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblInv.Padding = new System.Windows.Forms.Padding(0, 4, 0, 4);
             this.lblInv.Size = new System.Drawing.Size(185, 23);
             this.lblInv.TabIndex = 0;
-            this.lblInv.Text = "Select Invoice with Outstanding Balance:";
+            this.lblInv.Text = "Statement or invoice to collect:";
             this.cbInvoice.Dock = System.Windows.Forms.DockStyle.Top;
             this.cbInvoice.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cbInvoice.Font = new System.Drawing.Font("Segoe UI", 9.5F);
@@ -205,7 +205,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblAmt.Padding = new System.Windows.Forms.Padding(0, 0, 0, 5);
             this.lblAmt.Size = new System.Drawing.Size(167, 18);
             this.lblAmt.TabIndex = 0;
-            this.lblAmt.Text = "Payment Amount (PHP):";
+            this.lblAmt.Text = "Amount (full amount due, PHP):";
 
             this.numAmountPaid.DecimalPlaces = 2;
             this.numAmountPaid.Dock = System.Windows.Forms.DockStyle.Top;
@@ -303,7 +303,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(190, 32);
             this.btnSave.TabIndex = 0;
-            this.btnSave.Text = "💵 Record payment";
+            this.btnSave.Text = "✔ Payment Completed";
             this.btnSave.UseVisualStyleBackColor = false;
             this.btnSave.Click += new System.EventHandler(this.BtnSave_Click);
 
@@ -333,7 +333,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnUpdate.Name = "btnUpdate";
             this.btnUpdate.Size = new System.Drawing.Size(190, 32);
             this.btnUpdate.TabIndex = 1;
-            this.btnUpdate.Text = "✏️ Update receipt";
+            this.btnUpdate.Text = "✏️ Edit receipt details";
             this.btnUpdate.UseVisualStyleBackColor = false;
             this.btnUpdate.Click += new System.EventHandler(this.BtnUpdate_Click);
 

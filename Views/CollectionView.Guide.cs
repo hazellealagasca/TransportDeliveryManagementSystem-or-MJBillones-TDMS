@@ -202,12 +202,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (inv != null) collStrip.SetTotals(inv.TotalAmount, inv.Deductions, collPaidOthers, Math.Max(0, inv.NetAmount - collPaidOthers - amt), fails, warns);
             else collStrip.SetTotals(0, 0, 0, 0, fails, warns);
             bool editing = selectedCollection != null;
-            if (editing) collStepper.SetProgress(fails > 0 ? 3 : 4, fails > 0 ? $"Editing receipt {selectedCollection!.ReceiptNumber}: {fails} to fix — see the checklist." : $"Receipt {selectedCollection!.ReceiptNumber} is valid — Update saves the changes.");
+            if (editing) collStepper.SetProgress(fails > 0 ? 3 : 4, fails > 0 ? $"Editing receipt {selectedCollection!.ReceiptNumber}: {fails} to fix — see the checklist." : $"Receipt {selectedCollection!.ReceiptNumber} is valid — Edit receipt details saves the changes.");
             else if (inv == null) collStepper.SetProgress(unpaidInvoices.Count > 0 ? 1 : 0, unpaidInvoices.Count > 0
-                ? $"{unpaidInvoices.Count} invoice{(unpaidInvoices.Count == 1 ? " has" : "s have")} a balance — pick the one being paid."
+                ? $"{unpaidInvoices.Count} statement{(unpaidInvoices.Count == 1 ? " or invoice is" : "s or invoices are")} waiting for payment — pick the one being paid in full."
                 : "No invoices are waiting for payment.");
             else if (fails > 0) collStepper.SetProgress(2, $"Review: {fails} item{(fails == 1 ? "" : "s")} to fix — see the checklist at the bottom.");
-            else collStepper.SetProgress(4, amt < Math.Max(0, inv.NetAmount - collPaidOthers) ? $"✓ Validated — partial payment; ₱{inv.NetAmount - collPaidOthers - amt:N2} will remain." : "✓ Validated — this payment settles the invoice in full.");
+            else collStepper.SetProgress(4, "✓ Validated — Payment Completed records the full amount and marks the statement and its invoices Paid.");
             string method = cbPaymentMethod.Text.Trim();
             FieldMarks.Mark(txtRefNo, checks.Any(c => !c.Passed && c.Text.StartsWith("Reference") || !c.Passed && c.Text.StartsWith("Enter the reference")) ? FieldState.Bad : txtRefNo.Text.Trim().Length > 0 ? FieldState.Ok : FieldState.None);
             FieldMarks.Mark(numAmountPaid, checks.Any(c => !c.Passed && (c.Text.Contains("balance") || c.Text.StartsWith("Enter the amount"))) ? FieldState.Bad : amt > 0 ? FieldState.Ok : FieldState.None);

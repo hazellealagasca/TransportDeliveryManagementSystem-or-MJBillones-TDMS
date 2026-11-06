@@ -117,10 +117,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var rcSoa = cr.SoaId > 0 || rcRows.Any(r => r.SoaId > 0) ? MJdatabase.GetStatementsOfAccount().FirstOrDefault(s => s.Id == (cr.SoaId > 0 ? cr.SoaId : rcRows.First(r => r.SoaId > 0).SoaId)) : null;
             var client = inv == null ? null : MJdatabase.GetClients().FirstOrDefault(c => c.CompanyName.Equals(inv.ClientName, StringComparison.OrdinalIgnoreCase));
             decimal gross = paidInvs.Sum(x => x.Inv?.TotalAmount ?? x.Row.AmountPaid), ded = paidInvs.Sum(x => x.Inv?.Deductions ?? 0), net = paidInvs.Sum(x => x.Inv?.NetAmount ?? x.Row.AmountPaid);
-            decimal collected = paidInvs.Sum(x => x.Inv != null ? MJdatabase.GetTotalCollectedForInvoice(x.Inv.Id) : x.Row.AmountPaid);
-            decimal balance = Math.Max(0, net - collected);
             string method = string.IsNullOrWhiteSpace(cr.PaymentMethod) ? "Cash" : cr.PaymentMethod;
-            var o = NewOptions("OfficialReceipt", "Collection Receipt", $"No. {cr.ReceiptNumber}");
+            // Nov 6 workflow: special trips get their own receipt slip (their trip reference and destination), normal trips the SI / trip slip.
+            var tripInvs = MJdatabase.GetTripInvoices().Where(t => rcRows.Any(r => r.InvoiceId == t.Id)).ToList();
+            bool special = rcSoa != null ? rcSoa.SoaType == SoaTypes.Special : tripInvs.Count > 0 && tripInvs.All(t => t.SpecialTripId > 0);
+            var specialTrips = special ? MJdatabase.GetSpecialTrips().Where(t => tripInvs.Any(i => i.SpecialTripId == t.Id)).ToDictionary(t => t.Id) : new Dictionary<int, SpecialTrip>();
+            var o = NewOptions(special ? "OfficialReceiptSpecial" : "OfficialReceipt", special ? "Collection Receipt — Special Trip" : "Collection Receipt", $"No. {cr.ReceiptNumber}");
             o.CopyLabel = "Original";
             o.Fields = new List<PrintField>
             {
@@ -140,13 +142,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             o.Sections = new List<PrintChoice>
             {
                 new PrintChoice("method_boxes", "Payment method tick boxes"),
-                new PrintChoice("breakdown", "Invoice breakdown table"),
-                new PrintChoice("balance", "Remaining balance"),
+                new PrintChoice("breakdown", special ? "Special trips paid" : "Invoice breakdown table"),
+                new PrintChoice("totals", "Payment summary"),
             };
             AddCommon(o);
-            o.Columns = new List<PrintChoice> { new("inv", "Invoice #"), new("gross", "Gross"), new("ded", "Deductions"), new("net", "Net due"), new("paid", "Amount paid"), new("bal", "Balance") };
+            // Payments are always in full, so there is no balance column.
+            o.Columns = special
+                ? new List<PrintChoice> { new("ref", "Trip reference"), new("dest", "Destination"), new("inv", "SI No."), new("paid", "Amount paid") }
+                : new List<PrintChoice> { new("inv", "Invoice #"), new("gross", "Gross"), new("ded", "Deductions"), new("net", "Net due"), new("paid", "Amount paid") };
             o.Signatures = new List<PrintSig> { new PrintSig("Received by", CurrentUserName, "Cashier / Collector", true), new PrintSig("Paid by", "", "Client representative", false) };
-            var def = new PrintFormDef { Key = o.FormKey, Name = "Collection receipt", FileName = $"Receipt_{cr.ReceiptNumber}", Defaults = o };
+            var def = new PrintFormDef { Key = o.FormKey, Name = special ? "Collection receipt (special trip)" : "Collection receipt", FileName = $"Receipt_{cr.ReceiptNumber}", Defaults = o };
             def.Body = opt =>
             {
                 var sb = new StringBuilder();
@@ -168,11 +173,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 sb.Append(FieldGrid(opt, 2, "reference", "method"));
                 if (opt.On("breakdown"))
                 {
-                    sb.Append(SectionTitle("Applied to"));
-                    sb.Append(Table(opt, new[] { ("inv", "Invoice #", ""), ("gross", "Gross", "num"), ("ded", "Deductions", "num"), ("net", "Net due", "num"), ("paid", "Amount paid", "num"), ("bal", "Balance", "num") },
-                        paidInvs.Select(x => Row(("inv", (x.Inv?.InvoiceNumber ?? x.Row.InvoiceNumber) + (string.IsNullOrWhiteSpace(x.Inv?.DispatchNumber) ? "" : " (trip " + x.Inv!.DispatchNumber + ")")), ("gross", Money(x.Inv?.TotalAmount ?? x.Row.AmountPaid)), ("ded", (x.Inv?.Deductions ?? 0) > 0 ? "- " + Money(x.Inv!.Deductions) : Money(0)), ("net", Money(x.Inv?.NetAmount ?? x.Row.AmountPaid)), ("paid", $"<b>{Esc(Money(x.Row.AmountPaid))}</b>"), ("bal", Math.Max(0, (x.Inv?.NetAmount ?? x.Row.AmountPaid) - x.Row.AmountPaid) > 0 ? Money(Math.Max(0, (x.Inv?.NetAmount ?? 0) - x.Row.AmountPaid)) : "Fully paid"))).ToArray()));
+                    sb.Append(SectionTitle(special ? "Special trips paid" : "Applied to"));
+                    if (special)
+                        sb.Append(Table(opt, new[] { ("ref", "Trip reference", ""), ("dest", "Destination", ""), ("inv", "SI No.", ""), ("paid", "Amount paid", "num") },
+                            paidInvs.Select(x =>
+                            {
+                                var ti = tripInvs.FirstOrDefault(t => t.Id == x.Row.InvoiceId);
+                                specialTrips.TryGetValue(ti?.SpecialTripId ?? 0, out var st);
+                                return Row(("ref", Esc(st?.OrderReference ?? x.Inv?.DispatchNumber ?? "")), ("dest", Esc(st == null ? "" : (string.IsNullOrWhiteSpace(st.DestinationAddress) ? st.Address : st.DestinationAddress))),
+                                           ("inv", Esc(x.Inv?.InvoiceNumber ?? x.Row.InvoiceNumber)), ("paid", $"<b>{Esc(Money(x.Row.AmountPaid))}</b>"));
+                            }).ToArray()));
+                    else
+                        sb.Append(Table(opt, new[] { ("inv", "Invoice #", ""), ("gross", "Gross", "num"), ("ded", "Deductions", "num"), ("net", "Net due", "num"), ("paid", "Amount paid", "num") },
+                            paidInvs.Select(x => Row(("inv", (x.Inv?.InvoiceNumber ?? x.Row.InvoiceNumber) + (string.IsNullOrWhiteSpace(x.Inv?.DispatchNumber) ? "" : " (trip " + x.Inv!.DispatchNumber + ")")), ("gross", Money(x.Inv?.TotalAmount ?? x.Row.AmountPaid)), ("ded", (x.Inv?.Deductions ?? 0) > 0 ? "- " + Money(x.Inv!.Deductions) : Money(0)), ("net", Money(x.Inv?.NetAmount ?? x.Row.AmountPaid)), ("paid", $"<b>{Esc(Money(x.Row.AmountPaid))}</b>"))).ToArray()));
                 }
-                if (opt.On("balance")) sb.Append(Summary(new[] { ("Invoices paid", paidInvs.Count.ToString()), ("Gross", Money(gross)), ("Deductions", "- " + Money(ded)), ("Net amount", Money(net)), ("Amount received", Money(rcTotal)), ("Method / reference", method + (string.IsNullOrWhiteSpace(cr.ReferenceNumber) ? "" : " · " + cr.ReferenceNumber)) }));
+                // Paid in full: the summary shows what was received, never a balance.
+                if (opt.On("totals")) sb.Append(Summary(new[] { (special ? "Special trips paid" : "Invoices paid", paidInvs.Count.ToString()), ("Gross", Money(gross)), ("Deductions", "- " + Money(ded)), ("Net amount", Money(net)), ("Amount received (paid in full)", Money(rcTotal)), ("Method / reference", method + (string.IsNullOrWhiteSpace(cr.ReferenceNumber) ? "" : " · " + cr.ReferenceNumber)) }));
                 sb.Append(FieldGrid(opt, 1, "remarks"));
                 if (opt.FOn("atp") && !string.IsNullOrWhiteSpace(opt.F("atp"))) sb.Append($"<div style='margin-top:10px;font-size:.78em;text-align:center;color:#333'>{Multi(opt.F("atp"))}</div>");
                 return sb.ToString();

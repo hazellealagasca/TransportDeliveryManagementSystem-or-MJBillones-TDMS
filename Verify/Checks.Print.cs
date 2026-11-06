@@ -38,7 +38,7 @@ public static partial class Checks
         var (soa, items) = PrintSample(SoaTypes.Special);
         var def = PrintForms.StatementOfAccount(soa, items);
         string h = Html(def);
-        return def.Key == "SOA_Special" && h.Contains("Trip charge") && h.Contains("XYZ") && !h.Contains("DR no.") ? "" : $"key {def.Key}; trip charge {h.Contains("Trip charge")}; ref {h.Contains("XYZ")}; dr {h.Contains("DR no.")}; html: {System.Text.RegularExpressions.Regex.Replace(h.Substring(Math.Max(0, h.IndexOf("<table class='grid'"))), "\\s+", " ").Substring(0, 900)}";
+        return def.Key == "SOA_Special" && h.Contains("Trip charge") && h.Contains("XYZ") && !h.Contains("DR no.") ? "" : $"key {def.Key}; trip charge {h.Contains("Trip charge")}; ref {h.Contains("XYZ")}; dr {h.Contains("DR no.")}";
     }
 
     [Check]
