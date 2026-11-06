@@ -564,8 +564,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tCrew.ValueColor2 = freeAides == 0 && aides.Count > 0 ? AppTheme.DangerText : null;
             var paidByInvoice = data.Receipts.GroupBy(r => r.InvoiceId).ToDictionary(g => g.Key, g => g.Sum(r => r.AmountPaid));
             decimal Balance(Invoice i) => Math.Max(0, i.NetAmount - (paidByInvoice.TryGetValue(i.Id, out var p) ? p : 0));
-            var openInv = data.Invoices.Where(i => RowMenu.Is(i.Status, "Unpaid", "Partial", "Overdue")).ToList();
-            var overdue = openInv.Where(i => RowMenu.Is(i.Status, "Overdue") || i.DueDate.Date < DateTime.Today).ToList();
+            var openInv = data.Invoices.Where(i => RowMenu.Is(i.Status, PayStatus.Unpaid)).ToList();
+            var overdue = openInv.Where(i => i.DueDate.Date < DateTime.Today).ToList();
             var reported = new HashSet<int>(data.TripReports.Select(t => t.DeliveryId));
             var reportedNums = new HashSet<string>(data.TripReports.Select(t => t.DispatchNumber ?? ""), StringComparer.OrdinalIgnoreCase);
             var invoicedIds = new HashSet<int>(data.Invoices.Select(i => i.DeliveryId).Where(i => i > 0));

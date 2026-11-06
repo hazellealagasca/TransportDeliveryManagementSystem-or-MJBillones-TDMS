@@ -391,8 +391,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 subtitle = $"Client Delivery Statement • {inv.ClientName}";
                 statusBadge = inv.Status;
                 if (inv.Status == "Paid") { badgeBg = Pal.C(220, 252, 231); badgeFg = Pal.C(22, 101, 52); }
-                else if (inv.Status == "Partial") { badgeBg = Pal.C(254, 243, 199); badgeFg = Pal.C(180, 83, 9); }
-                else if (inv.Status == "Overdue") { badgeBg = Pal.C(254, 226, 226); badgeFg = Pal.C(185, 28, 28); }
+                else if (inv.Status == "Draft") { badgeBg = Pal.C(254, 243, 199); badgeFg = Pal.C(180, 83, 9); }
+                else if (inv.Status == "Unpaid" && inv.DueDate.Date < DateTime.Today) { statusBadge = "Unpaid · overdue"; badgeBg = Pal.C(254, 226, 226); badgeFg = Pal.C(185, 28, 28); }
                 else { badgeBg = Pal.C(241, 245, 249); badgeFg = Pal.C(51, 65, 85); }
                 var matchReceipts = MJdatabase.GetCollectionReceipts().Where(c => c.InvoiceId == inv.Id).ToList();
                 decimal totalPaid = matchReceipts.Sum(c => c.AmountPaid);

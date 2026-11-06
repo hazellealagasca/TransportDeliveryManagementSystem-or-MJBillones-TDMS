@@ -22,6 +22,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private FlowLayoutPanel pnlGridActionsFlow = null!;
         private TextBox txtGridSearch = null!;
         private ComboBox cbFilterClient = null!;
+        private ChoiceChip? paidChip;
         private Button btnToggleForm = null!;
         private Button btnCloseForm = null!;
         private Button btnPrintOfficial = null!;
@@ -246,6 +247,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             new ToolTip().SetToolTip(cbFilterClient, "Show only one client's statements");
             pnlGridActionsFlow.Controls.Add(txtGridSearch);
             pnlGridActionsFlow.Controls.Add(cbFilterClient);
+            paidChip = new ChoiceChip("Paid", new[] { "Hidden", "Shown" }, "✓") { Margin = new Padding(Dpi(6), Dpi(4), 0, 0) };
+            paidChip.SelectionChanged += (s, e) => FilterGridData();
+            new ToolTip().SetToolTip(paidChip, "Paid statements are kept in Finance History → Settled records. Searching always finds them.");
+            pnlGridActionsFlow.Controls.Add(paidChip);
 
             pnlTopBar.Controls.Add(pnlGridActionsFlow);
             this.Controls.Add(pnlTopBar);
@@ -1149,9 +1154,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
         /// <summary>
-        /// A statement is saved as Issued; whether it has been paid lives on its invoice. For the list only, an Issued
-        /// statement shows "Paid" / "Partly paid" from its invoice, or "No invoice" when it has no SI no. yet.
-        /// (Saving always writes Issued back, and a statement with payments can't be edited.)
+        /// Nov 6: a statement is Unpaid until its one collection receipt makes it Paid (no part payments). For the list only,
+        /// a statement with no SI no. yet shows "No invoice". A paid statement can't be edited.
         /// </summary>
         private static void ShowPaymentStateInList(List<StatementOfAccount> list)
         {
@@ -1175,6 +1179,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var filtered = allSoas.Where(soa =>
             {
                 if (filterClient != "All clients" && !soa.ClientName.Equals(filterClient, StringComparison.OrdinalIgnoreCase)) return false;
+                if (string.IsNullOrEmpty(q) && (paidChip?.SelectedIndex ?? 0) == 0 && string.Equals(soa.Status, PayStatus.Paid, StringComparison.OrdinalIgnoreCase)) return false;
                 if (!string.IsNullOrEmpty(q))
                 {
                     bool match = (soa.SoaNumber?.ToLower().Contains(q) ?? false) ||

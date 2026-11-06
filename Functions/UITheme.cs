@@ -1262,7 +1262,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (v == "AVAILABLE" || v.Contains("READY") || v.Contains("COMPLETED") || v.Contains("PAID") ||
                 v.Contains("RESOLVED") || v == "ACTIVE" || v.Contains("DELIVERED") || v == "TRUE" || v == "YES" || v.Contains("APPROVED"))
                 return (AppTheme.SuccessSoft, AppTheme.SuccessText, AppTheme.Success);
-            if (v.Contains("PENDING") || v.Contains("PARTIAL") || v.Contains("SCHEDULED") || v.Contains("DRAFT"))
+            if (v.Contains("PENDING") || v.Contains("SCHEDULED") || v.Contains("DRAFT"))
                 return (AppTheme.WarningSoft, AppTheme.WarningText, AppTheme.Warning);
             if (v.Contains("ON TRIP") || v.Contains("TRANSIT") || v.Contains("DISPATCH") || v.Contains("ASSIGNED") || v.Contains("IN USE") || v.Contains("IN PROGRESS") || v.Contains("TRIP"))
                 return (AppTheme.InfoSoft, AppTheme.InfoText, AppTheme.Info);

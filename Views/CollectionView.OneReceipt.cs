@@ -48,7 +48,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             TotalAmount = t.Gross,
             Deductions = t.Deductions,
             NetAmount = t.Net,
-            Status = t.Invoices.Any(i => i.IsStatus("Overdue")) ? "Overdue" : "Unpaid"
+            Status = PayStatus.Unpaid
         };
 
         private void LoadPayTargets()

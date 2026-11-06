@@ -848,7 +848,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lastPendingCount = deliveries.Count(d => d.Status == "Pending" || d.Status == "Scheduled");
 
                 var invoices = MJdatabase.GetInvoices();
-                lastUnpaidCount = invoices.Count(i => i.Status == "Unpaid" || i.Status == "Partial");
+                lastUnpaidCount = invoices.Count(i => i.Status == "Unpaid");
 
                 if (btnKpiScheduled != null)
                 {

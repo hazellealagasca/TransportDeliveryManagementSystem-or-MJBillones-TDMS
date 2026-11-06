@@ -842,10 +842,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     (!string.IsNullOrEmpty(i.LoadingScheduleNumber) && i.LoadingScheduleNumber.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(i.DispatchNumber) && i.DispatchNumber.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(i.ClientName) && i.ClientName.ToLower().Contains(q)) ||
-                    (!string.IsNullOrEmpty(i.Status) && i.Status.ToLower().Contains(q))
+                    (!string.IsNullOrEmpty(i.Status) && i.Status.ToLower().Contains(q)) ||
+                    (q == "overdue" && RowMenu.Is(i.Status, PayStatus.Unpaid) && i.DueDate.Date < DateTime.Today)
                 ).ToList();
 
-            filtered = ApplyListChips(filtered);
+            filtered = ApplyListChips(filtered, searching: !string.IsNullOrEmpty(q));
             gridInvoices.DataSource = null;
             gridInvoices.DataSource = filtered;
             UpdateBillingSummary(filtered.ToList(), reloadPayments: false);

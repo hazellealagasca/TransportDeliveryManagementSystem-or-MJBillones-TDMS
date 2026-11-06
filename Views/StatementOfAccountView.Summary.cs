@@ -34,8 +34,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 decimal vat = list.Sum(s => s.VatAmount);
                 decimal wht = list.Sum(s => s.WithholdingTax);
                 int paid = list.Count(s => RowMenu.Is(s.Status, "Paid"));
-                int partly = list.Count(s => RowMenu.Is(s.Status, "Partly paid"));
-                int noInvoice = list.Count(s => RowMenu.Is(s.Status, "No invoice") || (string.IsNullOrWhiteSpace(s.SalesInvoiceNo) && !RowMenu.Is(s.Status, "Paid", "Partly paid", "Draft")));
+                int unpaid = list.Count(s => RowMenu.Is(s.Status, PayStatus.Unpaid));
+                int noInvoice = list.Count(s => RowMenu.Is(s.Status, "No invoice") || (string.IsNullOrWhiteSpace(s.SalesInvoiceNo) && !RowMenu.Is(s.Status, "Paid", "Unpaid", "Draft")));
                 int drafts = list.Count(s => RowMenu.Is(s.Status, "Draft"));
                 var m = new List<SummaryMetric>
                 {
@@ -44,7 +44,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     new("VAT", AllInOneSummaryBar.Money(vat), SummaryTone.Neutral, "included above"),
                     new("Withholding tax", AllInOneSummaryBar.Money(wht), SummaryTone.Neutral, "2% EWT"),
                     new("Paid", paid.ToString("N0"), SummaryTone.Green, "statements fully paid"),
-                    new("Partly paid", partly.ToString("N0"), SummaryTone.Amber, "statements"),
+                    new("Unpaid", unpaid.ToString("N0"), SummaryTone.Amber, "awaiting the collection receipt"),
                     new("No invoice yet", noInvoice.ToString("N0"), SummaryTone.Red, "need a sales invoice", Strong: noInvoice > 0),
                     new("Drafts / cancelled", $"{drafts:N0} / {cancelled:N0}", SummaryTone.Purple, "not billed"),
                 };

@@ -249,5 +249,35 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             long all = r.GetInt64(0), drafts = r.GetInt64(1);
             return all > 0 && drafts == all;
         }
+        /// <summary>
+        /// Settled work for Finance History: each paid statement with its invoices, and each paid invoice that is not on a
+        /// statement (Soa = null). ReceiptNo / PaidOn come from the receipt that settled it; only receipts dated from..to count.
+        /// </summary>
+        public static List<(StatementOfAccount? Soa, List<TripInvoice> Invoices, string ReceiptNo, DateTime PaidOn)> GetSettledRecords(DateTime from, DateTime to)
+        {
+            var result = new List<(StatementOfAccount? Soa, List<TripInvoice> Invoices, string ReceiptNo, DateTime PaidOn)>();
+            var invoices = GetTripInvoices();
+            var receipts = GetCollectionReceipts();
+            bool InRange(DateTime d) => d.Date >= from.Date && d.Date <= to.Date;
+            CollectionReceipt? ReceiptFor(IEnumerable<int> invoiceIds)
+            {
+                var ids = new HashSet<int>(invoiceIds);
+                return receipts.Where(r => ids.Contains(r.InvoiceId)).OrderByDescending(r => r.PaymentDate).FirstOrDefault();
+            }
+            foreach (var soa in GetStatementsOfAccount().Where(s => string.Equals(s.Status, PayStatus.Paid, StringComparison.OrdinalIgnoreCase)))
+            {
+                var mine = invoices.Where(i => i.SoaId == soa.Id).OrderBy(i => i.Number).ToList();
+                var rec = ReceiptFor(mine.Select(i => i.Id));
+                if (rec == null || !InRange(rec.PaymentDate)) continue;
+                result.Add((soa, mine, rec.ReceiptNumber, rec.PaymentDate));
+            }
+            foreach (var inv in invoices.Where(i => i.SoaId == 0 && i.IsStatus(PayStatus.Paid)))
+            {
+                var rec = ReceiptFor(new[] { inv.Id });
+                if (rec == null || !InRange(rec.PaymentDate)) continue;
+                result.Add((null, new List<TripInvoice> { inv }, rec.ReceiptNumber, rec.PaymentDate));
+            }
+            return result.OrderByDescending(x => x.PaidOn).ToList();
+        }
     }
 }

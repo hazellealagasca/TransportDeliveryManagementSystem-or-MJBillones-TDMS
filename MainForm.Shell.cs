@@ -156,7 +156,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnLogout.Margin = new Padding(0);
             ttSidebar.SetToolTip(btnKpiScheduled, "Pending & scheduled deliveries");
             ttSidebar.SetToolTip(btnKpiInTransit, "Trucks currently on the road");
-            ttSidebar.SetToolTip(btnKpiUnpaid, "Unpaid & partially paid invoices");
+            ttSidebar.SetToolTip(btnKpiUnpaid, "Unpaid invoices");
             ttSidebar.SetToolTip(btnNotificationBell, "Notifications & alerts");
             ttSidebar.SetToolTip(btnLogout, "Sign out");
             if (pnlKpiFlow != null)
