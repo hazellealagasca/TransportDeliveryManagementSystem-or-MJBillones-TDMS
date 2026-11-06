@@ -197,6 +197,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ClearSavedDraftsOnce();
             // Nov 6: one receipt per statement (receipts table allows the shared number), then the agreed cleanup of older records.
             try { EnsureReceiptSchemaForSoa(); RunPaymentCleanupOnce(); } catch (Exception ex) { ErrLog.Error("RunOneTimeMigrations.Payments", ex); }
+            // Nov 6 workflow: trip report Draft/Completed/Invoiced, SOA Normal/Special, no Partial or stored Overdue (after a backup, once).
+            try { EnsureWorkflowSchema(); } catch (Exception ex) { ErrLog.Error("RunOneTimeMigrations.Workflow", ex); }
         }
 
     }

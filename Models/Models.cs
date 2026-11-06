@@ -489,6 +489,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string ExtraColumnsJson { get; set; } = string.Empty;
     }
 
+    /// <summary>Trip report life cycle (Nov 6 workflow): saved unfinished, finished, then billed on a service invoice.</summary>
+    public static class TripReportStatus
+    {
+        public const string Draft = "Draft";
+        public const string Completed = "Completed";
+        public const string Invoiced = "Invoiced";
+    }
+
+    /// <summary>Which trips a statement of account holds. Normal and special trips never share a statement.</summary>
+    public static class SoaTypes
+    {
+        public const string Normal = "Normal";
+        public const string Special = "Special";
+        /// <summary>Only statements saved before Nov 6 that hold both kinds; they can't be edited.</summary>
+        public const string Mixed = "Mixed";
+    }
+
+    /// <summary>Payment status of service invoices and statements of account. Payments are always in full, so there is no partial status.</summary>
+    public static class PayStatus
+    {
+        public const string Draft = "Draft";
+        public const string Unpaid = "Unpaid";
+        public const string Paid = "Paid";
+        public const string Cancelled = "Cancelled";
+    }
+
     public class TripReport
     {
         public int Id { get; set; }
@@ -519,6 +545,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string DrPreparedBy { get; set; } = "VINJOHN VILLAMOR";
         public string DrCheckedBy { get; set; } = "JOE-EM FLORES";
         public string GuardName { get; set; } = string.Empty;
+        /// <summary>Draft, Completed or Invoiced (see <see cref="TripReportStatus"/>).</summary>
+        public string Status { get; set; } = TripReportStatus.Completed;
     }
 
     /// <summary>What one crew member (driver or aide) is paid for one trip.</summary>
@@ -572,7 +600,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string PreparedBy { get; set; } = "Marie Ann J. Billones";
         public string ReceivedBy1 { get; set; } = "Ma'am Monette Rubonal";
         public string ReceivedBy2 { get; set; } = "Ma'am Francis Pauline Rodillas";
-        public string Status { get; set; } = "Issued";
+        public string Status { get; set; } = PayStatus.Unpaid;
+        /// <summary>Normal, Special or (old statements only) Mixed. See <see cref="SoaTypes"/>.</summary>
+        public string SoaType { get; set; } = SoaTypes.Normal;
         public List<StatementOfAccountItem> Items { get; set; } = new List<StatementOfAccountItem>();
     }
 
@@ -638,6 +668,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string Notes { get; set; } = string.Empty;
         /// <summary>The statement this receipt pays (0 = a lone invoice). Nov 6: one receipt per statement.</summary>
         public int SoaId { get; set; }
+        /// <summary>Always "Completed": a receipt is only recorded for the full amount.</summary>
+        public string Status { get; set; } = "Completed";
     }
 
     public class TruckRecommendation

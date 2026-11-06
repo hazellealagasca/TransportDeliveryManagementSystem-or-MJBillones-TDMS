@@ -58,6 +58,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             connectionString = $"Data Source={dbFilePath};Default Timeout=10;Foreign Keys=True;Pooling=False;";
             attachmentsReady = marksReady = capacitySchemaReady = adjustmentColumnsReady = profileTablesReady = stopTypesReady = false;
             receiptSchemaChecked = receiptSoaColumnChecked = false;
+            ResetWorkflowSchemaFlag();
         }
 
         // Single source of truth for status vocabulary used by conflict checks and resource locking.
@@ -2380,6 +2381,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try { MigrateAutoStoreCodes(); } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] MigrateAutoStoreCodes: {ex.Message}"); ErrLog.Swallowed(ex); }
 
             try { ReconcileAllRouteStores(); } catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] ReconcileAllRouteStores: {ex.Message}"); ErrLog.Swallowed(ex); }
+
+            EnsureWorkflowColumns(); // Nov 6 workflow columns (also after restoring an older backup)
 
             PerformStartupSanityCheck();
 
@@ -10045,6 +10048,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         {
 
+            EnsureSpecialTripColumns();
+            EnsureWorkflowColumns();
             var list = new List<TripReport>();
 
             using (var conn = new SqliteConnection(connectionString))
@@ -10055,7 +10060,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 var cmd = conn.CreateCommand();
 
-                cmd.CommandText = "SELECT Id, TripReportNumber, DeliveryId, DispatchNumber, ArrivalTime, DepartureTime, DeliveredCrates, ReturnedCrates, StoreManagerName, Remarks, ReportDate, DeliveredGCrates, DeliveredECrates, ReturnedGCrates, ReturnedECrates, StoreManagerLastName, StoreManagerFirstName, StoreManagerMiddleName, TruckTimeIn, TruckTimeOut, DtrApprovedBy, ReturnCheckedBy, DtrPreparedBy, DrPreparedBy, DrCheckedBy, GuardName FROM TripReports WHERE COALESCE(IsVoid,0) = 0 ORDER BY Id DESC";
+                cmd.CommandText = "SELECT Id, TripReportNumber, DeliveryId, DispatchNumber, ArrivalTime, DepartureTime, DeliveredCrates, ReturnedCrates, StoreManagerName, Remarks, ReportDate, DeliveredGCrates, DeliveredECrates, ReturnedGCrates, ReturnedECrates, StoreManagerLastName, StoreManagerFirstName, StoreManagerMiddleName, TruckTimeIn, TruckTimeOut, DtrApprovedBy, ReturnCheckedBy, DtrPreparedBy, DrPreparedBy, DrCheckedBy, GuardName, COALESCE(Status,'Completed'), COALESCE(SpecialTripId,0) FROM TripReports WHERE COALESCE(IsVoid,0) = 0 ORDER BY Id DESC";
 
                 using (var reader = cmd.ExecuteReader())
 
@@ -10171,7 +10176,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             DrCheckedBy = reader.FieldCount > 24 && !reader.IsDBNull(24) ? reader.GetString(24) : "JOE-EM FLORES",
 
-                            GuardName = reader.FieldCount > 25 && !reader.IsDBNull(25) ? reader.GetString(25) : ""
+                            GuardName = reader.FieldCount > 25 && !reader.IsDBNull(25) ? reader.GetString(25) : "",
+                            Status = reader.GetString(26),
+                            SpecialTripId = Convert.ToInt32(reader.GetValue(27))
 
                         });
 
@@ -10438,6 +10445,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bool wasNew = tr.Id <= 0;
 
             if (tr.SpecialTripId > 0) EnsureSpecialTripColumns();
+            EnsureWorkflowColumns();
 
             using (var conn = new SqliteConnection(connectionString))
 
@@ -10517,9 +10525,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             tr.TripReportNumber = $"TRIP-{DateTime.Now:yyyyMMdd-HHmmss}-{DateTime.Now.Millisecond:D3}{Random.Shared.Next(10, 99)}";
 
-                            cmd.CommandText = @"INSERT INTO TripReports (TripReportNumber, DeliveryId, DispatchNumber, ArrivalTime, DepartureTime, DeliveredGCrates, DeliveredECrates, DeliveredCrates, ReturnedGCrates, ReturnedECrates, ReturnedCrates, StoreManagerName, Remarks, ReportDate, StoreManagerLastName, StoreManagerFirstName, StoreManagerMiddleName, TruckTimeIn, TruckTimeOut, DtrApprovedBy, ReturnCheckedBy, DtrPreparedBy, DrPreparedBy, DrCheckedBy, GuardName)
+                            cmd.CommandText = @"INSERT INTO TripReports (TripReportNumber, DeliveryId, DispatchNumber, ArrivalTime, DepartureTime, DeliveredGCrates, DeliveredECrates, DeliveredCrates, ReturnedGCrates, ReturnedECrates, ReturnedCrates, StoreManagerName, Remarks, ReportDate, StoreManagerLastName, StoreManagerFirstName, StoreManagerMiddleName, TruckTimeIn, TruckTimeOut, DtrApprovedBy, ReturnCheckedBy, DtrPreparedBy, DrPreparedBy, DrCheckedBy, GuardName, Status)
 
-                                                VALUES (@trn, @did, @dn, @at, @dt, @dgc, @dec, @dc, @rgc, @rec, @rc, @sm, @r, @rd, @smln, @smfn, @smmn, @tti, @tto, @dtra, @rcb, @dtrp, @drp, @drc, @gn)";
+                                                VALUES (@trn, @did, @dn, @at, @dt, @dgc, @dec, @dc, @rgc, @rec, @rc, @sm, @r, @rd, @smln, @smfn, @smmn, @tti, @tto, @dtra, @rcb, @dtrp, @drp, @drc, @gn, @trst)";
 
                         }
 
@@ -10581,9 +10589,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             tr.TripReportNumber =$"TRIP-{DateTime.Now:yyyyMMdd-HHmmss}-{DateTime.Now.Millisecond:D3}{Random.Shared.Next(10, 99)}";
 
-                            cmd.CommandText = @"INSERT INTO TripReports (TripReportNumber, DeliveryId, DispatchNumber, ArrivalTime, DepartureTime, DeliveredGCrates, DeliveredECrates, DeliveredCrates, ReturnedGCrates, ReturnedECrates, ReturnedCrates, StoreManagerName, Remarks, ReportDate, StoreManagerLastName, StoreManagerFirstName, StoreManagerMiddleName, TruckTimeIn, TruckTimeOut, DtrApprovedBy, ReturnCheckedBy, DtrPreparedBy, DrPreparedBy, DrCheckedBy, GuardName)
+                            cmd.CommandText = @"INSERT INTO TripReports (TripReportNumber, DeliveryId, DispatchNumber, ArrivalTime, DepartureTime, DeliveredGCrates, DeliveredECrates, DeliveredCrates, ReturnedGCrates, ReturnedECrates, ReturnedCrates, StoreManagerName, Remarks, ReportDate, StoreManagerLastName, StoreManagerFirstName, StoreManagerMiddleName, TruckTimeIn, TruckTimeOut, DtrApprovedBy, ReturnCheckedBy, DtrPreparedBy, DrPreparedBy, DrCheckedBy, GuardName, Status)
 
-                                                VALUES (@trn, @did, @dn, @at, @dt, @dgc, @dec, @dc, @rgc, @rec, @rc, @sm, @r, @rd, @smln, @smfn, @smmn, @tti, @tto, @dtra, @rcb, @dtrp, @drp, @drc, @gn)";
+                                                VALUES (@trn, @did, @dn, @at, @dt, @dgc, @dec, @dc, @rgc, @rec, @rc, @sm, @r, @rd, @smln, @smfn, @smmn, @tti, @tto, @dtra, @rcb, @dtrp, @drp, @drc, @gn, @trst)";
 
                             var updateDel = conn.CreateCommand();
 
@@ -10705,7 +10713,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         {
 
-                            cmd.CommandText = @"UPDATE TripReports SET ArrivalTime=@at, DepartureTime=@dt, DeliveredGCrates=@dgc, DeliveredECrates=@dec, DeliveredCrates=@dc, ReturnedGCrates=@rgc, ReturnedECrates=@rec, ReturnedCrates=@rc, StoreManagerName=@sm, Remarks=@r, StoreManagerLastName=@smln, StoreManagerFirstName=@smfn, StoreManagerMiddleName=@smmn, TruckTimeIn=@tti, TruckTimeOut=@tto, DtrApprovedBy=@dtra, ReturnCheckedBy=@rcb, DtrPreparedBy=@dtrp, DrPreparedBy=@drp, DrCheckedBy=@drc, GuardName=@gn WHERE Id=@id";
+                            cmd.CommandText = @"UPDATE TripReports SET ArrivalTime=@at, DepartureTime=@dt, DeliveredGCrates=@dgc, DeliveredECrates=@dec, DeliveredCrates=@dc, ReturnedGCrates=@rgc, ReturnedECrates=@rec, ReturnedCrates=@rc, StoreManagerName=@sm, Remarks=@r, StoreManagerLastName=@smln, StoreManagerFirstName=@smfn, StoreManagerMiddleName=@smmn, TruckTimeIn=@tti, TruckTimeOut=@tto, DtrApprovedBy=@dtra, ReturnCheckedBy=@rcb, DtrPreparedBy=@dtrp, DrPreparedBy=@drp, DrCheckedBy=@drc, GuardName=@gn, Status = CASE WHEN COALESCE(Status,'') = 'Invoiced' THEN Status ELSE @trst END WHERE Id=@id";
 
                             cmd.Parameters.AddWithValue("@id", tr.Id);
 
@@ -10760,6 +10768,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         cmd.Parameters.AddWithValue("@drc", tr.DrCheckedBy ?? "JOE-EM FLORES");
 
                         cmd.Parameters.AddWithValue("@gn", tr.GuardName ?? "");
+                        // Saving never makes a report Invoiced (only its service invoice does) and never un-invoices it (see the UPDATE).
+                        cmd.Parameters.AddWithValue("@trst", string.Equals(tr.Status, TripReportStatus.Draft, StringComparison.OrdinalIgnoreCase) ? TripReportStatus.Draft : TripReportStatus.Completed);
 
                         cmd.ExecuteNonQuery();
 
@@ -11239,6 +11249,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         {
 
+            EnsureWorkflowColumns();
             var list = new List<StatementOfAccount>();
 
             using (var conn = new SqliteConnection(connectionString))
@@ -11257,7 +11268,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                            COALESCE(FuelSurchargeTotal, 0), COALESCE(WithholdingTax, 0), COALESCE(SalesInvoiceNo, ''),
 
-                                           COALESCE(PreparedBy, 'Marie Ann J. Billones'), COALESCE(ReceivedBy1, ''), COALESCE(ReceivedBy2, '')
+                                           COALESCE(PreparedBy, 'Marie Ann J. Billones'), COALESCE(ReceivedBy1, ''), COALESCE(ReceivedBy2, ''), COALESCE(SoaType, 'Normal')
 
                                     FROM StatementsOfAccount ORDER BY Id DESC";
 
@@ -11311,7 +11322,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             ReceivedBy1 = reader.GetString(17),
 
-                            ReceivedBy2 = reader.GetString(18)
+                            ReceivedBy2 = reader.GetString(18),
+                            SoaType = reader.GetString(19)
 
                         });
 
@@ -11328,6 +11340,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static StatementOfAccount? GetStatementOfAccountById(int id)
 
         {
+            EnsureWorkflowColumns();
 
             using (var conn = new SqliteConnection(connectionString))
 
@@ -11345,7 +11358,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                            COALESCE(FuelSurchargeTotal, 0), COALESCE(WithholdingTax, 0), COALESCE(SalesInvoiceNo, ''),
 
-                                           COALESCE(PreparedBy, 'Marie Ann J. Billones'), COALESCE(ReceivedBy1, ''), COALESCE(ReceivedBy2, '')
+                                           COALESCE(PreparedBy, 'Marie Ann J. Billones'), COALESCE(ReceivedBy1, ''), COALESCE(ReceivedBy2, ''), COALESCE(SoaType, 'Normal')
 
                                     FROM StatementsOfAccount WHERE Id = @id";
 
@@ -11401,7 +11414,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             ReceivedBy1 = reader.GetString(17),
 
-                            ReceivedBy2 = reader.GetString(18)
+                            ReceivedBy2 = reader.GetString(18),
+                            SoaType = reader.GetString(19)
 
                         };
 
@@ -12427,7 +12441,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var cmd = conn.CreateCommand();
 
                 EnsureReceiptSoaColumn();
-                cmd.CommandText = "SELECT Id, ReceiptNumber, InvoiceId, InvoiceNumber, PaymentDate, AmountPaid, PaymentMethod, ReferenceNumber, Notes, COALESCE(SoaId,0) FROM CollectionReceipts WHERE COALESCE(IsVoid,0) = 0 ORDER BY Id DESC";
+                EnsureWorkflowColumns();
+                cmd.CommandText = "SELECT Id, ReceiptNumber, InvoiceId, InvoiceNumber, PaymentDate, AmountPaid, PaymentMethod, ReferenceNumber, Notes, COALESCE(SoaId,0), COALESCE(Status,'Completed') FROM CollectionReceipts WHERE COALESCE(IsVoid,0) = 0 ORDER BY Id DESC";
 
                 using (var reader = cmd.ExecuteReader())
 
@@ -12460,7 +12475,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             ReferenceNumber = reader.IsDBNull(7) ? "" : reader.GetString(7),
 
                             Notes = reader.IsDBNull(8) ? "" : reader.GetString(8),
-                            SoaId = reader.FieldCount > 9 && !reader.IsDBNull(9) ? Convert.ToInt32(reader.GetValue(9)) : 0
+                            SoaId = reader.FieldCount > 9 && !reader.IsDBNull(9) ? Convert.ToInt32(reader.GetValue(9)) : 0,
+                            Status = reader.FieldCount > 10 && !reader.IsDBNull(10) ? reader.GetString(10) : "Completed"
 
                         });
 

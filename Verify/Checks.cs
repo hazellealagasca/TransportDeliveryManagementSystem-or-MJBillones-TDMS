@@ -20,6 +20,8 @@ public static partial class Checks
         string p = Path.Combine(Root, $"fresh_{Guid.NewGuid():N}.db");
         MJdatabase.UseDatabaseFile(p);
         MJdatabase.InitializeDatabase();
+        MJdatabase.EnsureSpecialTripColumns();
+        MJdatabase.EnsureReceiptSoaColumn();
         return p;
     }
 
@@ -37,7 +39,7 @@ public static partial class Checks
     }
 
     // ---- small SQL helpers on the database the data layer currently uses
-    public static SqliteConnection Open() { var c = new SqliteConnection($"Data Source={MJdatabase.DbFilePath};Pooling=False;"); c.Open(); return c; }
+    public static SqliteConnection Open() { var c = new SqliteConnection($"Data Source={MJdatabase.DbFilePath};Pooling=False;Foreign Keys=False;"); c.Open(); return c; }
     public static object? Scalar(string sql, params (string, object)[] ps)
     {
         using var c = Open(); using var cmd = c.CreateCommand(); cmd.CommandText = sql;
