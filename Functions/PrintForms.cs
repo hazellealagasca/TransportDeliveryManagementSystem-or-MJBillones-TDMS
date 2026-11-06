@@ -453,8 +453,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             stops ??= new List<DispatchStop>();
             Invoice? inv = null;
             try { inv = MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == d.Id); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
-            List<TripCrewPay> crewPay = new();
-            try { crewPay = MJdatabase.GetTripCrewPay(d.Id); } catch (System.Exception swx4) { ErrLog.Swallowed(swx4); }
             var o = NewOptions("DeliveryDossier", "Delivery Dossier", $"Dispatch {d.DispatchNumber} · {d.Status}");
             o.Fields = new List<PrintField>
             {
@@ -469,7 +467,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             o.Sections = new List<PrintChoice>
             {
                 new("stats", "Crate summary boxes"), new("order", "Order details"), new("crew", "Truck & crew"), new("stops", "Stores / stops table"),
-                new("trip", "Trip report"), new("incident", "Incident"), new("billing", "Billing"), new("pay", "Crew pay", false)
+                new("trip", "Trip report"), new("incident", "Incident"), new("billing", "Billing")
             };
             AddCommon(o);
             o.Columns = new List<PrintChoice> { new("seq", "#"), new("store", "Store"), new("planned", "Planned"), new("delivered", "Delivered"), new("returned", "Returned"), new("time", "Arrival / departure"), new("received", "Received by"), new("status", "Status") };
@@ -507,12 +505,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     sb.Append(SectionTitle("Billing"));
                     sb.Append(inv == null ? "<p class='empty'>Not billed yet.</p>"
                         : $"<table class='kv'><tr><td class='k'>Invoice #</td><td class='v'>{Esc(inv.InvoiceNumber)}</td><td class='k'>Status</td><td class='v'>{Esc(inv.Status)}</td></tr><tr><td class='k'>Net amount</td><td class='v'><b>{Money(inv.NetAmount)}</b></td><td class='k'>Due</td><td class='v'>{D(inv.DueDate)}</td></tr></table>");
-                }
-                if (opt.On("pay") && crewPay.Count > 0)
-                {
-                    sb.Append(SectionTitle("Crew pay for this trip"));
-                    sb.Append(Table(new PrintOptions(), new[] { ("n", "Crew", ""), ("r", "Role", ""), ("b", "Base", "num"), ("a", "Meal allowance", "num"), ("t", "Total", "num") },
-                        crewPay.Select(p => Row(("n", p.CrewName), ("r", p.Role), ("b", p.BasePay.ToString("N2")), ("a", p.Allowance.ToString("N2")), ("t", $"<b>{p.NetPay:N2}</b>")))));
                 }
                 return sb.ToString();
             };

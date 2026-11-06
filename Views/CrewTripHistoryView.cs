@@ -335,6 +335,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.AddRange(RowMenu.Header($"🚚  {row.DispatchNumber} · {RowMenu.Short(row.CrewMemberName, 24)}", $"{row.CrewRole} · {row.DispatchDate:MMM d, yyyy} · {RowMenu.Short(row.ClientName, 22)} · {row.Status}"));
                 m.Items.Add(RowMenu.Item("Open dispatch details", () => ShowSelectedDeliveryDetails()));
                 m.Items.Add(RowMenu.Item($"Show only {row.CrewMemberName}'s trips", () => SelectCrew(row.CrewId), "", row.CrewId > 0));
+                if (Features.On(Features.CrewPay))
+                    m.Items.Add(RowMenu.Item("💰  Crew pay for this trip…", () => { using var dlg = new Forms.TripCrewPayDialog(row.DeliveryRef); dlg.ShowDialog(this); }));
                 m.Items.Add(RowMenu.Item("Trip report for this dispatch", () => MainForm.Instance?.OpenTripReportForDispatch(row.DeliveryRef), "", row.DeliveryRef != null && RowMenu.Is(row.Status, "Completed")));
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.Sub("🖨️  Print",

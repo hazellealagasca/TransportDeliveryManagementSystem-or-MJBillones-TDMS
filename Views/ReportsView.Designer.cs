@@ -28,7 +28,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblSrch = new System.Windows.Forms.Label();
             this.txtSearch = new System.Windows.Forms.TextBox();
             this.flowActions = new System.Windows.Forms.FlowLayoutPanel();
-            this.btnPrintPaySlip = new System.Windows.Forms.Button();
             this.btnPrint = new System.Windows.Forms.Button();
             this.btnExport = new System.Windows.Forms.Button();
             this.pnlGridCard = new System.Windows.Forms.Panel();
@@ -107,7 +106,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             "Billing & Invoices Log",
             "Collection Receipts Summary",
             "Incident & Damage Reports",
-            "Crew Trip Compensation & Pay Slips",
             "System Activity & Audit Trail (Admin)"});
             this.cbReportType.Margin = new System.Windows.Forms.Padding(0, 0, 16, 6);
             this.cbReportType.Name = "cbReportType";
@@ -164,23 +162,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.flowActions.WrapContents = true;
             this.flowActions.Margin = new System.Windows.Forms.Padding(0, 6, 0, 0);
             this.flowActions.Name = "flowActions";
-            this.flowActions.Controls.Add(this.btnPrintPaySlip);
             this.flowActions.Controls.Add(this.btnPrint);
             this.flowActions.Controls.Add(this.btnExport);
-
-            this.btnPrintPaySlip.BackColor = System.Drawing.Color.FromArgb(30, 58, 138);
-            this.btnPrintPaySlip.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnPrintPaySlip.FlatAppearance.BorderSize = 0;
-            this.btnPrintPaySlip.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnPrintPaySlip.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold);
-            this.btnPrintPaySlip.ForeColor = System.Drawing.Color.White;
-            this.btnPrintPaySlip.Margin = new System.Windows.Forms.Padding(0, 0, 8, 4);
-            this.btnPrintPaySlip.Name = "btnPrintPaySlip";
-            this.btnPrintPaySlip.Size = new System.Drawing.Size(150, 32);
-            this.btnPrintPaySlip.TabIndex = 8;
-            this.btnPrintPaySlip.Text = "📄 Print pay slip";
-            this.btnPrintPaySlip.UseVisualStyleBackColor = false;
-            this.btnPrintPaySlip.Click += new System.EventHandler(this.BtnPrintPaySlip_Click);
 
             this.btnPrint.BackColor = System.Drawing.Color.FromArgb(71, 85, 105);
             this.btnPrint.Cursor = System.Windows.Forms.Cursors.Hand;
@@ -297,7 +280,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private System.Windows.Forms.Label lblSrch;
         private System.Windows.Forms.TextBox txtSearch;
         private System.Windows.Forms.FlowLayoutPanel flowActions;
-        private System.Windows.Forms.Button btnPrintPaySlip;
         private System.Windows.Forms.Button btnExport;
         private System.Windows.Forms.Button btnPrint;
         private System.Windows.Forms.Panel pnlGridCard;

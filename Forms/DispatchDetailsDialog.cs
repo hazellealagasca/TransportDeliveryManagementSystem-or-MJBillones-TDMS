@@ -113,7 +113,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Invoice? invoice;
         private List<IncidentReport> incidents = new List<IncidentReport>();
         private List<AuditTrailEntry> activity = new List<AuditTrailEntry>();
-        private List<TripCrewPay> crewPay = new List<TripCrewPay>();
         private List<Crew> crews = new List<Crew>();
         private Truck? truck;
         private string clientName = "";
@@ -200,7 +199,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 trip = SafeGet(() => MJdatabase.GetTripReports().FirstOrDefault(t => t.DeliveryId == del.Id || (!string.IsNullOrEmpty(t.DispatchNumber) && t.DispatchNumber == del.DispatchNumber)), null);
                 invoice = SafeGet(() => MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == del.Id), null);
                 incidents = SafeGet(() => MJdatabase.GetIncidentReports().Where(i => i.DeliveryId == del.Id).ToList(), new List<IncidentReport>());
-                crewPay = SafeGet(() => MJdatabase.GetTripCrewPay(del.Id), new List<TripCrewPay>());
                 crews = SafeGet(() => MJdatabase.GetCrews(), new List<Crew>());
                 truck = SafeGet(() => MJdatabase.GetTrucks().FirstOrDefault(t => t.Id == del.TruckId), null);
                 string num = del.DispatchNumber ?? "";
@@ -427,13 +425,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int storeCount = stops.Count > 0 ? stops.Count : Math.Max(1, del.TotalStopsCount);
             int cap = truck?.CapacityCrates ?? 0;
             int pct = cap > 0 ? (int)Math.Round(total * 100.0 / cap) : 0;
-            decimal payRecorded = crewPay.Sum(p => p.NetPay);
-            decimal payEstimate = 0;
-            foreach (var (id, _) in MJdatabase.GetDeliveryCrewIds(del))
-            {
-                var c = FindCrew(id);
-                if (c != null) payEstimate += c.DailyWage + c.FoodAllowance;
-            }
             var tiles = new List<Tile>
             {
                 new Tile("Crates", $"{total:N0}", $"G {del.GCrate:N0}  ·  E {del.ECrate:N0}"),
@@ -441,9 +432,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 new Tile("Truck load", cap > 0 ? $"{pct}%" : "—", cap > 0 ? $"{total:N0} of {cap:N0} crates" : "Truck capacity not set", pct > 100 ? AppTheme.DangerText : (Color?)null),
                 new Tile("Delivered / returned", trip != null ? $"{trip.DeliveredCrates:N0} / {trip.ReturnedCrates:N0}" : "—", trip != null ? $"Signed by {Shorten(trip.StoreManagerName, 22)}" : "No trip report yet"),
                 new Tile("Billing", invoice != null ? $"₱{invoice.NetAmount:N0}" : "—", invoice != null ? $"{invoice.InvoiceNumber} · {invoice.Status}" : "Not billed yet",
-                    invoice == null ? (Color?)null : IsPaid ? AppTheme.SuccessText : AppTheme.WarningText),
-                new Tile("Crew pay", crewPay.Count > 0 ? $"₱{payRecorded:N0}" : (payEstimate > 0 ? $"≈ ₱{payEstimate:N0}" : "—"),
-                    crewPay.Count > 0 ? "Recorded on trip report" : "Estimate from standard rates")
+                    invoice == null ? (Color?)null : IsPaid ? AppTheme.SuccessText : AppTheme.WarningText)
             };
             var host = new Panel { Dock = DockStyle.Top, Height = D(104), BackColor = AppTheme.Canvas, Padding = new Padding(D(24), D(12), D(24), 0) };
             var tbl = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = tiles.Count, RowCount = 1, BackColor = AppTheme.Canvas, Margin = new Padding(0) };

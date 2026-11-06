@@ -83,6 +83,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var menuActions = new ContextMenuStrip();
             menuActions.Items.Add("📊 Export table to CSV...", null, (s, e) => DataExportHelper.ExportToCsv(gridCrew, "Crew_Personnel", "Crew Personnel"));
             menuActions.Items.Add("🖨️ Print personnel roster", null, BtnPrint_Click);
+            menuActions.Items.Add("💵 Crew pay summary…", null, (s, e) => { using var dlg = new Forms.CrewPaySummaryDialog(); dlg.ShowDialog(this); });
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
                     InitFullPageForm();

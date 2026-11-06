@@ -417,7 +417,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblFooter.Controls.Add(txtGuardName, 3, 3);
 
             pnlTripFooter.Controls.Add(tblFooter);
-            InitializeCrewPaySection();
             BuildTripReportCards();
         }
         private void SizeStoreTable(int rowCount)
@@ -921,7 +920,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     UpdateMultiDropTripInfo(d);
                     RecalculateTotalsFromStoreGrid();
-                    LoadCrewPay(d);
                 }
                 SyncAttachmentOwner();
             };
@@ -1050,7 +1048,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (txtGuardName != null) txtGuardName.Text = selectedTripReport.GuardName ?? "";
                 var del = allDeliveries.FirstOrDefault(d => d.Id == selectedTripReport.DeliveryId || d.DispatchNumber == selectedTripReport.DispatchNumber);
                 if (del != null) UpdateMultiDropTripInfo(del);
-                LoadCrewPay(del);
                 isBindingForm = false;
                 SyncAttachmentOwner();
             }
@@ -1061,7 +1058,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 allDeliveries = await MJdatabase.GetDeliveriesAsync();
-                crewCache = null;
                 var activeStatuses = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Scheduled", "Pending", "In Transit", "Rescheduled", "Dispatched" };
                 allTripReports = await MJdatabase.GetTripReportsAsync();
                 var reported = new HashSet<string>(allTripReports.Select(t => t.DispatchNumber ?? ""), StringComparer.OrdinalIgnoreCase);
@@ -1345,7 +1341,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     MJdatabase.SaveDispatchStops(selDel.Id, stopsToSave);
                 }
                 MJdatabase.SaveTripReport(tr);
-                SaveCrewPayFor(selDel.Id);
                 MJdatabase.ClearFormDraft("TripReport", SessionContext.CurrentUsername);
                 if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
                 if (asDraft)
@@ -1534,7 +1529,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 if (issueAfterUpdate) selectedTripReport.Status = TripReportStatus.Completed; // a Draft is finished here
                 MJdatabase.SaveTripReport(selectedTripReport);
-                if (selDel != null) SaveCrewPayFor(selDel.Id);
                 var issueFor = issueAfterUpdate ? selDel : null;
                 if (issueFor == null) QuietBox.Show("Trip Report updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
@@ -1738,7 +1732,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbDelivery.SelectedIndex = -1; // Nov 6: no trip picked until the person picks one
             if (pnlMultiDropInfo != null) pnlMultiDropInfo.Visible = false;
             if (tripCrateSummary != null) tripCrateSummary.Visible = false; // shown again with the store table
-            LoadCrewPay(null);
         }
 
         [System.ComponentModel.Browsable(false)]
@@ -1881,7 +1874,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     UpdateMultiDropTripInfo(selDel);
                     if (map.TryGetValue("StoreRows", out var rows) && !string.IsNullOrEmpty(rows)) ApplyDraftStoreRows(rows);
                     RecalculateTotalsFromStoreGrid();
-                    LoadCrewPay(selDel);
                     SizeStoreTable(gridStores.Rows.Count);
                     MarkDuplicateDrs(showToast: false);
                     SyncAttachmentOwner();

@@ -15,7 +15,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             new(Features.RateMatrix, "Rate Matrix", "Your price list by route, destination, truck type and season (Master Data → Rate Matrix). When on, loading orders and invoices suggest the rate. When off, the Rate Matrix tab is hidden and amounts are typed in by hand."),
             new(Features.SpecialTrips, "Special trips", "Trips for non-crate or specialised cargo. When off, the Special Trip tab, the “+ Special trip” button and the special-cargo choice are hidden. Past special trips stay in Order History."),
             new(Features.Incidents, "Incident & damage logs", "Records of damaged or missing crates. When off, the Incident & Damage Logs tab, the “Log incident” buttons and the question after a short trip report are hidden."),
-            new(Features.CrewPay, "Crew pay on trip reports", "The “Driver & aide pay” step (daily wage and meal allowance) in the trip report form. When off, that step is hidden; the usual rates are still recorded with each report."),
+            new(Features.CrewPay, "Crew pay in Crew Trip History", "Edit the pay for each trip (daily wage and meal allowance) from Resources → Crew Trip History. When off, that menu item is hidden and every trip uses the standard rates in Crew Management."),
         };
         private static readonly Option[] DispatchRules =
         {

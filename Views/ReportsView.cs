@@ -28,19 +28,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             cbReportType.SelectedIndex = 0;
             cbStatusFilter.SelectedIndex = 0;
-            int payIdx = cbReportType.Items.IndexOf("Crew Trip Compensation & Pay Slips");
-            if (payIdx >= 0) cbReportType.Items[payIdx] = "Crew Trip Pay Records";
             cbReportType.SelectedIndexChanged += CbReportType_SelectedIndexChanged;
             LoadReportData();
             UIThemeHelper.ApplyTheme(this);
 
             btnPrint.Visible = false;
             btnExport.Visible = false;
-            btnPrintPaySlip.Visible = false;
             var menuActions = new ContextMenuStrip();
             menuActions.Items.Add("📊 Export report to CSV...", null, BtnExport_Click);
             menuActions.Items.Add("🖨️ Print report", null, BtnPrint_Click);
-            menuActions.Items.Add("📄 Print crew pay record", null, BtnPrintPaySlip_Click);
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             flowActions.Controls.Add(btnActions);
             RowMenu.AttachBasic(gridReport, "Report", "Report", () => BtnPrint_Click(this, EventArgs.Empty));
@@ -340,59 +336,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     break;
 
                 case 8:
-                    var allCrews = await MJdatabase.GetCrewsAsync();
-                    var allDels = await MJdatabase.GetDeliveriesAsync();
-                    if (myLoadId != loadOperationId || this.IsDisposed || !this.IsHandleCreated) return;
-                    var completedDels = allDels.Where(d => d.Status == "Completed").ToList();
-
-                    if (!string.IsNullOrEmpty(search))
-                    {
-                        allCrews = allCrews.Where(c => c.FullName.ToLower().Contains(search) ||
-                                                       c.Role.ToLower().Contains(search) ||
-                                                       c.ContactNumber.ToLower().Contains(search)).ToList();
-                    }
-
-                    var crewPayList = new List<object>();
-                    decimal totalPayoutSum = 0;
-                    int totalTripsSum = 0;
-
-                    // Pay saved on each trip report wins; trips without saved pay use the crew member's standard rates.
-                    var recordedPay = await Task.Run(() => MJdatabase.GetAllTripCrewPay());
-                    if (myLoadId != loadOperationId || this.IsDisposed || !this.IsHandleCreated) return;
-                    foreach (var c in allCrews)
-                    {
-                        var myTrips = completedDels.Where(d =>
-                            d.DriverId == c.Id ||
-                            (!string.IsNullOrEmpty(d.AideIds) && d.AideIds.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Contains(c.Id.ToString()))
-                        ).ToList();
-
-                        int tripCount = myTrips.Count;
-                        var tripPay = myTrips.Select(t => MJdatabase.ResolveTripPay(c, t, recordedPay)).ToList();
-                        decimal baseWages = tripPay.Sum(p => p.BasePay);
-                        decimal allowances = tripPay.Sum(p => p.Allowance);
-                        decimal netPayout = baseWages + allowances;
-                        totalTripsSum += tripCount;
-                        totalPayoutSum += netPayout;
-
-                        crewPayList.Add(new
-                        {
-                            Crew_Name = c.FullName,
-                            Role = c.Role,
-                            Contact = c.ContactNumber,
-                            Completed_Trips = tripCount,
-                            Daily_Wage = $"PHP {c.DailyWage:N2}",
-                            Total_Wages = $"PHP {baseWages:N2}",
-                            Food_Allowance = $"PHP {c.FoodAllowance:N2}",
-                            Total_Allowance = $"PHP {allowances:N2}",
-                            Total_Recorded = $"PHP {netPayout:N2}"
-                        });
-                    }
-
-                    gridReport.DataSource = crewPayList;
-                    lblSummary.Text = $"👥 Crew Personnel: {allCrews.Count:N0}  |  🚚 Total Hauling Trips: {totalTripsSum:N0}  |  💵 Total Crew Pay Recorded: PHP {totalPayoutSum:N2}";
-                    break;
-
-                case 9:
                     if (!SessionContext.IsAdmin)
                     {
                         gridReport.DataSource = null;
@@ -472,52 +415,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             catch (Exception ex)
             { ErrLog.Error("ReportsView", ex); 
                 MessageBox.Show($"Failed to load report data: {ex.Message}", "Report Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private async void BtnPrintPaySlip_Click(object? sender, EventArgs e)
-        {
-            try
-            {
-                var crews = await MJdatabase.GetCrewsAsync();
-                if (crews.Count == 0)
-                {
-                    QuietBox.Show("No registered crew members found.", "No Personnel", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
-                }
-
-                Crew? selectedCrew = null;
-                if (gridReport.SelectedRows.Count > 0 && gridReport.SelectedRows[0].Cells.Count > 0)
-                {
-                    string? name = gridReport.SelectedRows[0].Cells[0].Value?.ToString();
-                    if (!string.IsNullOrEmpty(name))
-                    {
-                        selectedCrew = crews.FirstOrDefault(c => c.FullName.Equals(name, StringComparison.OrdinalIgnoreCase));
-                    }
-                }
-
-                if (selectedCrew == null)
-                {
-                    QuietBox.Show("Please select a crew member row in the 'Crew Trip Pay Records' report first.", "Select Crew Member", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
-                }
-
-                var allDels = await MJdatabase.GetDeliveriesAsync();
-                var crewTrips = allDels.Where(d =>
-                    d.Status == "Completed" && (
-                        d.DriverId == selectedCrew.Id ||
-                        (!string.IsNullOrEmpty(d.AideIds) && d.AideIds.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Contains(selectedCrew.Id.ToString()))
-                    )
-                ).ToList();
-
-                DateTime startDate = crewTrips.Count > 0 ? crewTrips.Min(t => t.DispatchDate) : new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-                DateTime endDate = DateTime.Today;
-
-                PrintHelper.PrintCrewPaySlip(selectedCrew, crewTrips, startDate, endDate);
-            }
-            catch (Exception ex)
-            { ErrLog.Error("ReportsView", ex); 
-                MessageBox.Show($"Failed to print crew pay record: {ex.Message}", "Print Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
