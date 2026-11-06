@@ -122,9 +122,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             grid.Columns.Add("colCold", "Cold");
             grid.Columns.Add("colCombi", "Combi");
             grid.Columns.Add("colTrucks", "Trucks");
-            grid.Columns["colName"].FillWeight = 160;
-            grid.Columns["colCombi"].FillWeight = 130;
-            foreach (var c in new[] { "colDry", "colCold", "colCombi", "colTrucks" }) grid.Columns[c].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            grid.Columns["colName"]!.FillWeight = 160;
+            grid.Columns["colCombi"]!.FillWeight = 130;
+            foreach (var c in new[] { "colDry", "colCold", "colCombi", "colTrucks" }) grid.Columns[c]!.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             grid.SelectionChanged += (s, e) => { if (grid.Focused && grid.CurrentRow?.Tag is string n) LoadEditor(n); };
             grid.CellClick += (s, e) => { if (e.RowIndex >= 0 && grid.Rows[e.RowIndex].Tag is string n) LoadEditor(n); };
             body.Controls.Add(grid, 0, 0);

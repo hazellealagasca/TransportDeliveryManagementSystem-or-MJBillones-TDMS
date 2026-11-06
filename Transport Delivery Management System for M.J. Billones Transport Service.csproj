@@ -5,6 +5,7 @@
     <TargetFramework>net9.0-windows</TargetFramework>
     <RootNamespace>Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service</RootNamespace>
     <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>

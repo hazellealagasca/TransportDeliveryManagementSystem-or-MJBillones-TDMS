@@ -538,8 +538,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         {
                             var src = rows[0];
                             int at = last.Index + 1;
-                            gridItems.Rows.Insert(at, src.Cells["colTripNo"].Value, src.Cells["colDate"].Value, src.Cells["colZone"].Value, drText, ln.Name,
-                                src.Cells["colType"].Value, src.Cells["colPlate"].Value, src.Cells["colTons"].Value, drops, 0m, 0m, src.Cells["colDriver"].Value, id.ToString());
+                            gridItems.Rows.Insert(at, src.Cells["colTripNo"].Value!, src.Cells["colDate"].Value!, src.Cells["colZone"].Value!, drText, ln.Name,
+                                src.Cells["colType"].Value!, src.Cells["colPlate"].Value!, src.Cells["colTons"].Value!, drops, 0m, 0m, src.Cells["colDriver"].Value!, id.ToString());
                             row = gridItems.Rows[at];
                             row.Cells["colStoreCode"].Value = ln.Code;
                             row.Cells["colTripReport"].Value = trNo;

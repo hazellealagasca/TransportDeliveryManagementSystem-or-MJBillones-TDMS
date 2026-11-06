@@ -35,7 +35,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Panel pnlFormBody = null!;
         private Panel pnlFormHeaderBar = null!;
         private Label lblFormHeader = null!;
-        private float currentFormWidth = 420F;
 
         private TextBox txtSoaNumber = null!;
         private ComboBox cbClient = null!;

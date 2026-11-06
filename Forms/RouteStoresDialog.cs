@@ -194,9 +194,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lstAvailable.Items.Clear();
             foreach (var st in stores.OrderBy(x => x.StoreName, StringComparer.OrdinalIgnoreCase))
             {
-                if (chosen.Contains(Norm(st.StoreName))) continue;
+                if (chosen.Contains(Norm(st.StoreName ?? ""))) continue;
                 if (q.Length > 0 && !(st.StoreName ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) && !(st.StoreCode ?? "").Contains(q, StringComparison.OrdinalIgnoreCase)) continue;
-                var on = otherRoutes.FirstOrDefault(r => r.PlacesList.Any(p => Norm(p) == Norm(st.StoreName)));
+                var on = otherRoutes.FirstOrDefault(r => r.PlacesList.Any(p => Norm(p) == Norm(st.StoreName ?? "")));
                 lstAvailable.Items.Add(new StoreItem { Store = st, Note = on == null ? "" : $"on {on.RouteCode}" });
             }
             lstAvailable.EndUpdate();

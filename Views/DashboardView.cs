@@ -1049,7 +1049,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public void SetCounts(int all, int urgent, int soon, int fyi) { counts[0] = all; counts[1] = urgent; counts[2] = soon; counts[3] = fyi; Invalidate(); CountsChanged?.Invoke(this, EventArgs.Empty); }
         /// <summary>Width needed to show all four buttons.</summary>
         public int NeededWidth { get { var sl = Slots(); return sl[3].Right + S(2); } }
-        private static string Name(int i) => i == 0 ? "All" : ActionList.LevelNames[i - 1];
+        private static string NameAt(int i) => i == 0 ? "All" : ActionList.LevelNames[i - 1];
         private Rectangle[] Slots()
         {
             var r = new Rectangle[4];
@@ -1057,7 +1057,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int x = 0, h = S(30), y = Math.Max(0, (Height - h) / 2);
             for (int i = 0; i < 4; i++)
             {
-                int w = TextRenderer.MeasureText(Name(i) + "  " + counts[i], f).Width + (i == 0 ? S(20) : S(36));
+                int w = TextRenderer.MeasureText(NameAt(i) + "  " + counts[i], f).Width + (i == 0 ? S(20) : S(36));
                 r[i] = new Rectangle(x, y, w, h);
                 x += w + S(6);
             }
@@ -1112,7 +1112,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     tx += S(14);
                 }
                 Color fore = counts[i] == 0 && !on ? AppTheme.TextMuted : on ? AppTheme.AccentText : AppTheme.TextPrimary;
-                TextRenderer.DrawText(g, Name(i) + "  " + counts[i], f, new Rectangle(tx, r.Y, r.Right - tx, r.Height), fore,
+                TextRenderer.DrawText(g, NameAt(i) + "  " + counts[i], f, new Rectangle(tx, r.Y, r.Right - tx, r.Height), fore,
                     TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
             }
         }
