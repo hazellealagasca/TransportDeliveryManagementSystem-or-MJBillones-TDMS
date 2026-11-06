@@ -23,6 +23,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Issued with an amount and nothing paid yet: can go on a statement or be collected.</summary>
         public bool Open => Net > 0 && Collected <= 0 && !IsStatus("Paid") && !IsStatus("Partial") && !IsStatus("Draft") && !IsStatus("Cancelled");
         public bool IsStatus(string s) => string.Equals(Status, s, StringComparison.OrdinalIgnoreCase);
+        /// <summary>Normal (a dispatch), Special (a special trip) or "" (an old statement's own invoice, never put on a new statement).</summary>
+        public string Kind => SpecialTripId > 0 ? SoaTypes.Special : DeliveryId > 0 ? SoaTypes.Normal : "";
     }
 
     /// <summary>What one collection receipt pays: a statement (all its open invoices) or one invoice not on a statement.</summary>

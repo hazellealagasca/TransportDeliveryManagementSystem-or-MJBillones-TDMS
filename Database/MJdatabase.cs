@@ -11439,7 +11439,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                            COALESCE(PlateNumber, ''), COALESCE(Tonnage, '6T'), DropCount, Amount, FuelSurcharge,
 
-                                           COALESCE(DriverHelper, ''), DriverWage, HelperWage, DistanceKm, DieselCost, Excess, DeliveryId, COALESCE(StoreCode, ''), COALESCE(TripReportNumber, ''), COALESCE(TotalCrates, 0), COALESCE(SpecialTripId, 0)
+                                           COALESCE(DriverHelper, ''), DeliveryId, COALESCE(StoreCode, ''), COALESCE(TripReportNumber, ''), COALESCE(TotalCrates, 0), COALESCE(SpecialTripId, 0)
 
                                     FROM StatementOfAccountItems WHERE SoaId = @soaId ORDER BY TripNumber ASC, Id ASC";
 
@@ -11485,25 +11485,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             DriverHelper = reader.GetString(13),
 
-                            DriverWage = Convert.ToDecimal(reader.GetDouble(14)),
+                            DeliveryId = reader.GetInt32(14),
 
-                            HelperWage = Convert.ToDecimal(reader.GetDouble(15)),
+                            StoreCode = reader.GetString(15),
 
-                            DistanceKm = Convert.ToDecimal(reader.GetDouble(16)),
+                            TripReportNumber = reader.GetString(16),
 
-                            DieselCost = Convert.ToDecimal(reader.GetDouble(17)),
+                            TotalCrates = reader.GetInt32(17),
 
-                            Excess = Convert.ToDecimal(reader.GetDouble(18)),
-
-                            DeliveryId = reader.GetInt32(19),
-
-                            StoreCode = reader.GetString(20),
-
-                            TripReportNumber = reader.GetString(21),
-
-                            TotalCrates = reader.GetInt32(22),
-
-                            SpecialTripId = reader.GetInt32(23)
+                            SpecialTripId = reader.GetInt32(18)
 
                         });
 
@@ -11573,6 +11563,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 return $"Statement {soa.SoaNumber} is {st.ToLowerInvariant()}, so it can't be edited. Make a new statement instead.";
 
+            if (st.Equals(PayStatus.Paid, StringComparison.OrdinalIgnoreCase))
+                return $"Statement {soa.SoaNumber} is paid in full, so it can't be edited. It is kept in Finance History.";
+            // Nov 6 workflow: statements saved before Nov 6 with both normal and special trips are kept as they are.
+            string savedType = soa.SoaType ?? "";
+            if (soa.Id > 0) { try { EnsureWorkflowColumns(); using var tc = new SqliteConnection(connectionString); tc.Open(); using var tq = tc.CreateCommand(); tq.CommandText = "SELECT COALESCE(SoaType,'Normal') FROM StatementsOfAccount WHERE Id = @i"; tq.Parameters.AddWithValue("@i", soa.Id); savedType = Convert.ToString(tq.ExecuteScalar()) ?? savedType; } catch (Exception ex) { ErrLog.Swallowed(ex); } }
+            if (savedType.Equals(SoaTypes.Mixed, StringComparison.OrdinalIgnoreCase))
+                return $"Statement {soa.SoaNumber} was saved before Nov 6 with both normal and special trips, so it can't be edited. It can still be collected or printed.";
+
             try
 
             {
@@ -11610,6 +11608,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             EnsureSoaStoreCodeColumn();
 
             EnsureSpecialTripColumns();
+
+            EnsureWorkflowColumns();
+            // Nov 6 workflow: a statement is Unpaid until its receipt is recorded, and holds only normal trips or only special trips.
+            if (string.IsNullOrWhiteSpace(soa.Status) || soa.Status.Equals("Issued", StringComparison.OrdinalIgnoreCase)) soa.Status = PayStatus.Unpaid;
+            string linesType = SoaTypeFromLines(items ?? new List<StatementOfAccountItem>());
+            if (linesType == SoaTypes.Mixed)
+                throw new InvalidOperationException("Normal and special trips can't be on the same statement. Make a Normal Operations SOA for the dispatches and a Special Trips SOA for the special trips. Nothing was saved.");
+            if (soa.SoaType != SoaTypes.Normal && soa.SoaType != SoaTypes.Special) soa.SoaType = linesType;
+            if ((items ?? new List<StatementOfAccountItem>()).Any(i => i.DeliveryId > 0 || i.SpecialTripId > 0) && linesType != soa.SoaType)
+                throw new InvalidOperationException(soa.SoaType == SoaTypes.Special
+                    ? "A Special Trips SOA can only hold special trips. Take the dispatch lines off, or make a Normal Operations SOA for them. Nothing was saved."
+                    : "A Normal Operations SOA can only hold normal dispatches. Take the special trip lines off, or make a Special Trips SOA for them. Nothing was saved.");
 
             if (soa.Id > 0)
 
@@ -11665,7 +11675,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                  TotalSalesVatInc, VatAmount, NetOfVat, FuelSurchargeTotal, WithholdingTax, TotalAmount,
 
-                                 SalesInvoiceNo, PreparedBy, ReceivedBy1, ReceivedBy2, Status)
+                                 SalesInvoiceNo, PreparedBy, ReceivedBy1, ReceivedBy2, Status, SoaType)
 
                                 VALUES
 
@@ -11673,7 +11683,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                  @ts, @va, @nv, @fs, @wt, @ta,
 
-                                 @si, @pb, @r1, @r2, @st);
+                                 @si, @pb, @r1, @r2, @st, @sty);
 
                                 SELECT last_insert_rowid();";
 
@@ -11689,7 +11699,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                 TotalSalesVatInc=@ts, VatAmount=@va, NetOfVat=@nv, FuelSurchargeTotal=@fs, WithholdingTax=@wt, TotalAmount=@ta,
 
-                                SalesInvoiceNo=@si, PreparedBy=@pb, ReceivedBy1=@r1, ReceivedBy2=@r2, Status=@st
+                                SalesInvoiceNo=@si, PreparedBy=@pb, ReceivedBy1=@r1, ReceivedBy2=@r2, Status=@st, SoaType=@sty
 
                                 WHERE Id=@rowId;
 
@@ -11733,6 +11743,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         cmd.Parameters.AddWithValue("@r2", soa.ReceivedBy2);
 
+                        cmd.Parameters.AddWithValue("@sty", soa.SoaType);
                         cmd.Parameters.AddWithValue("@st", soa.Status);
 
                         int soaId = Convert.ToInt32(cmd.ExecuteScalar() ?? 0);
@@ -11765,17 +11776,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                     (SoaId, TripNumber, DateReceived, Zone, DrNumbers, Destination, DeliveryType, PlateNumber,
 
-                                     Tonnage, DropCount, Amount, FuelSurcharge, DriverHelper, DriverWage, HelperWage,
+                                     Tonnage, DropCount, Amount, FuelSurcharge, DriverHelper,
 
-                                     DistanceKm, DieselCost, Excess, DeliveryId, StoreCode, TripReportNumber, TotalCrates, SpecialTripId)
+                                     DeliveryId, StoreCode, TripReportNumber, TotalCrates, SpecialTripId)
 
                                     VALUES
 
                                     (@sid, @tn, @dr, @zn, @dn, @dst, @dt, @pn,
 
-                                     @ton, @dc, @amt, @fsc, @dh, @dw, @hw,
+                                     @ton, @dc, @amt, @fsc, @dh,
 
-                                     @dist, @dsc, @exs, @did, @scode, @trn, @tcr, @stid);";
+                                     @did, @scode, @trn, @tcr, @stid);";
 
                                 insItm.Parameters.AddWithValue("@sid", soaId);
 
@@ -11802,16 +11813,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                 insItm.Parameters.AddWithValue("@fsc", itm.FuelSurcharge);
 
                                 insItm.Parameters.AddWithValue("@dh", itm.DriverHelper);
-
-                                insItm.Parameters.AddWithValue("@dw", itm.DriverWage);
-
-                                insItm.Parameters.AddWithValue("@hw", itm.HelperWage);
-
-                                insItm.Parameters.AddWithValue("@dist", itm.DistanceKm);
-
-                                insItm.Parameters.AddWithValue("@dsc", itm.DieselCost);
-
-                                insItm.Parameters.AddWithValue("@exs", itm.Excess);
 
                                 insItm.Parameters.AddWithValue("@did", itm.DeliveryId);
 

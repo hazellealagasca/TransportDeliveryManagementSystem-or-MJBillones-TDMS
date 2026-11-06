@@ -621,12 +621,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public int DropCount { get; set; }
         public decimal Amount { get; set; }
         public decimal FuelSurcharge { get; set; }
+        /// <summary>Names of the delivery crew ("Juan Dela Cruz / Pedro Santos") as proof of who delivered. Never an amount.</summary>
         public string DriverHelper { get; set; } = string.Empty;
-        public decimal DriverWage { get; set; }
-        public decimal HelperWage { get; set; }
-        public decimal DistanceKm { get; set; }
-        public decimal DieselCost { get; set; }
-        public decimal Excess { get; set; }
         public int DeliveryId { get; set; }
         /// <summary>Store code of the line (filled from the trip report); blank on older lines and hand-typed ones.</summary>
         public string StoreCode { get; set; } = string.Empty;

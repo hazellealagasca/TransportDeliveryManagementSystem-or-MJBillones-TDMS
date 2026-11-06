@@ -210,5 +210,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             c.Parameters.AddWithValue("@s", soaId);
             c.ExecuteNonQuery();
         }
+        /// <summary>
+        /// The service invoices a statement of this client and type can take: the client's Unpaid invoices of that kind (normal
+        /// dispatches or special trips) that have an amount, nothing collected, and are not on another statement.
+        /// </summary>
+        public static List<TripInvoice> GetSoaCandidateInvoices(string client, string soaType, int thisSoaId)
+        {
+            string c = (client ?? "").Trim();
+            if (c.Length == 0) return new List<TripInvoice>();
+            return GetTripInvoices()
+                .Where(i => string.Equals((i.Client ?? "").Trim(), c, StringComparison.OrdinalIgnoreCase)
+                            && i.Kind == soaType && i.IsStatus(PayStatus.Unpaid) && i.Net > 0 && i.Collected <= 0
+                            && (i.SoaId == 0 || (thisSoaId > 0 && i.SoaId == thisSoaId)))
+                .OrderBy(i => i.IssueDate).ThenBy(i => i.Number, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        /// <summary>The statement's type from its lines: Special when every line is a special trip, else Normal (Mixed when both).</summary>
+        public static string SoaTypeFromLines(IEnumerable<StatementOfAccountItem> items)
+        {
+            var l = (items ?? Enumerable.Empty<StatementOfAccountItem>()).Where(i => i.DeliveryId > 0 || i.SpecialTripId > 0).ToList();
+            bool special = l.Any(i => i.SpecialTripId > 0), normal = l.Any(i => i.SpecialTripId <= 0);
+            return special && normal ? SoaTypes.Mixed : special ? SoaTypes.Special : SoaTypes.Normal;
+        }
     }
 }

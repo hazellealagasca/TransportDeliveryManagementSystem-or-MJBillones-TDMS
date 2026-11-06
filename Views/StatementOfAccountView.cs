@@ -1399,9 +1399,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     StoreCode = (row.Cells["colStoreCode"].Value?.ToString() ?? "").Trim(),
                     TripReportNumber = (row.Cells["colTripReport"].Value?.ToString() ?? "").Trim(),
                     TotalCrates = int.TryParse((row.Cells["colCrates"].Value?.ToString() ?? "").Replace(",", "").Trim(), out int tc) && tc > 0 ? tc : 0,
-                    SpecialTripId = gridItems.Columns.Contains("colSpecialTrip") && int.TryParse(row.Cells["colSpecialTrip"].Value?.ToString(), out int stid) && stid > 0 ? stid : 0,
-                    // Employee pay never goes on a statement (it stays with the trip report's crew pay).
-                    DriverWage = 0, HelperWage = 0, DistanceKm = 0, DieselCost = 0, Excess = 0
+                    SpecialTripId = gridItems.Columns.Contains("colSpecialTrip") && int.TryParse(row.Cells["colSpecialTrip"].Value?.ToString(), out int stid) && stid > 0 ? stid : 0
+                    // Crew pay never goes on a statement: it is internal and stays in Crew Management.
                 });
             }
             return list;
