@@ -1618,10 +1618,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             int total = g + ec;
 
-            txtTotalCrates.Text = $"{total:N0} Crates";
-
-
-
+            txtTotalCrates.Text = $"G-Crates {g:N0}   +   E-Crates {ec:N0}   =   {total:N0} crates";
             UpdateCombiSplitUi(total);
 
             if (lnkCapDetails != null) lnkCapDetails.Visible = false;
@@ -1676,9 +1673,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                var rec = MJdatabase.GetTruckRecommendation(total, dtpDispatchDate.Value, cbCargoType.Text);
-
-                lblRec.Text = rec.RecommendationMessage;
+                // Nov 6 workflow: one compact line instead of the recommendation card.
+                var rec = MJdatabase.GetTruckRecommendation(total, dtpDispatchDate.Value, "");
+                lblRec.Text = rec.RecommendedTruck != null
+                    ? $"ℹ️ Total {total:N0} crates  ·  suggested truck {rec.RecommendedTruck.PlateNumber} ({CapacityValidator.MatrixFor(rec.RecommendedTruck).TruckMax:N0} crates)"
+                    : $"ℹ️ Total {total:N0} crates  ·  {rec.RecommendationMessage}";
 
 
 
@@ -1845,16 +1844,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private static List<SpecialTripColumnDef> GetDefaultStoreBreakdownColumns()
         {
+            // Nov 6 workflow: Store Code, Store Name, DR No., G-Crates, E-Crates. The route and the per-store total stay in the
+            // table (hidden): the store checks need the route, and the total is still worked out.
             return new List<SpecialTripColumnDef>
             {
                 new SpecialTripColumnDef { Key = "colStoreCode", HeaderText = "Store Code", Width = 80, IsFill = false },
                 new SpecialTripColumnDef { Key = "colStoreName", HeaderText = "Store Name", Width = 155, IsFill = true },
                 new SpecialTripColumnDef { Key = "colStoreRoute", HeaderText = "Route", Width = 120, IsFill = false },
-
-                new SpecialTripColumnDef { Key = "colECrate", HeaderText = "E-Crates ✎", Width = 72, IsFill = false },
+                new SpecialTripColumnDef { Key = "colDrNumbers", HeaderText = "DR No.", Width = 110, IsFill = false },
                 new SpecialTripColumnDef { Key = "colGCrate", HeaderText = "G-Crates ✎", Width = 72, IsFill = false },
+                new SpecialTripColumnDef { Key = "colECrate", HeaderText = "E-Crates ✎", Width = 72, IsFill = false },
                 new SpecialTripColumnDef { Key = "colStoreTotal", HeaderText = "Total", Width = 58, IsFill = false }
-
             };
         }
 
@@ -2178,9 +2178,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 storeGridColumns = GetDefaultStoreBreakdownColumns();
             }
 
-            // DR / invoice numbers are not part of the store table anymore (they belong to the trip report and billing).
-
-            storeGridColumns = storeGridColumns.Where(c => !IsDrOrInvoiceColumn(c)).ToList();
+            // Nov 6 workflow: the store table carries each store's DR number again (the trip report shows the same DR).
+            // Only invoice-number columns are left out (they belong to billing).
+            storeGridColumns = storeGridColumns.Where(c => c.Key == "colDrNumbers" || !IsDrOrInvoiceColumn(c)).ToList();
 
             if (storeGridColumns.Count == 0) storeGridColumns = GetDefaultStoreBreakdownColumns();
 
@@ -2188,13 +2188,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var defaults = GetDefaultStoreBreakdownColumns();
 
-            foreach (var key in new[] { "colStoreCode", "colStoreName", "colStoreRoute" })
-
+            foreach (var key in new[] { "colStoreCode", "colStoreName", "colStoreRoute", "colDrNumbers" })
             {
-
                 if (storeGridColumns.Any(c => c.Key == key)) continue;
-
-                int at = key == "colStoreCode" ? 0 : Math.Min(storeGridColumns.Count, storeGridColumns.FindIndex(c => c.Key == (key == "colStoreName" ? "colStoreCode" : "colStoreName")) + 1);
+                string after = key switch { "colStoreName" => "colStoreCode", "colStoreRoute" => "colStoreName", _ => "colStoreRoute" };
+                int at = key == "colStoreCode" ? 0 : Math.Min(storeGridColumns.Count, storeGridColumns.FindIndex(c => c.Key == after) + 1);
 
                 storeGridColumns.Insert(Math.Max(0, at), defaults.First(c => c.Key == key).Clone());
 
@@ -2247,8 +2245,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             colDel.DefaultCellStyle.ForeColor = Color.White;
             colDel.DefaultCellStyle.BackColor = AppTheme.Danger;
             colDel.DefaultCellStyle.Font = new Font("Segoe UI Semibold", 8.5F);
-
             gridRouteStores.Columns.Add(colDel);
+            foreach (var hidden in new[] { "colStoreRoute", "colStoreTotal" })
+                if (gridRouteStores.Columns.Contains(hidden)) gridRouteStores.Columns[hidden]!.Visible = false;
         }
 
         private static bool IsDrOrInvoiceColumn(SpecialTripColumnDef c)
@@ -2626,8 +2625,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Panel pnlCargoContainer = new Panel { Dock = DockStyle.Fill };
             cbCargoType.Dock = DockStyle.Fill;
-            chkIsPeak.Dock = DockStyle.Right;
-            chkIsPeak.Width = 100;
+            // Nov 6 workflow: no cargo / temperature dropdown on the dispatch (the truck's own type is saved, and "Combi" is a
+            // note in the remarks). The Peak Season tick keeps its place.
+            cbCargoType.Visible = false;
+            lblCargoType.Text = "Season:";
+            chkIsPeak.Dock = DockStyle.Fill;
             chkIsPeak.Text = "Peak Season";
 
             pnlCargoContainer.Controls.Add(cbCargoType);
@@ -5280,7 +5282,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     ClientName = clientName,
                     Destination = destination,
                     IsPeak = chkIsPeak.Checked,
-                    CargoType = !string.IsNullOrEmpty(cbCargoType.Text) ? cbCargoType.Text : selTr!.CargoType,
+                    CargoType = selTr!.CargoType, // Nov 6 workflow: the truck's own type (no cargo dropdown)
                     LoadingScheduleId = 0,
                     LoadingScheduleInfo = lsInfo,
                     TruckId = selTr!.Id,

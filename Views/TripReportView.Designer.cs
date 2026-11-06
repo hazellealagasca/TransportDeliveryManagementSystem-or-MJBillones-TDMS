@@ -493,7 +493,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtRemarks.MaxLength = 500;
             this.txtRemarks.Multiline = true;
             this.txtRemarks.Name = "txtRemarks";
-            this.txtRemarks.PlaceholderText = "All goods received in good condition, complete crates returned...";
+            this.txtRemarks.PlaceholderText = "e.g. Combi trip (dry + chilled). All goods received in good condition, complete crates returned...";
             this.txtRemarks.Size = new System.Drawing.Size(436, 52);
             this.txtRemarks.TabIndex = 8;
 

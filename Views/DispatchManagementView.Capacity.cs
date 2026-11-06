@@ -55,7 +55,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-        private bool IsCombiCargo => MJdatabase.NormalizeCargo(cbCargoType.Text) == MJdatabase.CargoCombi;
+        /// <summary>Nov 6 workflow: there is no cold / dry split on the dispatch any more (Combi is a note in the remarks).</summary>
+        private static bool IsCombiCargo => false;
 
 
 
@@ -102,8 +103,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>The live status line under the crates (uses the same check as Save).</summary>
         private bool ApplyLiveCapacityStatus(Truck selTruck, int total)
         {
-            var (cold, dry) = CurrentCrateSplit(total);
-            var r = CapacityValidator.Validate(selTruck, cbCargoType.Text, cold, dry);
+            var r = CapacityValidator.ValidateTotal(selTruck, total); // Nov 6 workflow: total crates vs the truck's maximum
             Color back, fore;
             string icon;
             switch (r.State)
@@ -116,7 +116,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             pnlRec.BackColor = back;
             lblRec.ForeColor = fore;
-            lblRec.Text = $"{icon} {selTruck.PlateNumber}: {r.Title}. {r.Message}";
+            lblRec.Text = $"{icon} Total {total:N0} crates  ·  {selTruck.PlateNumber}  ·  {total:N0} / {r.Limit:N0}" + (r.Limit > 0 ? $" ({Math.Round(total * 100.0 / r.Limit):0}% full)" : "") + (r.State == CapacityState.Allow ? "" : $"  ·  {r.Title}");
             if (lnkCapDetails != null) lnkCapDetails.Visible = true;
             return true;
         }
@@ -146,8 +146,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var t = SelectedTruckOrNull();
             int total = (int)(numGCrate.Value + numECrate.Value);
             if (t == null) { QuietBox.Show("Choose the truck first.", "Capacity details", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
-            var (cold, dry) = CurrentCrateSplit(total);
-            var r = CapacityValidator.Validate(t, cbCargoType.Text, cold, dry);
+            var r = CapacityValidator.ValidateTotal(t, total);
             using var dlg = new CapacityCheckDialog(r, TrucksFreeForThisOrder(), gate: false);
             dlg.ShowDialog(FindForm());
         }
@@ -166,7 +165,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             (cold, dry) = CurrentCrateSplit(total);
             over = 0;
             reason = "";
-            var r = CapacityValidator.Validate(selTr, cbCargoType.Text, cold, dry);
+            var r = CapacityValidator.ValidateTotal(selTr, total);
             if (r.State == CapacityState.Allow) return true;
             using var dlg = new CapacityCheckDialog(r, TrucksFreeForThisOrder(), gate: true);
             dlg.ShowDialog(FindForm());

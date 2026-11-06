@@ -464,7 +464,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblTotalCrates.Padding = new Padding(0, 0, 0, 1);
             lblTotalCrates.Size = new Size(130, 20);
             lblTotalCrates.TabIndex = 2;
-            lblTotalCrates.Text = "Total Crates (Auto-Tallied from Route Stores):";
+            lblTotalCrates.Text = "Crates (tallied from the store table, read-only):";
 
             numGCrate.Dock = DockStyle.Fill;
             numGCrate.Font = new Font("Segoe UI", 9F);

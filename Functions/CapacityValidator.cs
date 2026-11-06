@@ -97,6 +97,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+        /// <summary>
+        /// Nov 6 workflow: the dispatch form no longer asks for a cargo / temperature type, so a load is checked as its total
+        /// crates (G + E) against the truck's maximum. (Combi is only a note in the remarks.)
+        /// </summary>
+        public static CapacityResult ValidateTotal(Truck truck, int totalCrates)
+        {
+            var m = MatrixFor(truck);
+            int total = Math.Max(0, totalCrates), max = m.TruckMax;
+            string plate = truck.PlateNumber;
+            CapacityResult R(CapacityState st, int over, string title, string msg) =>
+                new CapacityResult { State = st, Truck = truck, Cargo = MJdatabase.NormalizeCargo(truck.CargoType), Dry = total, Matrix = m, Limit = max, Over = over, Title = title, Message = msg };
+            if (total == 0) return R(CapacityState.NoCrates, 0, "No crates entered", "Enter the G-crates and E-crates for this trip before checking the truck.");
+            if (max > 0 && total > max)
+                return R(CapacityState.BlockPure, total - max, "Over the truck's capacity", $"{total:N0} crates is {total - max:N0} more than {plate} can carry ({max:N0} crates).");
+            return R(CapacityState.Allow, 0, "Fits", $"{total:N0} of {max:N0} crates ({Pct(total, max)}).");
+        }
+
         public static CapacityResult Validate(Truck truck, string? cargoType, int cold, int dry, decimal? weightKg = null)
         {
             string cargo = MJdatabase.NormalizeCargo(cargoType);
