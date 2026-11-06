@@ -5,6 +5,10 @@ using TDMS.Verify;
 string? realDb = args.FirstOrDefault(a => a.EndsWith(".db", StringComparison.OrdinalIgnoreCase));
 string? filter = args.FirstOrDefault(a => !a.StartsWith("-") && !a.EndsWith(".db", StringComparison.OrdinalIgnoreCase));
 Checks.RealDb = realDb;
+// Same start-up as the app (ApplicationConfiguration.Initialize), so screens are tested as users see them.
+Application.EnableVisualStyles();
+Application.SetCompatibleTextRenderingDefault(false);
+Application.SetHighDpiMode(HighDpiMode.SystemAware);
 int failed = Checks.RunAll(filter);
 Console.WriteLine(failed == 0 ? "ALL PASS" : $"{failed} FAILED");
 return failed;

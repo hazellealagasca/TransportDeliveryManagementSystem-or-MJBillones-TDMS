@@ -159,7 +159,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                 ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
                 ColumnHeadersHeight = D(38),
-                EditMode = DataGridViewEditMode.EditOnEnter,
+                // Not EditOnEnter: getting focus while the tab was still being shown started an edit with no editor and the
+                // next repaint failed (NullReferenceException in PaintPrivate). A click or a keystroke starts editing instead.
+                EditMode = DataGridViewEditMode.EditOnKeystrokeOrF2,
                 Font = new Font("Segoe UI", 9.5F),
                 EnableHeadersVisualStyles = false,
                 ShowCellToolTips = true
@@ -186,6 +188,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
                 string col = gridRoutes.Columns[e.ColumnIndex].Name;
                 if (col == "colStores") EditStores(e.RowIndex);
+                else if (col != "colArchive" && !gridRoutes.Columns[e.ColumnIndex].ReadOnly && !gridRoutes.IsCurrentCellInEditMode) gridRoutes.BeginEdit(true);
             };
             gridRoutes.CellContentClick += (s, e) =>
             {
@@ -257,23 +260,41 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (isLoadingRoutes) return;
             isLoadingRoutes = true;
+            bool handedOff = false;
             try
             {
-                var all = await MJdatabase.GetDeliveryRoutesAsync();
-                try { clientNames = MJdatabase.GetClients().Where(c => c.IsActive).Select(c => c.CompanyName).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList(); }
-                catch { clientNames = new List<string>(); }
-                rows.Clear();
-                // Archived routes are listed in Master Data → Archive.
-                foreach (var r in all.Where(r => r.IsActive).OrderBy(r => r.ClientCompanyName, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.RouteCode, StringComparer.OrdinalIgnoreCase))
-                    rows.Add(new RouteRow(r));
-                BindGrid();
+                // Read everything off the screen's thread, then fill the table ON the screen's thread. The load can be
+                // started before the screen has a window (from the constructor), when the continuation may run on a
+                // background thread; filling the table from there corrupted the shared drawing state and the next table
+                // to repaint failed (NullReferenceException in DataGridView...Cell.PaintPrivate).
+                var (all, clients) = await System.Threading.Tasks.Task.Run(() =>
+                {
+                    var routes = MJdatabase.GetDeliveryRoutes(false);
+                    List<string> names;
+                    try { names = MJdatabase.GetClients().Where(c => c.IsActive).Select(c => c.CompanyName).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList(); }
+                    catch (Exception ex) { ErrLog.Swallowed(ex); names = new List<string>(); }
+                    return (routes, names);
+                });
+                void Apply()
+                {
+                    if (IsDisposed) return;
+                    clientNames = clients;
+                    rows.Clear();
+                    // Archived routes are listed in Master Data → Archive.
+                    foreach (var r in all.Where(r => r.IsActive).OrderBy(r => r.ClientCompanyName, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.RouteCode, StringComparer.OrdinalIgnoreCase))
+                        rows.Add(new RouteRow(r));
+                    BindGrid();
+                }
+                if (!InvokeRequired) Apply();
+                else if (IsHandleCreated) { handedOff = true; BeginInvoke(new Action(() => { try { Apply(); } finally { isLoadingRoutes = false; } })); }
+                else { handedOff = true; void Once(object? s, EventArgs e) { HandleCreated -= Once; try { Apply(); } finally { isLoadingRoutes = false; } } HandleCreated += Once; }
             }
             catch (Exception ex)
             {
                 ErrLog.Error("DeliveryRoutesView", ex);
-                MessageBox.Show("Failed to load delivery routes: " + ex.Message, "Database error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (!InvokeRequired) MessageBox.Show("Failed to load delivery routes: " + ex.Message, "Database error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            finally { isLoadingRoutes = false; }
+            finally { if (!handedOff) isLoadingRoutes = false; }
         }
 
 
@@ -291,6 +312,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     foreach (var r in rows)
                         if (!string.IsNullOrWhiteSpace(r.Route.ClientCompanyName) && !cc.Items.Contains(r.Route.ClientCompanyName)) cc.Items.Add(r.Route.ClientCompanyName);
                 }
+                // Leave edit mode before the rows are replaced: the grid edits on focus, and replacing the rows under an open
+                // editor made the next repaint fail (NullReferenceException in DataGridViewTextBoxCell.PaintPrivate).
+                if (gridRoutes.IsCurrentCellInEditMode) { gridRoutes.CancelEdit(); gridRoutes.EndEdit(); }
+                gridRoutes.CurrentCell = null;
                 gridRoutes.Rows.Clear();
                 foreach (var rr in rows)
                 {

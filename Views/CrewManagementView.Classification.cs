@@ -193,6 +193,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void ClearClassification()
         {
+            // The form can be cleared while the screen is still being built (before InitClassification); nothing to clear yet.
+            if (cbLicenseClass == null || pnlLicense == null) return;
             settingLicense = true;
             try
             {
