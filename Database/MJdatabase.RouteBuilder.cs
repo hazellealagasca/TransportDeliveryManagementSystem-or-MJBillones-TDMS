@@ -291,28 +291,51 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>
-        /// The rename cascade for one store list: every entry that names the store before or after the change
-        /// (<see cref="PlaceIsStore"/>) becomes <see cref="PlaceFor"/> of the store after it. No entry is added or removed.
+        /// Takes every entry of the store off the route's list (<see cref="PlaceIsStore"/>, as SetStoreOnRoute removes), without
+        /// recomputing the store's route label: an archived store keeps the label, so a restore puts it back on the same route.
         /// </summary>
-        public static List<string> RenamedPlaces(IEnumerable<string> places, ClientStore before, ClientStore after) =>
-            places.Select(p => PlaceIsStore(p, before) || PlaceIsStore(p, after) ? PlaceFor(after) : p).ToList();
+        private static void RemoveRoutePlace(DeliveryRoute r, ClientStore st)
+        {
+            var list = r.PlacesList;
+            int before = list.Count;
+            list.RemoveAll(p => PlaceIsStore(p, st));
+            if (list.Count != before) WriteRoutePlaces(r.Id, list);
+        }
 
-        /// <summary>A store was renamed or re-coded: its entries on every route of its client follow it. Returns the routes changed.</summary>
+        /// <summary>
+        /// The rename cascade for one store list: an entry that is the store's own (it names the store before or after the change,
+        /// <see cref="PlaceIsStore"/>, and none of <paramref name="otherStores"/>) becomes <see cref="PlaceFor"/> of the store after it,
+        /// unless that new text would also name one of <paramref name="otherStores"/>. Any other entry is left as it is. No entry is
+        /// added or removed. <paramref name="otherStores"/> are the client's other active stores.
+        /// </summary>
+        public static List<string> RenamedPlaces(IEnumerable<string> places, ClientStore before, ClientStore after, IReadOnlyList<ClientStore> otherStores)
+        {
+            string canon = PlaceFor(after);
+            if (otherStores.Any(o => PlaceIsStore(canon, o))) return places.ToList(); // the new text would be ambiguous
+            return places.Select(p => (PlaceIsStore(p, before) || PlaceIsStore(p, after)) && !otherStores.Any(o => PlaceIsStore(p, o)) ? canon : p).ToList();
+        }
+
+        /// <summary>A store was renamed or re-coded: its own entries on every route of its client follow it. Returns the routes changed.</summary>
         private static int RenameStoreOnRoutes(ClientStore before, ClientStore after)
         {
             if (!string.Equals(CleanStoreText(before.ClientCompanyName), CleanStoreText(after.ClientCompanyName), StringComparison.OrdinalIgnoreCase)) return 0;
             if (PlaceFor(before) == PlaceFor(after)) return 0;
+            var others = GetClientStores(CleanStoreText(after.ClientCompanyName)).Where(o => o.Id != after.Id).ToList();
             int changed = 0;
             foreach (var r in OwnRoutes(after.ClientCompanyName))
             {
                 var places = r.PlacesList;
-                var renamed = RenamedPlaces(places, before, after);
+                var renamed = RenamedPlaces(places, before, after, others);
                 if (renamed.SequenceEqual(places)) continue;
                 WriteRoutePlaces(r.Id, renamed);
                 changed++;
                 try { LogAuditTrail("UPDATE", "DeliveryRoutes", r.Id, r.RouteCode, "ConnectedPlaces", r.ConnectedPlaces, string.Join("; ", renamed), $"Store {PlaceFor(before)} is now {PlaceFor(after)} on route {r.RouteCode}"); } catch (Exception ex) { ErrLog.Swallowed(ex); }
             }
-            if (changed > 0) AppEvents.Raise(AppDataKind.Routes);
+            if (changed > 0)
+            {
+                RecomputeStoreRouteLabels(after.ClientCompanyName);
+                AppEvents.Raise(AppDataKind.Routes);
+            }
             return changed;
         }
 

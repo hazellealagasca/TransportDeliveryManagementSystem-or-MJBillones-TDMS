@@ -12760,9 +12760,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return list;
         }
 
-        public static void SaveClientStore(ClientStore store)
+        /// <summary>
+        /// Saves a client store and keeps the routes' store lists in step. Returns null when everything was saved, or a message to
+        /// show inline when the store was saved but a route list could not be updated (each failure is logged through ErrLog).
+        /// </summary>
+        public static string? SaveClientStore(ClientStore store)
         {
-            if (store == null || string.IsNullOrWhiteSpace(store.StoreName)) return;
+            if (store == null || string.IsNullOrWhiteSpace(store.StoreName)) return null;
             if (!string.IsNullOrWhiteSpace(store.StoreCode) && IsStoreCodeTaken(store.ClientCompanyName, store.StoreCode, store.Id))
 
                 throw new InvalidOperationException($"Store code \"{store.StoreCode.Trim()}\" is already used by another store of {store.ClientCompanyName}. Each store needs its own code.");
@@ -12808,28 +12812,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else store.Id = Convert.ToInt32(cmd.ExecuteScalar() ?? 0);
 
             }
-            // Keep the routes' store lists in step with the client's stores: a renamed or re-coded store keeps its place on every
-            // route it is on; a store moved to another route leaves the old one and is put on the new one (SetStoreOnRoute).
-
-            try
-
+            // Keep the routes' store lists in step with the client's stores. Each step is tried on its own, so one failure does not
+            // skip the others: a store moved to another route leaves the old one (its old client's route, its old entry); a renamed or
+            // re-coded store keeps its own place on every route it is on; and it is put on its route (SetStoreOnRoute).
+            var problems = new List<string>();
+            void Step(string what, Action act)
             {
-
-                string client = (store.ClientCompanyName ?? "").Trim();
-
-                var oldR = old == null ? null : ResolveRouteFromLabel(client, old.DestinationRoute ?? "");
-
-                var newR = ResolveRouteFromLabel(client, (store.DestinationRoute ?? "").Trim());
-
-                if (old != null) RenameStoreOnRoutes(old, store);
-
-                if (oldR != null && (newR == null || oldR.Id != newR.Id)) SetStoreOnRoute(oldR, store, false);
-
-                if (newR != null) SetStoreOnRoute(newR, store, true);
-
+                try { act(); }
+                catch (System.Exception ex) { ErrLog.Swallowed(ex); problems.Add($"{what}: {ex.Message}"); }
             }
-
-            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] store→route sync: {ex.Message}"); ErrLog.Swallowed(ex); }
+            DeliveryRoute? oldR = null, newR = null;
+            try
+            {
+                oldR = old == null ? null : ResolveRouteFromLabel((old.ClientCompanyName ?? "").Trim(), old.DestinationRoute ?? "");
+                newR = ResolveRouteFromLabel((store.ClientCompanyName ?? "").Trim(), (store.DestinationRoute ?? "").Trim());
+            }
+            catch (System.Exception ex) { ErrLog.Swallowed(ex); problems.Add("finding the store's routes: " + ex.Message); }
+            if (old is { } before && oldR is { } leave && (newR == null || leave.Id != newR.Id))
+                Step($"taking it off route {leave.RouteCode}", () => SetStoreOnRoute(leave, before, false));
+            if (old is { } renamedFrom) Step("renaming it on its routes", () => RenameStoreOnRoutes(renamedFrom, store));
+            if (newR is { } join) Step($"putting it on route {join.RouteCode}", () => SetStoreOnRoute(join, store, true));
+            return problems.Count == 0 ? null : "Store saved, but its route lists were not all updated (" + string.Join("; ", problems) + ").";
 
         }
 
@@ -12850,23 +12853,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.Parameters.AddWithValue("@id", storeId);
                 cmd.ExecuteNonQuery();
             }
-            try
-
+            // The deleted store leaves every route of its client it is on (else those routes would recreate it later).
+            if (old == null) return;
+            List<DeliveryRoute> holding;
+            try { holding = RoutesContainingStore(old.ClientCompanyName, old); }
+            catch (System.Exception ex) { ErrLog.Swallowed(ex); return; }
+            foreach (var r in holding)
             {
-
-                if (old != null)
-
-                {
-
-                    var r = ResolveRouteFromLabel(old.ClientCompanyName, old.DestinationRoute);
-
-                    if (r != null) SetStoreOnRoute(r, old, false);
-
-                }
-
+                try { SetStoreOnRoute(r, old, false); }
+                catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] store delete→route {r.RouteCode}: {ex.Message}"); ErrLog.Swallowed(ex); }
             }
-
-            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] store delete→route sync: {ex.Message}"); ErrLog.Swallowed(ex); }
 
         }
 
@@ -12923,24 +12919,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         public static string RouteLabel(DeliveryRoute r) => $"{r.RouteCode} - {r.RouteName}";
-
-        /// <summary>
-        /// Takes every entry of the store off the route's list (<see cref="PlaceIsStore"/>, as SetStoreOnRoute removes), without
-        /// recomputing the store's route label: an archived store keeps the label, so a restore puts it back on the same route.
-        /// </summary>
-        private static void RemoveRoutePlace(DeliveryRoute r, ClientStore st)
-
-        {
-
-            var list = r.PlacesList;
-
-            int before = list.Count;
-
-            list.RemoveAll(p => PlaceIsStore(p, st));
-
-            if (list.Count != before) WriteRoutePlaces(r.Id, list);
-
-        }
 
         /// <summary>
 

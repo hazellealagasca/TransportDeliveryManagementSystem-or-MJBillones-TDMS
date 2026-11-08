@@ -848,6 +848,59 @@ public static partial class Checks
     }
 
     [Check]
+    public static string RouteStores_RenameToAnotherStoresNameLeavesItsEntry()
+    {
+        Fresh();
+        long route = DwRoute("DW-R1", "North", "DD-2 - Tarlac; Capas"); // "Capas" is DD-3's legacy entry
+        long dd2 = DwStoreOn("DD-2", "Tarlac", "DW-R1 - North");
+        long dd3 = DwStoreOn("DD-3", "Capas", "DW-R1 - North");
+        var fails = new List<string>();
+        var st = DwSaved(dd2);
+        st.StoreName = "Capas"; // names are not unique per client: only the code is checked
+        MJdatabase.SaveClientStore(st);
+        ExpectPlaces(fails, "renamed to Capas", route, "DD-2 - Capas; Capas");
+        var r = MJdatabase.GetDeliveryRoutes(activeOnly: false).First(x => x.Id == route);
+        if (!MJdatabase.StoreIsOnRoute(r, DwSaved(dd3))) fails.Add("DD-3 dropped off the route");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_AutoCodeCleanUpLeavesAnotherStoresEntry()
+    {
+        Fresh();
+        Exec("DELETE FROM SystemSettings WHERE SettingKey = 'Fix.AutoStoreCodes.v1'");
+        long route = DwRoute("DW-R1", "North", "203099 - Paniqui; R1-S02 - Paniqui; Elsewhere");
+        long real = DwStoreOn("203099", "Paniqui", "");  // a real store with the same name
+        long auto = DwStoreOn("R1-S02", "Paniqui", ""); // made-up code, cleared by the clean-up ("" , "Paniqui")
+        var fails = new List<string>();
+        MJdatabase.MigrateAutoStoreCodes();
+        var a = DwSaved(auto);
+        if (a.StoreCode != "" || a.StoreName != "Paniqui") fails.Add($"made-up store saved as {a.StoreCode}|{a.StoreName}");
+        // "203099 - Paniqui" is the other store's own entry; "Paniqui" would name both stores, so "R1-S02 - Paniqui" is left too
+        ExpectPlaces(fails, "after clean-up", route, "203099 - Paniqui; R1-S02 - Paniqui; Elsewhere", DwSaved(real));
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_DeleteStoreClearsEveryRoute()
+    {
+        Fresh();
+        long r1 = DwRoute("DW-R1", "North", "DD-1 - San Miguel; DD-3 - Capas");
+        long r2 = DwRoute("DW-R2", "South", "DD-3 - Capas; DD-2 - Tarlac");
+        long other = Exec("INSERT INTO DeliveryRoutes (ClientCompanyName, RouteCode, RouteName, ConnectedPlaces, IsActive) VALUES ('OTHER CLIENT', 'OC-R1', 'East', 'DD-3 - Capas', 1)");
+        AddStore("DWARDO", "DD-1", "San Miguel");
+        AddStore("DWARDO", "DD-2", "Tarlac");
+        long capas = DwStoreOn("DD-3", "Capas", "DW-R1 - North");
+        var fails = new List<string>();
+        MJdatabase.DeleteClientStore((int)capas);
+        ExpectPlaces(fails, "deleted", r1, "DD-1 - San Miguel");
+        ExpectPlaces(fails, "deleted", r2, "DD-2 - Tarlac");
+        ExpectPlaces(fails, "deleted (other client's route)", other, "DD-3 - Capas");
+        if (Long("SELECT COUNT(*) FROM ClientStores WHERE Id = @id", ("@id", capas)) != 0) fails.Add("store row not deleted");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
     public static string RouteStores_SetRoutePlacesWritesCanonicalText()
     {
         Fresh();

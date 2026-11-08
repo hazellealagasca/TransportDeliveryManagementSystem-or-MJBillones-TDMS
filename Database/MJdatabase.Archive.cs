@@ -157,14 +157,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             using var conn = new SqliteConnection(connectionString);
             conn.Open();
             using var tx = conn.BeginTransaction();
-            var stores = new List<(int Id, string Client, string Code, string Name)>();
+            var stores = new List<(int Id, string Client, string Code, string Name, bool Archived)>();
             using (var q = conn.CreateCommand())
             {
                 q.Transaction = tx;
-                q.CommandText = "SELECT Id, COALESCE(ClientCompanyName,''), COALESCE(StoreCode,''), COALESCE(StoreName,'') FROM ClientStores";
+                q.CommandText = "SELECT Id, COALESCE(ClientCompanyName,''), COALESCE(StoreCode,''), COALESCE(StoreName,''), COALESCE(IsArchived,0) FROM ClientStores";
                 using var r = q.ExecuteReader();
-                while (r.Read()) stores.Add((r.GetInt32(0), r.GetString(1), r.GetString(2).Trim(), r.GetString(3).Trim()));
+                while (r.Read()) stores.Add((r.GetInt32(0), r.GetString(1), r.GetString(2).Trim(), r.GetString(3).Trim(), r.GetInt32(4) == 1));
             }
+            // Each store as it is now (updated as the loop cleans codes), for the "no other active store" test of the rename cascade.
+            var current = stores.ToDictionary(x => x.Id, x => new ClientStore { Id = x.Id, ClientCompanyName = x.Client, StoreCode = x.Code, StoreName = x.Name });
             var routes = new List<(int Id, string Client, string Places)>();
             using (var q = conn.CreateCommand())
             {
@@ -195,14 +197,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 Exec("UPDATE ClientStores SET StoreCode = @c, StoreName = @n WHERE Id = @id", ("@c", newCode), ("@n", newName), ("@id", st.Id));
                 changed++;
-                var before = new ClientStore { ClientCompanyName = st.Client, StoreCode = st.Code, StoreName = st.Name };
-                var after = new ClientStore { ClientCompanyName = st.Client, StoreCode = newCode, StoreName = newName };
+                var before = new ClientStore { Id = st.Id, ClientCompanyName = st.Client, StoreCode = st.Code, StoreName = st.Name };
+                var after = new ClientStore { Id = st.Id, ClientCompanyName = st.Client, StoreCode = newCode, StoreName = newName };
+                current[st.Id] = after;
+                var others = stores.Where(x => x.Id != st.Id && !x.Archived && string.Equals(x.Client.Trim(), st.Client.Trim(), StringComparison.OrdinalIgnoreCase))
+                                   .Select(x => current[x.Id]).ToList();
                 for (int i = 0; i < routes.Count; i++)
                 {
                     var rt = routes[i];
                     if (!string.Equals(rt.Client.Trim(), st.Client.Trim(), StringComparison.OrdinalIgnoreCase)) continue;
                     var parts = rt.Places.Split(new[] { ';', '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-                    var renamed = RenamedPlaces(parts, before, after); // the entries that are this store, now as "code - name"
+                    var renamed = RenamedPlaces(parts, before, after, others); // this store's own entries, now as "code - name"
                     if (renamed.SequenceEqual(parts)) continue;
                     WriteRoutePlaces(rt.Id, renamed, conn, tx);
                     routes[i] = (rt.Id, rt.Client, string.Join("; ", renamed));
