@@ -249,6 +249,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>
+        /// For a store being registered (not saved yet): why it cannot go on the route, or null with <paramref name="places"/> set to
+        /// the route's saved list plus the store's canonical <see cref="PlaceFor"/> entry. The rules of <see cref="SetStoreOnRoute"/>:
+        /// same client, no entry on the route is the store already, and the client's one-route rule.
+        /// </summary>
+        private static string? PlacesWithNewStore(DeliveryRoute route, ClientStore st, out List<string> places)
+        {
+            var fresh = OwnRoutes(route.ClientCompanyName).FirstOrDefault(r => r.Id == route.Id) ?? route;
+            places = fresh.PlacesList;
+            if (!string.Equals(CleanStoreText(route.ClientCompanyName), CleanStoreText(st.ClientCompanyName), StringComparison.OrdinalIgnoreCase))
+                return $"{st.StoreName} belongs to {st.ClientCompanyName}; route {route.RouteCode} is {route.ClientCompanyName}'s. Only stores of the same client can be on its routes.";
+            string? entry = places.FirstOrDefault(p => PlaceIsStore(p, st));
+            if (entry != null)
+                return $"Route {fresh.RouteCode} already has the entry \"{entry}\", which would be this store. Take that entry off the route first, or register the store under another name.";
+            string? refusal = OneRouteRefusal(fresh, st);
+            if (refusal != null) return refusal;
+            places.Add(PlaceFor(st));
+            return null;
+        }
+
+        /// <summary>
         /// Moves a store one place earlier (delta -1) or later (+1) in a route's stop order. Only reorders the saved list:
         /// no entry is added or removed. A store with several entries moves its first one. Returns true only when the saved list changed
         /// (first store up, last store down, a store not on the route, or any other delta returns false).
