@@ -233,6 +233,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridAwaiting.Columns[gridAwaiting.Columns.Count - 1].MinimumWidth = Dpi(150);
             Col(nameof(AwaitingReportRow.ReportNumber), "Report #", 110);
             gridAwaiting.Columns.Add(new DataGridViewButtonColumn { Name = "colCreate", HeaderText = "", FillWeight = 110, MinimumWidth = Dpi(190), FlatStyle = FlatStyle.Flat, UseColumnTextForButtonValue = false });
+            // Nov 9: the list means one thing, "waiting for its report", so there is no state and no report number to show.
+            foreach (DataGridViewColumn hide in gridAwaiting.Columns)
+                if (hide.DataPropertyName == nameof(AwaitingReportRow.ReportState) || hide.DataPropertyName == nameof(AwaitingReportRow.ReportNumber)) hide.Visible = false;
             WireAwaitingButton();
             // Every column keeps enough width for its text; a narrow window scrolls sideways instead of cutting details off.
             var minWidth = new Dictionary<string, int>
@@ -251,9 +254,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridAwaiting.CellFormatting += (s, e) =>
             {
                 if (e.RowIndex < 0 || gridAwaiting.Rows[e.RowIndex].DataBoundItem is not AwaitingReportRow row) return;
-                bool none = row.ReportNumber.Length == 0;
+                bool none = true;   // Nov 9: every row is simply "waiting": one look, one button
                 string col = gridAwaiting.Columns[e.ColumnIndex].Name;
-                if (col == "colCreate") { e.Value = none ? "Create trip report" : "Open draft"; e.FormattingApplied = true; }
+                if (col == "colCreate") { e.Value = "Create trip report"; e.FormattingApplied = true; }
                 if (e.ColumnIndex == gridAwaiting.Columns.Count - 3 && e.CellStyle != null)
                 {
                     e.CellStyle.ForeColor = none ? AppTheme.DangerText : AppTheme.WarningText;
@@ -291,7 +294,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (e.RowIndex < 0 || !IsBtn(e.ColumnIndex) || e.Graphics == null) return;
                 e.Paint(e.CellBounds, DataGridViewPaintParts.Background | DataGridViewPaintParts.Border);
                 if (g.Rows[e.RowIndex].DataBoundItem is not AwaitingReportRow row) { e.Handled = true; return; }
-                bool create = row.ReportNumber.Length == 0;
+                bool create = true;
                 bool pressed = btnPressRow == e.RowIndex, hover = btnHoverRow == e.RowIndex;
                 Color back = pressed ? Color.FromArgb(205, 205, 208)
                            : hover ? (create ? Color.FromArgb(150, 20, 35) : Color.FromArgb(150, 90, 10))
@@ -303,26 +306,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 using (var b = new SolidBrush(back)) e.Graphics.FillRectangle(b, r);
                 using (var pen = new Pen(pressed ? Color.FromArgb(170, 170, 175) : create ? Color.FromArgb(230, 160, 168) : Color.FromArgb(230, 200, 140)))
                     e.Graphics.DrawRectangle(pen, r.X, r.Y, r.Width - 1, r.Height - 1);
-                TextRenderer.DrawText(e.Graphics, create ? "Create trip report" : "Open draft", new Font(g.Font, FontStyle.Bold), r, fore,
+                TextRenderer.DrawText(e.Graphics, "Create trip report", new Font(g.Font, FontStyle.Bold), r, fore,
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
                 e.Handled = true;
             };
         }
 
         /// <summary>Creates the dispatch's trip report (which gives it its number) if it has none yet, then opens it to fill in.</summary>
+        /// <summary>
+        /// Nov 9: "Create trip report" opens the form for the dispatch and saves NOTHING (no record, no number until Save), like the Dispatch form.
+        /// A draft that holds nothing typed (left by the old button) is voided first (reports are never deleted); a draft with real typing is opened to continue.
+        /// </summary>
         private void CreateReportFor(AwaitingReportRow row)
         {
             try
             {
-                bool wasNew = row.ReportNumber.Length == 0;
-                string number = MJdatabase.CreateTripReportForDispatch(row.DeliveryId);
-                if (wasNew) ToastHelper.ShowToast(this, $"Trip report {number} created for dispatch {row.DispatchNumber}.", ToastType.Success);
+                var empties = MJdatabase.GetEmptyDraftReports().Where(d => d.DeliveryId == row.DeliveryId).Select(d => d.Id).ToList();
+                if (empties.Count > 0) MJdatabase.VoidEmptyDraftReports(empties, backup: false, reason: "Empty draft left by the old Create trip report button; the report was opened fresh.");
                 RefreshAfterCreate(row.DispatchNumber);
             }
             catch (Exception ex)
             {
                 ErrLog.Error("TripReportView.CreateForDispatch", ex);
-                ToastHelper.ShowToast(this, "Couldn't create the trip report: " + ex.Message, ToastType.Error);
+                ToastHelper.ShowToast(this, "Couldn't open the trip report: " + ex.Message, ToastType.Error);
             }
         }
 
@@ -343,12 +349,36 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var rows = await System.Threading.Tasks.Task.Run(MJdatabase.GetDispatchesAwaitingReport);
                 if (my != awaitingLoadId || IsDisposed || !showAwaiting) return;
                 gridAwaiting.DataSource = rows;
+                OfferEmptyDraftCleanup();
             }
             catch (Exception ex)
             {
                 ErrLog.Error("TripReportView.Awaiting", ex);
                 ToastHelper.ShowToast(this, "Couldn't load the dispatches awaiting a report: " + ex.Message, ToastType.Error);
             }
+        }
+
+        private static bool emptyDraftCleanupAsked;
+        /// <summary>Once per run: offers to remove the empty drafts the old Create button left behind (backup first). Real drafts are never touched.</summary>
+        private void OfferEmptyDraftCleanup()
+        {
+            if (emptyDraftCleanupAsked) return;
+            emptyDraftCleanupAsked = true;
+            try
+            {
+                var empties = MJdatabase.GetEmptyDraftReports();
+                if (empties.Count == 0) return;
+                var ans = MessageBox.Show(FindForm(),
+                    $"{empties.Count} trip report(s) were saved empty by the old Create trip report button (nothing typed in them):{Environment.NewLine}{Environment.NewLine}" +
+                    string.Join(", ", empties.Take(8).Select(e => e.DispatchNumber)) + (empties.Count > 8 ? ", …" : "") +
+                    $"{Environment.NewLine}{Environment.NewLine}Clear them? A backup of the database is made first, and they are kept as voided records. Reports with anything typed in them are not touched, and these dispatches stay in the waiting list.",
+                    "Clear empty drafts", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
+                if (ans != DialogResult.Yes) return;
+                int n = MJdatabase.VoidEmptyDraftReports(empties.Select(e => e.Id), backup: true, reason: "Empty drafts left by the old Create trip report button (one-time clean-up)");
+                ToastHelper.ShowToast(this, $"{n} empty draft(s) cleared.", ToastType.Success);
+                LoadData();
+            }
+            catch (Exception ex) { ErrLog.Error("TripReportView.EmptyDraftCleanup", ex); }
         }
 
         private void SetAwaitingMode()

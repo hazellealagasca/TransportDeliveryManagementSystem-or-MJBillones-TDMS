@@ -1014,8 +1014,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (pnlForm.Visible) return;
             if (gridTripReports.SelectedRows.Count > 0 && gridTripReports.SelectedRows[0].DataBoundItem is TripReport tr)
             {
-                isBindingForm = true;
                 selectedTripReport = tr;
+                BindSelectedReportToForm();
+            }
+        }
+
+        /// <summary>Fills the form from <see cref="selectedTripReport"/>. Also used to open a report that the list filters hide.</summary>
+        private void BindSelectedReportToForm()
+        {
+            if (selectedTripReport == null) return;
+            {
+                isBindingForm = true;
 
                 int dIdx = FindDeliveryItemIndex(selectedTripReport.DispatchNumber ?? ""); // also adds the trip when its report is already finished
                 if (dIdx >= 0) cbDelivery.SelectedIndex = dIdx;
@@ -1719,8 +1728,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (pnlForm.Visible) SetFormVisibility(false);
             if (existing != null)
             {
-                txtGridSearch.Text = dispatchNumber;
-                OpenEditTripReport(existing);
+                OpenEditTripReport(existing);   // Nov 9: no longer writes the dispatch number into the list's search box
                 return;
             }
             var target = allDeliveries.FirstOrDefault(d => string.Equals(d.DispatchNumber, dispatchNumber, StringComparison.OrdinalIgnoreCase));

@@ -332,7 +332,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
             }
-            if (selectedTripReport != tr) return;
+            if (selectedTripReport != tr)
+            {
+                // Nov 9: the list's filters (date, client…) may hide this report; open it anyway instead of doing nothing.
+                selectedTripReport = tr;
+                BindSelectedReportToForm();
+            }
             isEditingExistingReport = true;
             ApplyFormMode();
             SetFormVisibility(true);
