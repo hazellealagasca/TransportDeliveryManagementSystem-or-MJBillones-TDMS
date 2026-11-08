@@ -704,7 +704,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 string left = clean.Substring(0, dashIdx).Trim();
                 string right = clean.Substring(dashIdx + 3).Trim();
-                if (left.All(c => char.IsDigit(c) || char.IsLetter(c)))
+                // A store code is letters, digits and hyphens (e.g. "DD-2"), as CleanStoreCode registers it.
+                if (left.Any(char.IsLetterOrDigit) && left.All(c => char.IsLetterOrDigit(c) || c == '-'))
                     return (left, right);
             }
             int spaceIdx = clean.IndexOf(' ');

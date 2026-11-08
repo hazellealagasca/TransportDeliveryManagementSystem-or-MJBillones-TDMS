@@ -14,12 +14,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     /// </summary>
     public static partial class MJdatabase
     {
-        /// <summary>True when a route place ("203077 - RR Laoag" or "RR Laoag") is this store.</summary>
+        /// <summary>
+        /// True when a route place ("DD-2 - Tarlac", "203077 - RR Laoag" or "RR Laoag") is this store. In order:
+        /// (a) the whole text is <see cref="PlaceFor"/> of the store (case and spacing ignored);
+        /// (b) when the place and the store both have a code, the code alone decides (no name fallback);
+        /// (c) otherwise the name part, or the whole text, equals the store name.
+        /// </summary>
         public static bool PlaceIsStore(string place, ClientStore st)
         {
-            var (code, name) = DeliveryRoute.SplitStoreCodeAndName(place ?? "");
-            if (code.Length > 0 && st.StoreCode.Length > 0) return string.Equals(code.Trim(), st.StoreCode.Trim(), StringComparison.OrdinalIgnoreCase);
-            return SamePlace(name.Length > 0 ? name : place ?? "", st.StoreName) || SamePlace(place ?? "", st.StoreName);
+            if (st == null) return false;
+            place ??= "";
+            if (SamePlace(place, PlaceFor(st))) return true;
+            var (code, name) = DeliveryRoute.SplitStoreCodeAndName(place);
+            string placeCode = CleanStoreCode(code), storeCode = CleanStoreCode(st.StoreCode);
+            if (placeCode.Length > 0 && storeCode.Length > 0) return string.Equals(placeCode, storeCode, StringComparison.OrdinalIgnoreCase);
+            return SamePlace(name.Length > 0 ? name : place, st.StoreName) || SamePlace(place, st.StoreName);
+        }
+
+        /// <summary>True when the store is on the route: same client, and one of the route's places is the store.</summary>
+        public static bool StoreIsOnRoute(DeliveryRoute route, ClientStore st)
+        {
+            if (route == null || st == null) return false;
+            if (!string.Equals(CleanStoreText(route.ClientCompanyName), CleanStoreText(st.ClientCompanyName), StringComparison.OrdinalIgnoreCase)) return false;
+            return route.PlacesList.Any(p => PlaceIsStore(p, st));
         }
 
         /// <summary>How a store is written on a route's store list.</summary>
