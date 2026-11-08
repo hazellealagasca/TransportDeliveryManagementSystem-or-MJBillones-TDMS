@@ -168,6 +168,57 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return store;
         }
 
+        private static string OneRouteKey(string client) => "Routes.OneRoutePerStore." + CleanStoreText(client);
+
+        /// <summary>Whether the client allows a store on only one route. Off when never set.</summary>
+        public static bool GetOneRoutePerStore(string client) => GetSystemSetting(OneRouteKey(client), "") == "1";
+
+        /// <summary>A store of the client that is on two or more of its active routes, with those route codes.</summary>
+        public sealed record MultiRouteStore(ClientStore Store, List<string> RouteCodes);
+
+        /// <summary>The client's stores that are on two or more of its active routes (what blocks turning the rule on).</summary>
+        public static List<MultiRouteStore> StoresOnSeveralRoutes(string client)
+        {
+            var routes = OwnRoutes(client).Where(r => r.IsActive).ToList();
+            var result = new List<MultiRouteStore>();
+            foreach (var st in GetClientStores(client))
+            {
+                var codes = routes.Where(r => StoreIsOnRoute(r, st)).Select(r => r.RouteCode).ToList();
+                if (codes.Count >= 2) result.Add(new MultiRouteStore(st, codes));
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Turns the client's one-route-per-store rule on or off. Off always succeeds. On is refused while a store is on
+        /// two or more routes: returns the message naming them (nothing is saved). Returns null when the setting was saved.
+        /// </summary>
+        public static string? SetOneRoutePerStore(string client, bool on)
+        {
+            if (on)
+            {
+                var multi = StoresOnSeveralRoutes(client);
+                if (multi.Count > 0)
+                    return "Cannot turn this on yet. Take these stores off all but one route first: "
+                        + string.Join("; ", multi.Select(m => $"{StoreLabel(m.Store)} is on {string.Join(", ", m.RouteCodes)}")) + ".";
+            }
+            SetSystemSetting(OneRouteKey(client), on ? "1" : "0", "Optional rule: a store may be on only one route of this client");
+            return null;
+        }
+
+        private static string StoreLabel(ClientStore st) => string.IsNullOrWhiteSpace(st.StoreCode) ? CleanStoreText(st.StoreName) : CleanStoreCode(st.StoreCode);
+
+        /// <summary>
+        /// Why adding the store to the route is refused by the client's one-route rule; null when the add is allowed
+        /// (rule off, or the store is on no other active route of the client).
+        /// </summary>
+        public static string? OneRouteRefusal(DeliveryRoute route, ClientStore st)
+        {
+            if (route == null || st == null || !GetOneRoutePerStore(route.ClientCompanyName)) return null;
+            var other = OwnRoutes(route.ClientCompanyName).FirstOrDefault(r => r.IsActive && r.Id != route.Id && StoreIsOnRoute(r, st));
+            return other == null ? null : $"{StoreLabel(st)} is already on route {other.RouteCode}. Take it off there first.";
+        }
+
         /// <summary>
         /// The one writer of a route's store list (Tab 2): puts a store on a route of the same client, or takes it off.
         /// Idempotent: adding writes one canonical <see cref="PlaceFor"/> only when the store is not on the route yet;
@@ -182,6 +233,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var places = fresh.PlacesList;
             bool on = StoreIsOnRoute(fresh, st);
             if (include == on) return false;
+            if (include && OneRouteRefusal(fresh, st) != null) return false; // the client's optional one-route rule
             if (include) places.Add(PlaceFor(st));
             else places.RemoveAll(p => PlaceIsStore(p, st));
             WriteRoutePlaces(fresh.Id, places);

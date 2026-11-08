@@ -564,4 +564,69 @@ public static partial class Checks
         if (Str("SELECT ClientCompanyName FROM DeliveryRoutes WHERE RouteCode = 'RC1'") != "CLIENT A") fails.Add("RC1 no longer belongs to CLIENT A");
         return string.Join("; ", fails);
     }
+    // ---- Task 7: optional one-route-per-store rule per client (default off).
+
+    private static (DeliveryRoute dw, DeliveryRoute dx, ClientStore dd1) TwoRoutesOneStore(string dwPlaces, string dxPlaces)
+    {
+        Fresh();
+        long a = Exec("INSERT INTO DeliveryRoutes (ClientCompanyName, RouteCode, RouteName, ConnectedPlaces, IsActive) VALUES ('DWARDO', 'DW', 'Dw North', @p, 1)", ("@p", dwPlaces));
+        long b = Exec("INSERT INTO DeliveryRoutes (ClientCompanyName, RouteCode, RouteName, ConnectedPlaces, IsActive) VALUES ('DWARDO', 'DX', 'Dx South', @p, 1)", ("@p", dxPlaces));
+        Exec("INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson) VALUES (0, 'DWARDO', 'DD-1', 'San Miguel', '', '')");
+        var dd1 = new ClientStore { StoreCode = "DD-1", StoreName = "San Miguel", ClientCompanyName = "DWARDO" };
+        return (new DeliveryRoute { Id = (int)a, ClientCompanyName = "DWARDO", RouteCode = "DW", RouteName = "Dw North", ConnectedPlaces = dwPlaces },
+                new DeliveryRoute { Id = (int)b, ClientCompanyName = "DWARDO", RouteCode = "DX", RouteName = "Dx South", ConnectedPlaces = dxPlaces }, dd1);
+    }
+
+    [Check]
+    public static string RouteStores_OneRouteSwitchRefusedWithMultiRouteStore()
+    {
+        var (dw, dx, dd1) = TwoRoutesOneStore("DD-1 - San Miguel", "DD-1 - San Miguel");
+        var fails = new List<string>();
+        if (MJdatabase.GetOneRoutePerStore("DWARDO")) fails.Add("switch is on by default");
+        string? msg = MJdatabase.SetOneRoutePerStore("DWARDO", true);
+        if (msg == null) fails.Add("switch on was not refused");
+        else if (!msg.Contains("DD-1") || !msg.Contains("DW") || !msg.Contains("DX")) fails.Add($"refusal does not name the store and its routes: \"{msg}\"");
+        if (MJdatabase.GetOneRoutePerStore("DWARDO")) fails.Add("switch is on after a refusal");
+        var multi = MJdatabase.StoresOnSeveralRoutes("DWARDO");
+        if (multi.Count != 1 || multi[0].Store.StoreCode != "DD-1" || multi[0].RouteCodes.Count != 2) fails.Add($"multi-route list has {multi.Count} entries");
+        MJdatabase.SetStoreOnRoute(dx, dd1, false); // fixed: now on DW only
+        if (MJdatabase.SetOneRoutePerStore("DWARDO", true) != null) fails.Add("switch on refused after the store was taken off one route");
+        if (!MJdatabase.GetOneRoutePerStore("DWARDO")) fails.Add("switch is not on after it was accepted");
+        if (MJdatabase.GetOneRoutePerStore("OTHER CLIENT")) fails.Add("another client's switch turned on");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_OneRuleRefusesSecondRouteAdd()
+    {
+        var (dw, dx, dd1) = TwoRoutesOneStore("DD-1 - San Miguel", "");
+        var fails = new List<string>();
+        if (MJdatabase.SetOneRoutePerStore("DWARDO", true) != null) fails.Add("switch on refused");
+        string? why = MJdatabase.OneRouteRefusal(dx, dd1);
+        if (why != "DD-1 is already on route DW. Take it off there first.") fails.Add($"refusal text \"{why}\"");
+        if (MJdatabase.SetStoreOnRoute(dx, dd1, true)) fails.Add("second-route add returned true");
+        if (SavedPlaces(dx.Id) != "") fails.Add($"DX was written: \"{SavedPlaces(dx.Id)}\"");
+        if (MJdatabase.OneRouteRefusal(dw, dd1) != null) fails.Add("refusal on the route the store is already on");
+        var other = new ClientStore { StoreCode = "DD-9", StoreName = "Paniqui", ClientCompanyName = "DWARDO" };
+        if (!MJdatabase.SetStoreOnRoute(dx, other, true)) fails.Add("a store on no route could not be added");
+        if (!MJdatabase.SetStoreOnRoute(dw, dd1, false)) fails.Add("remove under the rule returned false");
+        if (!MJdatabase.SetStoreOnRoute(dx, dd1, true)) fails.Add("add after taking it off DW returned false");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_OneRuleOffAllowsSecondRouteAgain()
+    {
+        var (dw, dx, dd1) = TwoRoutesOneStore("DD-1 - San Miguel", "");
+        var fails = new List<string>();
+        MJdatabase.SetOneRoutePerStore("DWARDO", true);
+        if (MJdatabase.SetStoreOnRoute(dx, dd1, true)) fails.Add("add was not refused while on");
+        if (MJdatabase.SetOneRoutePerStore("DWARDO", false) != null) fails.Add("switch off refused");
+        if (MJdatabase.GetOneRoutePerStore("DWARDO")) fails.Add("switch still on");
+        if (MJdatabase.OneRouteRefusal(dx, dd1) != null) fails.Add("refusal still given when off");
+        if (!MJdatabase.SetStoreOnRoute(dx, dd1, true)) fails.Add("add refused when off");
+        if (!SavedPlaces(dx.Id).Contains("DD-1")) fails.Add($"DX not written: \"{SavedPlaces(dx.Id)}\"");
+        if (MJdatabase.SetOneRoutePerStore("DWARDO", false) != null) fails.Add("switch off refused with a multi-route store");
+        return string.Join("; ", fails);
+    }
 }

@@ -27,7 +27,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private List<DeliveryRoute> routes = new List<DeliveryRoute>();
         private List<ClientStore> stores = new List<ClientStore>();
         private bool binding;
-        private bool showHidden; // Task 7 wires the one-route-per-store switch; until then nothing is hidden
+        private bool showHidden; // show the stores the one-route rule hides
+        private CheckBox chkOneRoute = null!;
         private TableLayoutPanel moveBar = null!;
         private Button btnRemove = null!, btnUp = null!, btnDown = null!;
         private List<string> onRouteOrder = new List<string>(); // store codes on the selected route, in stop order (unfiltered)
@@ -117,6 +118,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // right: stores of the same client
             var right = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Surface };
             lblAssignTitle = new Label { Dock = DockStyle.Top, Height = D(30), Font = FontCache.Get("Segoe UI Semibold", LargePrint.Pt(11F, 9.5F)), ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.MiddleLeft, UseMnemonic = false, AutoEllipsis = true, Text = "Stores on this route" };
+            chkOneRoute = new CheckBox { Dock = DockStyle.Top, Height = D(LargePrint.Px(28, 24)), Text = "One route per store (a store may be on only one of this client's routes)", Font = FontCache.Get("Segoe UI", LargePrint.Pt(10F, 8.75F)), ForeColor = AppTheme.TextPrimary, UseMnemonic = false, Padding = new Padding(D(4), 0, 0, 0) };
+            chkOneRoute.CheckedChanged += (s, e) => { if (!binding) ApplyOneRouteSwitch(); };
             txtSearch = new TextBox { Dock = DockStyle.Top, Font = FontCache.Get("Segoe UI", LargePrint.Pt(11F, 9.75F)), PlaceholderText = "🔍 Search stores (code or name)…" };
             txtSearch.TextChanged += (s, e) => RenderAssign();
             gridAssign = NewGrid();
@@ -152,6 +155,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             right.Controls.Add(btnRemove);
             right.Controls.Add(moveBar);
             right.Controls.Add(txtSearch);
+            right.Controls.Add(chkOneRoute);
             right.Controls.Add(lblAssignTitle);
             split.Controls.Add(left, 0, 0); split.Controls.Add(right, 1, 0);
             page2.Controls.Add(split);
@@ -420,9 +424,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void RenderAssign()
         {
-            if (isPending()) { btnRemove.Visible = false; moveBar.Visible = false; RenderPendingAssign(); return; } // Nov 6: client not saved yet
+            if (isPending()) { btnRemove.Visible = false; moveBar.Visible = false; chkOneRoute.Visible = false; RenderPendingAssign(); return; } // Nov 6: client not saved yet
             btnRemove.Visible = true;
             moveBar.Visible = true;
+            chkOneRoute.Visible = true;
+            string clientName = client();
+            bool oneRoute = clientName.Length > 0 && MJdatabase.GetOneRoutePerStore(clientName);
+            if (chkOneRoute.Checked != oneRoute) { bool was = binding; binding = true; chkOneRoute.Checked = oneRoute; binding = was; }
             var r = SelectedRoute();
             lblAssignTitle.Text = r == null ? "Stores on this route — pick a route on the left" : $"Stores on route {r.RouteCode} — tick the stores it serves (same client only)";
             string q = txtSearch.Text.Trim();
@@ -434,7 +442,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 btnRemove.Enabled = r != null;
                 if (r != null)
                 {
-                    var model = RouteStoreListModel.Build(r, stores, routes, false); // routes: Build uses the active ones only
+                    var model = RouteStoreListModel.Build(r, stores, routes, oneRoute); // routes: Build uses the active ones only
                     var (onCount, hidden) = RouteStoreListModel.Counts(model); // counts ignore the search text
                     onRouteOrder = model.Where(x => x.OnThisRoute).Select(x => x.Store.StoreCode).ToList();
                     var onRows = model.Where(x => x.OnThisRoute && RouteStoreListModel.Matches(x, q)).ToList();
@@ -511,10 +519,30 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ApplyToggle(r, st, false);
         }
 
+        /// <summary>The switch in the Delivery routes header: a refusal is shown inline and the switch goes back to what is saved.</summary>
+        private void ApplyOneRouteSwitch()
+        {
+            string c = client();
+            if (isPending() || c.Length == 0) return;
+            try
+            {
+                string? refused = MJdatabase.SetOneRoutePerStore(c, chkOneRoute.Checked);
+                if (refused != null) Say("✕ " + refused + " Use Remove from this route on the other routes.", true);
+                else Say(chkOneRoute.Checked ? "One route per store is on: a store can be added to a second route only after it is taken off the first." : "One route per store is off: a store can be on several routes.", false);
+            }
+            catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.OneRouteSwitch", ex); Say("✕ " + ex.Message, true); }
+            RenderAssign(); // puts the switch back to the saved value and redraws the list
+        }
+
         private void ApplyToggle(DeliveryRoute r, ClientStore st, bool include)
         {
             try
             {
+                if (include)
+                {
+                    string? why = MJdatabase.OneRouteRefusal(r, st);
+                    if (why != null) { Say("✕ " + why, true); BeginInvoke(new Action(() => LoadRoutes(r.RouteCode))); return; }
+                }
                 bool changed = MJdatabase.SetStoreOnRoute(r, st, include);
                 if (changed) Say(include ? $"✔ {st.StoreName} is now on route {r.RouteCode}." : $"{st.StoreName} was taken off route {r.RouteCode}.", false);
                 else Say(include ? $"No change: {st.StoreName} is already on route {r.RouteCode}." : $"No change: {st.StoreName} is not on route {r.RouteCode}.", false);
