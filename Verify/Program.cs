@@ -30,6 +30,38 @@ if (args.Length >= 3 && args[0] == "--sql")
     return 0;
 }
 
+// Blank database for demos and walkthroughs: dotnet run --project Verify -- --make-blank-db <new db file>
+// The app's own start-up (InitializeDatabase) builds every table and the factory defaults (admin/admin123, staff/staff123,
+// sample lookups, default routes). Refuses the shared live data folder and a file that already exists. Reads no other database.
+if (args.Length >= 2 && args[0] == "--make-blank-db")
+{
+    string db = Path.GetFullPath(args[1]);
+    if (db.Contains(@"\ProgramData\MJ Billones Transport\", StringComparison.OrdinalIgnoreCase)) { Console.WriteLine("refused: that is the live data folder"); return 2; }
+    if (File.Exists(db)) { Console.WriteLine("refused: " + db + " already exists (never overwritten)"); return 2; }
+    Directory.CreateDirectory(Path.GetDirectoryName(db)!);
+    Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database.MJdatabase.UseDatabaseFile(db);
+    Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database.MJdatabase.InitializeDatabase();
+    Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+    using (var con = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={db};Pooling=False"))
+    {
+        con.Open();
+        using (var ck = con.CreateCommand()) { ck.CommandText = "PRAGMA wal_checkpoint(TRUNCATE)"; ck.ExecuteNonQuery(); }
+        var tables = new List<string>();
+        using (var t = con.CreateCommand())
+        {
+            t.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name";
+            using var r = t.ExecuteReader(); while (r.Read()) tables.Add(r.GetString(0));
+        }
+        foreach (var name in tables)
+        {
+            using var c = con.CreateCommand(); c.CommandText = $"SELECT COUNT(*) FROM \"{name}\"";
+            Console.WriteLine($"{name}: {c.ExecuteScalar()} row(s)");
+        }
+    }
+    Console.WriteLine("blank database created: " + db);
+    return 0;
+}
+
 // Usage: dotnet run --project Verify [-- <path to a real mj_billones.db to copy>] [-- filter]
 // Exit code = number of failed checks. The real database is only ever copied, never opened for writing.
 string? realDb = args.FirstOrDefault(a => a.EndsWith(".db", StringComparison.OrdinalIgnoreCase));
