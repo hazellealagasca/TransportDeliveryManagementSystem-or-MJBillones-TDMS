@@ -1044,4 +1044,26 @@ public static partial class Checks
         }
         finally { try { Directory.Delete(root, true); } catch (IOException) { } }
     }
+
+    /// <summary>Plan Task 10: on a repaired copy of the real database, an order to route DW gets one stop per store (3), not one per stored entry (38).</summary>
+    [Check]
+    public static string RouteStores_DispatchFromDWHasThreeStops()
+    {
+        string? copy = FromCopy();
+        if (copy == null) return "no real database given";
+        // The repair runs on this copy only; its backup lands beside the copy.
+        MJdatabase.RepairRoutePlaces(apply: true);
+        var fails = new List<string>();
+        var dw = MJdatabase.GetDeliveryRoutes(activeOnly: false).FirstOrDefault(r => string.Equals(r.RouteCode, "DW", StringComparison.OrdinalIgnoreCase));
+        if (dw == null) return "route DW not found in the copy";
+        string expected = "DD-2 - Tarlac|DD-6 - Pangasinan|DD-1 - San Miguel";
+        string onRoute = string.Join("|", dw.PlacesList);
+        if (onRoute != expected) fails.Add($"route DW holds [{onRoute}], expected [{expected}]");
+        var order = new Delivery { Id = 987654321, ClientName = dw.ClientCompanyName, Destination = "DW", ECrate = 30, GCrate = 0, TotalCrates = 30 };
+        var stops = MJdatabase.GetOrBuildTripStopsForDelivery(order);
+        string got = string.Join("|", stops.Select(s => $"{s.StoreCode} - {s.Destination}"));
+        if (stops.Count != 3) fails.Add($"{stops.Count} stops [{got}], expected 3");
+        else if (got != expected) fails.Add($"stops [{got}], expected [{expected}]");
+        return string.Join("; ", fails);
+    }
 }
