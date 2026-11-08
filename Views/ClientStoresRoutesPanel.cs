@@ -28,7 +28,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private List<ClientStore> stores = new List<ClientStore>();
         private bool binding;
         private bool showHidden; // Task 7 wires the one-route-per-store switch; until then nothing is hidden
-        private Button btnRemove = null!;
+        private TableLayoutPanel moveBar = null!;
+        private Button btnRemove = null!, btnUp = null!, btnDown = null!;
+        private List<string> onRouteOrder = new List<string>(); // store codes on the selected route, in stop order (unfiltered)
+        private string? reselectStore; // store code to select again after a move
         private sealed class GridNote { public string Kind = ""; }
 
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
@@ -115,9 +118,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnRemove = BigButton("Remove from this route", AppTheme.Danger);
             btnRemove.Dock = DockStyle.Bottom;
             btnRemove.Click += (s, e) => RemoveSelectedStore();
+            btnUp = BigButton("▲ Move up", AppTheme.Accent);
+            btnDown = BigButton("▼ Move down", AppTheme.Accent);
+            btnUp.Dock = DockStyle.Fill; btnDown.Dock = DockStyle.Fill;
+            btnUp.Click += (s, e) => MoveSelectedStore(-1);
+            btnDown.Click += (s, e) => MoveSelectedStore(1);
+            moveBar = new TableLayoutPanel { Dock = DockStyle.Bottom, Height = D(LargePrint.Px(36, 30)), ColumnCount = 2, RowCount = 1, Margin = new Padding(0) };
+            moveBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50)); moveBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            moveBar.Controls.Add(btnUp, 0, 0); moveBar.Controls.Add(btnDown, 1, 0);
+            gridAssign.CurrentCellChanged += (s, e) => { if (!binding) UpdateMoveButtons(); };
             gridAssign.CellClick += (s, e) => { if (e.RowIndex >= 0 && gridAssign.Rows[e.RowIndex].Tag is GridNote n && n.Kind == "hidden") { showHidden = !showHidden; RenderAssign(); } };
             right.Controls.Add(gridAssign);
             right.Controls.Add(btnRemove);
+            right.Controls.Add(moveBar);
             right.Controls.Add(txtSearch);
             right.Controls.Add(lblAssignTitle);
             split.Controls.Add(left, 0, 0); split.Controls.Add(right, 1, 0);
@@ -288,8 +301,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void RenderAssign()
         {
-            if (isPending()) { btnRemove.Visible = false; RenderPendingAssign(); return; } // Nov 6: client not saved yet
+            if (isPending()) { btnRemove.Visible = false; moveBar.Visible = false; RenderPendingAssign(); return; } // Nov 6: client not saved yet
             btnRemove.Visible = true;
+            moveBar.Visible = true;
             var r = SelectedRoute();
             lblAssignTitle.Text = r == null ? "Stores on this route — pick a route on the left" : $"Stores on route {r.RouteCode} — tick the stores it serves (same client only)";
             string q = txtSearch.Text.Trim();
@@ -303,16 +317,49 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     var model = RouteStoreListModel.Build(r, stores, routes, false); // routes: Build uses the active ones only
                     var (onCount, hidden) = RouteStoreListModel.Counts(model); // counts ignore the search text
+                    onRouteOrder = model.Where(x => x.OnThisRoute).Select(x => x.Store.StoreCode).ToList();
                     var onRows = model.Where(x => x.OnThisRoute && RouteStoreListModel.Matches(x, q)).ToList();
                     var availRows = model.Where(x => !x.OnThisRoute && RouteStoreListModel.Matches(x, q)).ToList();
                     AddNoteRow($"On this route ({onCount})", "header");
                     foreach (var x in onRows) AddStoreRow(x);
                     AddNoteRow("Available to add", "header");
                     foreach (var x in availRows.Where(x => showHidden || !x.HiddenByRule)) AddStoreRow(x);
+                    if (reselectStore != null)
+                    {
+                        foreach (DataGridViewRow gr in gridAssign.Rows)
+                            if (gr.Tag is ClientStore rs && rs.StoreCode == reselectStore && MJdatabase.StoreIsOnRoute(r, rs)) { gridAssign.CurrentCell = gr.Cells["colName"]; break; }
+                        reselectStore = null;
+                    }
                     if (hidden > 0) AddNoteRow(showHidden ? $"{hidden} store{(hidden == 1 ? "" : "s")} already on another route are shown. Click to hide." : $"{hidden} store{(hidden == 1 ? "" : "s")} hidden: already on another route. Click to Show.", "hidden");
                 }
             }
             finally { binding = false; }
+            UpdateMoveButtons();
+        }
+
+        /// <summary>Up is off on the first store of the route and Down on the last; both are off unless an "On this route" row is selected.</summary>
+        private void UpdateMoveButtons()
+        {
+            int i = -1;
+            if (!isPending() && SelectedRoute() != null && gridAssign.CurrentRow?.Tag is ClientStore st) i = onRouteOrder.IndexOf(st.StoreCode);
+            btnUp.Enabled = i > 0;
+            btnDown.Enabled = i >= 0 && i < onRouteOrder.Count - 1;
+        }
+
+        private void MoveSelectedStore(int delta)
+        {
+            var r = SelectedRoute();
+            if (r == null) return;
+            if (!(gridAssign.CurrentRow?.Tag is ClientStore st) || !MJdatabase.StoreIsOnRoute(r, st)) { Say("Pick a store that is on this route, then press Move up or Move down.", false); return; }
+            reselectStore = st.StoreCode; // set first: the change event may redraw the list before this method returns
+            try
+            {
+                bool changed = MJdatabase.MoveStoreOnRoute(r, st, delta);
+                Say(changed ? $"{st.StoreName} moved {(delta < 0 ? "up" : "down")} on route {r.RouteCode}." : $"No change: {st.StoreName} is already {(delta < 0 ? "first" : "last")} on route {r.RouteCode}.", false);
+                reloadStores();
+                BeginInvoke(new Action(() => LoadRoutes(r.RouteCode)));
+            }
+            catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.MoveStore", ex); Say("✕ " + ex.Message, true); BeginInvoke(new Action(() => LoadRoutes(r.RouteCode))); }
         }
 
         private void AddNoteRow(string text, string kind)

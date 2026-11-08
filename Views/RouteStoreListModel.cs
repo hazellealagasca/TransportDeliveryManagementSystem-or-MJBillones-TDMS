@@ -11,7 +11,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
     /// <summary>
     /// The true store list of one route, with no UI. One row per distinct store (route entries are never rows):
-    /// stores on this route first, then the rest by name. A store on another route carries that route's code in
+    /// stores on this route first, in route stop order (the order dispatch stops are built in), then the rest by name. A store on another route carries that route's code in
     /// OtherRoutes; with oneRoutePerStore on, such a store that is not on this route is HiddenByRule.
     /// </summary>
     public static class RouteStoreListModel
@@ -27,7 +27,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
                 rows.Add(new RouteStoreRow(st, on, also, oneRoutePerStore && !on && also.Count > 0));
             }
-            return rows.OrderBy(r => r.OnThisRoute ? 0 : 1).ThenBy(r => r.Store.StoreName, StringComparer.OrdinalIgnoreCase).ToList();
+            var stops = route.PlacesList;
+            int Stop(RouteStoreRow r) => stops.FindIndex(p => MJdatabase.PlaceIsStore(p, r.Store)); // first entry = its place in the stop order
+            return rows.OrderBy(r => r.OnThisRoute ? 0 : 1).ThenBy(r => r.OnThisRoute ? Stop(r) : 0)
+                .ThenBy(r => r.Store.StoreName, StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         /// <summary>Counts of the whole list. Call it on the unfiltered rows: the search text must not change them.</summary>

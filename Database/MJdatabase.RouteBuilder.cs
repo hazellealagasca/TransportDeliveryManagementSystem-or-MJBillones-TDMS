@@ -132,6 +132,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return true;
         }
 
+        /// <summary>
+        /// Moves a store one place earlier (delta -1) or later (+1) in a route's stop order. Only reorders the saved list:
+        /// no entry is added or removed. A store with several entries moves its first one. Returns true only when the saved list changed
+        /// (first store up, last store down, a store not on the route, or any other delta returns false).
+        /// </summary>
+        public static bool MoveStoreOnRoute(DeliveryRoute route, ClientStore st, int delta)
+        {
+            if (route == null || st == null || route.Id <= 0 || (delta != -1 && delta != 1)) return false;
+            if (!string.Equals(CleanStoreText(route.ClientCompanyName), CleanStoreText(st.ClientCompanyName), StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"{st.StoreName} belongs to {st.ClientCompanyName}; route {route.RouteCode} is {route.ClientCompanyName}'s. Only stores of the same client can be on its routes.");
+            var fresh = OwnRoutes(route.ClientCompanyName).FirstOrDefault(r => r.Id == route.Id) ?? route;
+            var places = fresh.PlacesList;
+            int from = places.FindIndex(p => PlaceIsStore(p, st));
+            int to = from + delta;
+            if (from < 0 || to < 0 || to >= places.Count) return false;
+            string before = string.Join("; ", places);
+            (places[from], places[to]) = (places[to], places[from]);
+            if (string.Join("; ", places) == before) return false;
+            WriteRoutePlaces(fresh.Id, places);
+            route.ConnectedPlaces = string.Join("; ", places);
+            try { LogAuditTrail("UPDATE", "DeliveryRoutes", fresh.Id, fresh.RouteCode, "ConnectedPlaces", null, null, $"Moved store {PlaceFor(st)} {(delta < 0 ? "up" : "down")} on route {fresh.RouteCode}"); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            AppEvents.Raise(AppDataKind.Routes);
+            return true;
+        }
+
         /// <summary>At start-up: every store's first-route label matches the routes (safe to repeat).</summary>
         public static void RecomputeAllStoreRouteLabels()
         {

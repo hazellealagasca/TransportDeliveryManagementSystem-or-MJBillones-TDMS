@@ -376,4 +376,79 @@ public static partial class Checks
         if (RouteStoreListModel.Counts(rows) != (2, 1)) fails.Add("counts changed after searching");
         if (rows.Count(r => RouteStoreListModel.Matches(r, "")) != DwStores.Length) fails.Add("empty search must show every row");
         return string.Join("; ", fails);
-    }}
+    }
+
+    // ---- Task 5: delivery order (MoveStoreOnRoute) — fresh databases only.
+
+    private static ClientStore DwStore(string code, string name) => new() { StoreCode = code, StoreName = name, ClientCompanyName = "DWARDO" };
+    private static readonly ClientStore Capas = DwStore("DD-3", "Capas");
+    private static readonly ClientStore SanMiguel = DwStore("DD-1", "San Miguel");
+    private static readonly ClientStore Paniqui = DwStore("DD-6", "Paniqui");
+
+    [Check]
+    public static string RouteStores_MoveUpAndDownKeepOtherOrder()
+    {
+        var route = RouteWithPlaces("DD-1 - San Miguel; DD-2 - Tarlac; DD-3 - Capas; DD-6 - Paniqui");
+        var fails = new List<string>();
+        if (!MJdatabase.MoveStoreOnRoute(route, Capas, -1)) fails.Add("move up returned false");
+        string up = SavedPlaces(route.Id);
+        if (up != "DD-1 - San Miguel; DD-3 - Capas; DD-2 - Tarlac; DD-6 - Paniqui") fails.Add($"after move up: \"{up}\"");
+        if (!MJdatabase.MoveStoreOnRoute(route, SanMiguel, 1)) fails.Add("move down returned false");
+        string down = SavedPlaces(route.Id);
+        if (down != "DD-3 - Capas; DD-1 - San Miguel; DD-2 - Tarlac; DD-6 - Paniqui") fails.Add($"after move down: \"{down}\"");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_MoveAtTheEndsChangesNothing()
+    {
+        const string before = "DD-1 - San Miguel; DD-2 - Tarlac; DD-6 - Paniqui";
+        var route = RouteWithPlaces(before);
+        var fails = new List<string>();
+        if (MJdatabase.MoveStoreOnRoute(route, SanMiguel, -1)) fails.Add("first store up returned true");
+        if (MJdatabase.MoveStoreOnRoute(route, Paniqui, 1)) fails.Add("last store down returned true");
+        if (MJdatabase.MoveStoreOnRoute(route, Capas, -1)) fails.Add("a store not on the route moved");
+        if (MJdatabase.MoveStoreOnRoute(route, Tarlac, 0)) fails.Add("delta 0 returned true");
+        string after = SavedPlaces(route.Id);
+        if (after != before) fails.Add($"list changed to \"{after}\"");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_MoveUsesFirstEntryAndKeepsTheRest()
+    {
+        var route = RouteWithPlaces("DD-1 - San Miguel; Tarlac; DD-3 - Capas; dd-2 - tarlac");
+        var fails = new List<string>();
+        if (!MJdatabase.MoveStoreOnRoute(route, Tarlac, 1)) fails.Add("move down returned false");
+        string after = SavedPlaces(route.Id);
+        if (after != "DD-1 - San Miguel; DD-3 - Capas; Tarlac; dd-2 - tarlac") fails.Add($"after move: \"{after}\"");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_DispatchStopsFollowMovedOrder()
+    {
+        // MJdatabase builds dispatch stops by reading route.PlacesList[i] in order (stop i+1), so PlacesList order is stop order.
+        var route = RouteWithPlaces("DD-1 - San Miguel; DD-2 - Tarlac; DD-3 - Capas");
+        var fails = new List<string>();
+        MJdatabase.MoveStoreOnRoute(route, Capas, -1);
+        MJdatabase.MoveStoreOnRoute(route, Capas, -1);
+        var codes = new DeliveryRoute { ConnectedPlaces = SavedPlaces(route.Id) }.PlacesList
+            .Select(p => DeliveryRoute.SplitStoreCodeAndName(p).Item1).ToList();
+        if (string.Join(",", codes) != "DD-3,DD-1,DD-2") fails.Add($"stop order \"{string.Join(",", codes)}\", expected DD-3,DD-1,DD-2");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_ModelListsOnRouteStoresInStopOrder()
+    {
+        var dw = ModelRoute(1, "DW", "DD-2 - Tarlac; DD-1 - San Miguel; DD-6 - Paniqui"); // not name order (Paniqui, San Miguel, Tarlac)
+        var rows = RouteStoreListModel.Build(dw, DwStores, new[] { dw }, false);
+        var fails = new List<string>();
+        string on = string.Join(",", rows.Where(r => r.OnThisRoute).Select(r => r.Store.StoreCode));
+        if (on != "DD-2,DD-1,DD-6") fails.Add($"on-route order \"{on}\", expected DD-2,DD-1,DD-6");
+        string avail = string.Join(",", rows.Where(r => !r.OnThisRoute).Select(r => r.Store.StoreCode));
+        if (avail != "DD-3") fails.Add($"available \"{avail}\"");
+        return string.Join("; ", fails);
+    }
+}
