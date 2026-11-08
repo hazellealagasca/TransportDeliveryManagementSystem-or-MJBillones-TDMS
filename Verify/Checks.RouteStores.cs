@@ -41,4 +41,58 @@ public static partial class Checks
         if (!MJdatabase.StoreIsOnRoute(routeB, storeB)) fails.Add("client B's Tarlac not counted on its own route");
         return string.Join("; ", fails);
     }
+
+    // ---- Task 2: one idempotent writer (SetStoreOnRoute) — run on a fresh database, never the real one.
+
+    private static DeliveryRoute RouteWithPlaces(string places)
+    {
+        Fresh();
+        long id = Exec("INSERT INTO DeliveryRoutes (ClientCompanyName, RouteCode, RouteName, ConnectedPlaces, IsActive) VALUES ('DWARDO', 'DW-R1', 'North', @p, 1)", ("@p", places));
+        return new DeliveryRoute { Id = (int)id, ClientCompanyName = "DWARDO", RouteCode = "DW-R1", RouteName = "North", ConnectedPlaces = places };
+    }
+
+    private static string SavedPlaces(int routeId) => Str("SELECT ConnectedPlaces FROM DeliveryRoutes WHERE Id = @id", ("@id", routeId));
+
+    private static readonly ClientStore Tarlac = new() { StoreCode = "DD-2", StoreName = "Tarlac", ClientCompanyName = "DWARDO" };
+
+    [Check]
+    public static string RouteStores_TwiceAddsOnce()
+    {
+        var route = RouteWithPlaces("DD-1 - San Miguel");
+        var fails = new List<string>();
+        if (!MJdatabase.SetStoreOnRoute(route, Tarlac, true)) fails.Add("first include returned false");
+        if (MJdatabase.SetStoreOnRoute(route, Tarlac, true)) fails.Add("second include returned true");
+        var saved = new DeliveryRoute { ConnectedPlaces = SavedPlaces(route.Id) }.PlacesList;
+        int copies = saved.Count(p => MJdatabase.PlaceIsStore(p, Tarlac));
+        if (copies != 1) fails.Add($"{copies} entries for the store, expected 1 (saved: \"{string.Join("; ", saved)}\")");
+        if (!saved.Contains("DD-2 - Tarlac")) fails.Add("canonical \"DD-2 - Tarlac\" not written");
+        if (saved.Count != 2) fails.Add($"{saved.Count} entries in total, expected 2");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_UntickRemovesAllCopies()
+    {
+        var route = RouteWithPlaces("DD-2 - Tarlac; DD-1 - San Miguel; Tarlac; dd-2 - tarlac");
+        var fails = new List<string>();
+        if (!MJdatabase.SetStoreOnRoute(route, Tarlac, false)) fails.Add("remove returned false");
+        var saved = new DeliveryRoute { ConnectedPlaces = SavedPlaces(route.Id) }.PlacesList;
+        int copies = saved.Count(p => MJdatabase.PlaceIsStore(p, Tarlac));
+        if (copies != 0) fails.Add($"{copies} copies left after untick, expected 0");
+        if (saved.Count != 1 || saved[0] != "DD-1 - San Miguel") fails.Add($"other stores changed (saved: \"{string.Join("; ", saved)}\")");
+        if (MJdatabase.SetStoreOnRoute(route, Tarlac, false)) fails.Add("second remove returned true");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_SetOnAlreadyOnReturnsFalse()
+    {
+        const string before = "DD-2 - Tarlac; DD-1 - San Miguel";
+        var route = RouteWithPlaces(before);
+        var fails = new List<string>();
+        if (MJdatabase.SetStoreOnRoute(route, Tarlac, true)) fails.Add("include on a member returned true");
+        string after = SavedPlaces(route.Id);
+        if (after != before) fails.Add($"list changed to \"{after}\"");
+        return string.Join("; ", fails);
+    }
 }

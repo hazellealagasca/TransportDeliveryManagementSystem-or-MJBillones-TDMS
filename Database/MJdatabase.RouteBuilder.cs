@@ -108,7 +108,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return store;
         }
 
-        /// <summary>Tab 2: puts a store on a route of the same client, or takes it off. Returns false when nothing changed.</summary>
+        /// <summary>
+        /// The one writer of a route's store list (Tab 2): puts a store on a route of the same client, or takes it off.
+        /// Idempotent: adding writes one canonical <see cref="PlaceFor"/> only when the store is not on the route yet;
+        /// removing deletes every entry <see cref="PlaceIsStore"/> matches. Returns true only when the saved list changed.
+        /// </summary>
         public static bool SetStoreOnRoute(DeliveryRoute route, ClientStore st, bool include)
         {
             if (route == null || st == null || route.Id <= 0) return false;
@@ -116,7 +120,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 throw new InvalidOperationException($"{st.StoreName} belongs to {st.ClientCompanyName}; route {route.RouteCode} is {route.ClientCompanyName}'s. Only stores of the same client can be on its routes.");
             var fresh = OwnRoutes(route.ClientCompanyName).FirstOrDefault(r => r.Id == route.Id) ?? route;
             var places = fresh.PlacesList;
-            bool on = places.Any(p => PlaceIsStore(p, st));
+            bool on = StoreIsOnRoute(fresh, st);
             if (include == on) return false;
             if (include) places.Add(PlaceFor(st));
             else places.RemoveAll(p => PlaceIsStore(p, st));

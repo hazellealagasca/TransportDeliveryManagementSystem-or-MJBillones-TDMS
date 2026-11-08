@@ -308,12 +308,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bool include = gridAssign.Rows[rowIndex].Cells["colOn"].Value is bool b && b;
             try
             {
-                MJdatabase.SetStoreOnRoute(r, st, include);
-                Say(include ? $"✔ {st.StoreName} is now on route {r.RouteCode}." : $"{st.StoreName} was taken off route {r.RouteCode}.", false);
+                bool changed = MJdatabase.SetStoreOnRoute(r, st, include);
+                if (changed) Say(include ? $"✔ {st.StoreName} is now on route {r.RouteCode}." : $"{st.StoreName} was taken off route {r.RouteCode}.", false);
+                else Say(include ? $"No change: {st.StoreName} is already on route {r.RouteCode}." : $"No change: {st.StoreName} is not on route {r.RouteCode}.", false);
                 reloadStores();
                 BeginInvoke(new Action(() => LoadRoutes(r.RouteCode)));
             }
-            catch (Exception ex) { Say("✕ " + ex.Message, true); BeginInvoke(new Action(() => LoadRoutes(r.RouteCode))); }
+            catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.ToggleStore", ex); Say("✕ " + ex.Message, true); BeginInvoke(new Action(() => LoadRoutes(r.RouteCode))); }
         }
     }
 }
