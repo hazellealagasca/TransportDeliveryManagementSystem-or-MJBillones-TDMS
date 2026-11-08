@@ -1066,4 +1066,118 @@ public static partial class Checks
         else if (got != expected) fails.Add($"stops [{got}], expected [{expected}]");
         return string.Join("; ", fails);
     }
+
+    // ---- Fix pass (rulings 55 and 56): the route-to-store sync adds no codeless copy, and registering a store is all-or-nothing.
+
+    private static long StoreCount() => Long("SELECT COUNT(*) FROM ClientStores");
+
+    private static long StoresNamed(string name) => Long("SELECT COUNT(*) FROM ClientStores WHERE StoreName = @n", ("@n", name));
+
+    /// <summary>A fresh database with the store DWARDO DD-2 Tarlac and route DW-R1 holding its canonical entry "DD-2 - Tarlac".</summary>
+    private static DeliveryRoute CanonicalTarlacRoute()
+    {
+        Fresh();
+        AddStore("DWARDO", "DD-2", "Tarlac");
+        long id = DwRoute("DW-R1", "North", "DD-2 - Tarlac");
+        return new DeliveryRoute { Id = (int)id, ClientCompanyName = "DWARDO", RouteCode = "DW-R1", RouteName = "North", ConnectedPlaces = "DD-2 - Tarlac", IsActive = true };
+    }
+
+    [Check]
+    public static string RouteStores_StartUpSyncCreatesNoStoreForCanonicalEntry()
+    {
+        var route = CanonicalTarlacRoute();
+        long before = StoreCount();
+        MJdatabase.SyncClientStoresFromRoute(route);
+        long after = StoreCount();
+        var fails = new List<string>();
+        if (after != before) fails.Add($"ClientStores went from {before} to {after} rows, expected {before}");
+        long copies = StoresNamed("DD-2 - Tarlac");
+        if (copies != 0) fails.Add($"{copies} store(s) named \"DD-2 - Tarlac\", expected 0");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_SaveRouteWithCanonicalEntryAddsNoStore()
+    {
+        var route = CanonicalTarlacRoute();
+        long before = StoreCount();
+        var fails = new List<string>();
+        if (!MJdatabase.SaveDeliveryRoute(route)) fails.Add("SaveDeliveryRoute returned false");
+        long after = StoreCount();
+        if (after != before) fails.Add($"ClientStores went from {before} to {after} rows, expected {before}");
+        long copies = StoresNamed("DD-2 - Tarlac");
+        if (copies != 0) fails.Add($"{copies} store(s) named \"DD-2 - Tarlac\", expected 0");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_RegisterClientStoreRefusedRouteLeavesNoStoreRow()
+    {
+        var fails = new List<string>();
+        void Expect(string when, long routeId, string placesBefore, string code, string name, string want)
+        {
+            long before = StoreCount();
+            string? got = null;
+            try { MJdatabase.RegisterClientStore("DWARDO", code, name, "DW-R1 - North"); }
+            catch (InvalidOperationException ex) { got = ex.Message; }
+            if (got != want) fails.Add($"{when}: caller got {(got == null ? "no error" : "\"" + got + "\"")}, expected \"{want}\"");
+            long after = StoreCount();
+            if (after != before) fails.Add($"{when}: ClientStores went from {before} to {after} rows, expected {before}");
+            long left = Long("SELECT COUNT(*) FROM ClientStores WHERE StoreCode = @c", ("@c", code));
+            if (left != 0) fails.Add($"{when}: {left} store row(s) with code {code} left, expected 0");
+            ExpectPlaces(fails, when, routeId, placesBefore);
+        }
+
+        // (a) The client's one-route rule: "Capas" is already on route DW-R2, so the new store DD-9 Capas may not go on DW-R1.
+        Fresh();
+        long r1 = DwRoute("DW-R1", "North", "DD-1 - San Miguel");
+        DwRoute("DW-R2", "South", "Capas");
+        AddStore("DWARDO", "DD-1", "San Miguel");
+        string? on = MJdatabase.SetOneRoutePerStore("DWARDO", true);
+        if (on != null) fails.Add($"one-route rule not switched on: {on}");
+        Expect("one-route rule", r1, "DD-1 - San Miguel", "DD-9", "Capas", "DD-9 is already on route DW-R2. Take it off there first.");
+
+        // (b) A name-only entry "Capas" on DW-R1 itself already matches the new store DD-9 Capas.
+        Fresh();
+        r1 = DwRoute("DW-R1", "North", "DD-1 - San Miguel; Capas");
+        AddStore("DWARDO", "DD-1", "San Miguel");
+        Expect("name-only entry", r1, "DD-1 - San Miguel; Capas", "DD-9", "Capas",
+            "Route DW-R1 already has the entry \"Capas\", which would be this store. Take that entry off the route first, or register the store under another name.");
+        return string.Join("; ", fails);
+    }
+
+    /// <summary>
+    /// The start-up path (InitializeDatabase, as Program.cs calls it) on a copy of the real database adds no store. Then the same
+    /// on a second copy with a fixture: a coded store DD-9 Capas and its canonical entry "DD-9 - Capas" on route DW.
+    /// </summary>
+    [Check]
+    public static string RouteStores_InitializeDatabaseOnCopyLeavesStoreCountUnchanged()
+    {
+        var fails = new List<string>();
+        if (FromCopy() == null) return "no real database given";
+        long before = StoreCount();
+        MJdatabase.InitializeDatabase();
+        long after = StoreCount();
+        if (after != before) fails.Add($"copy: start-up took ClientStores from {before} to {after} rows, expected {before}");
+        foreach (var r in MJdatabase.GetDeliveryRoutes(activeOnly: false).Where(r => string.Equals(r.ClientCompanyName?.Trim(), "DWARDO", StringComparison.OrdinalIgnoreCase)))
+        {
+            long b = StoreCount();
+            MJdatabase.SyncClientStoresFromRoute(r);
+            long a = StoreCount();
+            if (a != b) fails.Add($"copy: route {r.RouteCode} sync took ClientStores from {b} to {a} rows, expected {b}");
+        }
+
+        FromCopy();
+        var dw = MJdatabase.GetDeliveryRoutes(activeOnly: false).FirstOrDefault(r => string.Equals(r.RouteCode, "DW", StringComparison.OrdinalIgnoreCase));
+        if (dw == null) return string.Join("; ", fails.Append("route DW not found in the copy"));
+        AddStore("DWARDO", "DD-9", "Capas");
+        Exec("UPDATE DeliveryRoutes SET ConnectedPlaces = ConnectedPlaces || '; DD-9 - Capas' WHERE Id = @id", ("@id", dw.Id));
+        before = StoreCount();
+        MJdatabase.InitializeDatabase();
+        after = StoreCount();
+        if (after != before) fails.Add($"fixture: start-up took ClientStores from {before} to {after} rows, expected {before}");
+        long copies = StoresNamed("DD-9 - Capas");
+        if (copies != 0) fails.Add($"fixture: {copies} store(s) named \"DD-9 - Capas\", expected 0");
+        return string.Join("; ", fails);
+    }
 }

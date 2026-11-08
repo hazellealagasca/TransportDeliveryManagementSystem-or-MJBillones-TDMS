@@ -12992,7 +12992,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                var match = stores.FirstOrDefault(x => SamePlace(x.StoreName, place));
+                // The one matcher (archived stores included): "DD-2 - Tarlac" is the store DD-2 Tarlac, never a new store of that name.
+                var match = stores.FirstOrDefault(x => PlaceIsStore(place, x));
 
                 if (match != null)
 
@@ -13005,16 +13006,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
 
                 // No made-up store codes: use the code written in the place ("203077 - RR-Laoag"), otherwise leave it blank for the user.
+                // The store name is the name part of the place, not the whole text.
 
-                string code = DeliveryRoute.SplitStoreCodeAndName(place).StoreCode;
+                var (code, name) = DeliveryRoute.SplitStoreCodeAndName(place);
+
+                code = code.Trim();
+
+                name = name.Trim();
 
                 if (code.Length > 0 && stores.Any(x => string.Equals(x.StoreCode, code, StringComparison.OrdinalIgnoreCase))) code = "";
 
                 Exec("INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute) VALUES (@cid, @cl, @sc, @sn, @l)",
 
-                    ("@cid", clientId), ("@cl", client), ("@sc", code), ("@sn", place.Trim()), ("@l", label));
+                    ("@cid", clientId), ("@cl", client), ("@sc", code), ("@sn", name), ("@l", label));
 
-                stores.Add(new ClientStore { StoreCode = code, StoreName = place.Trim(), DestinationRoute = label, ClientCompanyName = client });
+                stores.Add(new ClientStore { StoreCode = code, StoreName = name, DestinationRoute = label, ClientCompanyName = client });
 
             }
 
@@ -13026,7 +13032,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    foreach (var st in stores.Where(x => x.Id > 0 && OnThisRoute(x) && SamePlace(x.StoreName, gone)))
+                    foreach (var st in stores.Where(x => x.Id > 0 && OnThisRoute(x) && PlaceIsStore(gone, x) && !places.Any(n => PlaceIsStore(n, x))))
 
                         Exec("UPDATE ClientStores SET DestinationRoute = '' WHERE Id = @id", ("@id", st.Id));
 
