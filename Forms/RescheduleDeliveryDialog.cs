@@ -200,7 +200,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = isSpecialTrip
                     ? $"Assigned Truck: {(!string.IsNullOrWhiteSpace(specialTrip!.TruckPlate) ? specialTrip.TruckPlate : "Unassigned")}"
-                    : $"Cargo: {delivery!.TotalCrates:N0} Crates ({delivery.CargoType})   |   Truck: {(!string.IsNullOrWhiteSpace(delivery.TruckInfo) ? delivery.TruckInfo : "Unassigned")}",
+                    : $"Crates: {delivery!.TotalCrates:N0} ({delivery.CargoType})   |   Truck: {(!string.IsNullOrWhiteSpace(delivery.TruckInfo) ? delivery.TruckInfo : "Unassigned")}",
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Pal.C(51, 65, 85),
                 Location = new Point(14, 58),

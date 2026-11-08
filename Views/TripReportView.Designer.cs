@@ -515,7 +515,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.btnLogIncident.Name = "btnLogIncident";
             this.btnLogIncident.Size = new System.Drawing.Size(436, 36);
             this.btnLogIncident.TabIndex = 10;
-            this.btnLogIncident.Text = "⚠️ Log cargo / crate incident";
+            this.btnLogIncident.Text = "⚠️ Log crate incident";
             this.btnLogIncident.UseVisualStyleBackColor = false;
             this.btnLogIncident.Visible = false;
             this.btnLogIncident.Click += new System.EventHandler(this.BtnLogIncident_Click);

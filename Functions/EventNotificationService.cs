@@ -578,9 +578,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     if (inc.IncidentDate > recentCutoff && inc.DamagedQuantity > 0)
                     {
-                        if (!HasRecentAlert("Cargo Damage Incident", inc.DispatchNumber))
+                        if (!HasRecentAlert("Crate Damage Incident", inc.DispatchNumber))
                         {
-                            Publish("Cargo Damage Incident", $"Incident on Dispatch #{inc.DispatchNumber}: {inc.DamagedQuantity} damaged crates ({inc.Cause}).", ToastType.Warning, null, "Operations", "Incidents", inc.DispatchNumber);
+                            Publish("Crate Damage Incident", $"Incident on Dispatch #{inc.DispatchNumber}: {inc.DamagedQuantity} damaged crates ({inc.Cause}).", ToastType.Warning, null, "Operations", "Incidents", inc.DispatchNumber);
                         }
                     }
                 }

@@ -379,7 +379,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             using (OpenFileDialog ofd = new OpenFileDialog
             {
-                Title = "Select Cargo Damage / Incident Proof Photo",
+                Title = "Select Crate Damage / Incident Proof Photo",
                 Filter = "Image Files (*.jpg;*.jpeg;*.png;*.bmp;*.webp)|*.jpg;*.jpeg;*.png;*.bmp;*.webp|All Files (*.*)|*.*"
             })
             {
@@ -479,7 +479,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.SaveIncidentReport(ir);
                 MJdatabase.ClearFormDraft("IncidentReport", SessionContext.CurrentUsername);
                 if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
-                QuietBox.Show("Incident & cargo damage log saved successfully!", "Log Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Incident & crate damage log saved successfully!", "Log Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadData();
                 SetFormVisibility(false);
             }
@@ -726,7 +726,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
-                PrintHelper.PrintGridReport("Incident & Cargo Damage Incident Logs", gridIncidents, "Official log of cargo damage, transit incidents, and driver liability charges.");
+                PrintHelper.PrintGridReport("Incident & Crate Damage Incident Logs", gridIncidents, "Official log of crate damage, transit incidents, and driver liability charges.");
             }
             catch (Exception ex)
             { ErrLog.Error("IncidentReportView", ex); 
@@ -760,7 +760,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.Add(RowMenu.CopySub(this, ("Dispatch number", inc.DispatchNumber), ("Cause", inc.Cause), ("Description", inc.Description),
                     ("Summary", $"Incident on {inc.DispatchNumber} ({inc.IncidentDate:MMM d, yyyy}): {inc.Cause}. {inc.DamagedQuantity} crates, est. {RowMenu.Money(inc.EstimatedCost)}{(inc.ChargeableToCrew ? ", chargeable to crew" : "")}. Status: {inc.Status}.")));
                 m.Items.Add(RowMenu.Item("Other incidents on this dispatch", () => RowMenu.Search(txtGridSearch, inc.DispatchNumber)));
-                m.Items.Add(RowMenu.ExportSub(gridIncidents, "Incident_Reports", "Incident and Cargo Damage Logs", () => BtnPrint_Click(this, EventArgs.Empty)));
+                m.Items.Add(RowMenu.ExportSub(gridIncidents, "Incident_Reports", "Incident and Crate Damage Logs", () => BtnPrint_Click(this, EventArgs.Empty)));
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.Danger("Delete incident…", () => { selectedIncident = inc; BtnDelete_Click(this, EventArgs.Empty); }));
             });
