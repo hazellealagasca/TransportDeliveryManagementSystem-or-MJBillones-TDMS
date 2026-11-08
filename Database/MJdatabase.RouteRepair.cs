@@ -29,13 +29,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             public List<string> Unmatched { get; } = new();
             /// <summary>Entries that two or more of the client's active stores match (left as they are).</summary>
             public List<string> Ambiguous { get; } = new();
+            /// <summary>Entries with one match kept in their own text, because <see cref="PlaceFor"/> of the store would match two or more stores.</summary>
+            public List<string> KeptWouldBeAmbiguous { get; } = new();
             /// <summary>Orders built from a route that had duplicates. Listed for review only; never changed.</summary>
             public List<string> OrdersToReview { get; } = new();
         }
 
         /// <summary>
         /// Each route entry is matched (<see cref="PlaceIsStore"/>) against the route client's active stores.
-        /// One match: written as <see cref="PlaceFor"/>; the first occurrence is kept, later copies dropped, order kept.
+        /// One match: written as <see cref="PlaceFor"/> (unless that text would match two or more stores: then kept as it
+        /// was and listed in KeptWouldBeAmbiguous); the first occurrence is kept, later copies dropped, order kept.
         /// No match, or two or more: left unchanged and listed. Orders are only listed.
         /// With <paramref name="apply"/> false nothing is written. With true: backs up the database first (Backups folder
         /// beside the database file), writes the changed lists, and records <see cref="RoutePlacesFixKey"/>; once recorded,
@@ -72,6 +75,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     var store = hits[0];
                     if (!seen.Add(store.Id)) { report.DuplicatesRemoved++; hadDuplicate = true; continue; }
                     string canonical = PlaceFor(store);
+                    var canonicalHits = stores.Where(st => PlaceIsStore(canonical, st)).ToList();
+                    if (canonicalHits.Count > 1)
+                    {
+                        // The new text would name another store too: keep the entry as it was written.
+                        report.KeptWouldBeAmbiguous.Add($"route {route.RouteCode} ({client}): \"{place}\" kept; \"{canonical}\" would match {string.Join(", ", canonicalHits.Select(st => $"store #{st.Id}"))}");
+                        kept.Add(place);
+                        continue;
+                    }
                     if (!string.Equals(canonical, place, StringComparison.Ordinal)) report.Canonicalised++;
                     kept.Add(canonical);
                 }

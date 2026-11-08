@@ -106,16 +106,17 @@ public static partial class Checks
         return route;
     }
 
-    private static void AddStore(string client, string code, string name) =>
+    private static long AddStore(string client, string code, string name) =>
         Exec("INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson) VALUES (0, @cl, @c, @n, '', '')", ("@cl", client), ("@c", code), ("@n", name));
 
     private static string Counts(MJdatabase.RouteRepairReport r) =>
-        $"before {r.EntriesBefore}, after {r.EntriesAfter}, duplicates {r.DuplicatesRemoved}, canonicalised {r.Canonicalised}, unmatched {r.Unmatched.Count}, ambiguous {r.Ambiguous.Count}, orders {r.OrdersToReview.Count}";
+        $"before {r.EntriesBefore}, after {r.EntriesAfter}, duplicates {r.DuplicatesRemoved}, canonicalised {r.Canonicalised}, unmatched {r.Unmatched.Count}, ambiguous {r.Ambiguous.Count}, kept would-be-ambiguous {r.KeptWouldBeAmbiguous.Count}, orders {r.OrdersToReview.Count}";
 
     private static string DescribeRepair(MJdatabase.RouteRepairReport r) =>
         $"EntriesBefore: {r.EntriesBefore}\nEntriesAfter: {r.EntriesAfter}\nDuplicatesRemoved: {r.DuplicatesRemoved}\nCanonicalised: {r.Canonicalised}\n" +
         $"Unmatched: {r.Unmatched.Count}\n" + string.Concat(r.Unmatched.Select(u => "  - " + u + "\n")) +
         $"Ambiguous: {r.Ambiguous.Count}\n" + string.Concat(r.Ambiguous.Select(a => "  - " + a + "\n")) +
+        $"KeptWouldBeAmbiguous: {r.KeptWouldBeAmbiguous.Count}\n" + string.Concat(r.KeptWouldBeAmbiguous.Select(k => "  - " + k + "\n")) +
         $"OrdersToReview: {r.OrdersToReview.Count}\n" + string.Concat(r.OrdersToReview.Select(o => "  - " + o + "\n"));
 
     [Check]
@@ -152,6 +153,22 @@ public static partial class Checks
         if (r.Unmatched.Count != 2 || !r.Unmatched.All(u => u.Contains("Nowhere"))) fails.Add($"unmatched [{string.Join(" | ", r.Unmatched)}], expected the 2 \"Nowhere\" entries");
         if (r.Ambiguous.Count != 1 || !r.Ambiguous[0].Contains("DD-2 - Tarlac")) fails.Add($"ambiguous [{string.Join(" | ", r.Ambiguous)}], expected 1 \"DD-2 - Tarlac\" entry");
         if (r.EntriesBefore != 4 || r.EntriesAfter != 4 || r.DuplicatesRemoved != 0 || r.Canonicalised != 1) fails.Add($"report: {Counts(r)}; expected before 4, after 4, duplicates 0, canonicalised 1");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_RepairKeepsTextWhoseNewTextWouldBeAmbiguous()
+    {
+        var route = OnlyRouteWithPlaces("Tarlac");
+        long coded = AddStore("DWARDO", "DD-2", "Tarlac");
+        long noCode = AddStore("DWARDO", "", "DD-2 - Tarlac"); // "DD-2 - Tarlac" would name this store too
+        var fails = new List<string>();
+        var r = MJdatabase.RepairRoutePlaces(apply: true);
+        if (SavedPlaces(route.Id) != "Tarlac") fails.Add($"saved \"{SavedPlaces(route.Id)}\", expected \"Tarlac\"");
+        string expected = $"route DW-R1 (DWARDO): \"Tarlac\" kept; \"DD-2 - Tarlac\" would match store #{noCode}, store #{coded}";
+        if (r.KeptWouldBeAmbiguous.Count != 1 || r.KeptWouldBeAmbiguous[0] != expected) fails.Add($"kept would-be-ambiguous [{string.Join(" | ", r.KeptWouldBeAmbiguous)}], expected [{expected}]");
+        if (r.EntriesBefore != 1 || r.EntriesAfter != 1 || r.DuplicatesRemoved != 0 || r.Canonicalised != 0 || r.Unmatched.Count != 0 || r.Ambiguous.Count != 0)
+            fails.Add($"report: {Counts(r)}; expected before 1, after 1, duplicates 0, canonicalised 0, unmatched 0, ambiguous 0");
         return string.Join("; ", fails);
     }
 
@@ -223,11 +240,13 @@ public static partial class Checks
         var r = MJdatabase.RepairRoutePlaces(apply: true);
         int entriesAfter = Entries();
         if (r.EntriesAfter != entriesAfter || r.EntriesAfter != r.EntriesBefore - r.DuplicatesRemoved) fails.Add($"apply report: {Counts(r)}; the routes now have {entriesAfter}");
-        if (r.EntriesAfter != dry.EntriesAfter || r.DuplicatesRemoved != dry.DuplicatesRemoved || r.Canonicalised != dry.Canonicalised) fails.Add($"apply ({Counts(r)}) differs from dry run ({Counts(dry)})");
+        if (r.EntriesAfter != dry.EntriesAfter || r.DuplicatesRemoved != dry.DuplicatesRemoved || r.Canonicalised != dry.Canonicalised || r.KeptWouldBeAmbiguous.Count != dry.KeptWouldBeAmbiguous.Count) fails.Add($"apply ({Counts(r)}) differs from dry run ({Counts(dry)})");
         if (r.Unmatched.Count != 0) fails.Add($"unmatched: {string.Join(" | ", r.Unmatched)}");
+        int ambiguousAfter = 0;
         foreach (var rt in MJdatabase.GetDeliveryRoutes(activeOnly: false))
         {
             var stores = MJdatabase.GetClientStores(rt.ClientCompanyName);
+            ambiguousAfter += rt.PlacesList.Count(p => stores.Count(st => MJdatabase.PlaceIsStore(p, st)) > 1);
             foreach (var st in stores)
             {
                 int n = rt.PlacesList.Count(p => MJdatabase.PlaceIsStore(p, st));
@@ -236,6 +255,7 @@ public static partial class Checks
             foreach (var p in rt.PlacesList.Where(p => !stores.Any(st => MJdatabase.PlaceIsStore(p, st))))
                 fails.Add($"route {rt.RouteCode} entry \"{p}\" is not one of {rt.ClientCompanyName}'s stores");
         }
+        if (ambiguousAfter != dry.Ambiguous.Count) fails.Add($"{ambiguousAfter} entries match two or more stores after apply, the dry run had {dry.Ambiguous.Count} ambiguous");
         if (OrdersNow() != ordersBefore) fails.Add("orders were changed");
         if (MJdatabase.GetSystemSetting("Fix.RoutePlaces.v1", "") != "done") fails.Add("Fix.RoutePlaces.v1 not recorded as done");
         string backups = Path.Combine(Path.GetDirectoryName(copy)!, "Backups");
