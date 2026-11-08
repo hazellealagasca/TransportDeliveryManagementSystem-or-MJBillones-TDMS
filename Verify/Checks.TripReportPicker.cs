@@ -1,5 +1,6 @@
 using System.Reflection;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
+using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views;
 
 namespace TDMS.Verify;
@@ -78,6 +79,106 @@ public static partial class Checks
             lock (boxes.Boxes) if (boxes.Boxes.Count > 0) problems.Add("a message box appeared: " + string.Join(" / ", boxes.Boxes));
             host.Close();
             return string.Join(" | ", problems);
+        });
+    }
+
+    [Check]
+    public static string TripReportDropdown_SearchClientShowSort_PickedTripStays_ResetOnNewReport()
+    {
+        Fresh();
+        int aWait = Seed.Delivery("CLIENT A"), aDraft = Seed.Delivery("CLIENT A"), bWait = Seed.Delivery("CLIENT B");
+        int sp = Seed.SpecialTrip("CLIENT A");
+        SetDate("Deliveries", bWait, 5); SetDate("Deliveries", aWait, 3); SetDate("SpecialTrips", sp, 2); SetDate("Deliveries", aDraft, 1);
+        Exec("UPDATE SpecialTrips SET ModeOfPaymentWithReport = 1");
+        string nAw = NumberOf(aWait), nAd = NumberOf(aDraft), nBw = NumberOf(bWait);
+        string nSp = MJdatabase.GetSpecialTrips().First(t => t.Id == sp).OrderReference;
+        AddReport(nAd, aDraft, "Draft");
+
+        return RunOnSta(() =>
+        {
+            using var boxes = new BoxCloser(GetCurrentThreadId());
+            using var host = new Form { ShowInTaskbar = false, StartPosition = FormStartPosition.Manual, Location = new Point(-4000, -4000), ClientSize = new Size(1500, 900), Opacity = 0 };
+            var view = new TripReportView { Dock = DockStyle.Fill };
+            host.Controls.Add(view); host.Show(); Pump(2000);
+            var cb = FieldOf<ComboBox>(view, "cbDelivery");
+            var search = FieldOf<TextBox>(view, "txtPickSearch"); var client = FieldOf<ComboBox>(view, "cbPickClient");
+            var show = FieldOf<ComboBox>(view, "cbPickShow"); var sort = FieldOf<ComboBox>(view, "cbPickSort"); var count = FieldOf<Label>(view, "lblPickCount");
+            if (cb == null || search == null || client == null || show == null || sort == null || count == null) return "a filter control was not found";
+            typeof(TripReportView).GetMethod("OpenNewTripReport", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(view, null);
+            Pump(500);
+            var problems = new List<string>();
+            void Expect(string what, bool ok) { if (!ok) problems.Add(what); }
+            List<string> Nos() => cb.Items.Cast<object>().Select(o => (o.ToString() ?? "").Split(" - ")[0]).ToList();
+            bool Is(params string[] expected) => Nos().SequenceEqual(expected);
+            string Seq() => string.Join(", ", Nos());
+
+            Expect($"default is not oldest first: {Seq()}", Is(nBw, nAw, nSp, nAd));
+            Expect($"count text '{count.Text}'", count.Text == "4 waiting");
+
+            search.Text = "client b";
+            Expect($"search 'client b': {Seq()}", Is(nBw));
+            Expect($"count with a search '{count.Text}'", count.Text == "1 of 4 waiting");
+            search.Text = "DRAFT";
+            Expect($"search 'draft': {Seq()}", Is(nAd));
+            search.Text = "no such thing";
+            Expect("a search with no match still lists trips", cb.Items.Count == 0);
+            Expect($"no-match text '{count.Text}'", count.Text == "No trip matches.");
+            search.Text = "";
+
+            Expect($"client list: {string.Join(", ", client.Items.Cast<object>())}", client.Items.Cast<object>().Select(o => o.ToString()).SequenceEqual(new[] { "All clients", "CLIENT A", "CLIENT B" }));
+            client.SelectedIndex = client.FindStringExact("CLIENT B");
+            Expect($"client B: {Seq()}", Is(nBw));
+            client.SelectedIndex = 0;
+
+            show.SelectedIndex = 2; Expect($"show drafts: {Seq()}", Is(nAd));
+            show.SelectedIndex = 1; Expect($"show no report yet: {Seq()}", Is(nBw, nAw, nSp));
+            show.SelectedIndex = 3; Expect($"show special trips: {Seq()}", Is(nSp));
+            show.SelectedIndex = 0;
+
+            sort.SelectedIndex = 1; Expect($"newest first: {Seq()}", Is(nAd, nSp, nAw, nBw));
+            sort.SelectedIndex = 2; Expect($"client A-Z: {Seq()}", Nos().Take(3).All(n => n != nBw) && Nos().Last() == nBw);
+            sort.SelectedIndex = 3; Expect($"dispatch #: {Seq()}", Nos().SequenceEqual(Nos().OrderBy(n => n, StringComparer.OrdinalIgnoreCase)));
+            sort.SelectedIndex = 0;
+
+            // the picked trip never disappears
+            int at = Nos().IndexOf(nAd);
+            cb.SelectedIndex = at; Pump(300);
+            search.Text = "client b";
+            Expect($"the picked trip was dropped by a search: {Seq()}", Nos().Contains(nAd) && Nos().Contains(nBw));
+            Expect("the picked trip is no longer selected", cb.SelectedItem?.ToString()?.StartsWith(nAd + " - ") == true);
+
+            // starting a new report resets everything
+            typeof(TripReportView).GetMethod("ClearFields", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(view, null);
+            Expect("search not cleared by a new report", search.Text == "");
+            Expect("client/show/sort not reset by a new report", client.SelectedIndex == 0 && show.SelectedIndex == 0 && sort.SelectedIndex == 0);
+            Expect($"list not restored by a new report: {Seq()}", Is(nBw, nAw, nSp, nAd));
+
+            lock (boxes.Boxes) if (boxes.Boxes.Count > 0) problems.Add("a message box appeared: " + string.Join(" / ", boxes.Boxes));
+            host.Close();
+            return string.Join(" | ", problems);
+        });
+    }
+
+    [Check]
+    public static string UnsavedTracker_IgnoresControlsNamedNoDirty()
+    {
+        return RunOnSta(() =>
+        {
+            using var f = new Form { ShowInTaskbar = false, StartPosition = FormStartPosition.Manual, Location = new Point(-4000, -4000), ClientSize = new Size(400, 200), Opacity = 0 };
+            var panel = new Panel { Dock = DockStyle.Fill };
+            var ignored = new TextBox { Name = "noDirtySearch", Left = 5, Top = 5 };
+            var normal = new TextBox { Name = "txtNormal", Left = 5, Top = 40 };
+            panel.Controls.AddRange(new Control[] { ignored, normal });
+            f.Controls.Add(panel); f.Show(); f.Activate(); Pump(400);
+            var tracker = new FormDirtyTracker(panel);
+            f.ActiveControl = ignored; ignored.Focus(); Pump(100);
+            ignored.Text = "typed in a search box";
+            if (tracker.IsDirty) return "typing in a noDirty control counted as unsaved changes";
+            f.ActiveControl = normal; normal.Focus(); Pump(100);
+            if (!normal.ContainsFocus) return "(test setup) the window could not take focus";
+            normal.Text = "typed in a normal box";
+            f.Close();
+            return tracker.IsDirty ? "" : "typing in a normal box was not noticed";
         });
     }
 

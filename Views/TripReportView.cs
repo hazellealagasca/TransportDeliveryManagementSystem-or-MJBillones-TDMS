@@ -1076,24 +1076,33 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbDelivery.MaxDropDownItems = 10;
                 bool wasBinding = isBindingForm;
                 isBindingForm = true;
+                // Nov 9: the full waiting list is kept; the search / client / show / sort controls decide what the drop-down holds.
+                pickRows = ordered.Select(d => new PickRow
+                {
+                    D = d,
+                    Draft = draftReports.Contains(d.DispatchNumber ?? ""),
+                    Text = DeliveryPickText(d, draftReports.Contains(d.DispatchNumber ?? "")),
+                    Client = (d.ClientName ?? "").Trim(),
+                    Date = d.DispatchDate
+                }).ToList();
+                RefreshPickClients();
                 cbDelivery.Items.Clear();
                 pickItemsAdded.Clear();
                 if (allDeliveries.Count == 0)
                 {
                     cbDelivery.Text = "(No dispatch orders created yet)";
+                    UpdatePickCount(0);
                 }
                 else if (ordered.Count == 0)
                 {
                     cbDelivery.Text = allDeliveries.Any(d => DispatchGate.IsCompleted(d.Status))
                         ? "(Every completed dispatch already has a trip report)"
                         : "(No completed dispatches yet — mark a dispatch completed first)";
+                    UpdatePickCount(0);
                 }
                 else
                 {
-                    foreach (var d in ordered)
-                        cbDelivery.Items.Add(DeliveryPickText(d, draftReports.Contains(d.DispatchNumber ?? "")));
-                    int keepIdx = keepDispatch == null ? -1 : FindDeliveryItemIndex(keepDispatch);
-                    cbDelivery.SelectedIndex = keepIdx; // Nov 6: -1 (blank) unless a trip was already picked
+                    ApplyPickFilter(keepDispatch); // Nov 6: -1 (blank) unless a trip was already picked
                 }
 
                 isBindingForm = wasBinding;
@@ -1782,6 +1791,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (txtGuardName != null) txtGuardName.Text = "";
             cbDelivery.SelectedIndex = -1; // Nov 6: no trip picked until the person picks one
             DropAddedPickItems();          // Nov 9: and the list is back to only the trips that still wait for a report
+            ResetPickFilter();             // Nov 9: search / client / show / sort back to their defaults
             ResetTripOverview();
             if (pnlMultiDropInfo != null) pnlMultiDropInfo.Visible = false;
             if (tripCrateSummary != null) tripCrateSummary.Visible = false; // shown again with the store table

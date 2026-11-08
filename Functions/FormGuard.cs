@@ -84,6 +84,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void Hook(Control c)
         {
+            // Nov 9: controls named "noDirty…" (search / filter boxes) never count as typing on the form.
+            if ((c.Name ?? "").StartsWith("noDirty", StringComparison.Ordinal)) return;
             switch (c)
             {
                 case TextBoxBase t: t.TextChanged += Changed; break;

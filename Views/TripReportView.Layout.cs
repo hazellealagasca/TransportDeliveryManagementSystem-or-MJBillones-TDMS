@@ -90,7 +90,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnLogIncident.Height = Dpi(40);
             btnLogIncident.Font = new Font("Segoe UI Semibold", 9.5F);
             var card1 = CreateSectionCard(1, "Dispatch order", "Pick the delivery this report closes out. Its route, truck and crew load automatically.",
-                lblDel, cbDelivery, BuildTripOverview());
+                lblDel, BuildPickFilterRow(), cbDelivery, BuildTripOverview());
             tripCrateSummary = new TripCrateSummaryPanel();
             var card2 = CreateSectionCard(2, "Stores, times & signatures", "Each store's arrival and departure time, who received it, its DR numbers and the empties that came back.",
                 pnlMultiDropInfo, CreateGap(Dpi(8)), btnLogIncident, tblTimes, tblManagerNames);
@@ -344,6 +344,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnUpdate.Visible = isEditingExistingReport;
             btnClear.Visible = !isEditingExistingReport;
             cbDelivery.Enabled = !isEditingExistingReport;
+            SetPickControlsEnabled(!isEditingExistingReport);
             lblFormHeader.Text = isEditingExistingReport && selectedTripReport != null
                 ? $"Trip Report  ·  {selectedTripReport.TripReportNumber}"
                 : "New Trip Report";
