@@ -451,4 +451,117 @@ public static partial class Checks
         if (avail != "DD-3") fails.Add($"available \"{avail}\"");
         return string.Join("; ", fails);
     }
+
+    // ---- Task 6: checked entry of store codes, names and route codes, and the paste of many stores — fresh databases only.
+
+    private static string StatusList(IEnumerable<PasteRow> rows) => string.Join(",", rows.Select(r => r.Status));
+
+    [Check]
+    public static string RouteStores_CodePreviewShowsWhatWillBeSaved()
+    {
+        var fails = new List<string>();
+        string p = StorePasteModel.CodePreview("dd 1");
+        if (p != "Will save as DD1") fails.Add($"\"dd 1\" previewed as \"{p}\"");
+        if (StorePasteModel.CodePreview("dd--1-") != "Will save as DD-1") fails.Add($"\"dd--1-\" previewed as \"{StorePasteModel.CodePreview("dd--1-")}\"");
+        if (StorePasteModel.CodePreview("DD1") != "") fails.Add("a code that is already clean must show no preview");
+        if (StorePasteModel.CodePreview("   ") != "") fails.Add("empty text must show no preview");
+        if (!StorePasteModel.CodePreview("!!").Contains("letters, numbers")) fails.Add("a code with nothing usable must say what is allowed");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_StoreCodeOfAnotherClientNamesThatClient()
+    {
+        Fresh();
+        AddStore("CLIENT A", "DD1", "Tarlac");
+        var fails = new List<string>();
+        string? msg = MJdatabase.CheckCompanyStore("DWARDO", "dd 1", "Capas");
+        if (msg == null || !msg.Contains("CLIENT A") || !msg.Contains("DD1")) fails.Add($"other client's code gave \"{msg}\"");
+        if (MJdatabase.CheckCompanyStore("DWARDO", "DD2", "Capas") != null) fails.Add("a free code and name gave a message");
+        AddStore("DWARDO", "DD5", "San Miguel");
+        string? same = MJdatabase.CheckCompanyStore("DWARDO", "DD6", "san miguel");
+        if (same == null || !same.Contains("DD5")) fails.Add($"same name gave \"{same}\"");
+        if (MJdatabase.CheckCompanyStore("DWARDO", "", "Capas") == null) fails.Add("empty code gave no message");
+        if (MJdatabase.CheckCompanyStore("DWARDO", "DD2", "") == null) fails.Add("empty name gave no message");
+        if (MJdatabase.CheckCompanyStore("", "DD2", "Capas") == null) fails.Add("empty client gave no message");
+        try { MJdatabase.RegisterCompanyStore("DWARDO", "dd 1", "Capas"); fails.Add("RegisterCompanyStore did not refuse"); }
+        catch (InvalidOperationException ex) { if (ex.Message != msg) fails.Add($"register said \"{ex.Message}\", check said \"{msg}\""); }
+        if (Long("SELECT COUNT(*) FROM ClientStores WHERE ClientCompanyName = 'DWARDO' AND StoreName = 'Capas'") != 0) fails.Add("a refused store was saved");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_PasteParsesExcelText()
+    {
+        var rows = StorePasteModel.ParseRows("Code\tName\r\nDD1\tTarlac\r\n\r\n dd 2 \t Capas \r\nDD3\r\nDD4\tSan\tMiguel\textra\n");
+        var fails = new List<string>();
+        if (rows.Count != 4) { fails.Add($"{rows.Count} rows, expected 4 (header and blank line skipped)"); return string.Join("; ", fails); }
+        if (rows[0].Code != "DD1" || rows[0].Name != "Tarlac") fails.Add($"row 1 = {rows[0].Code}|{rows[0].Name}");
+        if (rows[1].Code != "dd 2" || rows[1].Name != "Capas") fails.Add($"row 2 = {rows[1].Code}|{rows[1].Name}");
+        if (rows[2].Code != "DD3" || rows[2].Name != "") fails.Add($"row 3 = {rows[2].Code}|{rows[2].Name}");
+        if (rows[3].Code != "DD4" || rows[3].Name != "San") fails.Add($"row 4 = {rows[3].Code}|{rows[3].Name} (only the first two columns count)");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_PasteThreeRowsOneDuplicateAddsTwo()
+    {
+        Fresh();
+        var rows = StorePasteModel.Classify("DWARDO", StorePasteModel.ParseRows("DD1\tTarlac\r\nDD2\tCapas\r\ndd 1\tTarlac again"));
+        var fails = new List<string>();
+        if (StatusList(rows) != "Ok,Ok,Duplicate") fails.Add($"statuses {StatusList(rows)}, expected Ok,Ok,Duplicate");
+        var res = StorePasteModel.AddValid("DWARDO", rows);
+        if (res.Added != 2) fails.Add($"{res.Added} added, expected 2");
+        if (res.Skipped != 1) fails.Add($"{res.Skipped} skipped, expected 1");
+        if (Long("SELECT COUNT(*) FROM ClientStores WHERE ClientCompanyName = 'DWARDO'") != 2) fails.Add("DWARDO does not have exactly 2 stores");
+        if (Long("SELECT COUNT(*) FROM ClientStores WHERE ClientCompanyName = 'DWARDO' AND StoreCode = 'DD1' AND StoreName = 'Tarlac'") != 1) fails.Add("DD1 Tarlac not saved once");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_PasteStatusesNameTheOwnerAndSkipInvalid()
+    {
+        Fresh();
+        AddStore("CLIENT A", "DD1", "Alpha");
+        AddStore("DWARDO", "DD7", "Paniqui");
+        long routesBefore = Long("SELECT COUNT(*) FROM DeliveryRoutes");
+        string placesBefore = Str("SELECT COALESCE(group_concat(ConnectedPlaces, '|'), '') FROM DeliveryRoutes");
+        var rows = StorePasteModel.Classify("DWARDO", StorePasteModel.ParseRows("DD1\tTarlac\r\n!!\tNothing\r\nDD9\t\r\nDD3\tCapas\r\nDD8\tpaniqui"));
+        var fails = new List<string>();
+        if (StatusList(rows) != "AlreadyRegistered,Invalid,Invalid,Ok,AlreadyRegistered") fails.Add($"statuses {StatusList(rows)}");
+        if (!rows[0].Message.Contains("CLIENT A")) fails.Add($"row 1 message \"{rows[0].Message}\" does not name CLIENT A");
+        if (rows[1].Message.Length == 0 || rows[2].Message.Length == 0) fails.Add("an invalid row has no message");
+        var res = StorePasteModel.AddValid("DWARDO", rows);
+        if (res.Added != 1 || res.Skipped != 4) fails.Add($"added {res.Added}, skipped {res.Skipped}; expected 1 and 4");
+        if (Long("SELECT COUNT(*) FROM ClientStores WHERE StoreCode = 'DD3' AND ClientCompanyName = 'DWARDO'") != 1) fails.Add("DD3 not registered");
+        if (Long("SELECT COUNT(*) FROM ClientStores WHERE StoreCode = 'DD1' AND ClientCompanyName = 'DWARDO'") != 0) fails.Add("DD1 of CLIENT A was registered for DWARDO");
+        if (Str("SELECT DestinationRoute FROM ClientStores WHERE StoreCode = 'DD3'") != "") fails.Add("a pasted store was given a route");
+        if (Long("SELECT COUNT(*) FROM DeliveryRoutes") != routesBefore || Str("SELECT COALESCE(group_concat(ConnectedPlaces, '|'), '') FROM DeliveryRoutes") != placesBefore) fails.Add("the paste changed routes");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_RouteCodeOfAnotherClientRefusedAndNothingSaved()
+    {
+        Fresh();
+        Exec("INSERT INTO DeliveryRoutes (ClientCompanyName, RouteCode, RouteName, ConnectedPlaces, IsActive) VALUES ('CLIENT A', 'RC1', 'Alpha', '', 1)");
+        Exec("INSERT INTO DeliveryRoutes (ClientCompanyName, RouteCode, RouteName, ConnectedPlaces, IsActive) VALUES ('DWARDO', 'RC9', 'Old', '', 0)");
+        long before = Long("SELECT COUNT(*) FROM DeliveryRoutes");
+        var fails = new List<string>();
+        string? msg = MJdatabase.CheckRouteCode("DWARDO", "rc1", "Beta");
+        if (msg == null || !msg.Contains("RC1") || !msg.Contains("CLIENT A") || !msg.Contains("different route code")) fails.Add($"other client's route code gave \"{msg}\"");
+        string? own = MJdatabase.CheckRouteCode("DWARDO", "RC9", "Another");
+        if (own == null || !own.Contains("RC9")) fails.Add($"own archived route's code gave \"{own}\"");
+        string? sameName = MJdatabase.CheckRouteCode("DWARDO", "RC2", "old");
+        if (sameName == null || !sameName.Contains("Old")) fails.Add($"same route name gave \"{sameName}\"");
+        if (MJdatabase.CheckRouteCode("DWARDO", "RC2", "Beta") != null) fails.Add("a free route code and name gave a message");
+        if (MJdatabase.CheckRouteCode("DWARDO", "", "Beta") == null) fails.Add("empty route code gave no message");
+        if (MJdatabase.CheckRouteCode("DWARDO", "RC2", "") == null) fails.Add("empty route name gave no message");
+        if (MJdatabase.CheckRouteCode("", "RC2", "Beta") == null) fails.Add("empty client gave no message");
+        try { MJdatabase.SaveDeliveryRoute(new DeliveryRoute { ClientCompanyName = "DWARDO", RouteCode = "RC1", RouteName = "Beta", ConnectedPlaces = "", IsActive = true }); fails.Add("SaveDeliveryRoute did not refuse"); }
+        catch (InvalidOperationException ex) { if (msg != null && ex.Message != msg) fails.Add($"save said \"{ex.Message}\", check said \"{msg}\""); }
+        if (Long("SELECT COUNT(*) FROM DeliveryRoutes") != before) fails.Add("a route was saved or lost");
+        if (Str("SELECT ClientCompanyName FROM DeliveryRoutes WHERE RouteCode = 'RC1'") != "CLIENT A") fails.Add("RC1 no longer belongs to CLIENT A");
+        return string.Join("; ", fails);
+    }
 }

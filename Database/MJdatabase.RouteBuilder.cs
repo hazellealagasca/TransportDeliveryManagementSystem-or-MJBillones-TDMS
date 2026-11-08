@@ -76,19 +76,79 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tx.Commit();
         }
 
-        /// <summary>Tab 1 quick entry: adds a store to the client's pool (no route needed). Throws with a readable message.</summary>
-        public static ClientStore RegisterCompanyStore(string client, string code, string name)
+        /// <summary>
+        /// The message to show when this store cannot be added to the client's stores, or null when it can. The one check behind
+        /// <see cref="RegisterCompanyStore"/>, the live check under the boxes and the paste. With <paramref name="partial"/> (typing in progress)
+        /// a box that is still empty is not reported; only a code or name that is already taken is.
+        /// </summary>
+        public static string? CheckCompanyStore(string client, string code, string name, bool partial = false)
         {
             client = CleanStoreText(client);
             string cleanCode = CleanStoreCode(code), cleanName = CleanStoreText(name);
-            if (client.Length == 0) throw new InvalidOperationException("Choose the client company first.");
-            if (cleanCode.Length == 0) throw new InvalidOperationException("Enter the store code (letters, numbers and hyphens).");
-            if (cleanName.Length == 0) throw new InvalidOperationException("Enter the store name.");
-            if (cleanName.Length > StoreNameMaxLength) throw new InvalidOperationException($"The store name is too long (at most {StoreNameMaxLength} characters).");
-            var owner = FindStoreByCodeAnyClient(cleanCode);
-            if (owner != null) throw new InvalidOperationException($"Record Already Exists: store code {cleanCode} belongs to \"{owner.StoreName}\" of {owner.ClientCompanyName}.");
-            var sameName = GetClientStores(client, includeArchived: true).FirstOrDefault(st => string.Equals(CleanStoreText(st.StoreName), cleanName, StringComparison.OrdinalIgnoreCase));
-            if (sameName != null) throw new InvalidOperationException($"Record Already Exists: \"{sameName.StoreName}\" is already one of {client}'s stores (code {sameName.StoreCode}).");
+            if (client.Length == 0) return "Choose the client company first.";
+            if (cleanCode.Length == 0 && !(partial && CleanStoreText(code).Length == 0)) return "Enter the store code (letters, numbers and hyphens).";
+            if (cleanName.Length == 0 && !partial) return "Enter the store name.";
+            if (cleanName.Length > StoreNameMaxLength) return $"The store name is too long (at most {StoreNameMaxLength} characters).";
+            if (cleanCode.Length > 0)
+            {
+                var owner = FindStoreByCodeAnyClient(cleanCode);
+                if (owner != null) return $"Record Already Exists: store code {cleanCode} belongs to \"{owner.StoreName}\" of {owner.ClientCompanyName}.";
+            }
+            if (cleanName.Length > 0)
+            {
+                var sameName = GetClientStores(client, includeArchived: true).FirstOrDefault(st => string.Equals(CleanStoreText(st.StoreName), cleanName, StringComparison.OrdinalIgnoreCase));
+                if (sameName != null) return $"Record Already Exists: \"{sameName.StoreName}\" is already one of {client}'s stores (code {sameName.StoreCode}).";
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// The message to show when this route cannot be created for the client, or null when it can. A route code is unique across all
+        /// clients (archived routes too) and a route name is unique per client. The text for another client's code is the one
+        /// <c>SaveDeliveryRoute</c> throws. With <paramref name="partial"/> (typing in progress) an empty box is not reported.
+        /// </summary>
+        public static string? CheckRouteCode(string client, string code, string name, bool partial = false)
+        {
+            client = CleanStoreText(client);
+            string cleanCode = CleanStoreCode(code), cleanName = CleanStoreText(name);
+            if (client.Length == 0) return "Save the client first.";
+            if (cleanCode.Length == 0 && !(partial && CleanStoreText(code).Length == 0)) return "Enter the route code (letters, numbers and hyphens).";
+            if (cleanName.Length == 0 && !partial) return "Enter the route name.";
+            using var conn = new SqliteConnection(connectionString);
+            conn.Open();
+            if (cleanCode.Length > 0)
+            {
+                using var byCode = conn.CreateCommand();
+                byCode.CommandText = "SELECT COALESCE(ClientCompanyName, ''), COALESCE(RouteName, ''), IsActive FROM DeliveryRoutes WHERE LOWER(TRIM(RouteCode)) = LOWER(@c) LIMIT 1";
+                byCode.Parameters.AddWithValue("@c", cleanCode);
+                using var r = byCode.ExecuteReader();
+                if (r.Read())
+                {
+                    string owner = r.GetString(0).Trim(), existingName = r.GetString(1);
+                    if (owner.Length > 0 && !string.Equals(owner, client, StringComparison.OrdinalIgnoreCase))
+                        return $"Route code '{cleanCode}' is already used by '{existingName}' ({owner}). Please use a different route code.";
+                    return $"Route code '{cleanCode}' is already one of {client}'s routes ('{existingName}'{(r.GetInt32(2) == 0 ? ", archived" : "")}). Use a different route code.";
+                }
+            }
+            if (cleanName.Length > 0)
+            {
+                using var byName = conn.CreateCommand();
+                byName.CommandText = "SELECT RouteCode, RouteName FROM DeliveryRoutes WHERE LOWER(TRIM(COALESCE(ClientCompanyName, ''))) = LOWER(@cl) AND LOWER(TRIM(RouteName)) = LOWER(@n) LIMIT 1";
+                byName.Parameters.AddWithValue("@cl", client);
+                byName.Parameters.AddWithValue("@n", cleanName);
+                using var r = byName.ExecuteReader();
+                if (r.Read()) return $"{client} already has a route named '{r.GetString(1)}' (code {r.GetString(0)}). Use a different route name.";
+            }
+            return null;
+        }
+
+        /// <summary>Tab 1 quick entry: adds a store to the client's pool (no route needed). Throws with a readable message.</summary>
+        public static ClientStore RegisterCompanyStore(string client, string code, string name)
+        {
+            string? problem = CheckCompanyStore(client, code, name);
+            if (problem != null) throw new InvalidOperationException(problem);
+            client = CleanStoreText(client);
+            string cleanCode = CleanStoreCode(code), cleanName = CleanStoreText(name);
             int clientId = GetClientByCompanyName(client)?.Id ?? 0;
             var store = new ClientStore { ClientId = clientId, ClientCompanyName = client, StoreCode = cleanCode, StoreName = cleanName, DestinationRoute = "" };
             using (var conn = new SqliteConnection(connectionString))
