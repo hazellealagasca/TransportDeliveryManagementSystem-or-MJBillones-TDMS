@@ -629,4 +629,45 @@ public static partial class Checks
         if (MJdatabase.SetOneRoutePerStore("DWARDO", false) != null) fails.Add("switch off refused with a multi-route store");
         return string.Join("; ", fails);
     }
+    [Check]
+    public static string RouteStores_OneRuleRefusalCapsAtFiveStores()
+    {
+        Fresh();
+        string places = string.Join("; ", Enumerable.Range(1, 7).Select(n => $"DD-{n} - Store {n}"));
+        Exec("INSERT INTO DeliveryRoutes (ClientCompanyName, RouteCode, RouteName, ConnectedPlaces, IsActive) VALUES ('DWARDO', 'DW', 'Dw', @p, 1)", ("@p", places));
+        Exec("INSERT INTO DeliveryRoutes (ClientCompanyName, RouteCode, RouteName, ConnectedPlaces, IsActive) VALUES ('DWARDO', 'DX', 'Dx', @p, 1)", ("@p", places));
+        for (int n = 1; n <= 7; n++)
+            Exec("INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson) VALUES (0, 'DWARDO', @c, @n, '', '')", ("@c", $"DD-{n}"), ("@n", $"Store {n}"));
+        var fails = new List<string>();
+        string? msg = MJdatabase.SetOneRoutePerStore("DWARDO", true);
+        if (msg == null) return "switch on was not refused";
+        int named = Enumerable.Range(1, 7).Count(n => msg.Contains($"DD-{n} (DW, DX)"));
+        if (named != 5) fails.Add($"{named} stores named, expected 5: \"{msg}\"");
+        if (!msg.Contains("and 2 more")) fails.Add("no \"and 2 more\"");
+        if (!msg.EndsWith("They are marked 'Also on ...' in the store list.")) fails.Add("last sentence missing");
+        if (msg.Length > 260) fails.Add($"message is {msg.Length} characters, too long for the label");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_OneRuleSingleStoreRefusalExactText()
+    {
+        TwoRoutesOneStore("DD-1 - San Miguel", "DD-1 - San Miguel");
+        string? msg = MJdatabase.SetOneRoutePerStore("DWARDO", true);
+        const string want = "Cannot turn this on yet. Take these stores off all but one route first: DD-1 (DW, DX). They are marked 'Also on ...' in the store list.";
+        return msg == want ? "" : $"refusal was \"{msg}\"";
+    }
+
+    [Check]
+    public static string RouteStores_OneRuleKeyIgnoresClientCase()
+    {
+        Fresh();
+        var fails = new List<string>();
+        if (MJdatabase.SetOneRoutePerStore("dwardo", true) != null) fails.Add("switch on refused");
+        if (!MJdatabase.GetOneRoutePerStore("DWARDO")) fails.Add("DWARDO not on after setting dwardo");
+        if (!MJdatabase.GetOneRoutePerStore("Dwardo")) fails.Add("Dwardo not on after setting dwardo");
+        if (Long("SELECT COUNT(*) FROM SystemSettings WHERE SettingKey LIKE 'Routes.OneRoutePerStore.%'") != 1) fails.Add("more than one key saved");
+        if (Str("SELECT SettingKey FROM SystemSettings WHERE SettingKey LIKE 'Routes.OneRoutePerStore.%'") != "Routes.OneRoutePerStore.DWARDO") fails.Add("key is not upper case");
+        return string.Join("; ", fails);
+    }
 }

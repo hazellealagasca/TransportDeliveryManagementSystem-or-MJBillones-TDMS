@@ -168,7 +168,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return store;
         }
 
-        private static string OneRouteKey(string client) => "Routes.OneRoutePerStore." + CleanStoreText(client);
+        private static string OneRouteKey(string client) => "Routes.OneRoutePerStore." + CleanStoreText(client).ToUpperInvariant();
 
         /// <summary>Whether the client allows a store on only one route. Off when never set.</summary>
         public static bool GetOneRoutePerStore(string client) => GetSystemSetting(OneRouteKey(client), "") == "1";
@@ -199,8 +199,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 var multi = StoresOnSeveralRoutes(client);
                 if (multi.Count > 0)
-                    return "Cannot turn this on yet. Take these stores off all but one route first: "
-                        + string.Join("; ", multi.Select(m => $"{StoreLabel(m.Store)} is on {string.Join(", ", m.RouteCodes)}")) + ".";
+                {
+                    const int shown = 5; // the panel label is 2 to 3 lines; the grid marks every such store "Also on ..."
+                    string list = string.Join("; ", multi.Take(shown).Select(m => $"{StoreLabel(m.Store)} ({string.Join(", ", m.RouteCodes)})"));
+                    if (multi.Count > shown) list += $" and {multi.Count - shown} more";
+                    return "Cannot turn this on yet. Take these stores off all but one route first: " + list + ". They are marked 'Also on ...' in the store list.";
+                }
             }
             SetSystemSetting(OneRouteKey(client), on ? "1" : "0", "Optional rule: a store may be on only one route of this client");
             return null;
