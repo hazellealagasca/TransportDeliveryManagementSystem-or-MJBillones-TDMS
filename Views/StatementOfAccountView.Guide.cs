@@ -127,7 +127,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (soaReadyBanner != null) soaReadyBanner.Visible = false;
             soaSaving = false;
             btnSaveSoa.Enabled = true;
-            txtSoaAdjustReason.Text = isEditingExisting && selectedSoa != null ? MJdatabase.GetAdjustmentReason("StatementsOfAccount", selectedSoa.Id) : "";
+            if (!keep.Resuming) txtSoaAdjustReason.Text = isEditingExisting && selectedSoa != null ? MJdatabase.GetAdjustmentReason("StatementsOfAccount", selectedSoa.Id) : "";
             LoadSoaGuideCache();
             lastGoodClient = cbClient.Text.Trim();
             UpdateSoaGuide();

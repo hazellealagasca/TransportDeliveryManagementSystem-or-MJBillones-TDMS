@@ -24,6 +24,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Where to go after the form closes (a flow-bar step); run by the page that hosts the form.</summary>
         public Action? PendingNavigation { get; private set; }
         public bool HasUnsavedTyping => !IsSaved && (dirtyTracker?.IsDirty ?? false);
+        /// <summary>The person chose "Keep for later": the hosting page hides this form (still open, typing intact) and brings it back later.</summary>
+        public event Action? KeepRequested;
         /// <summary>The main window while this form sits inside a page (a page form can't own popups itself).</summary>
         private IWin32Window OwnerWindow => TopLevel ? this : (IWin32Window?)TopLevelControl ?? this;
         private int Px(int v) => (int)Math.Round(v * DeviceDpi / 96f);
@@ -194,11 +196,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (userClose && HasUnsavedTyping)
             {
                 var owner = (IWin32Window?)TopLevelControl ?? this;
-                if (MessageBox.Show(owner, "Discard your unsaved changes?\n\nWhat you typed in this form will be cleared.", "Unsaved changes",
-                        MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                // Nov 9: Keep for later is offered when a page hosts this form (the page can hide it and bring it back).
+                var choice = FormGuard.AskLeave(owner, allowKeep: !TopLevel);
+                if (choice != LeaveChoice.Discard)
                 {
                     e.Cancel = true;
                     PendingNavigation = null;
+                    if (choice == LeaveChoice.Keep && IsHandleCreated) BeginInvoke(new Action(() => KeepRequested?.Invoke()));
                     return;
                 }
             }

@@ -7,7 +7,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     /// </summary>
     public static class EscapeGuard
     {
-        /// <summary>True when the form may close now (the person said Yes).</summary>
+        /// <summary>True when the caller should close (and clear) the form now. On Keep the form is already hidden with its typing kept, so this returns false.</summary>
         public static bool AllowClose(Control view)
         {
             Control? c = FocusedControl(view);
@@ -17,10 +17,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (p is ComboBox cb && cb.DroppedDown) return false;
                 if (p == view) break;
             }
-            if (view is IUnsavedForm u && !u.FormIsOpenAndDirty) return true; // nothing typed: leave without asking (Nov 6)
-            var owner = view.FindForm();
-            return MessageBox.Show(owner, "Discard your unsaved changes?\n\nWhat you typed in this form will be cleared.", "Unsaved changes",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
+            var u = view as IUnsavedForm;
+            if (u != null && !u.FormIsOpenAndDirty) return true; // nothing typed: leave without asking (Nov 6)
+            // Keep is only offered where the screen can hold the typing (it implements IUnsavedForm).
+            switch (FormGuard.AskLeave(view.FindForm(), allowKeep: u != null))
+            {
+                case LeaveChoice.Keep: u!.KeepAndCloseForm(); return false; // the screen already hid its form, nothing more to close
+                case LeaveChoice.Discard: return true;
+                default: return false;
+            }
         }
 
         private static Control? FocusedControl(Control view)

@@ -34,7 +34,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-        private static DialogResult Core(IWin32Window? owner, string? text, string? caption, MessageBoxButtons buttons, MessageBoxIcon icon, MessageBoxDefaultButton defaultButton)
+        /// <summary>Same themed pop-up with your own button labels. The first button is the main one unless its result is Cancel/No;
+        /// Esc and the title-bar X give the button whose result is Cancel.</summary>
+        public static DialogResult Ask(IWin32Window? owner, string text, string caption, MessageBoxIcon icon, (string Text, DialogResult Result)[] buttons, int defaultIndex = 0)
+            => Core(owner, text, caption, MessageBoxButtons.OK, icon, MessageBoxDefaultButton.Button1, buttons, defaultIndex);
+
+        private static DialogResult Core(IWin32Window? owner, string? text, string? caption, MessageBoxButtons buttons, MessageBoxIcon icon, MessageBoxDefaultButton defaultButton,
+            (string Text, DialogResult Result)[]? custom = null, int customDefault = 0)
         {
             text ??= ""; caption ??= "";
             try
@@ -42,12 +48,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 // Always show on the UI thread (a background task asking would otherwise crash the window).
                 var ui = Application.OpenForms.Cast<Form>().FirstOrDefault(f => !f.IsDisposed && f.IsHandleCreated);
                 if (ui != null && ui.InvokeRequired)
-                    return (DialogResult)ui.Invoke(new Func<DialogResult>(() => Core(owner, text, caption, buttons, icon, defaultButton)));
-                return ShowThemed(owner, text, caption, buttons, icon, defaultButton);
+                    return (DialogResult)ui.Invoke(new Func<DialogResult>(() => Core(owner, text, caption, buttons, icon, defaultButton, custom, customDefault)));
+                return ShowThemed(owner, text, caption, buttons, icon, defaultButton, custom, customDefault);
             }
             catch (Exception ex)
             {
                 try { ErrLog.Swallowed(ex); } catch { }
+                if (custom != null) return custom.Any(c => c.Result == DialogResult.Cancel) ? DialogResult.Cancel : custom[^1].Result; // if the pop-up cannot be drawn, do the safe thing (stay)
                 return owner == null
                     ? WinFormsMessageBox.Show(text, caption, buttons, icon, defaultButton)
                     : WinFormsMessageBox.Show(owner, text, caption, buttons, icon, defaultButton);
@@ -88,7 +95,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-        private static DialogResult ShowThemed(IWin32Window? owner, string text, string caption, MessageBoxButtons buttons, MessageBoxIcon icon, MessageBoxDefaultButton defaultButton)
+        private static DialogResult ShowThemed(IWin32Window? owner, string text, string caption, MessageBoxButtons buttons, MessageBoxIcon icon, MessageBoxDefaultButton defaultButton,
+            (string Text, DialogResult Result)[]? custom = null, int customDefault = 0)
         {
             Form? host = owner as Form ?? (owner as Control)?.FindForm() ?? Form.ActiveForm
                          ?? Application.OpenForms.Cast<Form>().LastOrDefault(f => f.Visible && !f.IsDisposed);
@@ -155,7 +163,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Buttons on a slightly darker band, right-aligned; Windows' own order (Yes, No, Cancel / OK, Cancel).
             var footer = new FlowLayoutPanel { Height = D(60), FlowDirection = FlowDirection.RightToLeft, WrapContents = false, Margin = new Padding(0), Padding = new Padding(D(16), D(13), D(20), D(13)), BackColor = AppTheme.SurfaceAlt };
             footer.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawLine(pen, 0, 0, footer.Width, 0); };
-            (string Text, DialogResult Result)[] defs = buttons switch
+            (string Text, DialogResult Result)[] defs = custom != null && custom.Length > 0 ? custom : buttons switch
             {
                 MessageBoxButtons.OKCancel => new[] { ("OK", DialogResult.OK), ("Cancel", DialogResult.Cancel) },
                 MessageBoxButtons.YesNo => new[] { ("Yes", DialogResult.Yes), ("No", DialogResult.No) },
@@ -165,7 +173,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBoxButtons.CancelTryContinue => new[] { ("Cancel", DialogResult.Cancel), ("Try again", DialogResult.TryAgain), ("Continue", DialogResult.Continue) },
                 _ => new[] { ("OK", DialogResult.OK) }
             };
-            int defIndex = defaultButton switch { MessageBoxDefaultButton.Button2 => 1, MessageBoxDefaultButton.Button3 => 2, _ => 0 };
+            int defIndex = custom != null ? customDefault : defaultButton switch { MessageBoxDefaultButton.Button2 => 1, MessageBoxDefaultButton.Button3 => 2, _ => 0 };
             if (defIndex >= defs.Length) defIndex = 0;
             var made = new Button[defs.Length];
             for (int i = defs.Length - 1; i >= 0; i--)
@@ -179,7 +187,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var cancel = defs.Select((d, i) => (d, i)).FirstOrDefault(x => x.d.Result == DialogResult.Cancel);
             if (cancel.d.Text != null) dlg.CancelButton = made[cancel.i];
             else if (defs.Length == 1) dlg.CancelButton = made[0];
-            else if (buttons == MessageBoxButtons.YesNo) dlg.CancelButton = made[1];
+            else if (custom == null && buttons == MessageBoxButtons.YesNo) dlg.CancelButton = made[1];
             dlg.AcceptButton = made[defIndex];
             // Ctrl+C copies the message, like the Windows box.
             dlg.KeyDown += (s, e) =>

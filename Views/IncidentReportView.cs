@@ -193,20 +193,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void OpenNewRecordForm()
         {
+            if (keep.Kept) { keep.Resume(this, SetFormVisibility); return; } // a kept draft comes back as it was left, never blank
             ClearForm();
             lblFormHeader.Text = "New incident report";
             SetFormVisibility(true);
         }
         // Nov 6: unsaved-typing tracking for the add / edit form (see FormGuard).
         private FormDirtyTracker? formDirty;
+        private readonly KeptDraftState keep = new KeptDraftState();
         public bool FormIsOpenAndDirty => pnlForm.Visible && (formDirty?.IsDirty ?? false);
         public void DiscardAndCloseForm() => SetFormVisibility(false);
+        public bool HasKeptDraft => keep.Kept;
+        public void KeepAndCloseForm()
+        {
+            // Nov 9: "Keep for later": hide the form but leave the typing in the fields; it reopens when the person returns.
+            keep.Keeping = true;
+            try { SetFormVisibility(false); } finally { keep.Keeping = false; }
+            keep.MarkKept(this, btnToggleForm, () => keep.Resume(this, SetFormVisibility));
+        }
         private void SetFormVisibility(bool visible)
         {
             // Nov 6: a form is blank whenever it is opened or left.
-            if (!visible && pnlForm.Visible && IsHandleCreated) ClearForm();
+            if (!visible && pnlForm.Visible && IsHandleCreated && !keep.Keeping) ClearForm();
             if (visible) formDirty ??= new FormDirtyTracker(pnlForm);
-            formDirty?.Reset();
+            if (!keep.Keeping && !(visible && keep.Resuming)) formDirty?.Reset();
+            if (visible) keep.Restored(btnToggleForm);
             if (formKit != null) formKit.Show(visible);
             else pnlForm.Visible = visible;
             if (btnToggleForm != null) btnToggleForm.Visible = !visible;

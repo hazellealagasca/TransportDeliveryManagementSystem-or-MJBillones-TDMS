@@ -713,6 +713,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         {
 
+            if (keep.Kept) { keep.Resume(this, SetFormVisibility); return; } // a kept draft comes back as it was left, never blank
             if (pnlForm.Visible && selectedDelivery == null) return; // already on a new order
 
             gridDispatch.ClearSelection();
@@ -759,6 +760,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 // "+ Add order" always opens a blank order, never the row that happens to be selected in the list.
 
+                if (!pnlForm.Visible && keep.Kept) { keep.Resume(this, SetFormVisibility); return; } // Nov 9: a kept draft comes back, not a blank order
                 if (!pnlForm.Visible) ClearFields(); // Nov 6: a new order always opens blank
 
                 SetFormVisibility(!pnlForm.Visible);
@@ -979,14 +981,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         // Nov 6: unsaved-typing tracking for the add / edit form (see FormGuard).
         private FormDirtyTracker? formDirty;
+        private readonly KeptDraftState keep = new KeptDraftState();
         public bool FormIsOpenAndDirty => pnlForm.Visible && (formDirty?.IsDirty ?? false);
         public void DiscardAndCloseForm() => SetFormVisibility(false);
+        public bool HasKeptDraft => keep.Kept;
+        public void KeepAndCloseForm()
+        {
+            // Nov 9: "Keep for later": hide the form but leave the typing in the fields; it reopens when the person returns.
+            keep.Keeping = true;
+            try { SetFormVisibility(false); } finally { keep.Keeping = false; }
+            keep.MarkKept(this, btnToggleForm, () => keep.Resume(this, SetFormVisibility));
+        }
         private void SetFormVisibility(bool visible)
         {
             // Nov 6: a form is blank whenever it is opened or left.
-            if (!visible && pnlForm.Visible && IsHandleCreated) ClearFields();
+            if (!visible && pnlForm.Visible && IsHandleCreated && !keep.Keeping) ClearFields();
             if (visible) formDirty ??= new FormDirtyTracker(pnlForm);
-            formDirty?.Reset();
+            if (!keep.Keeping && !(visible && keep.Resuming)) formDirty?.Reset();
+            if (visible) keep.Restored(btnToggleForm);
 
             if (visible && !pnlForm.Visible && selectedDelivery == null && string.IsNullOrWhiteSpace(cbClient.Text)) BeginInvoke(new Action(CheckAndPromptDraft));
 

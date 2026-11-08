@@ -882,6 +882,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void OpenNewStatement()
         {
+            if (keep.Kept) { keep.Resume(this, SetFormVisibility); return; } // a kept draft comes back as it was left, never blank
             isEditingExisting = false;
             ClearForm();
             ApplyFormMode();
@@ -1037,16 +1038,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         // Nov 6: unsaved-typing tracking for the add / edit form (see FormGuard).
         private FormDirtyTracker? formDirty;
+        private readonly KeptDraftState keep = new KeptDraftState();
         public bool FormIsOpenAndDirty => pnlForm.Visible && (formDirty?.IsDirty ?? false);
         public void DiscardAndCloseForm() => SetFormVisibility(false);
+        public bool HasKeptDraft => keep.Kept;
+        public void KeepAndCloseForm()
+        {
+            // Nov 9: "Keep for later": hide the form but leave the typing in the fields; it reopens when the person returns.
+            keep.Keeping = true;
+            try { SetFormVisibility(false); } finally { keep.Keeping = false; }
+            keep.MarkKept(this, btnToggleForm, () => keep.Resume(this, SetFormVisibility));
+        }
 
         private void SetFormVisibility(bool visible)
         {
             ExitSoaViewOnly(); // a read-only view never carries over to the next statement
             // Nov 6: a form is blank whenever it is opened or left.
-            if (!visible && pnlForm.Visible && IsHandleCreated) ClearForm();
+            if (!visible && pnlForm.Visible && IsHandleCreated && !keep.Keeping) ClearForm();
             if (visible) formDirty ??= new FormDirtyTracker(pnlForm);
-            formDirty?.Reset();
+            if (!keep.Keeping && !(visible && keep.Resuming)) formDirty?.Reset();
+            if (visible) keep.Restored(btnToggleForm);
             tblMasterContent.SuspendLayout();
             // The statement form is a full page of its own: it replaces the list instead of sitting beside it.
             pnlForm.Visible = visible;
