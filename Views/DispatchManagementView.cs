@@ -1168,9 +1168,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-                numGCrate.Value = Math.Max(0, schedule.GCrate);
+                numGCrate.SetSafe(Math.Max(0, schedule.GCrate));
 
-                numECrate.Value = Math.Max(0, schedule.ECrate);
+                numECrate.SetSafe(Math.Max(0, schedule.ECrate));
 
                 txtTotalCrates.Text = $"{schedule.TotalCrates:N0} Crates";
 
@@ -1180,7 +1180,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    dtpDispatchDate.Value = schedule.ScheduleDate;
+                    dtpDispatchDate.SetSafe(schedule.ScheduleDate);
 
                 }
 
@@ -1714,6 +1714,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private StoreEntryGuard? storeGuard;
 
         private Label? lblRouteStoresHint;
+        // Nov 8: tick several stores, or all of them, and take them off the order in one go.
+        private Panel? pnlStoreBulkBar;
+        private CheckBox? chkPickAllStores;
+        private Label? lblPickCount;
+        private Button? btnRemovePicked;
+        private bool isTickingAllStores;
 
         private List<SpecialTripColumnDef> storeGridColumns = new List<SpecialTripColumnDef>();
         private bool isUpdatingRouteStores = false;
@@ -1844,8 +1850,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private static List<SpecialTripColumnDef> GetDefaultStoreBreakdownColumns()
         {
-            // Nov 6 workflow: Store Code, Store Name, DR No., G-Crates, E-Crates. The route and the per-store total stay in the
-            // table (hidden): the store checks need the route, and the total is still worked out.
+            // Shown: Store Code, Store Name, G-Crates, E-Crates. The route, the DR No. (Nov 7) and the per-store total stay in the
+            // table (hidden): the store checks need the route, saved DR numbers must survive an edit, and the total is still worked out.
             return new List<SpecialTripColumnDef>
             {
                 new SpecialTripColumnDef { Key = "colStoreCode", HeaderText = "Store Code", Width = 80, IsFill = false },
@@ -2090,9 +2096,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             gridRouteStores.CellValueChanged += (s, e) =>
             {
+                if (e.RowIndex >= 0 && e.ColumnIndex >= 0 && gridRouteStores.Columns[e.ColumnIndex].Name == "colPick") { UpdateStorePickBar(); return; }
                 if (isBindingForm || isUpdatingRouteStores || e.RowIndex < 0) return;
                 RecalculateTotalsFromRouteStoresGrid();
             };
+            gridRouteStores.ColumnHeaderMouseClick += (s, e) =>
+            {
+                if (e.ColumnIndex >= 0 && gridRouteStores.Columns[e.ColumnIndex].Name == "colPick" && chkPickAllStores != null && chkPickAllStores.Enabled) chkPickAllStores.Checked = !chkPickAllStores.Checked;
+            };
+            gridRouteStores.RowsAdded += (s, e) => { if (!isBindingForm) UpdateStorePickBar(); };
+            gridRouteStores.RowsRemoved += (s, e) => UpdateStorePickBar();
             gridRouteStores.CurrentCellDirtyStateChanged += (s, e) =>
             {
                 if (gridRouteStores.IsCurrentCellDirty)
@@ -2106,21 +2119,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (gridRouteStores.Columns[e.ColumnIndex].Name == "colDelStore")
                 {
                 string label = gridRouteStores.Columns.Contains("colStoreName") ? gridRouteStores.Rows[e.RowIndex].Cells["colStoreName"].Value?.ToString() ?? "" : "";
-                if (IsRouteStoreRow(gridRouteStores.Rows[e.RowIndex]))
-                {
-                    // Rule 16d (approved Nov 6): a locked route store can be removed only with a reason (at least 10 characters), which is logged.
-                    string code0 = gridRouteStores.Columns.Contains("colStoreCode") ? gridRouteStores.Rows[e.RowIndex].Cells["colStoreCode"].Value?.ToString() ?? "" : "";
-                    string? why = PromptRouteRowRemovalReason(label.Length > 0 ? label : code0);
-                    if (why == null) return;
-                    try { MJdatabase.LogAuditTrail("UPDATE", "Deliveries", selectedDelivery?.Id ?? 0, selectedDelivery?.DispatchNumber ?? "(new order)", "RouteStoreRemoved", $"{code0} - {label}", "", why); } catch (Exception ax) { ErrLog.Swallowed(ax); }
-                    gridRouteStores.Rows.RemoveAt(e.RowIndex);
-                    RecalculateTotalsFromRouteStoresGrid();
-                    return;
-                }
-                if (MessageBox.Show(this.FindForm(), $"Are you sure you want to remove {(label.Length > 0 ? "\"" + label + "\"" : "this store")} from this dispatch's store table?", "Remove store row", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
-
-                    gridRouteStores.Rows.RemoveAt(e.RowIndex);
-                    RecalculateTotalsFromRouteStoresGrid();
+                RemoveStoreRows(new List<DataGridViewRow> { gridRouteStores.Rows[e.RowIndex] });
                 }
             };
             gridRouteStores.ColumnHeaderMouseDoubleClick += (s, e) => OpenStoreBreakdownTableEditor();
@@ -2130,6 +2129,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Features.Bind(gridRouteStores, ApplyStoreEditHeaderSetting, Features.StoreTableEditHeader);
 
             pnlRouteStoresBreakdown.Controls.Add(gridRouteStores);
+            BuildStoreBulkBar();
+            pnlRouteStoresBreakdown.Controls.Add(pnlStoreBulkBar!);
             pnlRouteStoresBreakdown.Controls.Add(lblRouteStoresHint);
 
             pnlRouteStoresBreakdown.Controls.Add(pnlRouteStoreHeaderBar);
@@ -2198,6 +2199,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
+            // Nov 8: a tick box first, so several stores (or all) can be removed together. Clicking its heading ticks or unticks every row.
+            gridRouteStores.Columns.Add(new DataGridViewCheckBoxColumn { Name = "colPick", HeaderText = "✓ All", FillWeight = 34, MinimumWidth = Dpi(LargePrint.Px(60, 52)), ThreeState = false, SortMode = DataGridViewColumnSortMode.NotSortable });
             // Rule 16d: row type badge first, and a hidden flag (true = store from the order's route, locked).
             var colType = new DataGridViewTextBoxColumn { Name = "colRowType", HeaderText = "Row Type", FillWeight = 150, MinimumWidth = Dpi(LargePrint.Px(170, 112)), ReadOnly = true };
             colType.DefaultCellStyle.Font = LargePrint.On ? LargePrint.Bold(10F, 8.25F) : new Font("Segoe UI Semibold", 8.25F);
@@ -2246,7 +2249,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             colDel.DefaultCellStyle.BackColor = AppTheme.Danger;
             colDel.DefaultCellStyle.Font = new Font("Segoe UI Semibold", 8.5F);
             gridRouteStores.Columns.Add(colDel);
-            foreach (var hidden in new[] { "colStoreRoute", "colStoreTotal" })
+            // Nov 7: no DR No. on the dispatch order. The column stays in the table, hidden, so DR numbers already saved on a
+            // dispatch's stores are carried through an edit unchanged (DR numbers are entered on the trip report).
+            foreach (var hidden in new[] { "colStoreRoute", "colStoreTotal", "colDrNumbers" })
                 if (gridRouteStores.Columns.Contains(hidden)) gridRouteStores.Columns[hidden]!.Visible = false;
         }
 
@@ -2440,7 +2445,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             // The table grows with its rows and the whole form scrolls (no second scrollbar inside the table).
 
-            int chrome = pnlRouteStoresBreakdown.Padding.Vertical + Dpi(46) + Dpi(22) + Dpi(12);
+            int chrome = pnlRouteStoresBreakdown.Padding.Vertical + Dpi(46) + Dpi(22) + Dpi(12) + Dpi(LargePrint.Px(44, 38)); // + the select-all bar
 
             int rowH = gridRouteStores.RowTemplate.Height;
 
@@ -3294,24 +3299,160 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (!locked) e.CellStyle.BackColor = ThemeManager.Mix(AppTheme.Surface, AppTheme.Success, ThemeManager.IsDark ? 0.10 : 0.06);
             if (locked && (cn == "colStoreCode" || cn == "colStoreName")) e.CellStyle.ForeColor = AppTheme.TextSecondary;
         }
-        /// <summary>Reason for taking a locked route store off this order (at least 10 characters), or null when kept.</summary>
-        private string? PromptRouteRowRemovalReason(string store)
+        /// <summary>A reason that says something: at least 10 characters (not counting spaces) and not one letter repeated.</summary>
+        private static bool IsRealReason(string text)
         {
-            using var f = new Form { Text = "Remove route store", FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterParent, MinimizeBox = false, MaximizeBox = false, ShowInTaskbar = false, ClientSize = new Size(Dpi(520), Dpi(230)), BackColor = AppTheme.Surface };
-            var lbl = new Label { Text = $"\"{store}\" is one of this route's stores (🔒). Why is it not getting a delivery on this order?", Dock = DockStyle.Top, Height = Dpi(56), Font = LargePrint.Semibold(11F, 9.5F), ForeColor = AppTheme.TextPrimary, Padding = new Padding(Dpi(12), Dpi(10), Dpi(12), 0), UseMnemonic = false };
+            string t = (text ?? "").Trim();
+            if (t.Replace(" ", "").Length < 10) return false;
+            return t.ToLowerInvariant().Where(char.IsLetterOrDigit).Distinct().Count() >= 4;
+        }
+
+        /// <summary>
+        /// Reason for taking locked route stores off this order, or null when they are kept. <paramref name="headline"/> says which stores.
+        /// The Remove button stays off until the reason is real (at least 10 characters, a few different letters); a counter shows how far it is.
+        /// </summary>
+        private string? PromptRouteRowRemovalReason(string headline)
+        {
+            using var f = new Form { Text = "Remove route stores", FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterParent, MinimizeBox = false, MaximizeBox = false, ShowInTaskbar = false, ClientSize = new Size(Dpi(560), Dpi(300)), BackColor = AppTheme.Surface };
+            var lbl = new Label { Text = headline, Dock = DockStyle.Top, Height = Dpi(120), Font = LargePrint.Semibold(11F, 9.5F), ForeColor = AppTheme.TextPrimary, Padding = new Padding(Dpi(12), Dpi(10), Dpi(12), 0), UseMnemonic = false };
             var txt = new TextBox { Multiline = true, Dock = DockStyle.Top, Height = Dpi(80), Font = LargePrint.Semibold(12F, 10F), MaxLength = 300, PlaceholderText = "Reason (at least 10 characters), e.g. store closed for inventory today" };
+            var count = new Label { Dock = DockStyle.Top, Height = Dpi(24), Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.TextMuted, Padding = new Padding(Dpi(12), Dpi(3), 0, 0), Text = "Write why these stores get no delivery on this order (kept in the audit log).", UseMnemonic = false };
             var bar = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = Dpi(56), FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(Dpi(10)), BackColor = AppTheme.SurfaceAlt };
             var ok = new Button { Text = "Remove from this order", AutoSize = true, Enabled = false, BackColor = AppTheme.Danger, ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = LargePrint.Bold(11F, 9F) };
-            var keep = new Button { Text = "Keep store", AutoSize = true, DialogResult = DialogResult.Cancel, FlatStyle = FlatStyle.Flat, Font = LargePrint.Bold(11F, 9F) };
-            txt.TextChanged += (s, e) => ok.Enabled = txt.Text.Trim().Length >= 10;
-            ok.Click += (s, e) => { if (txt.Text.Trim().Length >= 10) { f.DialogResult = DialogResult.OK; f.Close(); } };
+            var keep = new Button { Text = "Keep stores", AutoSize = true, DialogResult = DialogResult.Cancel, FlatStyle = FlatStyle.Flat, Font = LargePrint.Bold(11F, 9F) };
+            txt.TextChanged += (s, e) =>
+            {
+                bool good = IsRealReason(txt.Text);
+                ok.Enabled = good;
+                int n = txt.Text.Trim().Replace(" ", "").Length;
+                count.Text = good ? "✓ Reason noted." : n >= 10 ? "Say a little more: the reason can't be one letter repeated." : $"{n} of 10 characters";
+                count.ForeColor = good ? AppTheme.SuccessText : AppTheme.TextMuted;
+            };
+            ok.Click += (s, e) => { if (IsRealReason(txt.Text)) { f.DialogResult = DialogResult.OK; f.Close(); } };
             bar.Controls.Add(ok); bar.Controls.Add(keep);
             var pad = new Panel { Dock = DockStyle.Top, Height = Dpi(8) };
-            f.Controls.Add(txt); f.Controls.Add(pad); f.Controls.Add(lbl); f.Controls.Add(bar);
+            f.Controls.Add(count); f.Controls.Add(txt); f.Controls.Add(pad); f.Controls.Add(lbl); f.Controls.Add(bar);
             f.CancelButton = keep;
             f.Shown += (s, e) => txt.Focus();
             return f.ShowDialog(this.FindForm()) == DialogResult.OK ? txt.Text.Trim() : null;
         }
+
+        // ---- Nov 8: pick several stores (or all) and remove them together
+        private void BuildStoreBulkBar()
+        {
+            pnlStoreBulkBar = new Panel { Dock = DockStyle.Top, Height = Dpi(LargePrint.Px(44, 38)), BackColor = AppTheme.Surface, Padding = new Padding(Dpi(4), Dpi(4), Dpi(4), Dpi(4)) };
+            chkPickAllStores = new CheckBox { Text = "Select all stores", AutoSize = true, Dock = DockStyle.Left, Font = LargePrint.Semibold(10.5F, 9F), ForeColor = AppTheme.TextPrimary, Padding = new Padding(Dpi(6), 0, Dpi(14), 0), Cursor = Cursors.Hand };
+            lblPickCount = new Label { AutoSize = false, Dock = DockStyle.Left, Width = Dpi(230), TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, UseMnemonic = false };
+            btnRemovePicked = new Button { Text = "Remove selected…", Dock = DockStyle.Right, Width = Dpi(LargePrint.Px(210, 190)), FlatStyle = FlatStyle.Flat, Font = LargePrint.Bold(10.5F, 9F), Cursor = Cursors.Hand, Enabled = false, UseMnemonic = false };
+            btnRemovePicked.FlatAppearance.BorderSize = 0;
+            storeTips.SetToolTip(btnRemovePicked, "Tick the stores to take off this order, then remove them together. Route stores ask for a reason.");
+            storeTips.SetToolTip(chkPickAllStores, "Ticks or unticks every store row.");
+            chkPickAllStores.CheckedChanged += (s, e) =>
+            {
+                if (isTickingAllStores || gridRouteStores == null) return;
+                isTickingAllStores = true;
+                try
+                {
+                    gridRouteStores.EndEdit();
+                    foreach (DataGridViewRow r in gridRouteStores.Rows) if (!r.IsNewRow) r.Cells["colPick"].Value = chkPickAllStores.Checked;
+                }
+                finally { isTickingAllStores = false; }
+                UpdateStorePickBar();
+            };
+            btnRemovePicked.Click += (s, e) =>
+            {
+                if (gridRouteStores == null) return;
+                gridRouteStores.EndEdit();
+                var picked = PickedStoreRows();
+                if (picked.Count == 0) { ToastHelper.ShowToast(this, "Tick the stores to remove first", ToastType.Warning); return; }
+                RemoveStoreRows(picked);
+            };
+            pnlStoreBulkBar.Controls.Add(btnRemovePicked);
+            pnlStoreBulkBar.Controls.Add(lblPickCount);
+            pnlStoreBulkBar.Controls.Add(chkPickAllStores);
+            UpdateStorePickBar();
+        }
+
+        private List<DataGridViewRow> StoreRowsWithContent() =>
+            gridRouteStores == null ? new List<DataGridViewRow>() : gridRouteStores.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow).ToList();
+
+        private List<DataGridViewRow> PickedStoreRows() =>
+            StoreRowsWithContent().Where(r => gridRouteStores!.Columns.Contains("colPick") && r.Cells["colPick"].Value is bool b && b).ToList();
+
+        /// <summary>Keeps the count, the "select all" box and the Remove button in step with the ticks.</summary>
+        private void UpdateStorePickBar()
+        {
+            if (chkPickAllStores == null || lblPickCount == null || btnRemovePicked == null || gridRouteStores == null) return;
+            int total = StoreRowsWithContent().Count, n = PickedStoreRows().Count;
+            lblPickCount.Text = total == 0 ? "No stores on this order yet" : n == 0 ? $"{total} stores · none selected" : $"{n} of {total} selected";
+            lblPickCount.ForeColor = n > 0 ? AppTheme.TextPrimary : AppTheme.TextMuted;
+            if (!isTickingAllStores)
+            {
+                isTickingAllStores = true;
+                try { chkPickAllStores.Checked = total > 0 && n == total; }
+                finally { isTickingAllStores = false; }
+            }
+            chkPickAllStores.Enabled = total > 0;
+            btnRemovePicked.Enabled = n > 0;
+            btnRemovePicked.Text = n > 0 ? $"Remove selected ({n})…" : "Remove selected…";
+            btnRemovePicked.BackColor = n > 0 ? AppTheme.Danger : AppTheme.SurfaceAlt;
+            btnRemovePicked.ForeColor = n > 0 ? Color.White : AppTheme.TextMuted;
+        }
+
+        /// <summary>
+        /// Takes these store rows off the order, whether one (the row's own button) or several (ticked). Added stores ask "are you sure";
+        /// route stores (🔒) need one written reason (at least 10 real characters), which is logged for each store. Taking off every store
+        /// asks once more, because an order needs a store before it can be saved.
+        /// </summary>
+        private void RemoveStoreRows(List<DataGridViewRow> rows)
+        {
+            if (gridRouteStores == null || rows.Count == 0) return;
+            string Name(DataGridViewRow r)
+            {
+                string code = gridRouteStores!.Columns.Contains("colStoreCode") ? r.Cells["colStoreCode"].Value?.ToString()?.Trim() ?? "" : "";
+                string name = gridRouteStores.Columns.Contains("colStoreName") ? r.Cells["colStoreName"].Value?.ToString()?.Trim() ?? "" : "";
+                string both = (code + " " + name).Trim();
+                return both.Length > 0 ? both : "(blank row)";
+            }
+            string List(IEnumerable<DataGridViewRow> rs)
+            {
+                var names = rs.Select(Name).ToList();
+                return string.Join("\n", names.Take(8).Select(n => "• " + n)) + (names.Count > 8 ? $"\n• … and {names.Count - 8} more" : "");
+            }
+            var routeRows = rows.Where(IsRouteStoreRow).ToList();
+            var addedRows = rows.Where(r => !IsRouteStoreRow(r)).ToList();
+            int remaining = StoreRowsWithContent().Count - rows.Count;
+            if (remaining <= 0 && MessageBox.Show(this.FindForm(), $"This takes off every store ({rows.Count}). The order will have no stores, and needs at least one before it can be saved.\n\nRemove them all?", "Remove every store", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+            string? why = null;
+            if (routeRows.Count > 0)
+            {
+                // Rule 16d (approved Nov 6): a locked route store can be removed only with a written reason (logged).
+                string head = routeRows.Count == 1 && addedRows.Count == 0
+                    ? $"\"{Name(routeRows[0])}\" is one of this route's stores (🔒). Why is it not getting a delivery on this order?"
+                    : $"{routeRows.Count} route store{(routeRows.Count == 1 ? "" : "s")} (🔒) will be taken off this order:\n{List(routeRows)}" + (addedRows.Count > 0 ? $"\n\n(and {addedRows.Count} added store{(addedRows.Count == 1 ? "" : "s")})" : "") + "\n\nWhy do they get no delivery on this order?";
+                why = PromptRouteRowRemovalReason(head);
+                if (why == null) return;
+            }
+            else if (MessageBox.Show(this.FindForm(), addedRows.Count == 1 ? $"Are you sure you want to remove \"{Name(addedRows[0])}\" from this dispatch's store table?" : $"Remove these {addedRows.Count} stores from this dispatch's store table?\n\n{List(addedRows)}", "Remove store rows", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+            ApplyStoreRowRemoval(rows, why);
+        }
+
+        /// <summary>Does the removal itself (after the questions were answered): logs each route store with the reason, takes the rows off, refreshes the totals.</summary>
+        private void ApplyStoreRowRemoval(List<DataGridViewRow> rows, string? why)
+        {
+            if (gridRouteStores == null) return;
+            foreach (var r in rows.Where(IsRouteStoreRow))
+            {
+                string code = gridRouteStores.Columns.Contains("colStoreCode") ? r.Cells["colStoreCode"].Value?.ToString() ?? "" : "";
+                string label = gridRouteStores.Columns.Contains("colStoreName") ? r.Cells["colStoreName"].Value?.ToString() ?? "" : "";
+                try { MJdatabase.LogAuditTrail("UPDATE", "Deliveries", selectedDelivery?.Id ?? 0, selectedDelivery?.DispatchNumber ?? "(new order)", "RouteStoreRemoved", $"{code} - {label}", "", why); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            }
+            foreach (var r in rows.OrderByDescending(r => r.Index)) gridRouteStores.Rows.RemoveAt(r.Index);
+            RecalculateTotalsFromRouteStoresGrid();
+            UpdateStorePickBar();
+            ToastHelper.ShowToast(this, rows.Count == 1 ? "Store removed" : $"{rows.Count} stores removed", ToastType.Success);
+        }
+
         private void RecalculateTotalsFromRouteStoresGrid()
         {
             if (isUpdatingRouteStores || gridRouteStores == null || pnlRouteStoresBreakdown == null || !pnlRouteStoresBreakdown.Visible) return;
@@ -3337,9 +3478,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 // Crates come only from the store rows: no rows means 0 crates (never a leftover total).
 
-                numECrate.Value = Math.Clamp(sumE, (int)numECrate.Minimum, (int)numECrate.Maximum);
+                numECrate.SetSafe(Math.Clamp(sumE, (int)numECrate.Minimum, (int)numECrate.Maximum));
 
-                numGCrate.Value = Math.Clamp(sumG, (int)numGCrate.Minimum, (int)numGCrate.Maximum);
+                numGCrate.SetSafe(Math.Clamp(sumG, (int)numGCrate.Minimum, (int)numGCrate.Maximum));
 
                 CalculateCratesAndRecommendation();
             }
@@ -3624,9 +3765,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             isBindingForm = true;
 
-            numGCrate.Value = Math.Min(numGCrate.Maximum, totalG);
+            numGCrate.SetSafe(Math.Min(numGCrate.Maximum, totalG));
 
-            numECrate.Value = Math.Min(numECrate.Maximum, totalE);
+            numECrate.SetSafe(Math.Min(numECrate.Maximum, totalE));
 
             isBindingForm = false;
 
@@ -4806,13 +4947,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (selectedDelivery.DispatchDate >= dtpDispatchDate.MinDate && selectedDelivery.DispatchDate <= dtpDispatchDate.MaxDate)
                 {
-                    dtpDispatchDate.Value = selectedDelivery.DispatchDate;
+                    dtpDispatchDate.SetSafe(selectedDelivery.DispatchDate);
                 }
                 cbDepartureTime.Text = string.IsNullOrEmpty(selectedDelivery.DepartureTime) ? "08:00 AM" : selectedDelivery.DepartureTime;
                 cbStatus.Text = string.IsNullOrEmpty(selectedDelivery.Status) ? "Scheduled" : selectedDelivery.Status;
-                numGCrate.Value = Math.Max(0, selectedDelivery.GCrate);
-                numECrate.Value = Math.Max(0, selectedDelivery.ECrate);
-                numCombiCold.Value = Math.Min(numCombiCold.Maximum, Math.Max(0, MJdatabase.GetDeliveryCapacityInfo(selectedDelivery.Id).Cold));
+                numGCrate.SetSafe(Math.Max(0, selectedDelivery.GCrate));
+                numECrate.SetSafe(Math.Max(0, selectedDelivery.ECrate));
+                numCombiCold.SetSafe(Math.Min(numCombiCold.Maximum, Math.Max(0, MJdatabase.GetDeliveryCapacityInfo(selectedDelivery.Id).Cold)));
 
                 var savedStops = MJdatabase.GetOrBuildTripStopsForDelivery(selectedDelivery);
                 PopulateRouteStoresGrid(matchedDspRoute, savedStops);
@@ -6235,8 +6376,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedDelivery = null;
                 SetButtonStates(false);
                 txtDispatchNumber.Text = "";
-                numGCrate.Value = 0;
-                numECrate.Value = 0;
+                numGCrate.SetSafe(0);
+                numECrate.SetSafe(0);
                 txtTotalCrates.Text = "";
                 lblRec.Text = "No matching dispatch orders found.";
                 lblFormHeader.Text = "New Dispatch Order";
@@ -6300,7 +6441,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 selectedDelivery = null;
-                if (numCombiCold != null) numCombiCold.Value = 0;
+                if (numCombiCold != null) numCombiCold.SetSafe(0);
 
                 txtDispatchNumber.Text = "";
                 cbClient.SelectedIndex = -1;
@@ -6314,12 +6455,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbTruck.Text = "";
                 cbDriver.SelectedIndex = -1;
                 cbDriver.Text = "";
-                dtpDispatchDate.Value = DateTime.Today;
+                dtpDispatchDate.SetSafe(DateTime.Today);
                 cbDepartureTime.SelectedIndex = -1;
                 cbDepartureTime.Text = "";
                 if (cbStatus.Items.Count > 0) cbStatus.SelectedIndex = 0;
-                numGCrate.Value = 0;
-                numECrate.Value = 0;
+                numGCrate.SetSafe(0);
+                numECrate.SetSafe(0);
                 txtTotalCrates.Text = "0 Crates";
                 selectedAideIds.Clear();
                 txtSearchAides.Clear();
@@ -6884,7 +7025,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (map.TryGetValue("CombiCold", out var cc) && decimal.TryParse(cc, out var ccv))
 
-                    numCombiCold.Value = Math.Min(numCombiCold.Maximum, Math.Max(0, ccv));
+                    numCombiCold.SetSafe(Math.Min(numCombiCold.Maximum, Math.Max(0, ccv)));
 
                 // Crates come from the store rows saved with the draft (older drafts without stores restore none).
 
@@ -6902,7 +7043,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    dtpDispatchDate.Value = ddate;
+                    dtpDispatchDate.SetSafe(ddate);
 
                 }
 

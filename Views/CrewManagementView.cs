@@ -439,8 +439,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 txtLicense.Text = "";
                 chkAvailable.Checked = selectedCrew.IsAvailable;
                 BindClassification(selectedCrew);
-                if (numDailyWage != null) numDailyWage.Value = ClampMoney(numDailyWage, selectedCrew.DailyWage);
-                if (numFoodAllowance != null) numFoodAllowance.Value = ClampMoney(numFoodAllowance, selectedCrew.FoodAllowance);
+                if (numDailyWage != null) numDailyWage.SetSafe(ClampMoney(numDailyWage, selectedCrew.DailyWage));
+                if (numFoodAllowance != null) numFoodAllowance.SetSafe(ClampMoney(numFoodAllowance, selectedCrew.FoodAllowance));
                 currentPhotoPath = selectedCrew.PhotoPath ?? "";
                 DisplayPhotoPreview(currentPhotoPath);
                 lblFormHeader.Text = $"Personnel: {selectedCrew.FullName} ({selectedCrew.CrewCode})";
@@ -881,8 +881,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 txtLicense.Text = "";
                 chkAvailable.Checked = selectedCrew.IsAvailable;
                 BindClassification(selectedCrew);
-                if (numDailyWage != null) numDailyWage.Value = ClampMoney(numDailyWage, selectedCrew.DailyWage);
-                if (numFoodAllowance != null) numFoodAllowance.Value = ClampMoney(numFoodAllowance, selectedCrew.FoodAllowance);
+                if (numDailyWage != null) numDailyWage.SetSafe(ClampMoney(numDailyWage, selectedCrew.DailyWage));
+                if (numFoodAllowance != null) numFoodAllowance.SetSafe(ClampMoney(numFoodAllowance, selectedCrew.FoodAllowance));
                 currentPhotoPath = selectedCrew.PhotoPath ?? "";
                 DisplayPhotoPreview(currentPhotoPath);
                 lblFormHeader.Text = "Personnel Master Form";
@@ -937,8 +937,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             chkAvailable.Checked = true;
             ClearClassification();
-            if (numDailyWage != null) numDailyWage.Value = 0;
-            if (numFoodAllowance != null) numFoodAllowance.Value = 0;
+            if (numDailyWage != null) numDailyWage.SetSafe(0);
+            if (numFoodAllowance != null) numFoodAllowance.SetSafe(0);
             currentPhotoPath = string.Empty;
             DisplayPhotoPreview(string.Empty);
             lblFormHeader.Text = "Personnel Master Form";

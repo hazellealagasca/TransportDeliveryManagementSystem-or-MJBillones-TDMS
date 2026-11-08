@@ -475,7 +475,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbDestination.Text = matchedRoute != null ? $"{matchedRoute.RouteCode} - {matchedRoute.RouteName}" : selectedRate.Destination;
                 cbTruckType.SelectedItem = selectedRate.TruckType;
                 chkPeak.Checked = selectedRate.IsPeakSeason;
-                numRate.Value = selectedRate.RateAmount;
+                numRate.SetSafe(selectedRate.RateAmount);
                 lblFormHeader.Text = "Transport Rate Details";
                 isBindingForm = false;
             }
@@ -732,7 +732,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 isBindingForm = true;
                 selectedRate = null;
                 cbDestination.Text = "";
-                numRate.Value = 0;
+                numRate.SetSafe(0);
                 lblFormHeader.Text = "Transport Rate Details";
                 isBindingForm = false;
             }
@@ -802,7 +802,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UpdateMultiCount();
             cbTruckType.SelectedIndex = -1; cbTruckType.Text = "";
             chkPeak.Checked = false;
-            numRate.Value = numRate.Minimum;
+            numRate.SetSafe(numRate.Minimum);
         }
 
         private void LoadRates()

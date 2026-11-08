@@ -23,7 +23,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Panel pnlBillAdjust = null!;
         private Label lblBillVariance = null!;
         private TextBox txtBillAdjustReason = null!;
-        private ReadyBanner billReady = null!;
+        private WaitingListPanel billWaiting = null!;
+        private TapeCard? billTape, billNetTape;
         private RichLookup? invoiceLookup;
         private readonly System.Windows.Forms.Timer billGuideTimer = new System.Windows.Forms.Timer { Interval = 250 };
         private bool billSaving;
@@ -32,7 +33,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Dispatch id → the live invoice that already bills it (a cancelled invoice does not count).</summary>
         private Dictionary<int, LiveTripInvoice> billLive = new Dictionary<int, LiveTripInvoice>();
         private Dictionary<int, TripReport> billReports = new Dictionary<int, TripReport>();
-        private readonly Dictionary<int, (decimal Gross, decimal Deductions)> billExpected = new Dictionary<int, (decimal, decimal)>();
+        /// <summary>Dispatch id → the amount (freight tariff) the Rate Matrix, special-trip charge or agreed cancellation fee gives for it.</summary>
+        private readonly Dictionary<int, decimal> billExpected = new Dictionary<int, decimal>();
         private decimal billPaid;
 
         private Panel BuildBillAdjustPanel()
@@ -58,10 +60,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit.AddStrip(billStrip);
             billStepper = new WorkflowStepper("Dispatch created", "Trip report completed", "Invoice filled from trip", "Review", "Validated & ready");
             billHelp = new HelpDrawer("How this works",
-                "1. Only completed dispatches with a saved trip report appear in the list — the invoice is filled from the trip (client, rate from the Rate Matrix, incident deductions).\n" +
+                "1. Only completed dispatches with a saved trip report appear in the list — the invoice is filled from the trip (client, trip report, amount from the Rate Matrix). Once the trip is picked it is fixed; Clear form frees it.\n" +
                 "2. A trip is billed once: either on a statement of account or on a direct invoice here. Trips already on a statement don't appear.\n" +
-                "3. The client is always the trip's client.\n" +
-                "4. If you change the amount or the deductions, write the adjustment reason — it is kept with the invoice and in the audit log.\n" +
+                "3. The client is always the trip's client. The statement of account reads this invoice's amount and fuel surcharge, so type them here, once.\n" +
+                "4. If you change the amount from the Rate Matrix's figure, write the adjustment reason — it is kept with the invoice and in the audit log. There are no deductions on an invoice.\n" +
                 "5. All checks must be green before Issue invoice. Payments are then recorded in full in Collections & Receipts (no part payments).");
             billChecklist = new ValidationChecklist();
             formKit.AddBodyTop(new Panel { Height = Dpi(8), BackColor = AppTheme.Canvas });
@@ -73,7 +75,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblBillBlocked.Click += (s, e) => formKit?.ScrollTo(billChecklist);
             formKit.Actions?.Controls.Add(lblBillBlocked);
             InputGuard.MoneyOnly(numTotalAmount);
-            InputGuard.MoneyOnly(numDeductions);
+            InputGuard.MoneyOnly(numFuel);
             InputGuard.ReferenceOnly(txtInvoiceNumber, 30);
             billGuideTimer.Tick += (s, e) => { billGuideTimer.Stop(); UpdateBillGuide(); };
             cbDelivery.SelectedIndexChanged += (s, e) => ScheduleBillGuide();
@@ -81,14 +83,76 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbClient.Leave += (s, e) => EnforceBillClientLock();
             cbClient.SelectionChangeCommitted += (s, e) => BeginInvoke(new Action(EnforceBillClientLock));
             numTotalAmount.ValueChanged += (s, e) => ScheduleBillGuide();
-            numDeductions.ValueChanged += (s, e) => ScheduleBillGuide();
+            numFuel.ValueChanged += (s, e) => ScheduleBillGuide();
             txtInvoiceNumber.TextChanged += (s, e) => ScheduleBillGuide();
             invoiceLookup = RichLookup.Attach(txtInvoiceNumber, InvoiceSuggestions, it => ScheduleBillGuide());
             // Ready line above the invoice list.
-            billReady = new ReadyBanner();
-            pnlGridCard.Controls.Add(billReady);
-            pnlGridCard.Controls.SetChildIndex(billReady, pnlGridCard.Controls.GetChildIndex(pnlGridHeaderBar));
+            billWaiting = new WaitingListPanel();
+            billWaiting.InvoiceRequested += StartInvoiceForWaiting;
+            billWaiting.CountChanged += n => FinanceHubView.Of(this)?.SetTabBadge("Billing", n);
+            pnlGridCard.Controls.Add(billWaiting);
+            pnlGridCard.Controls.SetChildIndex(billWaiting, pnlGridCard.Controls.GetChildIndex(pnlGridHeaderBar));
             RefreshBillReady();
+        }
+        /// <summary>
+        /// Ledger Desk layout of the invoice form (55 / 45): the invoice and the trip on the left, the amounts and the open problems on the right, one slim
+        /// header with the live figures. Layout only: every field, handler and rule is the same.
+        /// </summary>
+        private void ApplyBillWorkbench()
+        {
+            if (formKit == null || billChecklist == null) return;
+            billChecklist.ShowOnlyProblems = true;
+            billChecklist.FocusResolver = c =>
+            {
+                string t = c.Text;
+                if (t.Contains("adjustment reason", StringComparison.OrdinalIgnoreCase)) return txtBillAdjustReason;
+                if (t.Contains("Service Invoice No", StringComparison.OrdinalIgnoreCase) || t.StartsWith("Invoice #", StringComparison.OrdinalIgnoreCase)) return txtInvoiceNumber;
+                if (t.Contains("trip", StringComparison.OrdinalIgnoreCase) || t.Contains("dispatch", StringComparison.OrdinalIgnoreCase)) return cbDelivery;
+                if (t.Contains("client", StringComparison.OrdinalIgnoreCase)) return cbClient;
+                if (t.Contains("fuel", StringComparison.OrdinalIgnoreCase)) return numFuel;
+                if (t.Contains("amount", StringComparison.OrdinalIgnoreCase) || t.Contains("Rate Matrix", StringComparison.OrdinalIgnoreCase) || t.StartsWith("Total", StringComparison.OrdinalIgnoreCase)) return numTotalAmount;
+                return null;
+            };
+            billStrip.ShowPayment = false; // "Payment: Unpaid" means nothing on an invoice that is not issued yet
+            billStrip.FirstCaption = "Amount"; billStrip.SecondCaption = "Fuel surcharge"; billStrip.ShowNet = false; // Nov 7: an invoice shows only what was typed (amount, fuel surcharge): no total, tax or withholding; the first computation is on the statement
+            billTape = new TapeCard { EmptyText = "Pick the completed trip to see its dispatch, route, date and crates here." };
+            billTape.Set("The trip being billed", Array.Empty<(string, string)>(), "", "", "");
+            billNetTape = new TapeCard();
+            billNetTape.Set("What was typed on this invoice", Array.Empty<(string, string)>(), "", "", "");
+            pnlNetDue.Visible = false; // replaced by the tape on the right (not removed: its labels are still updated by the form)
+            formKit.ApplyWorkbench(55f, new[] { 0 }, new[] { 1 }, billChecklist, new Control?[] { billStepper, billHelp }, billStrip, 620, new Control[] { billTape }, new Control[] { billNetTape });
+        }
+        /// <summary>The amounts tape on the right: the amount and the fuel surcharge exactly as typed, and the payment due date. No total, VAT or withholding on an invoice.</summary>
+        private void UpdateBillNet(decimal net)
+        {
+            if (billNetTape == null) return;
+            _ = net; // not shown: an invoice carries no computation
+            DateTime due = selectedInvoice != null && selectedInvoice.DueDate > DateTime.MinValue ? selectedInvoice.DueDate : DateTime.Today.AddDays(15);
+            decimal amount = numTotalAmount.Value, fuel = numFuel.Value;
+            billNetTape.Set("What was typed on this invoice", new (string, string)[] { ("Amount (freight tariff)", "₱" + amount.ToString("N2")), ("Fuel surcharge", "₱" + fuel.ToString("N2")), ("Payment due", $"{due:MMM d, yyyy} · 15 days") },
+                "", "", "");
+        }
+        /// <summary>Fills the trip card on the left from the picked trip (read-only; the picked trip itself is still the Completed Delivery Trip box).</summary>
+        private void UpdateBillTrip(Delivery? d)
+        {
+            if (billTape == null) return;
+            if (d == null) { billTape.Set("The trip being billed", Array.Empty<(string, string)>(), "", "", ""); return; }
+            billReports.TryGetValue(d.Id, out var tr);
+            var rows = new List<(string, string)>
+            {
+                (d.Id < 0 ? "Special trip" : "Dispatch", d.DispatchNumber ?? ""), ("Client", d.ClientName ?? ""), ("Route", d.CleanRouteDisplay ?? ""),
+                ("Date", d.DispatchDate.ToString("MMM d, yyyy")), ("Crates", d.TotalCrates.ToString("N0")), ("Truck", d.TruckInfo ?? "")
+            };
+            if (tr != null && !string.IsNullOrWhiteSpace(tr.TripReportNumber))
+            {
+                rows.Add(("Trip report", tr.TripReportNumber));
+                rows.Add(("Date completed", tr.ReportDate.ToString("dd-MMM-yyyy")));
+                rows.Add(("Delivered / returned", $"{tr.DeliveredCrates:N0} / {tr.ReturnedCrates:N0} crates"));
+                if (!string.IsNullOrWhiteSpace(tr.StoreManagerName)) rows.Add(("Received by", tr.StoreManagerName.Trim()));
+            }
+            if (billExpected.TryGetValue(d.Id, out var exp) && exp > 0)
+                billTape.Set("The trip being billed", rows, "Amount from the Rate Matrix", "₱" + exp.ToString("N2"), "the fuel surcharge is typed on the invoice");
+            else billTape.Set("The trip being billed", rows, "", "", "");
         }
         private void ScheduleBillGuide()
         {
@@ -120,13 +184,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Completed dispatches with a saved trip report that are on no statement and no invoice.</summary>
         private void RefreshBillReady()
         {
-            if (billReady == null) return;
-            var items = completedDeliveries.Take(20).Select(d => (
-                $"{d.DispatchNumber}  ·  {d.ClientName}  ·  {d.DispatchDate:MMM d}   ▸ Invoice",
-                $"Opens a new invoice filled from dispatch {d.DispatchNumber} ({d.CleanRouteDisplay}). Nothing is saved until you issue it.",
-                (Action)(() => StartInvoiceFor(d)))).ToList();
-            billReady.SetItems($"{completedDeliveries.Count} completed trip{(completedDeliveries.Count == 1 ? "" : "s")} waiting for their service invoice:",
-                "No completed trips are waiting for their service invoice. Each trip gets its own service invoice here (type its SI No.); statements then group those invoices.", items, 4);
+            billWaiting?.RefreshData();
+        }
+        /// <summary>The worklist asked to invoice a trip: open the new-invoice form on it.</summary>
+        private void StartInvoiceForWaiting(WaitingTripRow row)
+        {
+            int id = row.SpecialTripId > 0 ? -row.SpecialTripId : row.DeliveryId;
+            var d = completedDeliveries.Find(x => x.Id == id);
+            if (d == null) { LoadData(); d = completedDeliveries.Find(x => x.Id == id); }
+            if (d == null) { QuietBox.Show($"{row.Number} can no longer be invoiced from here. It may have just been billed.", "Trip not available", MessageBoxButtons.OK, MessageBoxIcon.Information); billWaiting?.RefreshData(); return; }
+            StartInvoiceFor(d);
         }
         private void StartInvoiceFor(Delivery d)
         {
@@ -165,34 +232,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (++n >= 20) yield break;
             }
         }
-        private (decimal Gross, decimal Deductions) ExpectedFor(Delivery d)
+        private decimal ExpectedFor(Delivery d)
         {
             if (billExpected.TryGetValue(d.Id, out var v)) return v;
-            if (d.Id < 0) return billExpected[d.Id] = (SpecialCharge(d), 0m); // Nov 6: special trip charge
-            if (IsChargeableCancelled(d)) return billExpected[d.Id] = (chargeFees[d.Id], 0m); // agreed cancellation fee, no incident deductions
-            decimal gross = 0, ded = 0;
-            try
-            {
-                gross = MJdatabase.CalculateDeliveryTariff(d, out _);
-                ded = MJdatabase.GetIncidentReports().FindAll(ir => ir.DeliveryId == d.Id && !ir.ChargeableToCrew && ir.Status != "Rejected").Sum(ir => ir.EstimatedCost);
-            }
+            if (d.Id < 0) return billExpected[d.Id] = SpecialCharge(d); // Nov 6: special trip charge
+            if (IsChargeableCancelled(d)) return billExpected[d.Id] = chargeFees[d.Id]; // agreed cancellation fee
+            decimal gross = 0;
+            try { gross = MJdatabase.CalculateDeliveryTariff(d, out _); }
             catch (Exception ex) { ErrLog.Swallowed(ex); }
-            return billExpected[d.Id] = (gross, ded);
+            return billExpected[d.Id] = gross;
         }
-        /// <summary>The amount or deductions differ from the rate / incident figures of the trip (so a reason is needed).</summary>
+        /// <summary>The amount differs from the trip's rate (so a reason is needed). Nov 7: no deductions; the fuel surcharge is always typed, so it is not compared.</summary>
         private bool BillAdjusted(out decimal expectedNet, out decimal enteredNet, out string what)
         {
-            expectedNet = 0; enteredNet = numTotalAmount.Value - numDeductions.Value; what = "";
+            expectedNet = 0; enteredNet = numTotalAmount.Value; what = "";
             if (selectedInvoice != null && selectedInvoice.SoaId > 0) return false; // amounts come from the statement
             Delivery? d = SelectedBillDelivery();
             if (selectedInvoice != null) d = selectedInvoice.DeliveryId > 0 ? MJdatabase.GetDeliveryById(selectedInvoice.DeliveryId) : null;
             if (d == null) return false;
-            var (g, ded) = ExpectedFor(d);
+            decimal g = ExpectedFor(d);
             if (g <= 0) return false; // no rate to compare with
-            expectedNet = g - ded;
+            expectedNet = g;
             var parts = new List<string>();
-            if (Math.Abs(numTotalAmount.Value - g) > 0.005m) parts.Add($"Gross: rate ₱{g:N2} → ₱{numTotalAmount.Value:N2}");
-            if (Math.Abs(numDeductions.Value - ded) > 0.005m) parts.Add($"Deductions: incidents ₱{ded:N2} → ₱{numDeductions.Value:N2}");
+            if (Math.Abs(numTotalAmount.Value - g) > 0.005m) parts.Add($"Amount: rate ₱{g:N2} → ₱{numTotalAmount.Value:N2}");
             what = string.Join("   ·   ", parts);
             return parts.Count > 0;
         }
@@ -233,36 +295,39 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (selectedInvoice!.SoaId > 0)
                 {
                     // A statement's invoice must match the statement; change the amounts on the SOA instead.
-                    bool same = Math.Abs(numTotalAmount.Value - selectedInvoice.TotalAmount) < 0.005m && Math.Abs(numDeductions.Value - selectedInvoice.Deductions) < 0.005m;
+                    bool same = Math.Abs(numTotalAmount.Value - selectedInvoice.Freight) < 0.005m && Math.Abs(numFuel.Value - selectedInvoice.FuelSurcharge) < 0.005m;
                     checks.Add(new PaymentCheck(same ? "Amounts match its statement of account" : "This invoice is on a statement - its amounts can't change while it is on one (take its trip off the Statement of Account first)", same));
                 }
                 else if (selectedInvoice.DeliveryId <= 0 && string.IsNullOrWhiteSpace(selectedInvoice.DispatchNumber)) // special-trip invoices carry their ST- number
                     checks.Add(new PaymentCheck("This invoice bills no trip — a direct invoice needs a completed (or chargeable cancelled) trip", false));
-                decimal net0 = numTotalAmount.Value - numDeductions.Value;
                 if (billPaid > 0)
                 {
                     // Payments are in full: once a receipt exists the amounts stay as paid (void the receipt first to change them).
-                    bool unchanged = Math.Abs(numTotalAmount.Value - selectedInvoice.TotalAmount) < 0.005m && Math.Abs(numDeductions.Value - selectedInvoice.Deductions) < 0.005m;
+                    bool unchanged = Math.Abs(numTotalAmount.Value - selectedInvoice.Freight) < 0.005m && Math.Abs(numFuel.Value - selectedInvoice.FuelSurcharge) < 0.005m;
                     checks.Add(new PaymentCheck(unchanged ? $"Amounts stay as paid (₱{billPaid:N2} collected)" : $"₱{billPaid:N2} is already collected, so the amounts can't change — void the receipt in Collections & Receipts first", unchanged));
                 }
-                else
-                    checks.Add(new PaymentCheck(net0 >= 0 ? "Net amount is not negative" : $"Net ₱{net0:N2} is negative", net0 >= 0));
             }
             // Invoice number: present, unique.
             string invNum = txtInvoiceNumber.Text.Trim();
-            var clash = invNum.Length == 0 ? null : allInvoices.FirstOrDefault(i => (selectedInvoice == null || i.Id != selectedInvoice.Id) && string.Equals(i.InvoiceNumber, invNum, StringComparison.OrdinalIgnoreCase));
-            checks.Add(new PaymentCheck(invNum.Length == 0 ? "Enter the invoice number" : clash != null ? $"Invoice # {invNum} is already used ({clash.ClientName})" : $"Invoice # {invNum} is free", invNum.Length > 0 && clash == null));
+            billNumberGuard?.Recheck();
+            var gn = billNumberGuard?.Current;
+            bool numberBlocked = gn != null && gn.Blocked;
+            bool tickMissing = billNumberGuard != null && billNumberGuard.TickMissing;
+            bool renameDenied = selectedInvoice != null && invNum.Length > 0 && !string.Equals((selectedInvoice.InvoiceNumber ?? "").Trim(), invNum, StringComparison.OrdinalIgnoreCase) && !SessionContext.IsAdmin;
+            checks.Add(new PaymentCheck(invNum.Length == 0 ? "Enter the Service Invoice No." : numberBlocked ? gn!.Why()
+                : renameDenied ? "Only the Administrator can change the Service Invoice No. of a saved invoice"
+                : tickMissing ? "Tick the confirmation under the Service Invoice No. (same digits as another document)" : $"Service Invoice No. {invNum} is free",
+                invNum.Length > 0 && !numberBlocked && !renameDenied && !tickMissing));
             // Math
-            decimal gross = numTotalAmount.Value, ded = numDeductions.Value;
-            checks.Add(new PaymentCheck(gross > 0 ? "Gross amount is more than ₱0.00" : "Gross amount is ₱0.00", gross > 0));
-            checks.Add(new PaymentCheck(ded <= gross ? $"Net = gross − deductions = ₱{gross - ded:N2}" : $"Deductions ₱{ded:N2} are more than the gross ₱{gross:N2}", ded <= gross));
+            decimal amount = numTotalAmount.Value, fuel = numFuel.Value;
+            checks.Add(new PaymentCheck(amount > 0 ? "Amount is more than ₱0.00" : "Amount is ₱0.00", amount > 0));
             if (BillAdjusted(out var expNet, out var entNet, out _))
             {
                 bool hasReason = txtBillAdjustReason.Text.Trim().Length >= StatementOfAccountView.MinAdjustReasonLength;
                 checks.Add(new PaymentCheck(hasReason ? "Adjustment reason given" : "Amount changed from the trip's figures — write the adjustment reason", hasReason));
             }
-            else if (!editing && SelectedBillDelivery() is Delivery dd && ExpectedFor(dd).Gross <= 0)
-                checks.Add(new PaymentCheck("No rate found in the Rate Matrix for this trip — check the gross amount", true, Warning: true));
+            else if (!editing && Functions.Features.On(Functions.Features.RateMatrix) && SelectedBillDelivery() is Delivery dd && ExpectedFor(dd) <= 0)
+                checks.Add(new PaymentCheck("No rate found in the Rate Matrix for this trip — check the amount", true, Warning: true));
             return checks;
         }
 
@@ -281,10 +346,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var checks = ComputeBillChecks();
             billChecklist.SetChecks(checks);
             int fails = billChecklist.Failed, warns = billChecklist.Warnings;
-            decimal net = numTotalAmount.Value - numDeductions.Value;
-            billStrip.SetTotals(numTotalAmount.Value, numDeductions.Value, billPaid, Math.Max(0, net - billPaid), fails, warns);
+            decimal net = numTotalAmount.Value + numFuel.Value;
+            billStrip.SetTotals(numTotalAmount.Value, numFuel.Value, billPaid, Math.Max(0, net - billPaid), fails, warns);
             bool editing = selectedInvoice != null;
             var d = SelectedBillDelivery();
+            UpdateBillTrip(d);
+            UpdateBillNet(net);
             if (editing) billStepper.SetProgress(fails > 0 ? 3 : 4, fails > 0 ? $"Editing invoice {selectedInvoice!.InvoiceNumber}: {fails} to fix — see the checklist." : $"Invoice {selectedInvoice!.InvoiceNumber} is valid — Update invoice saves the changes.");
             else if (d == null) billStepper.SetProgress(completedDeliveries.Count > 0 ? 1 : 0, completedDeliveries.Count > 0
                 ? $"{completedDeliveries.Count} completed trip{(completedDeliveries.Count == 1 ? " is" : "s are")} ready — pick one under Invoice & order."
@@ -300,7 +367,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             FieldMarks.Mark(cbClient, cbClient.Text.Trim().Length == 0 ? FieldState.None : checks.Any(c => !c.Passed && c.Text.StartsWith("Client")) ? FieldState.Bad : FieldState.Ok);
             FieldMarks.Mark(txtInvoiceNumber, txtInvoiceNumber.Text.Trim().Length == 0 ? FieldState.None : checks.Any(c => !c.Passed && c.Text.StartsWith("Invoice #")) ? FieldState.Bad : FieldState.Ok);
-            FieldMarks.Mark(numDeductions, numDeductions.Value > numTotalAmount.Value ? FieldState.Bad : FieldState.None);
             // Save gate (Issue for a new invoice, Update for an existing one).
             bool ok = fails == 0 && !billSaving;
             if (btnSave.Visible) { btnSave.Enabled = ok; ApplyButtonVisualState(btnSave, ok, Pal.C(13, 110, 253), Pal.White); }

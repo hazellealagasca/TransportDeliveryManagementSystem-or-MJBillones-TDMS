@@ -61,7 +61,7 @@ public static partial class Checks
     {
         int failed = 0;
         var checks = typeof(Checks).GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Where(m => m.GetCustomAttribute<CheckAttribute>() != null && (filter == null || m.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)))
+            .Where(m => m.GetCustomAttribute<CheckAttribute>() != null && (filter == null || filter.Split('|', StringSplitOptions.RemoveEmptyEntries).Any(f => m.Name.Contains(f, StringComparison.OrdinalIgnoreCase))))
             .OrderBy(m => m.Name).ToList();
         Console.WriteLine($"RUN {checks.Count} check(s){(filter == null ? "" : " matching '" + filter + "'")}; real db: {(RealDb ?? "(none)")}");
         foreach (var m in checks)

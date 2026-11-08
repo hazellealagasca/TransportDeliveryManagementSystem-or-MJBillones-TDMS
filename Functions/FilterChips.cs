@@ -315,7 +315,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             try { ThemeManager.StyleWindowChrome(dlg); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
             DateTime start = current.From ?? DateTime.Today, end = current.To ?? DateTime.Today;
-            MonthCalendar Cal(DateTime d) => new MonthCalendar { MaxSelectionCount = 1, SelectionStart = d, SelectionEnd = d, ShowToday = true, ShowTodayCircle = true, Margin = new Padding(D(8)) };
+            MonthCalendar Cal(DateTime d)
+            {
+                var m = new MonthCalendar { MaxSelectionCount = 1, ShowToday = true, ShowTodayCircle = true, Margin = new Padding(D(8)) };
+                d = d < m.MinDate ? m.MinDate : d > m.MaxDate ? m.MaxDate : d;   // a saved filter with a blank or impossible date must not fail
+                m.SelectionStart = d; m.SelectionEnd = d;
+                return m;
+            }
             var calFrom = Cal(start);
             var calTo = Cal(end);
             var lblFrom = new Label { Text = range ? "From" : "Date", AutoSize = true, Font = new Font("Segoe UI Semibold", 9.5F), ForeColor = AppTheme.TextSecondary, Margin = new Padding(D(8), D(8), 0, 0) };

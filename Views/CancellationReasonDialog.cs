@@ -132,7 +132,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var feeRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = false, AutoSize = true, Margin = new Padding(D(20), D(6), 0, 0), BackColor = AppTheme.Surface };
                 feeRow.Controls.Add(new Label { Text = "Amount to bill (₱):", AutoSize = true, Font = new Font("Segoe UI", 9.5F), ForeColor = AppTheme.TextSecondary, BackColor = AppTheme.Surface, Margin = new Padding(0, D(6), D(8), 0), UseMnemonic = false });
                 numFee = new NumericUpDown { DecimalPlaces = 2, Maximum = 100000000, Minimum = 0, ThousandsSeparator = true, Width = D(160), Font = new Font("Segoe UI", 10F), Enabled = false };
-                numFee.Value = Math.Max(0, Math.Min(numFee.Maximum, Math.Round(chargeDefault.Value, 2)));
+                numFee.SetSafe(Math.Max(0, Math.Min(numFee.Maximum, Math.Round(chargeDefault.Value, 2))));
                 InputGuard.MoneyOnly(numFee);
                 feeRow.Controls.Add(numFee);
                 charge.Controls.Add(rbNoCharge);

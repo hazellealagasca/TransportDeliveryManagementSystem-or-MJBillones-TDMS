@@ -116,7 +116,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             decimal rcTotal = rcRows.Sum(r => r.AmountPaid);
             var rcSoa = cr.SoaId > 0 || rcRows.Any(r => r.SoaId > 0) ? MJdatabase.GetStatementsOfAccount().FirstOrDefault(s => s.Id == (cr.SoaId > 0 ? cr.SoaId : rcRows.First(r => r.SoaId > 0).SoaId)) : null;
             var client = inv == null ? null : MJdatabase.GetClients().FirstOrDefault(c => c.CompanyName.Equals(inv.ClientName, StringComparison.OrdinalIgnoreCase));
-            decimal gross = paidInvs.Sum(x => x.Inv?.TotalAmount ?? x.Row.AmountPaid), ded = paidInvs.Sum(x => x.Inv?.Deductions ?? 0), net = paidInvs.Sum(x => x.Inv?.NetAmount ?? x.Row.AmountPaid);
+            decimal gross = paidInvs.Sum(x => x.Inv?.Freight ?? x.Row.AmountPaid), fuelSum = paidInvs.Sum(x => x.Inv?.FuelSurcharge ?? 0), whtSum = paidInvs.Sum(x => x.Inv?.Deductions ?? 0), net = paidInvs.Sum(x => x.Inv?.NetAmount ?? x.Row.AmountPaid); // Nov 7: amount + fuel surcharge, less the statement's withholding tax
             string method = string.IsNullOrWhiteSpace(cr.PaymentMethod) ? "Cash" : cr.PaymentMethod;
             // Nov 6 workflow: special trips get their own receipt slip (their trip reference and destination), normal trips the SI / trip slip.
             var tripInvs = MJdatabase.GetTripInvoices().Where(t => rcRows.Any(r => r.InvoiceId == t.Id)).ToList();
@@ -148,8 +148,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             AddCommon(o);
             // Payments are always in full, so there is no balance column.
             o.Columns = special
-                ? new List<PrintChoice> { new("ref", "Trip reference"), new("dest", "Destination"), new("inv", "SI No."), new("paid", "Amount paid") }
-                : new List<PrintChoice> { new("inv", "Invoice #"), new("gross", "Gross"), new("ded", "Deductions"), new("net", "Net due"), new("paid", "Amount paid") };
+                ? new List<PrintChoice> { new("ref", "Trip reference"), new("completed", "Date completed", false), new("dest", "Destination"), new("inv", "SI No."), new("paid", "Amount paid") }
+                : new List<PrintChoice> { new("inv", "Invoice #"), new("amount", "Amount"), new("fuel", "Fuel surcharge"), new("wht", "Less: withholding tax"), new("net", "Total due"), new("paid", "Amount paid") };
             o.Signatures = new List<PrintSig> { new PrintSig("Received by", CurrentUserName, "Cashier / Collector", true), new PrintSig("Paid by", "", "Client representative", false) };
             var def = new PrintFormDef { Key = o.FormKey, Name = special ? "Collection receipt (special trip)" : "Collection receipt", FileName = $"Receipt_{cr.ReceiptNumber}", Defaults = o };
             def.Body = opt =>
@@ -175,20 +175,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     sb.Append(SectionTitle(special ? "Special trips paid" : "Applied to"));
                     if (special)
-                        sb.Append(Table(opt, new[] { ("ref", "Trip reference", ""), ("dest", "Destination", ""), ("inv", "SI No.", ""), ("paid", "Amount paid", "num") },
+                    {
+                        var completedOn = opt.Col("completed") ? MJdatabase.GetTripCompletedDates() : null;
+                        sb.Append(Table(opt, new[] { ("ref", "Trip reference", ""), ("completed", "Date completed", ""), ("dest", "Destination", ""), ("inv", "SI No.", ""), ("paid", "Amount paid", "num") },
                             paidInvs.Select(x =>
                             {
                                 var ti = tripInvs.FirstOrDefault(t => t.Id == x.Row.InvoiceId);
                                 specialTrips.TryGetValue(ti?.SpecialTripId ?? 0, out var st);
-                                return Row(("ref", Esc(st?.OrderReference ?? x.Inv?.DispatchNumber ?? "")), ("dest", Esc(st == null ? "" : (string.IsNullOrWhiteSpace(st.DestinationAddress) ? st.Address : st.DestinationAddress))),
+                                return Row(("ref", Esc(st?.OrderReference ?? x.Inv?.DispatchNumber ?? "")), ("completed", Esc(completedOn?.Text(0, ti?.SpecialTripId ?? 0, "") ?? "")), ("dest", Esc(st == null ? "" : (string.IsNullOrWhiteSpace(st.DestinationAddress) ? st.Address : st.DestinationAddress))),
                                            ("inv", Esc(x.Inv?.InvoiceNumber ?? x.Row.InvoiceNumber)), ("paid", $"<b>{Esc(Money(x.Row.AmountPaid))}</b>"));
                             }).ToArray()));
+                    }
                     else
-                        sb.Append(Table(opt, new[] { ("inv", "Invoice #", ""), ("gross", "Gross", "num"), ("ded", "Deductions", "num"), ("net", "Net due", "num"), ("paid", "Amount paid", "num") },
-                            paidInvs.Select(x => Row(("inv", (x.Inv?.InvoiceNumber ?? x.Row.InvoiceNumber) + (string.IsNullOrWhiteSpace(x.Inv?.DispatchNumber) ? "" : " (trip " + x.Inv!.DispatchNumber + ")")), ("gross", Money(x.Inv?.TotalAmount ?? x.Row.AmountPaid)), ("ded", (x.Inv?.Deductions ?? 0) > 0 ? "- " + Money(x.Inv!.Deductions) : Money(0)), ("net", Money(x.Inv?.NetAmount ?? x.Row.AmountPaid)), ("paid", $"<b>{Esc(Money(x.Row.AmountPaid))}</b>"))).ToArray()));
+                        sb.Append(Table(opt, new[] { ("inv", "Invoice #", ""), ("amount", "Amount", "num"), ("fuel", "Fuel surcharge", "num"), ("wht", "Less: withholding tax", "num"), ("net", "Total due", "num"), ("paid", "Amount paid", "num") },
+                            paidInvs.Select(x => Row(("inv", (x.Inv?.InvoiceNumber ?? x.Row.InvoiceNumber) + (string.IsNullOrWhiteSpace(x.Inv?.TripReportNumber) && string.IsNullOrWhiteSpace(x.Inv?.DispatchNumber) ? "" : " (" + string.Join(" · ", new[] { string.IsNullOrWhiteSpace(x.Inv?.TripReportNumber) ? "" : "trip report " + x.Inv!.TripReportNumber, string.IsNullOrWhiteSpace(x.Inv?.DispatchNumber) ? "" : "dispatch " + x.Inv!.DispatchNumber }.Where(t => t.Length > 0)) + ")")),
+                                ("amount", Money(x.Inv?.Freight ?? x.Row.AmountPaid)), ("fuel", (x.Inv?.FuelSurcharge ?? 0) > 0 ? Money(x.Inv!.FuelSurcharge) : "-"), ("wht", (x.Inv?.Deductions ?? 0) > 0 ? "- " + Money(x.Inv!.Deductions) : "-"), ("net", Money(x.Inv?.NetAmount ?? x.Row.AmountPaid)), ("paid", $"<b>{Esc(Money(x.Row.AmountPaid))}</b>"))).ToArray()));
                 }
                 // Paid in full: the summary shows what was received, never a balance.
-                if (opt.On("totals")) sb.Append(Summary(new[] { (special ? "Special trips paid" : "Invoices paid", paidInvs.Count.ToString()), ("Gross", Money(gross)), ("Deductions", "- " + Money(ded)), ("Net amount", Money(net)), ("Amount received (paid in full)", Money(rcTotal)), ("Method / reference", method + (string.IsNullOrWhiteSpace(cr.ReferenceNumber) ? "" : " · " + cr.ReferenceNumber)) }));
+                if (opt.On("totals")) sb.Append(Summary(new[] { (special ? "Special trips paid" : "Invoices paid", paidInvs.Count.ToString()), ("Amount", Money(gross)), ("Fuel surcharge", Money(fuelSum)), ("Less: withholding tax", "- " + Money(whtSum)), ("Total due", Money(net)), ("Amount received (paid in full)", Money(rcTotal)), ("Method / reference", method + (string.IsNullOrWhiteSpace(cr.ReferenceNumber) ? "" : " · " + cr.ReferenceNumber)) }));
                 sb.Append(FieldGrid(opt, 1, "remarks"));
                 if (opt.FOn("atp") && !string.IsNullOrWhiteSpace(opt.F("atp"))) sb.Append($"<div style='margin-top:10px;font-size:.78em;text-align:center;color:#333'>{Multi(opt.F("atp"))}</div>");
                 return sb.ToString();
@@ -213,17 +217,30 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static PrintFormDef BuildStatementOfAccount(StatementOfAccount soa, List<StatementOfAccountItem> items, bool special)
         {
             var groups = items.GroupBy(i => i.TripNumber).OrderBy(g => g.Key).Select(g => g.ToList()).ToList();
-            // A trip's amount and fuel surcharge are its lines added up (an amount typed on a later store line used to be left out).
-            decimal TripAmount(List<StatementOfAccountItem> g) => g.Sum(x => x.Amount);
-            decimal TripFuel(List<StatementOfAccountItem> g) => g.Sum(x => x.FuelSurcharge);
+            // Nov 7: a trip's amount and fuel surcharge are those of its service invoice on this statement (read now, so the table always
+            // matches the invoice). Lines with no such invoice (older statements) keep their own lines added up.
+            var tripInvoices = items.Any(i => i.DeliveryId > 0 || i.SpecialTripId > 0) && soa.Id > 0 ? MJdatabase.GetTripInvoices() : new List<TripInvoice>();
+            TripInvoice? InvoiceOf(List<StatementOfAccountItem> g)
+            {
+                var ti = MJdatabase.TripInvoiceFor(tripInvoices, g[0].DeliveryId, g[0].DeliveryId > 0 ? 0 : g[0].SpecialTripId);
+                return ti != null && ti.SoaId == soa.Id ? ti : null;
+            }
+            decimal TripAmount(List<StatementOfAccountItem> g) => InvoiceOf(g)?.Freight ?? g.Sum(x => x.Amount);
+            decimal TripFuel(List<StatementOfAccountItem> g) => InvoiceOf(g)?.Fuel ?? g.Sum(x => x.FuelSurcharge);
             decimal amountSum = groups.Sum(TripAmount), fuelSum = groups.Sum(TripFuel);
             int crateSum = items.Sum(i => Math.Max(0, i.TotalCrates));
-            decimal totalSales = soa.TotalSalesVatInc > 0 ? soa.TotalSalesVatInc : amountSum + fuelSum;
-            decimal vat = soa.VatAmount > 0 ? soa.VatAmount : Math.Round(totalSales / 1.12m * 0.12m, 2);
-            decimal netOfVat = soa.NetOfVat > 0 ? soa.NetOfVat : Math.Round(totalSales / 1.12m, 2);
-            decimal fuel = soa.FuelSurchargeTotal > 0 ? soa.FuelSurchargeTotal : fuelSum;
-            decimal wtax = soa.WithholdingTax > 0 ? soa.WithholdingTax : Math.Round(netOfVat * 0.02m, 2);
-            decimal due = soa.TotalAmount > 0 ? soa.TotalAmount : Math.Round(netOfVat + vat - wtax, 2);
+            // The figures of the statement (Nov 7): the ones saved with it; a statement not saved yet gets them from the one formula (SoaTotals):
+            // VAT and the 2% withholding on the freight only, the fuel surcharge added outside both.
+            bool saved = soa.TotalAmount > 0;
+            var fm = SoaTotals.From(amountSum, fuelSum);
+            decimal totalSales = saved ? soa.TotalSalesVatInc : fm.TotalSales;
+            decimal vat = saved ? soa.VatAmount : fm.Vat;
+            decimal netOfVat = saved ? soa.NetOfVat : fm.NetOfVat;
+            decimal fuel = saved ? soa.FuelSurchargeTotal : fm.Fuel;
+            decimal wtax = saved ? soa.WithholdingTax : fm.Withholding;
+            decimal due = saved ? soa.TotalAmount : fm.Due;
+            // An older statement kept its fuel inside the sales, so its figures don't add up the sheet's way: it keeps the older five-line computation.
+            bool sheetStyle = Math.Abs(netOfVat + fuel + vat - wtax - due) <= 0.02m;
             // Nov 6 workflow: new form keys, so layouts saved before (with zone, crates, trip report # columns) don't come back.
             var o = NewOptions(special ? "SOA_Special" : "SOA_Official", special ? "Statement of Account — Special Trips" : "Statement of Account", $"{soa.SoaNumber} · {D(soa.IssueDate)}");
             o.Orientation = "Landscape";
@@ -243,8 +260,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             AddCommon(o);
             // Commercial line items only. Crew appear by name as proof of who delivered, never with an amount.
             o.Columns = special
-                ? new List<PrintChoice> { new("no", "No."), new("date", "Date"), new("trip_report", "Trip reference"), new("dest", "Destination"), new("plate", "Plate no."), new("tons", "Tons"), new("amount", "Trip charge"), new("fuel", "Fuel surcharge"), new("driver", "Driver / helper") }
-                : new List<PrintChoice> { new("no", "No."), new("dr", "DR no."), new("dest", "Destination store"), new("plate", "Plate no."), new("tons", "Tons"), new("drops", "Drops"), new("amount", "Freight tariff"), new("fuel", "Fuel surcharge"), new("driver", "Driver / helper") };
+                ? new List<PrintChoice> { new("no", "No."), new("date", "Date completed"), new("trip_report", "Trip reference"), new("dest", "Destination"), new("plate", "Plate no."), new("tons", "Tons"), new("amount", "Trip charge"), new("fuel", "Fuel surcharge"), new("driver", "Driver / helper") }
+                : new List<PrintChoice> { new("no", "Trip"), new("date", "Date store received"), new("zone", "Zone"), new("dr", "DR no."), new("dest", "Destination"), new("type", "Type of delivery"), new("plate", "Plate no."), new("tons", "Tons"), new("drops", "No. of drops"), new("amount", "Amount"), new("fuel", "Fuel surcharge"), new("driver", "Driver / Aide") };
             o.Signatures = new List<PrintSig>
             {
                 new PrintSig("Prepared by", soa.PreparedBy, "Billing Officer", true),
@@ -257,22 +274,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 var sb = new StringBuilder();
                 if (opt.On("billto")) sb.Append(FieldGrid(opt, 2, "billed_to", "soa_no", "client_address", "date", "client_tin", "period", "type", "si_no"));
+                bool sheetBlock = false;
                 if (opt.On("trips"))
                 {
                     var cols = (special
                         ? new (string Key, string Header, string Css, bool PerTrip)[]
                         {
-                            ("no", "No.", "center", true), ("date", "Date", "center", true), ("trip_report", "Trip reference", "center", true), ("dest", "Destination", "", false),
+                            ("no", "No.", "center", true), ("date", "Date completed", "center", true), ("trip_report", "Trip reference", "center", true), ("dest", "Destination", "", false),
                             ("plate", "Plate no.", "center", true), ("tons", "Tons", "center", true), ("amount", "Trip charge", "num", true), ("fuel", "Fuel surcharge", "num", true), ("driver", "Driver / helper", "", true)
                         }
                         : new (string Key, string Header, string Css, bool PerTrip)[]
                         {
-                            ("no", "No.", "center", true), ("dr", "DR no.", "", false), ("dest", "Destination store", "", false), ("plate", "Plate no.", "center", true), ("tons", "Tons", "center", true),
-                            ("drops", "Drops", "center", true), ("amount", "Freight tariff", "num", true), ("fuel", "Fuel surcharge", "num", true), ("driver", "Driver / helper", "", true)
+                            ("no", "Trip", "center", true), ("date", "Date store received", "center", true), ("zone", "Zone", "center", true), ("dr", "DR no.", "center", false), ("dest", "Destination", "center", false), ("type", "Type of delivery", "center", true),
+                            ("plate", "Plate no.", "center", true), ("tons", "Tons", "center", true),
+                            ("drops", "No. of drops", "center", true), ("amount", "Amount", "num", true), ("fuel", "Fuel surcharge", "num", true), ("driver", "Driver / Aide", "center", true)
                         }).Where(c => opt.Col(c.Key)).ToList();
+                    // Date completed = the trip report's date (looked up now, so statements saved earlier print it too); the saved line date is the fallback.
+                    var completed = cols.Any(c => c.Key == "date") ? MJdatabase.GetTripCompletedDates() : null;
                     sb.Append(SectionTitle("Trips"));
-                    sb.Append("<table class='grid'><thead><tr>");
-                    foreach (var c in cols) sb.Append($"<th class='{c.Css}'>{Esc(c.Header)}</th>");
+                    sb.Append("<table class='grid sheet'><thead><tr>");
+                    foreach (var c in cols) sb.Append($"<th class='{c.Css}{(c.Key == "fuel" ? " red" : "")}'>{Esc(c.Header)}</th>");
                     sb.Append("</tr></thead><tbody>");
                     int n = 0;
                     foreach (var g in groups)
@@ -288,7 +309,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                 string span = c.PerTrip && g.Count > 1 ? $" rowspan='{g.Count}'" : "";
                                 string v = c.Key switch
                                 {
-                                    "no" => n.ToString(), "trip_report" => TripReportNos(g), "crates" => g[i].TotalCrates > 0 ? g[i].TotalCrates.ToString("N0") : "-", "date" => Esc(f.DateReceived), "zone" => Esc(f.Zone), "dr" => DrList.Html(g[i].DrNumbers), "code" => Esc(g[i].StoreCode), "dest" => $"<b>{Esc(g[i].Destination)}</b>",
+                                    "no" => n.ToString(), "trip_report" => TripReportNos(g), "crates" => g[i].TotalCrates > 0 ? g[i].TotalCrates.ToString("N0") : "-", "date" => Esc(completed!.Text(f.DeliveryId, f.SpecialTripId, f.DateReceived)), "zone" => Esc(f.Zone), "dr" => DrList.Html(g[i].DrNumbers), "code" => Esc(g[i].StoreCode), "dest" => $"<b>{Esc(g[i].Destination)}</b>",
                                     "type" => Esc(f.DeliveryType), "plate" => $"<b>{Esc(f.PlateNumber)}</b>", "tons" => Esc(f.Tonnage), "drops" => f.DropCount.ToString(),
                                     "amount" => $"<b>{TripAmount(g):N2}</b>", "fuel" => TripFuel(g) > 0 ? TripFuel(g).ToString("N2") : "-", "driver" => Esc(f.DriverHelper), _ => ""
                                 };
@@ -299,7 +320,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                     if (groups.Count == 0) sb.Append($"<tr><td colspan='{cols.Count}' class='empty'>No trips on this statement.</td></tr>");
                     sb.Append("</tbody>");
-                    if (opt.On("trip_total") && cols.Count > 0)
+                    int amtIdx = cols.FindIndex(c => c.Key == "amount");
+                    sheetBlock = sheetStyle && opt.On("taxes") && amtIdx > 0;
+                    if (sheetBlock)
+                    {
+                        // The statement sheet's totals block: directly under the table, labels on the left, values in the Amount column, the fuel column's total beside the first line.
+                        int fuelIdx = cols.FindIndex(c => c.Key == "fuel"), after = cols.Count - amtIdx - 1;
+                        var lines = new (string Label, decimal Value)[]
+                        {
+                            ("Total Sales (VAT Inclusive)", totalSales), ("Less: VAT", vat), ("Amount: Net of VAT", netOfVat), ("Fuel surcharge", fuel),
+                            ("Add: VAT", vat), ("Less: Withholding Tax", wtax), ("TOTAL AMOUNT DUE", due)
+                        };
+                        sb.Append("<tfoot>");
+                        for (int li = 0; li < lines.Length; li++)
+                        {
+                            string strong = li == lines.Length - 1 ? " strong" : "";
+                            sb.Append($"<tr class='tot'><td colspan='{amtIdx}' class='lbl{strong}'>{Esc(lines[li].Label)}</td><td class='num{strong}'>{lines[li].Value:N2}</td>");
+                            if (after > 0)
+                            {
+                                if (li == 0 && fuelIdx == amtIdx + 1) { sb.Append($"<td class='num'>{fuel:N2}</td>"); if (after > 1) sb.Append($"<td colspan='{after - 1}' class='nob'></td>"); }
+                                else sb.Append($"<td colspan='{after}' class='nob'></td>");
+                            }
+                            sb.Append("</tr>");
+                        }
+                        sb.Append("</tfoot>");
+                    }
+                    else if (opt.On("trip_total") && cols.Count > 0)
                     {
                         sb.Append("<tfoot><tr>");
                         bool labelled = false;
@@ -313,7 +359,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                     sb.Append("</table>");
                 }
-                if (opt.On("taxes"))
+                if (opt.On("taxes") && !sheetBlock)
                     sb.Append(Summary(new[]
                     {
                         ("Total sales (VAT inclusive)", totalSales.ToString("N2")), ("Less: VAT (12%)", vat.ToString("N2")), ("Net of VAT", netOfVat.ToString("N2")),
@@ -339,7 +385,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             o.Sections = new List<PrintChoice> { new("billto", "Billed-to details"), new("invoices", "Invoice table"), new("totals", "Totals"), new("pay", "Payment instructions") };
             AddCommon(o);
-            o.Columns = new List<PrintChoice> { new("no", "No."), new("inv", "Invoice #"), new("dispatch", "Dispatch #"), new("issued", "Issued"), new("due", "Due"), new("gross", "Gross"), new("ded", "Deductions"), new("net", "Net"), new("status", "Status") };
+            o.Columns = new List<PrintChoice> { new("no", "No."), new("inv", "Invoice #"), new("trip_report", "Trip report #"), new("dispatch", "Dispatch #"), new("completed", "Date completed", false), new("issued", "Issued"), new("due", "Due"), new("amount", "Amount"), new("fuel", "Fuel surcharge"), new("wht", "Less: withholding tax"), new("net", "Total due"), new("status", "Status") };
             o.Signatures = new List<PrintSig> { new PrintSig("Prepared by", string.IsNullOrWhiteSpace(soa.PreparedBy) ? CurrentUserName : soa.PreparedBy, "Billing Officer", true), new PrintSig("Received by", soa.ReceivedBy1, "Client", true) };
             var def = new PrintFormDef { Key = o.FormKey, Name = "Statement of account (invoices)", FileName = $"SOA_{soa.SoaNumber}", Defaults = o };
             def.Body = opt =>
@@ -347,12 +393,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var sb = new StringBuilder();
                 if (opt.On("billto")) sb.Append(FieldGrid(opt, 2, "billed_to", "soa_no", "period", "date", "status"));
                 int n = 0;
+                var completedOn = opt.On("invoices") && opt.Col("completed") ? MJdatabase.GetTripCompletedDates() : null;
                 if (opt.On("invoices"))
-                    sb.Append(Table(opt, new[] { ("no", "No.", "center"), ("inv", "Invoice #", ""), ("dispatch", "Dispatch #", ""), ("issued", "Issued", ""), ("due", "Due", ""), ("gross", "Gross", "num"), ("ded", "Deductions", "num"), ("net", "Net", "num"), ("status", "Status", "") },
-                        invoices.Select(i => Row(("no", ++n), ("inv", $"<b>{Esc(i.InvoiceNumber)}</b>"), ("dispatch", i.DispatchNumber), ("issued", i.IssueDate.ToString("MM/dd/yyyy")), ("due", i.DueDate.ToString("MM/dd/yyyy")),
-                            ("gross", i.TotalAmount.ToString("N2")), ("ded", i.Deductions > 0 ? "- " + i.Deductions.ToString("N2") : "0.00"), ("net", $"<b>{i.NetAmount:N2}</b>"), ("status", i.Status)))));
+                    sb.Append(Table(opt, new[] { ("no", "No.", "center"), ("inv", "Invoice #", ""), ("trip_report", "Trip report #", ""), ("dispatch", "Dispatch #", ""), ("completed", "Date completed", ""), ("issued", "Issued", ""), ("due", "Due", ""), ("amount", "Amount", "num"), ("fuel", "Fuel surcharge", "num"), ("wht", "Less: withholding tax", "num"), ("net", "Total due", "num"), ("status", "Status", "") },
+                        invoices.Select(i => Row(("no", ++n), ("inv", $"<b>{Esc(i.InvoiceNumber)}</b>"), ("trip_report", Esc(i.TripReportNumber)), ("dispatch", i.DispatchNumber), ("completed", Esc(completedOn?.Text(i.DeliveryId, 0, "") ?? "")), ("issued", i.IssueDate.ToString("MM/dd/yyyy")), ("due", i.DueDate.ToString("MM/dd/yyyy")),
+                            ("amount", i.Freight.ToString("N2")), ("fuel", i.FuelSurcharge > 0 ? i.FuelSurcharge.ToString("N2") : "-"), ("wht", i.Deductions > 0 ? "- " + i.Deductions.ToString("N2") : "-"), ("net", $"<b>{i.NetAmount:N2}</b>"), ("status", i.Status)))));
                 if (opt.On("totals"))
-                    sb.Append(Summary(new[] { ("Total gross", invoices.Sum(i => i.TotalAmount).ToString("N2")), ("Less deductions", "- " + invoices.Sum(i => i.Deductions).ToString("N2")), ("Total net payable", "₱" + invoices.Sum(i => i.NetAmount).ToString("N2")) }));
+                    sb.Append(Summary(new[] { ("Total amount", invoices.Sum(i => i.Freight).ToString("N2")), ("Total fuel surcharge", invoices.Sum(i => i.FuelSurcharge).ToString("N2")), ("Less: withholding tax", "- " + invoices.Sum(i => i.Deductions).ToString("N2")), ("Total payable", "₱" + invoices.Sum(i => i.NetAmount).ToString("N2")) }));
                 if (opt.On("pay") && opt.FOn("pay_instr")) sb.Append($"<div class='note'><b>{Esc(opt.L("pay_instr"))}:</b> {Multi(opt.F("pay_instr"))}</div>");
                 return sb.ToString();
             };

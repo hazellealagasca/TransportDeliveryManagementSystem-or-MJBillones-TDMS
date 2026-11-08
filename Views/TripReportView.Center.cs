@@ -60,8 +60,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbPeriod = Combo(130, "All time", "Today", "This week", "This month", "Last 30 days", "This year", "Custom range");
             dtpFromF = new DateTimePicker { Width = Dc(118), Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Margin = new Padding(0, 0, Dc(4), 0), Visible = false, Value = DateTime.Today.AddDays(-30) };
             dtpToF = new DateTimePicker { Width = Dc(118), Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Margin = new Padding(0, 0, Dc(8), 0), Visible = false };
-            dtpFromF.ValueChanged += (s, e) => { if (!applyingView) { if (dtpFromF.Value.Date > dtpToF.Value.Date) dtpToF.Value = dtpFromF.Value; SaveView(); FilterGridData(); } };
-            dtpToF.ValueChanged += (s, e) => { if (!applyingView) { if (dtpToF.Value.Date < dtpFromF.Value.Date) dtpFromF.Value = dtpToF.Value; SaveView(); FilterGridData(); } };
+            dtpFromF.ValueChanged += (s, e) => { if (!applyingView) { if (dtpFromF.Value.Date > dtpToF.Value.Date) dtpToF.SetSafe(dtpFromF.Value); SaveView(); FilterGridData(); } };
+            dtpToF.ValueChanged += (s, e) => { if (!applyingView) { if (dtpToF.Value.Date < dtpFromF.Value.Date) dtpFromF.SetSafe(dtpToF.Value); SaveView(); FilterGridData(); } };
             cbClientF = Combo(170, "All clients");
             cbDriverF = Combo(150, "All drivers");
             cbTruckF = Combo(120, "All trucks");
@@ -82,7 +82,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try
                 {
                     if (r.IsAll) cbPeriod.SelectedIndex = 0;
-                    else { cbPeriod.SelectedIndex = 6; dtpFromF.Value = r.From!.Value; dtpToF.Value = r.To!.Value; }
+                    else { cbPeriod.SelectedIndex = 6; dtpFromF.SetSafe(r.From!.Value); dtpToF.SetSafe(r.To!.Value); }
                     UpdateCustomRange();
                 }
                 finally { applyingView = false; }
@@ -147,8 +147,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             deliveryByNumber = allDeliveries.GroupBy(d => d.DispatchNumber ?? "").ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
             fileCounts = MJdatabase.GetAttachmentCounts("Dispatch");
             try { incidentCounts = MJdatabase.GetIncidentReports().GroupBy(i => i.DeliveryId).ToDictionary(g => g.Key, g => g.Count()); } catch { incidentCounts = new Dictionary<int, int>(); }
-            var reported = new HashSet<string>(allTripReports.Select(t => t.DispatchNumber ?? ""), StringComparer.OrdinalIgnoreCase);
-            awaitingReport = allDeliveries.Where(d => DispatchGate.IsCompleted(d.Status) && !reported.Contains(d.DispatchNumber ?? "")).OrderByDescending(d => d.DispatchDate).ToList();
+            // The same list as Billing and the Dashboard (plan section 4): completed trips with no finished trip report.
+            var waitingIds = new HashSet<int>();
+            try { foreach (var w in MJdatabase.GetTripsWaitingForTripReport()) waitingIds.Add(w.DeliveryId); } catch (Exception wx) { ErrLog.Swallowed(wx); }
+            awaitingReport = allDeliveries.Where(d => waitingIds.Contains(d.Id)).OrderByDescending(d => d.DispatchDate).ToList();
             var linked = allTripReports.Select(DeliveryOf).Where(d => d != null).Select(d => d!).ToList();
             Refill(cbClientF, "All clients", linked.Select(d => d.ClientName));
             Refill(cbDriverF, "All drivers", linked.Select(d => d.DriverName));
@@ -302,8 +304,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbShowF.SelectedIndex = I(p[1], cbShowF);
                 cbSortF.SelectedIndex = I(p[2], cbSortF);
                 pendingClient = p[3]; pendingDriver = p[4]; pendingTruck = p[5];
-                if (DateTime.TryParse(p[6], out var f)) dtpFromF.Value = f;
-                if (DateTime.TryParse(p[7], out var t)) dtpToF.Value = t;
+                if (DateTime.TryParse(p[6], out var f)) dtpFromF.SetSafe(f);
+                if (DateTime.TryParse(p[7], out var t)) dtpToF.SetSafe(t);
                 UpdateCustomRange();
             }
             finally { applyingView = false; }
@@ -328,8 +330,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 foreach (var cb in new[] { cbPeriod, cbClientF, cbDriverF, cbTruckF, cbShowF, cbSortF }) cb.SelectedIndex = 0;
-                dtpFromF.Value = DateTime.Today.AddDays(-30);
-                dtpToF.Value = DateTime.Today;
+                dtpFromF.SetSafe(DateTime.Today.AddDays(-30));
+                dtpToF.SetSafe(DateTime.Today);
                 txtGridSearch.Text = "";
                 currentSortColumn = "";
                 UpdateCustomRange();

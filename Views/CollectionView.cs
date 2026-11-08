@@ -113,7 +113,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit.Build(new[]
             {
                 new FullPageFormKit.Section("Statement or invoice being paid", "Pick the statement (all its service invoices) or the service invoice this receipt pays in full.", lblInv, cbInvoice, pnlLinkedInvoice),
-                new FullPageFormKit.Section("Payment", "Receipt no., the full amount due, method and reference.", BuildReceiptNoField()[0], txtReceiptNo, tblPaymentRow, BuildCollCapLabel(), BuildPaymentDateField()[0], dtpPaymentDate, lblRef, txtRefNo, lblNotes, txtNotes)
+                new FullPageFormKit.Section("Payment", "Receipt no., the full amount due, method and reference.", BuildReceiptNoField()[0], txtReceiptNo, receiptNumberGuard.Message, receiptNumberGuard.Tick, tblPaymentRow, BuildCollCapLabel(), BuildPaymentDateField()[0], dtpPaymentDate, lblRef, txtRefNo, lblNotes, txtNotes)
             });
             InitCollGuide();
             if (btnToggleForm != null)
@@ -128,6 +128,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 gridCollections.Rows[e.RowIndex].Selected = true;
                 SetFormVisibility(true);
             };
+            if (Features.On(Features.PaymentsWorkbench)) ApplyCollWorkbench(); // Ledger Desk layout (Settings → Features can switch it off)
             SetFormVisibility(false);
         }
         private void OpenNewRecordForm()
@@ -180,6 +181,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (cbInvoice.SelectedIndex >= 0 && cbInvoice.SelectedIndex < unpaidInvoices.Count)
             {
                 var t = payTargets[cbInvoice.SelectedIndex]; // Nov 6: a statement or a lone invoice, always the full amount
+                cbInvoice.Enabled = false; // Nov 8: once the statement is picked it can't be swapped (Clear form frees it)
                 ShowTargetInfo(t);
                 if (!t.IsSoa) { var real = MJdatabase.GetInvoices().FirstOrDefault(i => i.Id == t.Invoices[0].Id); if (real != null) PrefillFromSpecialTrip(real); }
             }
@@ -242,9 +244,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblLinkedInvoiceInfo.Text = !string.IsNullOrEmpty(selectedCollection.InvoiceNumber)
                 ? $"📄 Linked invoice: {selectedCollection.InvoiceNumber}"
                 : "📄 Linked invoice: (none)";
+            cbInvoice.Enabled = false; // a saved receipt keeps its statement
             var _amt = selectedCollection.AmountPaid;
             if (_amt > numAmountPaid.Maximum) numAmountPaid.Maximum = _amt * 2;
-            numAmountPaid.Value = Math.Max(numAmountPaid.Minimum, Math.Min(numAmountPaid.Maximum, _amt));
+            numAmountPaid.SetSafe(Math.Max(numAmountPaid.Minimum, Math.Min(numAmountPaid.Maximum, _amt)));
             cbPaymentMethod.Text = selectedCollection.PaymentMethod;
             txtRefNo.Text = selectedCollection.ReferenceNumber;
             txtNotes.Text = selectedCollection.Notes;
@@ -404,7 +407,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbPaymentMethod.SelectedIndex = -1; cbPaymentMethod.Text = ""; // Nov 6: blank until picked
             editTargetInvoice = null;
             if (txtReceiptNo != null) txtReceiptNo.Text = "";
+            receiptNumberGuard?.Reset();
             SetPaymentDate(DateTime.Today); // a new receipt is dated today unless the person picks the earlier day the money came in
+            cbInvoice.Enabled = true;
             if (cbInvoice.SelectedIndex >= 0) { cbInvoice.SelectedIndex = -1; cbInvoice.Text = ""; }
             txtRefNo.Text = "";
             txtNotes.Text = "";
@@ -414,7 +419,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else
             {
-                numAmountPaid.Value = numAmountPaid.Minimum; // no invoice picked yet: don't keep the last receipt's amount
+                numAmountPaid.SetSafe(numAmountPaid.Minimum); // no invoice picked yet: don't keep the last receipt's amount
             }
             SetButtonStates(false);
         }

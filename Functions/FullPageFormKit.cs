@@ -33,6 +33,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Panel? headerSpacer;
         private readonly Padding originalMasterPadding;
         private Control? strip;
+        private List<Control> sectionCards = new();
+        private bool workbench;
+        /// <summary>True once <see cref="ApplyWorkbench"/> has re-homed the form into the two-pane layout.</summary>
+        public bool IsWorkbench => workbench;
         /// <summary>Slim header (Payments): smaller title and less space above the form.</summary>
         public bool Compact { get; set; }
         /// <summary>The bottom bar's button row (right-to-left), once <see cref="Build"/> has run.</summary>
@@ -119,6 +123,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 foreach (var c in visual) PolishFieldControl(c);
                 cards.Add(CreateSectionCard(i + 1, secs[i].Title, secs[i].Subtitle, visual));
             }
+            sectionCards = cards;
             for (int i = cards.Count - 1; i >= 0; i--)
             {
                 body.Controls.Add(cards[i]);
@@ -160,7 +165,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.BorderStyle = BorderStyle.None;
             body.BackColor = AppTheme.Canvas;
             header.BackColor = AppTheme.Canvas;
-            header.Height = D(Compact ? 44 : 62);
+            header.Height = D(workbench ? 56 : Compact ? 44 : 62);
             back.AutoSize = false;
             back.MinimumSize = Size.Empty;
             back.Dock = DockStyle.Left;
@@ -188,6 +193,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void Center()
         {
             if (pnlForm.Width <= 0) return;
+            if (workbench)
+            {
+                int ws = D(24);
+                header.Padding = new Padding(ws, D(8), ws, D(8));
+                body.Padding = new Padding(0);
+                actionsBar.Padding = new Padding(ws, D(12), ws, D(12));
+                return;
+            }
             int side = Math.Max(D(24), (pnlForm.ClientSize.Width - D(maxWidth)) / 2);
             header.Padding = Compact ? new Padding(side, D(4), side, D(6)) : new Padding(side, D(10), side, D(14));
             if (strip != null) strip.Padding = new Padding(side, 0, side, 0);
@@ -211,7 +224,79 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public void AddBodyTop(Control c) { c.Dock = DockStyle.Top; body.Controls.Add(c); }
         /// <summary>Adds a control at the bottom of the scrolling form body (below the last section).</summary>
         public void AddBodyBottom(Control c) { c.Dock = DockStyle.Top; body.Controls.Add(c); body.Controls.SetChildIndex(c, 0); }
-        public void ScrollTo(Control c) { try { body.ScrollControlIntoView(c); } catch (Exception ex) { ErrLog.Swallowed(ex); } }
+        public void ScrollTo(Control c)
+        {
+            try
+            {
+                if (workbench) { for (Control? p = c.Parent; p != null; p = p.Parent) if (p is ScrollableControl sc && sc.AutoScroll) { sc.ScrollControlIntoView(c); break; } return; }
+                body.ScrollControlIntoView(c);
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+        }
+        /// <summary>
+        /// The "Ledger Desk" layout. Re-homes the form WITHOUT creating or renaming anything: the section cards (and every field inside them) are moved into
+        /// a two-pane table: the sheet (inputs) on the left, the tape and the problems on the right. The stacked guidance bars (steps, "How this works") are
+        /// hidden (not deleted, so their code keeps working), and the totals strip moves into the one slim header. The page itself no longer scrolls.
+        /// </summary>
+        /// <param name="leftPercent">Width of the left pane, e.g. 50 for 50 / 50.</param>
+        /// <param name="leftCards">Indexes (as passed to <see cref="Build"/>) of the sections that go on the left.</param>
+        /// <param name="rightCards">Indexes of the sections that go on the right, above the problems list.</param>
+        /// <param name="problems">The checklist, shown at the bottom of the right pane (set to problems-only by the caller).</param>
+        public void ApplyWorkbench(float leftPercent, int[] leftCards, int[] rightCards, Control? problems, IEnumerable<Control?> hide, PaymentSummaryStrip? headerStrip, int stripWidth = 620, IEnumerable<Control>? extraLeft = null, IEnumerable<Control>? extraRight = null)
+        {
+            if (workbench || sectionCards.Count == 0) return;
+            workbench = true;
+            pnlForm.SuspendLayout(); body.SuspendLayout(); header.SuspendLayout();
+            foreach (var h in hide) if (h != null) { h.Visible = false; h.Height = 0; }
+            // detach: cards, spacers, checklist; the hidden bars stay referenced by their fields
+            var keepOut = new HashSet<Control?>(hide);
+            foreach (Control c in body.Controls.Cast<Control>().ToList()) body.Controls.Remove(c);
+            Panel Spacer() => new Panel { Dock = DockStyle.Top, Height = D(14), BackColor = AppTheme.Canvas };
+            Panel Pane(float margin) => new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = AppTheme.Canvas, Margin = new Padding(margin == 0 ? 0 : D(8), 0, margin == 0 ? D(8) : 0, 0) };
+            var left = Pane(0);
+            var rightScroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = AppTheme.Canvas };
+            var right = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Canvas, Margin = new Padding(D(8), 0, 0, 0) };
+            void Fill(Panel pane, IList<Control> items)
+            {
+                for (int i = items.Count - 1; i >= 0; i--)
+                {
+                    pane.Controls.Add(items[i]);
+                    if (i > 0) pane.Controls.Add(Spacer());
+                }
+            }
+            var l = leftCards.Where(i => i >= 0 && i < sectionCards.Count).Select(i => sectionCards[i]).ToList();
+            var r = rightCards.Where(i => i >= 0 && i < sectionCards.Count).Select(i => sectionCards[i]).ToList();
+            if (extraLeft != null) l.AddRange(extraLeft);
+            if (extraRight != null) r.AddRange(extraRight);
+            Fill(left, l); Fill(rightScroll, r);
+            right.Controls.Add(rightScroll);
+            if (problems != null) { problems.Dock = DockStyle.Bottom; right.Controls.Add(problems); } // pinned: the problems are always visible, whatever the form's height
+            Smooth.Enable(rightScroll);
+            var split = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, BackColor = AppTheme.Canvas, Padding = new Padding(D(24), D(16), D(24), D(16)) };
+            split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, leftPercent));
+            split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f - leftPercent));
+            split.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            split.Controls.Add(left, 0, 0); split.Controls.Add(right, 1, 0);
+            body.AutoScroll = false;
+            body.Controls.Add(split);
+            Smooth.Enable(split); Smooth.Enable(left); Smooth.Enable(right); Smooth.Enable(body);
+            // one slim header: Back + title + the live figures
+            if (headerStrip != null)
+            {
+                headerStrip.Compact = true;
+                headerStrip.Padding = new Padding(0);
+                pnlForm.Controls.Remove(headerStrip);
+                headerStrip.Dock = DockStyle.Right;
+                headerStrip.Width = D(stripWidth);
+                headerStrip.Height = D(40);
+                header.Controls.Add(headerStrip);
+                header.Controls.SetChildIndex(headerStrip, 1);
+                strip = null;
+            }
+            header.ResumeLayout(true); body.ResumeLayout(true); pnlForm.ResumeLayout(true);
+            Restyle();
+            Center();
+        }
         /// <summary>Shows the form as a full page in place of the list, or goes back to the list.</summary>
         public void Show(bool visible)
         {
@@ -233,6 +318,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Center();
                 body.AutoScrollPosition = new Point(0, 0);
             }
+            if (Math.Abs(UiZoom.Factor - 1f) > 0.001f) UiZoom.Apply(tblMaster); // a form opening resets some paddings: keep the display size consistent
             foreach (var g in Descendants(listPanel).OfType<DataGridView>())
             {
                 if (g.Columns.Count == 0) continue;

@@ -58,6 +58,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             connectionString = $"Data Source={dbFilePath};Default Timeout=10;Foreign Keys=True;Pooling=False;";
             attachmentsReady = marksReady = capacitySchemaReady = adjustmentColumnsReady = profileTablesReady = stopTypesReady = false;
             receiptSchemaChecked = receiptSoaColumnChecked = false;
+            numberSchemaReady = false;
+            soaCancelColumnsReady = false;
             ResetWorkflowSchemaFlag();
         }
 
@@ -10922,6 +10924,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             // Nov 6: no status is changed when invoices are read (overdue is shown from the due date)
 
+            EnsureSpecialTripColumns(); // also adds Invoices.FuelSurcharge and the trip-report link columns the query reads
             var list = new List<Invoice>();
 
             using (var conn = new SqliteConnection(connectionString))
@@ -10932,7 +10935,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 var cmd = conn.CreateCommand();
 
-                cmd.CommandText = @"SELECT i.Id, i.InvoiceNumber, i.SoaId, i.DeliveryId, i.ClientName, i.IssueDate, i.DueDate, i.TotalAmount, i.Deductions, i.NetAmount, i.Status, COALESCE(d.DispatchNumber, ''), COALESCE(ls.ScheduleNumber, '') FROM Invoices i LEFT JOIN Deliveries d ON i.DeliveryId = d.Id LEFT JOIN LoadingSchedules ls ON d.LoadingScheduleId = ls.Id ORDER BY i.Id DESC";
+                cmd.CommandText = @"SELECT i.Id, i.InvoiceNumber, i.SoaId, i.DeliveryId, i.ClientName, i.IssueDate, i.DueDate, i.TotalAmount, i.Deductions, i.NetAmount, i.Status, COALESCE(d.DispatchNumber, ''), COALESCE(ls.ScheduleNumber, ''), COALESCE(i.FuelSurcharge, 0), " + InvoiceTripReportSql + " FROM Invoices i LEFT JOIN Deliveries d ON i.DeliveryId = d.Id LEFT JOIN LoadingSchedules ls ON d.LoadingScheduleId = ls.Id ORDER BY i.Id DESC";
 
                 using (var reader = cmd.ExecuteReader())
 
@@ -10974,7 +10977,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             DispatchNumber = reader.IsDBNull(11) ? "" : reader.GetString(11),
 
-                            LoadingScheduleNumber = reader.IsDBNull(12) ? "" : reader.GetString(12)
+                            LoadingScheduleNumber = reader.IsDBNull(12) ? "" : reader.GetString(12),
+
+                            FuelSurcharge = reader.IsDBNull(13) ? 0m : Centavos(Convert.ToDecimal(reader.GetDouble(13))),
+
+                            TripReportNumber = reader.IsDBNull(14) ? "" : reader.GetString(14)
 
                         });
 
@@ -11047,19 +11054,37 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <param name="reviveCancelled">Only the special-trip flow passes true: a reopened special trip gets ITS OWN cancelled invoice back.</param>
-        public static void SaveInvoice(Invoice inv, bool reviveCancelled = false)
-
+        public static void SaveInvoice(Invoice inv, bool reviveCancelled = false, bool crossTypeConfirmed = false)
         {
-
+            EnsureNumberSchema(); EnsureSpecialTripColumns(); // before the write transaction: they may write
             // Nov 6 workflow: an invoice with no amount yet (no rate) is kept as a Draft instead of being refused.
             // Drafts can't go on a statement or be collected until they get their amount.
             if (inv.TotalAmount <= 0 && !string.Equals(inv.Status, PayStatus.Cancelled, StringComparison.OrdinalIgnoreCase)) inv.Status = PayStatus.Draft;
             bool isDraft = string.Equals(inv.Status, "Draft", StringComparison.OrdinalIgnoreCase); // special-trip drafts get their amount later
-
             if (!isDraft && inv.TotalAmount <= 0) throw new InvalidOperationException("An invoice must be for more than PHP 0.00. Nothing was saved.");
-
-            if (!isDraft && (inv.Deductions < 0 || inv.Deductions > inv.TotalAmount)) throw new InvalidOperationException("Deductions must be between PHP 0.00 and the invoice amount. Nothing was saved.");
-
+            if (inv.FuelSurcharge < 0 || inv.FuelSurcharge > inv.TotalAmount) throw new InvalidOperationException("The fuel surcharge must be between PHP 0.00 and the invoice total. Nothing was saved.");
+            // Nov 7: an invoice carries no computation and no deduction: it is its amount plus its fuel surcharge. The VAT and the 2% withholding tax
+            // are worked out only on the statement of account that compiles the invoices; the statement then writes each invoice's share of the
+            // withholding here (so the receipt can settle every invoice). An invoice already on a live statement, or already paid, keeps its share.
+            decimal withholding = 0m;
+            if (inv.Id > 0)
+            {
+                using var wc = new SqliteConnection(connectionString);
+                wc.Open();
+                using var wq = wc.CreateCommand();
+                wq.CommandText = "SELECT COALESCE(SoaId,0), COALESCE(Deductions,0), COALESCE(TotalAmount,0), COALESCE(FuelSurcharge,0) FROM Invoices WHERE Id = @id";
+                wq.Parameters.AddWithValue("@id", inv.Id);
+                using var wr = wq.ExecuteReader();
+                if (wr.Read())
+                {
+                    int storedSoa = wr.GetInt32(0);
+                    decimal storedDed = Centavos(Convert.ToDecimal(wr.GetValue(1))), storedTotal = Centavos(Convert.ToDecimal(wr.GetValue(2))), storedFuel = Centavos(Convert.ToDecimal(wr.GetValue(3)));
+                    bool sameAmounts = Centavos(inv.TotalAmount) == storedTotal && Centavos(inv.FuelSurcharge) == storedFuel;
+                    if (sameAmounts && ((storedSoa > 0 && SoaIsLive(storedSoa)) || GetTotalCollectedForInvoice(inv.Id) > 0)) withholding = storedDed;
+                }
+            }
+            inv.Deductions = withholding;
+            inv.NetAmount = inv.TotalAmount - withholding;
             // A cancelled invoice is history: it is never re-used or changed (a new trip gets a new invoice).
             if (inv.Id > 0 && !reviveCancelled)
             {
@@ -11072,16 +11097,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (gr.Read() && string.Equals(gr.GetString(0), PayStatus.Cancelled, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException($"Invoice {gr.GetString(1)} was cancelled, so it can't be changed. Start a new invoice for this trip. Nothing was saved.");
             }
-            // The same rules hold whichever screen or flow saves the invoice (the Billing screen shows these messages earlier).
-            if (!reviveCancelled && !string.Equals(inv.Status, PayStatus.Cancelled, StringComparison.OrdinalIgnoreCase)) CheckInvoiceBeforeSave(inv);
             bool wasNew = inv.Id <= 0;
-
             if (wasNew && inv.DeliveryId > 0)
-
             {
-
                 var d = GetDeliveryById(inv.DeliveryId);
-
                 bool chargeableCancelled = d != null && string.Equals(d.Status, "Cancelled", StringComparison.OrdinalIgnoreCase) && GetChargeableCancelledFees().ContainsKey(d.Id);
                 if (d != null && string.Equals(d.Status, "Cancelled", StringComparison.OrdinalIgnoreCase) && !chargeableCancelled)
                     throw new InvalidOperationException($"Dispatch {d.DispatchNumber} was cancelled with no charge, so it can't be billed. Nothing was saved.");
@@ -11090,99 +11109,70 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 // Nov 6 workflow: a trip report saved as a Draft is not finished yet, so its trip can't be invoiced.
                 if (d != null && !chargeableCancelled && HasOnlyDraftTripReport(d.Id))
                     throw new InvalidOperationException($"The trip report of {d.DispatchNumber} is still a Draft. Finish it (Issue Invoice on Trip Reports) before billing the trip. Nothing was saved.");
-
             }
-
+            InvoicePrecheck precheck = new InvoicePrecheck();
             using (var conn = new SqliteConnection(connectionString))
-
             {
-
                 conn.Open();
-
+                // The write lock is taken FIRST: the number and duplicate checks and the save cannot be interleaved with another PC's save.
+                using var tx = conn.BeginTransaction(deferred: false);
+                // The same rules hold whichever screen or flow saves the invoice (the Billing screen shows these messages earlier).
+                if (!reviveCancelled && !string.Equals(inv.Status, PayStatus.Cancelled, StringComparison.OrdinalIgnoreCase)) precheck = CheckInvoiceBeforeSave(inv, crossTypeConfirmed);
                 var cmd = conn.CreateCommand();
-
+                cmd.Transaction = tx;
                 if (inv.Id == 0)
-
                 {
-
                     if (string.IsNullOrWhiteSpace(inv.InvoiceNumber))
-
                     {
-
                         throw new InvalidOperationException("Type the Service Invoice No. before saving. It is not made by the system."); // Nov 6
-
                     }
-
-                    cmd.CommandText = @"INSERT INTO Invoices (InvoiceNumber, SoaId, DeliveryId, ClientName, IssueDate, DueDate, TotalAmount, Deductions, NetAmount, Status)
-
-                                        VALUES (@in, @soa, @did, @c, @id, @dd, @ta, @d, @na, @s);
-
+                    cmd.CommandText = @"INSERT INTO Invoices (InvoiceNumber, NumberKey, SoaId, DeliveryId, ClientName, IssueDate, DueDate, TotalAmount, Deductions, NetAmount, Status, FuelSurcharge)
+                                        VALUES (@in, @nk, @soa, @did, @c, @id, @dd, @ta, @d, @na, @s, @fuel);
                                         SELECT last_insert_rowid();";
-
                 }
-
                 else
-
                 {
-
-                    cmd.CommandText = @"UPDATE Invoices SET InvoiceNumber=@in, SoaId=@soa, DeliveryId=@did, ClientName=@c, IssueDate=@id, DueDate=@dd, TotalAmount=@ta, Deductions=@d, NetAmount=@na, Status=@s WHERE Id=@invId";
-
+                    cmd.CommandText = @"UPDATE Invoices SET InvoiceNumber=@in, NumberKey=@nk, SoaId=@soa, DeliveryId=@did, ClientName=@c, IssueDate=@id, DueDate=@dd, TotalAmount=@ta, Deductions=@d, NetAmount=@na, Status=@s, FuelSurcharge=@fuel WHERE Id=@invId";
                     cmd.Parameters.AddWithValue("@invId", inv.Id);
-
                 }
-
                 cmd.Parameters.AddWithValue("@in", inv.InvoiceNumber);
-
+                cmd.Parameters.AddWithValue("@nk", NumberKey.Of(NumberKind.SI, inv.InvoiceNumber));
                 cmd.Parameters.AddWithValue("@soa", inv.SoaId);
-
                 cmd.Parameters.AddWithValue("@did", inv.DeliveryId > 0 ? inv.DeliveryId : DBNull.Value); // no dispatch (special trip): NULL, so the dispatch link stays valid
-
                 cmd.Parameters.AddWithValue("@c", inv.ClientName);
-
                 cmd.Parameters.AddWithValue("@id", inv.IssueDate.ToString("yyyy-MM-dd"));
-
                 cmd.Parameters.AddWithValue("@dd", inv.DueDate.ToString("yyyy-MM-dd"));
-
                 cmd.Parameters.AddWithValue("@ta", inv.TotalAmount);
-
                 cmd.Parameters.AddWithValue("@d", inv.Deductions);
-
                 cmd.Parameters.AddWithValue("@na", inv.NetAmount);
-
                 cmd.Parameters.AddWithValue("@s", inv.Status);
-
+                cmd.Parameters.AddWithValue("@fuel", inv.FuelSurcharge);
                 int prevDeliveryId = 0;
                 if (!wasNew)
                 {
                     using var pc = conn.CreateCommand();
+                    pc.Transaction = tx;
                     pc.CommandText = "SELECT COALESCE(DeliveryId,0) FROM Invoices WHERE Id = @i";
                     pc.Parameters.AddWithValue("@i", inv.Id);
                     prevDeliveryId = Convert.ToInt32(pc.ExecuteScalar() ?? 0);
                 }
                 var invIdObj = cmd.ExecuteScalar();
-
                 if (wasNew && invIdObj != null && invIdObj != DBNull.Value) inv.Id = Convert.ToInt32(invIdObj);
-
-                if (!wasNew) RecalculateInvoiceStatus(conn, null, inv.Id);
-                SyncTripReportStatus(conn, null, inv.DeliveryId, SpecialTripIdOfInvoice(conn, null, inv.Id)); // Nov 6: the trip report is Invoiced while the trip has an invoice
-                if (prevDeliveryId > 0 && prevDeliveryId != inv.DeliveryId) SyncTripReportStatus(conn, null, prevDeliveryId, 0); // the invoice moved off that trip
-
+                if (!wasNew) RecalculateInvoiceStatus(conn, tx, inv.Id);
+                SyncTripReportStatus(conn, tx, inv.DeliveryId, SpecialTripIdOfInvoice(conn, tx, inv.Id)); // Nov 6: the trip report is Invoiced while the trip has an invoice
+                if (prevDeliveryId > 0 && prevDeliveryId != inv.DeliveryId) SyncTripReportStatus(conn, tx, prevDeliveryId, 0); // the invoice moved off that trip
+                tx.Commit();
             }
-
+            if (precheck.Number != null) RecordNumberAcks(precheck.Number, inv.InvoiceNumber);
+            if (precheck.RenamedFrom != null)
+                try { LogAuditTrail("INVOICE_RENUMBERED", "Invoices", inv.Id, inv.InvoiceNumber, "InvoiceNumber", precheck.RenamedFrom, inv.InvoiceNumber, $"Service Invoice No. changed from {precheck.RenamedFrom} to {inv.InvoiceNumber}; the old number is released"); } catch (Exception swxR) { ErrLog.Swallowed(swxR); }
             try
-
             {
-
                 bool isNew = wasNew;
-
                 LogAuditTrail(isNew ? "INVOICE_CREATED" : "UPDATE", "Invoices", inv.Id, inv.InvoiceNumber, "NetAmount", "", inv.NetAmount.ToString("F2"), $"Invoice {(isNew ? "created" : "updated")} for {inv.ClientName}, Status: {inv.Status}, Net: PHP {inv.NetAmount:N2}");
-
                 EventNotificationService.Publish(isNew ? "Invoice Created" : "Invoice Updated", $"Invoice #{inv.InvoiceNumber} for {inv.ClientName} (PHP {inv.NetAmount:N2})", ToastType.Success);
-
             }
-
             catch (System.Exception swx52) { ErrLog.Swallowed(swx52); }
-
         }
 
         public static List<StatementOfAccount> GetStatementsOfAccount()
@@ -11896,9 +11886,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
+        /// <summary>
+        /// SQL column: the number of the (saved, not voided) trip report of the invoiced trip: a dispatch's by its id or dispatch number,
+        /// a special trip's by its special trip id. Needs the query to alias Invoices as i and Deliveries as d.
+        /// </summary>
+        private const string InvoiceTripReportSql = @"COALESCE((SELECT t.TripReportNumber FROM TripReports t WHERE COALESCE(t.IsVoid,0) = 0 AND (
+                (COALESCE(i.SpecialTripId,0) > 0 AND COALESCE(t.SpecialTripId,0) = i.SpecialTripId)
+                OR (COALESCE(i.DeliveryId,0) > 0 AND COALESCE(t.SpecialTripId,0) = 0 AND (COALESCE(t.DeliveryId,0) = i.DeliveryId OR (COALESCE(t.DeliveryId,0) = 0 AND d.DispatchNumber IS NOT NULL AND t.DispatchNumber = d.DispatchNumber))))
+                ORDER BY t.Id DESC LIMIT 1), '')";
+
         public static List<Invoice> GetInvoicesForSoa(int soaId)
 
         {
+
+            EnsureSpecialTripColumns();
 
             var list = new List<Invoice>();
 
@@ -11910,7 +11911,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 var cmd = conn.CreateCommand();
 
-                cmd.CommandText = @"SELECT i.Id, i.InvoiceNumber, i.SoaId, i.DeliveryId, i.ClientName, i.IssueDate, i.DueDate, i.TotalAmount, i.Deductions, i.NetAmount, i.Status, COALESCE(d.DispatchNumber, ''), COALESCE(ls.ScheduleNumber, '') FROM Invoices i LEFT JOIN Deliveries d ON i.DeliveryId = d.Id LEFT JOIN LoadingSchedules ls ON d.LoadingScheduleId = ls.Id WHERE i.SoaId = @soaId ORDER BY i.Id ASC";
+                cmd.CommandText = @"SELECT i.Id, i.InvoiceNumber, i.SoaId, i.DeliveryId, i.ClientName, i.IssueDate, i.DueDate, i.TotalAmount, i.Deductions, i.NetAmount, i.Status, COALESCE(d.DispatchNumber, ''), COALESCE(ls.ScheduleNumber, ''), COALESCE(i.FuelSurcharge, 0), " + InvoiceTripReportSql + " FROM Invoices i LEFT JOIN Deliveries d ON i.DeliveryId = d.Id LEFT JOIN LoadingSchedules ls ON d.LoadingScheduleId = ls.Id WHERE i.SoaId = @soaId ORDER BY i.Id ASC";
 
                 cmd.Parameters.AddWithValue("@soaId", soaId);
 
@@ -11954,7 +11955,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             DispatchNumber = reader.IsDBNull(11) ? "" : reader.GetString(11),
 
-                            LoadingScheduleNumber = reader.IsDBNull(12) ? "" : reader.GetString(12)
+                            LoadingScheduleNumber = reader.IsDBNull(12) ? "" : reader.GetString(12),
+
+                            FuelSurcharge = reader.IsDBNull(13) ? 0m : Centavos(Convert.ToDecimal(reader.GetDouble(13))),
+
+                            TripReportNumber = reader.IsDBNull(14) ? "" : reader.GetString(14)
 
                         });
 

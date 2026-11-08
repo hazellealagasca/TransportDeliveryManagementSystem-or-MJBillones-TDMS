@@ -71,7 +71,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Controls.SetChildIndex(soaStrip, pnlForm.Controls.GetChildIndex(pnlFormHeaderBar));
             pnlForm.ResumeLayout(true);
             // Steps + help at the top of the body, checklist at the bottom (just above the Save bar).
-            soaStepper = new WorkflowStepper("Dispatch created", "Trip report completed", "Lines filled from trip reports", "Review", "Validated & SOA ready");
+            soaStepper = new WorkflowStepper("Trip delivered", "Service invoice made", "Invoices picked", "Review", "Statement ready");
             soaHelp = new HelpDrawer("How this works",
                 "1. Complete the dispatch, then file its trip report (Operations → Trip reports).\n" +
                 "2. Pick the client and period: the completed trip reports for that client appear in step 2. ⚡ Add all ready trips fills the lines, amounts and DR numbers for you.\n" +
@@ -115,7 +115,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void ScheduleSoaGuide()
         {
-            if (soaGuideTimer == null || pnlForm == null || !pnlForm.Visible) return;
+            if (soaGuideTimer == null || pnlForm == null || !pnlForm.Visible || soaViewOnly) return;
             soaGuideTimer.Stop();
             soaGuideTimer.Start();
         }
@@ -245,8 +245,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (locked.Length > 0 && !string.Equals(n, locked, StringComparison.OrdinalIgnoreCase))
                     yield return new LookupItem(n, $"Locked: this statement has trips of {locked}", "Other client", BadgeKind.Bad, Enabled: false);
                 else if (ready.TryGetValue(n, out var r))
-                    yield return new LookupItem(n, $"{r.Trips} completed trip report{(r.Trips == 1 ? "" : "s")} · {r.From:MMM d} – {r.To:MMM d, yyyy}", $"{r.Trips} ready", BadgeKind.Good);
-                else yield return new LookupItem(n, "No trip reports waiting to be billed", "Nothing ready", BadgeKind.Neutral);
+                    yield return new LookupItem(n, $"{r.Trips} service invoice{(r.Trips == 1 ? "" : "s")} ready · {r.From:MMM d} – {r.To:MMM d, yyyy}", $"{r.Trips} ready", BadgeKind.Good);
+                else yield return new LookupItem(n, "No service invoices ready for a statement", "Nothing ready", BadgeKind.Neutral);
             }
         }
         private IEnumerable<LookupItem> TripSuggestions(string q)
@@ -275,6 +275,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private (decimal ExpectedDue, decimal ExpectedSales) ExpectedSoaTotals()
         {
+            var inv = InvoiceTotalsOfLines();
+            if (inv != null) { var it = SoaTotals.From(inv.Value.Freight, inv.Value.Fuel); return (it.Due, it.TotalSales); } // follows the service invoices
             decimal amt = 0, fuel = 0;
             foreach (DataGridViewRow row in gridItems.Rows)
             {
@@ -283,9 +285,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 decimal.TryParse(row.Cells["colFuel"].Value?.ToString(), out var f);
                 amt += a; fuel += f;
             }
-            decimal sales = Math.Round(amt + fuel, 2);
-            decimal net = sales / 1.12m;
-            return (Math.Round(sales - Math.Round(net * 0.02m, 2), 2), sales);
+            var lt = SoaTotals.From(amt, fuel);
+            return (lt.Due, lt.TotalSales);
         }
         /// <summary>True when the totals no longer match what the trip lines work out to (so a reason is needed).</summary>
         private bool SoaTotalsAdjusted(out decimal expected, out decimal entered)
@@ -358,10 +359,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 checks.Add(new PaymentCheck(unpriced == 0 ? "Every trip has an amount" : $"{unpriced} trip(s) without an amount", unpriced == 0));
                 checks.Add(new PaymentCheck(repeatedDr == 0 ? "No DR number repeated" : $"{repeatedDr} DR number(s) repeated on this statement", repeatedDr == 0));
             }
-            // Math: net of VAT + VAT − withholding tax = total due.
-            decimal calc = numNetOfVat.Value + numVat.Value - numWithholdingTax.Value;
+            // Math (Nov 7, the statement sheet): net of VAT + fuel surcharge + VAT − withholding tax = total due. An old statement kept its fuel inside the sales.
+            decimal fuelPart = IsLegacySoa() ? 0m : numFuelSurchargeTotal.Value;
+            decimal calc = numNetOfVat.Value + fuelPart + numVat.Value - numWithholdingTax.Value;
             bool mathOk = Math.Abs(calc - numTotalAmountDue.Value) <= 0.01m;
-            checks.Add(new PaymentCheck(mathOk ? "Totals add up (net of VAT + VAT − EWT = total due)" : $"Totals don't add up: ₱{numNetOfVat.Value:N2} + ₱{numVat.Value:N2} − ₱{numWithholdingTax.Value:N2} = ₱{calc:N2}, not ₱{numTotalAmountDue.Value:N2}", mathOk));
+            checks.Add(new PaymentCheck(mathOk ? "Totals add up (net of VAT + fuel surcharge + VAT − withholding tax = total due)" : $"Totals don't add up: ₱{numNetOfVat.Value:N2} + ₱{fuelPart:N2} + ₱{numVat.Value:N2} − ₱{numWithholdingTax.Value:N2} = ₱{calc:N2}, not ₱{numTotalAmountDue.Value:N2}", mathOk));
             checks.Add(new PaymentCheck(numTotalAmountDue.Value > 0 ? "Total amount due is more than ₱0.00" : "Total amount due is ₱0.00", numTotalAmountDue.Value > 0));
             if (SoaTotalsAdjusted(out var expected, out var entered))
             {
@@ -388,24 +390,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void UpdateSoaGuide()
         {
-            if (soaChecklist == null || !pnlForm.Visible) return;
+            if (soaChecklist == null || !pnlForm.Visible || soaViewOnly) return;
             // Cache misses (a trip just added): reload once.
             if (DeliveryIdsInTable().Any(id => id > 0 && !guideDeliveries.ContainsKey(id))) LoadSoaGuideCache();
             var checks = ComputeSoaChecks();
             soaChecklist.SetChecks(checks);
             int fails = soaChecklist.Failed, warns = soaChecklist.Warnings;
             decimal due = numTotalAmountDue.Value;
-            soaStrip.SetTotals(numTotalSales.Value, numWithholdingTax.Value, guidePaid, Math.Max(0, due - guidePaid), fails, warns);
+            soaStrip.SetTotals(numTotalSales.Value + (IsLegacySoa() ? 0m : numFuelSurchargeTotal.Value), numWithholdingTax.Value, guidePaid, Math.Max(0, due - guidePaid), fails, warns);
+            UpdateSoaTape();
             // Steps
             int rows = gridItems.Rows.Cast<DataGridViewRow>().Count(r => !r.IsNewRow);
             int ready = gridPicker == null ? 0 : gridPicker.Rows.Cast<DataGridViewRow>().Count(r => r.Tag is PickRow pr && pr.State == PickState.Ready && !r.Cells["pkPick"].ReadOnly);
             if (rows == 0)
                 soaStepper.SetProgress(ready > 0 ? 1 : 0, ready > 0
-                    ? $"{ready} completed trip report{(ready == 1 ? " is" : "s are")} ready for {cbClient.Text.Trim()} — tick them in step 2 or use ⚡ Add all ready trips."
-                    : string.IsNullOrWhiteSpace(cbClient.Text) ? "Choose the client company and the period to see its completed trip reports."
-                    : $"No completed trip reports for {cbClient.Text.Trim()} in this period. Complete the trip report first (Operations → Trip reports), or widen the period.");
+                    ? $"{ready} service invoice{(ready == 1 ? " is" : "s are")} ready for {cbClient.Text.Trim()} — tick them in step 2 or use ⚡ Add all ready trips."
+                    : string.IsNullOrWhiteSpace(cbClient.Text) ? "Choose the client company and the period to see its service invoices that are ready."
+                    : $"No service invoices are ready for {cbClient.Text.Trim()} in this period. Make the trip's service invoice first (Billing), or widen the period.");
             else if (fails > 0) soaStepper.SetProgress(2, $"Review: {fails} item{(fails == 1 ? "" : "s")} to fix — see the checklist at the bottom.");
-            else soaStepper.SetProgress(4, warns > 0 ? $"✓ Validated — {warns} note{(warns == 1 ? "" : "s")} to review, then save." : "✓ Validated — Save creates the statement and its billing invoice.");
+            else soaStepper.SetProgress(4, warns > 0 ? $"✓ Validated — {warns} note{(warns == 1 ? "" : "s")} to review, then save." : "✓ Validated — Save makes the statement of these service invoices. Collect it with one receipt.");
             // Variance hint + reason box
             bool adjusted = SoaTotalsAdjusted(out var expected, out var entered);
             if (pnlSoaAdjust.Visible != adjusted) pnlSoaAdjust.Visible = adjusted;
@@ -426,87 +429,48 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblSaveBlocked.Visible = fails > 0;
         }
             // ------------------------------------------------------------------ Ready for a statement (list page)
-        private FlowLayoutPanel soaReadyBanner = null!;
-        /// <summary>Slim line above the list: clients with completed trip reports waiting for a statement, one click each.</summary>
+        private StatementReadyPanel soaReadyBanner = null!;
+        /// <summary>The list above the statements: every service invoice that is ready for a statement. Tick several (or Select all) of one client to make one statement.</summary>
         private void BuildSoaReadyBanner()
         {
-            soaReadyBanner = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                WrapContents = true,
-                BackColor = Color.Transparent,
-                Padding = new Padding(Dpi(16), Dpi(2), Dpi(16), Dpi(4))
-            };
+            soaReadyBanner = new StatementReadyPanel { Height = Dpi(190), Padding = new Padding(Dpi(16), Dpi(2), Dpi(16), Dpi(8)) };
+            soaReadyBanner.StatementRequested += (client, rows) => StartSoaFor(client, rows);
             Controls.Add(soaReadyBanner);
             Controls.SetChildIndex(soaReadyBanner, Controls.GetChildIndex(soaPageHeaderHost));
         }
-        private void RefreshSoaReadyBanner()
+        private void RefreshSoaReadyBanner() => soaReadyBanner?.RefreshData();
+
+        /// <summary>"Make statement" from the ready list: the chosen invoices of one client, with the period of their trips.</summary>
+        public void StartSoaFor(string client, List<ReadyInvoiceRow> rows)
         {
-            if (soaReadyBanner == null) return;
-            soaReadyBanner.SuspendLayout();
-            try
-            {
-                foreach (Control c in soaReadyBanner.Controls.Cast<Control>().ToList()) { soaReadyBanner.Controls.Remove(c); c.Dispose(); }
-                var ready = ReadyClients();
-                var lbl = new Label
-                {
-                    AutoSize = true,
-                    Font = new Font("Segoe UI Semibold", 9.25F),
-                    ForeColor = ready.Count > 0 ? AppTheme.SuccessText : AppTheme.TextMuted,
-                    Margin = new Padding(0, Dpi(7), Dpi(8), 0),
-                    UseMnemonic = false,
-                    Text = ready.Count > 0 ? "● Ready for a statement:" : "No completed trip reports are waiting to be billed. When a trip report is completed (Operations → Trip reports), its client appears here."
-                };
-                soaReadyBanner.Controls.Add(lbl);
-                foreach (var r in ready.Take(6))
-                {
-                    var b = new Button
-                    {
-                        AutoSize = true,
-                        AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                        FlatStyle = FlatStyle.Flat,
-                        Font = new Font("Segoe UI Semibold", 9F),
-                        Cursor = Cursors.Hand,
-                        UseMnemonic = false,
-                        Padding = new Padding(Dpi(6), 0, Dpi(6), 0),
-                        MinimumSize = new Size(0, Dpi(30)),
-                        Margin = new Padding(0, Dpi(2), Dpi(6), Dpi(2)),
-                        Text = $"{r.Client}  ·  {r.Trips} trip report{(r.Trips == 1 ? "" : "s")} ({r.From:MMM d} – {r.To:MMM d})   ▸ Start SOA"
-                    };
-                    UIThemeHelper.SetButtonRole(b, "secondary");
-                    var rr = r;
-                    b.Click += (s, e) => StartSoaFor(rr.Client, rr.From, rr.To);
-                    soaReadyBanner.Controls.Add(b);
-                }
-                if (ready.Count > 6) soaReadyBanner.Controls.Add(new Label { AutoSize = true, Text = $"+{ready.Count - 6} more clients", ForeColor = AppTheme.TextMuted, Margin = new Padding(0, Dpi(8), 0, 0), Font = new Font("Segoe UI", 9F) });
-            }
-            catch (Exception ex) { ErrLog.Swallowed(ex); }
-            finally { soaReadyBanner.ResumeLayout(true); }
+            if (rows.Count == 0) return;
+            StartSoaFor(client, rows.Min(r => r.TripDate).Date, rows.Max(r => r.TripDate).Date, new HashSet<int>(rows.Select(r => r.InvoiceId)));
         }
+
         /// <summary>
-        /// "Start SOA": opens a new statement for the client with the period of its waiting trip reports and every ready
-        /// trip already added (amounts, stores and DR numbers from the trip reports). Nothing is saved until Save.
+        /// Opens a new statement for the client with the period of its waiting invoices and those invoices already added (amounts, stores and DR
+        /// numbers from the trip reports). <paramref name="onlyInvoiceIds"/> limits it to the ticked invoices. Nothing is saved until Save.
         /// </summary>
-        public void StartSoaFor(string client, DateTime from, DateTime to)
+        public void StartSoaFor(string client, DateTime from, DateTime to, HashSet<int>? onlyInvoiceIds = null)
         {
             if (!Permissions.Can("Payments", "StatementOfAccount")) { Permissions.TellDenied(this, "Payments", "StatementOfAccount"); return; }
             OpenNewStatement();
             if (chkPickerAllClients != null) chkPickerAllClients.Checked = false;
             SetClientQuietly(client);
-            dtpPeriodFrom.Value = from.Date;
-            dtpPeriodTo.Value = to.Date;
+            dtpPeriodFrom.SetSafe(from.Date);
+            dtpPeriodTo.SetSafe(to.Date);
             pickerRefreshTimer.Stop();
             RefreshPicker();
             int ticked = 0;
             foreach (DataGridViewRow r in gridPicker.Rows)
-                if (r.Tag is PickRow pr && pr.State == PickState.Ready && !r.Cells["pkPick"].ReadOnly) { r.Cells["pkPick"].Value = true; ticked++; }
+                if (r.Tag is PickRow pr && pr.State == PickState.Ready && !r.Cells["pkPick"].ReadOnly
+                    && (onlyInvoiceIds == null || (pr.Invoice != null && onlyInvoiceIds.Contains(pr.Invoice.Id)))) { r.Cells["pkPick"].Value = true; ticked++; }
             if (ticked > 0) AddTickedDispatches();
             LoadSoaGuideCache();
             lastGoodClient = cbClient.Text.Trim();
             UpdateSoaGuide();
-            ToastHelper.ShowToast(this, ticked > 0 ? $"Filled from {ticked} completed trip report{(ticked == 1 ? "" : "s")} of {client} — review, then Save" : $"No ready trip reports found for {client} in that period", ticked > 0 ? ToastType.Success : ToastType.Info);
+            string note = onlyInvoiceIds != null && ticked < onlyInvoiceIds.Count ? $" ({onlyInvoiceIds.Count - ticked} chosen invoice(s) could not be added: see the picker)" : "";
+            ToastHelper.ShowToast(this, ticked > 0 ? $"Filled from {ticked} service invoice{(ticked == 1 ? "" : "s")} of {client}{note} — review, then Save" : $"No ready service invoices found for {client} in that period", ticked > 0 ? ToastType.Success : ToastType.Info);
         }
     }
 }

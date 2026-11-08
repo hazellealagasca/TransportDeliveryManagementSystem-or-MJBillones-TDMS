@@ -231,8 +231,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     break;
                 }
             }
-            numDamagedQty.Value = Math.Max(numDamagedQty.Minimum, Math.Min(numDamagedQty.Maximum, missingCrates));
-            numEstimatedCost.Value = Math.Max(numEstimatedCost.Minimum, Math.Min(numEstimatedCost.Maximum, missingCrates * 450m));
+            numDamagedQty.SetSafe(Math.Max(numDamagedQty.Minimum, Math.Min(numDamagedQty.Maximum, missingCrates)));
+            numEstimatedCost.SetSafe(Math.Max(numEstimatedCost.Minimum, Math.Min(numEstimatedCost.Maximum, missingCrates * 450m)));
             txtCause.Text = "Missing / Damaged Crates from Trip Delivery";
             chkChargeable.Checked = true;
             txtDescription.Text = $"Automated variance log: {missingCrates} crate(s) discrepancy noted on delivery {dispatchNumber} on {tripDate:MM/dd/yyyy}.";
@@ -293,8 +293,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int dIdx = deliveries.FindIndex(d => d.Id == selectedIncident.DeliveryId);
                 if (dIdx >= 0 && dIdx < cbDelivery.Items.Count) cbDelivery.SelectedIndex = dIdx;
 
-                numDamagedQty.Value = Math.Max(0, selectedIncident.DamagedQuantity);
-                numEstimatedCost.Value = Math.Max(0, selectedIncident.EstimatedCost);
+                numDamagedQty.SetSafe(Math.Max(0, selectedIncident.DamagedQuantity));
+                numEstimatedCost.SetSafe(Math.Max(0, selectedIncident.EstimatedCost));
                 txtCause.Text = selectedIncident.Cause;
                 chkChargeable.Checked = selectedIncident.ChargeableToCrew;
                 txtDescription.Text = selectedIncident.Description;
@@ -560,8 +560,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             selectedIncident = null;
             cbDelivery.SelectedIndex = -1; // Nov 6: blank until picked
-            numDamagedQty.Value = numDamagedQty.Minimum;
-            numEstimatedCost.Value = numEstimatedCost.Minimum;
+            numDamagedQty.SetSafe(numDamagedQty.Minimum);
+            numEstimatedCost.SetSafe(numEstimatedCost.Minimum);
             txtCause.Text = "";
             chkChargeable.Checked = false;
             txtDescription.Text = "";
@@ -635,8 +635,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedIncident = filtered[0];
                 int dIdx = deliveries.FindIndex(d => d.Id == selectedIncident.DeliveryId);
                 if (dIdx >= 0 && dIdx < cbDelivery.Items.Count) cbDelivery.SelectedIndex = dIdx;
-                numDamagedQty.Value = Math.Max(0, selectedIncident.DamagedQuantity);
-                numEstimatedCost.Value = Math.Max(0, selectedIncident.EstimatedCost);
+                numDamagedQty.SetSafe(Math.Max(0, selectedIncident.DamagedQuantity));
+                numEstimatedCost.SetSafe(Math.Max(0, selectedIncident.EstimatedCost));
                 txtCause.Text = selectedIncident.Cause;
                 chkChargeable.Checked = selectedIncident.ChargeableToCrew;
                 txtDescription.Text = selectedIncident.Description;
@@ -651,8 +651,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedIncident = null;
                 txtDescription.Text = "";
                 txtCause.Text = "";
-                numDamagedQty.Value = 0;
-                numEstimatedCost.Value = 0;
+                numDamagedQty.SetSafe(0);
+                numEstimatedCost.SetSafe(0);
                 lblFormHeader.Text = "Incident Details Form";
                 isBindingForm = false;
             }
@@ -839,11 +839,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 if (map.TryGetValue("DamagedQuantity", out var dq) && decimal.TryParse(dq, out var dqVal))
                 {
-                    numDamagedQty.Value = Math.Min(numDamagedQty.Maximum, Math.Max(numDamagedQty.Minimum, dqVal));
+                    numDamagedQty.SetSafe(Math.Min(numDamagedQty.Maximum, Math.Max(numDamagedQty.Minimum, dqVal)));
                 }
                 if (map.TryGetValue("EstimatedCost", out var ec) && decimal.TryParse(ec, out var ecVal))
                 {
-                    numEstimatedCost.Value = Math.Min(numEstimatedCost.Maximum, Math.Max(numEstimatedCost.Minimum, ecVal));
+                    numEstimatedCost.SetSafe(Math.Min(numEstimatedCost.Maximum, Math.Max(numEstimatedCost.Minimum, ecVal)));
                 }
                 if (map.TryGetValue("Cause", out var c) && !string.IsNullOrWhiteSpace(c))
                 {

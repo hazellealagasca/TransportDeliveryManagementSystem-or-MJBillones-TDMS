@@ -55,6 +55,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Add("SpecialTrips", "ModeOfPayment", "TEXT DEFAULT ''");
             Add("TripReports", "SpecialTripId", "INTEGER DEFAULT 0");
             Add("Invoices", "SpecialTripId", "INTEGER DEFAULT 0");
+            Add("Invoices", "FuelSurcharge", "REAL DEFAULT 0"); // Nov 7: the fuel surcharge part of the invoice total
             Add("StatementOfAccountItems", "SpecialTripId", "INTEGER DEFAULT 0");
         }
 
@@ -358,22 +359,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                     else if (collected <= 0 && inv.SoaId == 0 && !string.Equals(inv.Status, "Paid", StringComparison.OrdinalIgnoreCase)) // Nov 6: on a statement it keeps its amount
                     {
-                        bool changed = inv.TotalAmount != trip.TripCharge || inv.Deductions != 0 || !string.Equals(inv.ClientName, trip.Company, StringComparison.Ordinal) || !invActive;
+                        bool changed = inv.Freight != trip.TripCharge || !string.Equals(inv.ClientName, trip.Company, StringComparison.Ordinal) || !invActive;
                         if (changed)
                         {
                             inv.ClientName = trip.Company;
-                            inv.TotalAmount = trip.TripCharge;
-                            inv.Deductions = 0;
-                            inv.NetAmount = trip.TripCharge;
+                            inv.TotalAmount = trip.TripCharge + inv.FuelSurcharge; // the fuel surcharge typed on the invoice stays; SaveInvoice works out the withholding
                             inv.Status = trip.TripCharge > 0 ? "Unpaid" : "Draft";
                             SaveInvoice(inv, reviveCancelled: true); // this trip's own invoice (it may have been cancelled with the trip)
                             notes.Add($"Service invoice {inv.InvoiceNumber} updated to ₱{trip.TripCharge:N2}.");
                         }
                         if (inv.Id > 0) LinkInvoiceToSpecialTrip(inv.Id, trip.Id);
                     }
-                    else if (inv.NetAmount != trip.TripCharge)
+                    else if (inv.Freight != trip.TripCharge)
                     {
-                        notes.Add($"Service invoice {inv.InvoiceNumber} is paid or on a statement, so its amount (₱{inv.NetAmount:N2}) was not changed.");
+                        notes.Add($"Service invoice {inv.InvoiceNumber} is paid or on a statement, so its amount (₱{inv.Freight:N2}) was not changed.");
                     }
                 }
                 else if (invActive && inv != null)

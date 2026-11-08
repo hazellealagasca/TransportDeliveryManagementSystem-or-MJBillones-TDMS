@@ -20,6 +20,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             this.prefillDelivery = prefillDelivery;
             InitializeComponent();
+            Smooth.Enable(this);           // H2: double-buffer the hub and its content host
+            Smooth.Enable(pnlContentHost);
+            NoWheel.Attach(this);          // H1: scrolling the page can never change a number, choice or date in any Payments tab
+            InitZoom();                    // Display size: A- / A+ in the header, Ctrl + / - / 0
             Pal.RemapTree(this);
             SetupTabs();
             ApplyAccess();
@@ -52,8 +56,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             AddTab("History", "📜  Finance History", () => new FinanceHistoryView());
         }
 
+        private readonly Dictionary<string, string> tabTitles = new();
+        /// <summary>Shows a count on a tab, e.g. "Billing (6)"; 0 removes it.</summary>
+        public void SetTabBadge(string key, int count)
+        {
+            if (tabButtons.TryGetValue(key, out var b) && tabTitles.TryGetValue(key, out var t))
+                b.Text = count > 0 ? $"{t} ({count})" : t;
+        }
         private void AddTab(string key, string title, Func<UserControl> viewFactory)
         {
+            tabTitles[key] = title;
             Button btn = new Button
             {
                 Text = title,
@@ -143,15 +155,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             activeTabBtn.BackColor = Pal.C(15, 23, 42);
             activeTabBtn.ForeColor = Pal.White;
             activeTabBtn.FlatAppearance.BorderColor = Pal.C(15, 23, 42);
-            pnlContentHost.SuspendLayout();
-            pnlContentHost.Controls.Clear();
-            view.Dock = DockStyle.Fill;
-            pnlContentHost.Controls.Add(view);
-            pnlContentHost.ResumeLayout(true);
-
-            if (view is IRefreshable refreshable)
+            // H2: swap the tab AND load its data while nothing is repainted, then paint once (no layers of the old tab bleeding through).
+            using (new RedrawFreeze(pnlContentHost))
             {
-                refreshable.RefreshData();
+                pnlContentHost.SuspendLayout();
+                pnlContentHost.Controls.Clear();
+                Smooth.Enable(view);
+                view.Dock = DockStyle.Fill;
+                pnlContentHost.Controls.Add(view);
+                pnlContentHost.ResumeLayout(true);
+
+                if (view is IRefreshable refreshable)
+                {
+                    refreshable.RefreshData();
+                }
+                UiZoom.Apply(view); // Display size (at 100 % this only remembers the original sizes)
             }
         }
 

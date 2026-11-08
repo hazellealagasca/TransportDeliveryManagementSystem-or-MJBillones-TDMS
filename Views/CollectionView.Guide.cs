@@ -20,7 +20,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private HelpDrawer collHelp = null!;
         private Label lblCollBlocked = null!;
         private Label lblCollCap = null!;
-        private ReadyBanner collReady = null!;
+        private CollectionReadyPanel collReady = null!;
+        private TapeCard? collTape;
         private RichLookup? refLookup;
         private readonly System.Windows.Forms.Timer collGuideTimer = new System.Windows.Forms.Timer { Interval = 250 };
         private bool collSaving;
@@ -69,10 +70,37 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbPaymentMethod.TextChanged += (s, e) => ScheduleCollGuide();
             txtRefNo.TextChanged += (s, e) => ScheduleCollGuide();
             refLookup = RichLookup.Attach(txtRefNo, ReceiptSuggestions, it => ScheduleCollGuide());
-            collReady = new ReadyBanner();
+            collReady = new CollectionReadyPanel();
+            collReady.PaymentRequested += OpenPayTarget;
+            collReady.CountChanged += n => FinanceHubView.Of(this)?.SetTabBadge("Collections", n);
             pnlGridCard.Controls.Add(collReady);
             pnlGridCard.Controls.SetChildIndex(collReady, pnlGridCard.Controls.GetChildIndex(pnlGridHeaderBar));
             RefreshCollReady();
+        }
+        /// <summary>
+        /// Ledger Desk layout of the receipt form: the statement / invoice being paid on the left, the collection details and the open problems on the
+        /// right, one slim header with the live figures. Layout only: every field, handler and rule is the same.
+        /// </summary>
+        private void ApplyCollWorkbench()
+        {
+            if (formKit == null || collChecklist == null) return;
+            collChecklist.ShowOnlyProblems = true;
+            collChecklist.FocusResolver = c =>
+            {
+                string t = c.Text;
+                if (t.Contains("Receipt No.", StringComparison.OrdinalIgnoreCase)) return txtReceiptNo;
+                if (t.Contains("payment method", StringComparison.OrdinalIgnoreCase)) return cbPaymentMethod;
+                if (t.Contains("reference", StringComparison.OrdinalIgnoreCase) || t.Contains("cheque no", StringComparison.OrdinalIgnoreCase)) return txtRefNo;
+                if (t.Contains("payment date", StringComparison.OrdinalIgnoreCase)) return dtpPaymentDate;
+                if (t.Contains("statement", StringComparison.OrdinalIgnoreCase) || t.Contains("invoice", StringComparison.OrdinalIgnoreCase)) return cbInvoice;
+                return null;
+            };
+            collStrip.NetCaption = "Amount due";
+            collStrip.FirstCaption = "Billed (amount + fuel)"; collStrip.SecondCaption = "Withholding tax"; // Nov 7: the statement's withholding is the only thing taken off
+            collStrip.ShowPayment = false; // "Payment: Unpaid" means nothing on a receipt that is not recorded yet
+            collTape = new TapeCard();
+            collTape.Set("What is being paid", Array.Empty<(string, string)>(), "", "", "");
+            formKit.ApplyWorkbench(50f, new[] { 0 }, new[] { 1 }, collChecklist, new Control?[] { collStepper, collHelp }, collStrip, 620, new Control[] { collTape });
         }
         private void ScheduleCollGuide()
         {
@@ -88,26 +116,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             collGuideKey = int.MinValue;
             UpdateCollGuide();
         }
-        private void RefreshCollReady()
-        {
-            if (collReady == null) return;
-            var items = new List<(string, string, Action)>();
-            try
-            {
-                foreach (var inv in unpaidInvoices.OrderBy(i => i.DueDate).Take(20))
-                {
-                    decimal bal = Math.Max(0, inv.NetAmount - MJdatabase.GetTotalCollectedForInvoice(inv.Id));
-                    if (bal <= 0) continue;
-                    var target = inv;
-                    items.Add(($"{inv.InvoiceNumber}  ·  {inv.ClientName}  ·  ₱{bal:N2} due{(inv.DueDate.Date < DateTime.Today ? " (overdue)" : "")}   ▸ Record payment",
-                        $"Opens a new receipt for invoice {inv.InvoiceNumber} with the full amount due filled in. Nothing is saved until you save it.",
-                        (Action)(() => OpenTarget(target))));
-                }
-            }
-            catch (Exception ex) { ErrLog.Swallowed(ex); }
-            collReady.SetItems($"{items.Count} invoice{(items.Count == 1 ? "" : "s")} waiting for payment:",
-                "Nothing is waiting for payment. Statements of account and service invoices (Billing) with nothing paid yet are listed here.", items, 4);
-        }
+        /// <summary>The list of statements / invoices waiting for payment (the same list the receipt form offers).</summary>
+        private void RefreshCollReady() => collReady?.RefreshData();
         private IEnumerable<LookupItem> ReceiptSuggestions(string q)
         {
             int n = 0;
@@ -148,7 +158,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 decimal cap = Math.Max(0, collInvoice.NetAmount - collPaidOthers);
                 if (cap >= numAmountPaid.Minimum)
                 {
-                    if (numAmountPaid.Value > cap) numAmountPaid.Value = cap;
+                    if (numAmountPaid.Value > cap) numAmountPaid.SetSafe(cap);
                     numAmountPaid.Maximum = cap;
                 }
                 lblCollCap.Text = $"Amount: ₱{cap:N2}, the full amount due (one receipt pays it all)";
@@ -165,8 +175,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bool editing = selectedCollection != null;
             var inv = collInvoice;
             checks.Add(new PaymentCheck(inv == null ? (editing ? "The invoice of this receipt was not found" : "Pick the statement or invoice being paid") : $"Invoice {inv.InvoiceNumber} · {inv.ClientName}", inv != null));
-            var rnWhy = MJdatabase.CheckReceiptNumber(txtReceiptNo?.Text, editing ? selectedCollection?.ReceiptNumber : null); // Nov 6
-            checks.Add(new PaymentCheck(rnWhy ?? $"Receipt No. {txtReceiptNo?.Text.Trim()} is free", rnWhy == null));
+            receiptNumberGuard?.Recheck();
+            var rnCheck = receiptNumberGuard?.Current;
+            string? rnWhy = rnCheck != null && rnCheck.Blocked ? rnCheck.Why() : null;
+            bool rnTick = receiptNumberGuard != null && receiptNumberGuard.TickMissing;
+            string rnText = (txtReceiptNo?.Text ?? "").Trim();
+            checks.Add(new PaymentCheck(rnWhy ?? (rnTick ? "Tick the confirmation under the Collection Receipt No. (same digits as another document)" : editing ? $"Collection Receipt No. {rnText} (this receipt)" : $"Collection Receipt No. {rnText} is free"), rnWhy == null && !rnTick));
             decimal amt = numAmountPaid.Value;
             if (inv != null)
             {
@@ -202,6 +216,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             decimal amt = numAmountPaid.Value;
             if (inv != null) collStrip.SetTotals(inv.TotalAmount, inv.Deductions, collPaidOthers, Math.Max(0, inv.NetAmount - collPaidOthers - amt), fails, warns);
             else collStrip.SetTotals(0, 0, 0, 0, fails, warns);
+            if (collTape != null)
+            {
+                if (inv != null)
+                {
+                    decimal dueNow = Math.Max(0, inv.NetAmount - collPaidOthers);
+                    int days = (int)(inv.DueDate.Date - DateTime.Today).TotalDays;
+                    collTape.Set("What is being paid", new (string, string)[]
+                    {
+                        ("Client", inv.ClientName ?? ""), ("Statement / invoice", inv.InvoiceNumber ?? ""), ("Invoiced", inv.IssueDate.ToString("MMM d, yyyy")), ("Due", inv.DueDate.ToString("MMM d, yyyy")),
+                        ("Amount", "₱" + inv.Freight.ToString("N2")), ("Fuel surcharge", "₱" + inv.FuelSurcharge.ToString("N2")), ("Less: withholding tax (from the statement)", "₱" + inv.Deductions.ToString("N2"))
+                    }, "Amount due · paid in full", "₱" + dueNow.ToString("N2"), days < 0 ? $"{-days} d overdue" : days == 0 ? "due today" : $"due in {days} d");
+                }
+                else collTape.Set("What is being paid", Array.Empty<(string, string)>(), "", "", "");
+            }
             bool editing = selectedCollection != null;
             if (editing) collStepper.SetProgress(fails > 0 ? 3 : 4, fails > 0 ? $"Editing receipt {selectedCollection!.ReceiptNumber}: {fails} to fix — see the checklist." : $"Receipt {selectedCollection!.ReceiptNumber} is valid — Edit receipt details saves the changes.");
             else if (inv == null) collStepper.SetProgress(unpaidInvoices.Count > 0 ? 1 : 0, unpaidInvoices.Count > 0

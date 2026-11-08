@@ -398,10 +398,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 decimal totalPaid = matchReceipts.Sum(c => c.AmountPaid);
 
                 keyValues.Add(("Invoice Number", inv.InvoiceNumber));
-                if (!string.IsNullOrEmpty(inv.LoadingScheduleNumber))
-                {
-                    keyValues.Add(("Loading Schedule #", inv.LoadingScheduleNumber));
-                }
                 if (!string.IsNullOrEmpty(inv.DispatchNumber))
                 {
                     keyValues.Add(("Delivery Dispatch #", inv.DispatchNumber));
@@ -409,9 +405,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 keyValues.Add(("Client / Account Name", inv.ClientName));
                 keyValues.Add(("Invoice Date", inv.IssueDate.ToString("MMMM dd, yyyy")));
                 keyValues.Add(("Due Date", inv.DueDate.ToString("MMMM dd, yyyy")));
-                keyValues.Add(("Gross Delivery Rate", $"₱{inv.TotalAmount:N2}"));
-                keyValues.Add(("Damage Deductions", $"-₱{inv.Deductions:N2}"));
-                keyValues.Add(("Net Total Amount Due", $"₱{inv.NetAmount:N2}"));
+                if (!string.IsNullOrWhiteSpace(inv.TripReportNumber)) keyValues.Add(("Trip report #", inv.TripReportNumber));
+                keyValues.Add(("Amount (freight tariff)", $"₱{inv.Freight:N2}"));
+                keyValues.Add(("Fuel surcharge", $"₱{inv.FuelSurcharge:N2}"));
+                // The computation (VAT, withholding tax, total due) is on the statement of account that compiles the invoices, not on the invoice.
+                if (inv.SoaId > 0 && inv.Deductions > 0) keyValues.Add(("Withholding tax (its share of the statement's)", $"-₱{inv.Deductions:N2}"));
+                if (inv.SoaId > 0) keyValues.Add(("To collect (on its statement)", $"₱{inv.NetAmount:N2}"));
                 keyValues.Add(("Amount Paid", totalPaid > 0 ? $"₱{totalPaid:N2} (in full)" : "Not yet paid"));
                 keyValues.Add(("Payment Settlement Status", inv.Status));
 

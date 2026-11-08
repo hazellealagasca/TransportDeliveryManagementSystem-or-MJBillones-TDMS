@@ -219,10 +219,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var m = Find(name);
             var c = categories.FirstOrDefault(x => string.Equals(x.CategoryName, name, StringComparison.OrdinalIgnoreCase));
             txtName.Text = name ?? "";
-            numDry.Value = Math.Min(numDry.Maximum, m?.DryMax ?? c?.CrateCapacity ?? 0);
-            numCold.Value = Math.Min(numCold.Maximum, m?.ColdMax ?? 0);
-            numCombiCold.Value = Math.Min(numCombiCold.Maximum, m?.CombiColdMax ?? 0);
-            numCombiDry.Value = Math.Min(numCombiDry.Maximum, m?.CombiDryMax ?? 0);
+            numDry.SetSafe(Math.Min(numDry.Maximum, m?.DryMax ?? c?.CrateCapacity ?? 0));
+            numCold.SetSafe(Math.Min(numCold.Maximum, m?.ColdMax ?? 0));
+            numCombiCold.SetSafe(Math.Min(numCombiCold.Maximum, m?.CombiColdMax ?? 0));
+            numCombiDry.SetSafe(Math.Min(numCombiDry.Maximum, m?.CombiDryMax ?? 0));
             lblEditTitle.Text = name == null ? "New truck category" : $"Edit {name}";
             btnRemove.Visible = name != null;
             if (name == null) { grid.ClearSelection(); txtName.Focus(); }

@@ -46,6 +46,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static bool? SoftDelete(string tableName, int id)
         {
             if (HardDeleteAllowed.Contains(tableName)) return null;
+            EnsureNumberSchema(); // may write: before the transaction below
             string user = SessionContext.ActiveUser?.Username ?? SessionContext.CurrentUsername;
             string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             using var conn = new SqliteConnection(connectionString);
@@ -110,6 +111,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         if (!string.IsNullOrEmpty(onSoa))
                             throw new InvalidOperationException($"Invoice {ident} is on statement {onSoa}. Take its trip off that statement (or cancel the statement) first.");
                         Exec("UPDATE Invoices SET Status = 'Cancelled' WHERE Id = @id");
+                        // Why it was cancelled (plan 17.6): a typing mistake keeps its number for 7 days for the corrected record (reinstate); anything else burns it.
+                        var cancelInfo = cancelContext ?? ("Void", "");
+                        Exec("UPDATE Invoices SET CancelKind = @ck, CancelReason = @cr, CancelledAt = @now, CancelledBy = @user, ReenterUntil = @ru, ReinstatedAt = NULL WHERE Id = @id",
+                            ("@ck", cancelInfo.Item1), ("@cr", cancelInfo.Item2),
+                            ("@ru", cancelInfo.Item1 == "TypingMistake" ? DateTime.Now.AddDays(PendingReenterDays).ToString("yyyy-MM-dd HH:mm:ss") : (object)DBNull.Value));
                         SyncTripReportForInvoice(conn, tx, id); // Nov 6: its trip report goes back to Completed (active list)
                         action = "CANCEL";
                         LastDeleteSummary = $"Invoice {ident} was cancelled. It stays in the billing history and no longer counts as outstanding.";

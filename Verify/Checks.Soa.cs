@@ -68,7 +68,7 @@ public static partial class Checks
     {
         Fresh(); RunBackfill();
         int st = Seed.SpecialTrip(); int inv = Seed.Invoice(0, 100m, specialTripId: st);
-        var soa = NewSoa(SoaTypes.Special, 100m); soa.Status = "Issued"; // what older screens still send
+        var soa = NewSoa(SoaTypes.Special, Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions.SoaTotals.From(100m, 0m).Due); soa.Status = "Issued"; // what older screens still send (the total is what the invoices work out to: 2% withholding on the freight)
         int id = MJdatabase.SaveStatementOfAccount(soa, new List<StatementOfAccountItem> { Line(0, st) });
         string t = Str("SELECT SoaType FROM StatementsOfAccount WHERE Id=@i", ("@i", id));
         long linked = Long("SELECT COALESCE(SoaId,0) FROM Invoices WHERE Id=@i", ("@i", inv));

@@ -39,6 +39,7 @@ Checks.RealDb = realDb;
 Application.EnableVisualStyles();
 Application.SetCompatibleTextRenderingDefault(false);
 Application.SetHighDpiMode(HighDpiMode.SystemAware);
+if (args.Length >= 1 && args[0] == "--shot") return Checks.Shot(args);
 int failed = Checks.RunAll(filter);
 Console.WriteLine(failed == 0 ? "ALL PASS" : $"{failed} FAILED");
 return failed;

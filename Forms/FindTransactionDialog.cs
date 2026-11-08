@@ -151,7 +151,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void ResetClues()
         {
             foreach (var cb in new[] { cbClient, cbType, cbTruck, cbCrew, cbStatus }) { cb.Text = ""; if (cb.Items.Count > 0) cb.SelectedIndex = 0; }
-            numCrates.Value = 0; numAmount.Value = 0; txtWords.Clear();
+            numCrates.SetSafe(0); numAmount.SetSafe(0); txtWords.Clear();
             dateChip.SetQuietly(DateRange.All); dateChip.FitWidth();
             Search();
         }

@@ -77,9 +77,11 @@ public static partial class Checks
             ? "" : $"records {recs.Count}, trips {string.Join("|", trips.Select(t => string.Join(",", t.Select(x => x.Number + "/" + x.TripReportNo))))}";
     }
 
+    // Far above any number a check types, so a gap warning never appears by chance.
+    private static int targetOfCounter;
     private static PayTarget TargetOf(int deliveryId)
     {
-        var inv = InvoiceWithNumber(deliveryId, "SI-" + (7000 + new Random().Next(1, 99999)), 1000m);
+        var inv = InvoiceWithNumber(deliveryId, "SI-" + (500000 + System.Threading.Interlocked.Increment(ref targetOfCounter)), 1000m);
         inv.IssueDate = DateTime.Today.AddDays(-10);
         MJdatabase.SaveInvoice(inv);
         return MJdatabase.GetPayTargets().First(t => t.Invoices.Any(i => i.Id == inv.Id));

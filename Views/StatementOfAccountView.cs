@@ -22,7 +22,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private FlowLayoutPanel pnlGridActionsFlow = null!;
         private TextBox txtGridSearch = null!;
         private ComboBox cbFilterClient = null!;
-        private ChoiceChip? paidChip;
+        private ChoiceChip? paidChip, cancelledChip;
         private Button btnToggleForm = null!;
         private Button btnCloseForm = null!;
         private Button btnPrintOfficial = null!;
@@ -235,6 +235,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 OpenEditStatement(soa);
             };
             pnlGridActionsFlow.Controls.Add(btnEditSoa);
+            // Cancel (void) a statement: the reason is required; its service invoices go back to "Ready for a statement".
+            var btnCancelSoa = new Button
+            {
+                Text = "⛔ Cancel statement",
+                Size = new Size(160, 32),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 1, 12, 0)
+            };
+            UIThemeHelper.SetButtonRole(btnCancelSoa, "danger");
+            btnCancelSoa.Click += (s, e) =>
+            {
+                var soa = gridSoa.CurrentRow?.DataBoundItem as StatementOfAccount ?? selectedSoa;
+                if (soa == null) { QuietBox.Show("Select a statement in the list first.", "Cancel statement", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+                CancelStatement(soa);
+            };
+            pnlGridActionsFlow.Controls.Add(btnCancelSoa);
             txtGridSearch = new TextBox { Width = Dpi(240), Margin = new Padding(Dpi(8), Dpi(3), Dpi(8), 0) };
             PageKit.StyleSearch(txtGridSearch, "🔍 Search statement #, client…");
             txtGridSearch.TextChanged += (s, e) => FilterGridData();
@@ -250,12 +268,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             paidChip.SelectionChanged += (s, e) => FilterGridData();
             new ToolTip().SetToolTip(paidChip, "Paid statements are kept in Finance History → Settled records. Searching always finds them.");
             pnlGridActionsFlow.Controls.Add(paidChip);
+            cancelledChip = new ChoiceChip("Cancelled", new[] { "Hidden", "Shown" }, "✓") { Margin = new Padding(Dpi(6), Dpi(4), 0, 0) };
+            cancelledChip.SelectionChanged += (s, e) => FilterGridData();
+            new ToolTip().SetToolTip(cancelledChip, "Cancelled statements stay in the audit log. Searching always finds them.");
+            pnlGridActionsFlow.Controls.Add(cancelledChip);
 
             pnlTopBar.Controls.Add(pnlGridActionsFlow);
+            // H3: the toolbar wraps onto a second row (search, client filter, Paid / Cancelled chips). An AutoSize panel measured it one row too
+            // short and cut the second row off, so the bar now takes exactly the height of its wrapped rows.
+            pnlTopBar.AutoSize = false;
+            void FitTopBar() { int hh = pnlGridActionsFlow.Height + pnlTopBar.Padding.Vertical; if (pnlTopBar.Height != hh) pnlTopBar.Height = hh; }
+            pnlGridActionsFlow.SizeChanged += (s, e) => FitTopBar();
+            pnlTopBar.Resize += (s, e) => FitTopBar();
             this.Controls.Add(pnlTopBar);
 
             // Page title like the other list pages (Trucks, Crew, Order History).
-            var soaHeader = PageKit.Header("Statements of Account", "Statements sent to clients for a period of deliveries. Print the official SOA, export the list, or open the invoice it is linked to.");
+            var soaHeader = PageKit.Header("Statements of Account", "A statement groups the service invoices of one client into one bill. Pick the invoices that are ready, make the statement, then collect one payment in Collections.");
             var soaHeaderHost = soaPageHeaderHost = new Panel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(Dpi(16), Dpi(8), Dpi(16), Dpi(4)), BackColor = Color.Transparent };
             soaHeader.MakeCompact();
             soaHeaderHost.Controls.Add(soaHeader);
@@ -367,10 +395,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Resize += (s, e) => CenterFormContent();
             BuildFormControls();
             InitSoaGuide();
+            if (Features.On(Features.PaymentsWorkbench)) ApplySoaWorkbench(); // Ledger Desk layout (Settings → Features can switch it off)
         }
         private void CenterFormContent()
         {
             if (pnlForm == null || pnlForm.Width <= 0) return;
+            if (soaWorkbench)
+            {
+                pnlFormHeaderBar.Padding = new Padding(Dpi(24), Dpi(8), Dpi(24), Dpi(8));
+                pnlFormBody.Padding = new Padding(0);
+                pnlFormActionsBar.Padding = new Padding(Dpi(24), Dpi(12), Dpi(24), Dpi(12));
+                return;
+            }
             int side = Math.Max(Dpi(24), (pnlForm.ClientSize.Width - Dpi(FormContentMaxWidth)) / 2);
             pnlFormHeaderBar.Padding = new Padding(side, Dpi(4), side, Dpi(6));
             if (soaStrip != null) soaStrip.Padding = new Padding(side, 0, side, 0);
@@ -494,7 +530,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlDates.Controls.Add(lblToWord, 1, 0);
             pnlDates.Controls.Add(dtpPeriodTo, 2, 0);
             var flowPeriodPresets = new FlowLayoutPanel { Height = Dpi(36), WrapContents = false, BackColor = AppTheme.Surface, Margin = new Padding(0) };
-            void SetPeriod(DateTime from, DateTime to) { dtpPeriodFrom.Value = from; dtpPeriodTo.Value = to; }
+            void SetPeriod(DateTime from, DateTime to) { dtpPeriodFrom.SetSafe(from); dtpPeriodTo.SetSafe(to); }
             var btnFirstHalf = MakeFormButton("1st – 15th", "secondary");
             btnFirstHalf.Click += (s, e) => { var r = dtpPeriodFrom.Value; SetPeriod(new DateTime(r.Year, r.Month, 1), new DateTime(r.Year, r.Month, 15)); };
             var btnSecondHalf = MakeFormButton("16th – end", "secondary");
@@ -598,7 +634,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             DataGridViewTextBoxColumn Col(string name, string header, int weight, DataGridViewCellStyle style, int min = 44) =>
                 new DataGridViewTextBoxColumn { Name = name, HeaderText = header, FillWeight = weight, MinimumWidth = Dpi(min), DefaultCellStyle = new DataGridViewCellStyle(style) };
             gridItems.Columns.Add(Col("colTripNo", "Trip", 38, roStyle, 38));
-            gridItems.Columns.Add(Col("colDate", "Date received", 90, editStyle, 80));
+            gridItems.Columns.Add(Col("colDate", "Date store received", 90, editStyle, 80));
             gridItems.Columns.Add(Col("colZone", "Zone", 52, editStyle));
             gridItems.Columns.Add(Col("colDr", "DR numbers", 130, editStyle, 96));
             gridItems.Columns.Add(Col("colDest", "Destination / store", 190, editStyle, 120));
@@ -631,11 +667,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             InputGuards.DigitsOnlyColumns(gridItems, "colCrates");
             // Nov 6 workflow: the statement shows only the billed line items (DR no., store, plate, tons, drops, freight tariff,
             // fuel surcharge) and the crew names. The other columns stay in the table (hidden) so the saved lines keep their data.
-            foreach (var hide in new[] { "colDate", "colZone", "colType", "colTripReport", "colCrates", "colStoreCode" }) gridItems.Columns[hide]!.Visible = false;
-            gridItems.Columns["colTripNo"]!.HeaderText = "No.";
-            gridItems.Columns["colAmount"]!.HeaderText = "Freight tariff";
+            // Nov 7: the table follows the statement sheet: Trip, Date store received, Zone, DR no., Destination, Type of delivery, Plate, Tons, Drops, Amount, Fuel surcharge, Driver / Aide.
+            foreach (var hide in new[] { "colTripReport", "colCrates", "colStoreCode", "colDrBtn" }) gridItems.Columns[hide]!.Visible = false;
+            gridItems.Columns["colTripNo"]!.HeaderText = "Trip";
+            gridItems.Columns["colDr"]!.HeaderText = "DR no.";
+            gridItems.Columns["colDest"]!.HeaderText = "Destination";
+            gridItems.Columns["colType"]!.HeaderText = "Type of delivery";
+            gridItems.Columns["colDrops"]!.HeaderText = "No. of drops";
+            gridItems.Columns["colAmount"]!.HeaderText = "Amount";
             gridItems.Columns["colFuel"]!.HeaderText = "Fuel surcharge";
-            gridItems.Columns["colDriver"]!.HeaderText = "Driver / helper (names)";
+            gridItems.Columns["colDriver"]!.HeaderText = "Driver / Aide";
+            // A line that bills a trip is read-only: the trip report and the service invoice give every figure (fix them there).
+            gridItems.CellBeginEdit += (s, e) =>
+            {
+                if (e.RowIndex < 0 || e.RowIndex >= gridItems.Rows.Count) return;
+                var row = gridItems.Rows[e.RowIndex];
+                if (row.IsNewRow) return;
+                bool linked = int.TryParse(row.Cells["colDeliveryId"].Value?.ToString(), out int did) && did > 0
+                              || int.TryParse(row.Cells["colSpecialTrip"].Value?.ToString(), out int sid) && sid > 0;
+                if (linked) e.Cancel = true;
+            };
             DrCellSupport.Attach((MultiValueGrid)gridItems, "colDr", "colDrBtn",
                 row => (row.Cells["colDest"].Value?.ToString() ?? "").Trim(),
                 row => { RejectDuplicateSoaDrs(row); SizeItemsGrid(); });
@@ -668,7 +719,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 TextAlign = ContentAlignment.MiddleLeft,
                 Font = new Font("Segoe UI Semibold", 10F),
                 ForeColor = AppTheme.TextSecondary,
-                Text = "No trips yet. Import completed trips above, or add rows by hand."
+                Text = "No invoices picked yet. Tick the ready service invoices in step 2."
             };
             // ---------------- Taxes
             NumericUpDown MakeNum()
@@ -680,8 +731,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     DecimalPlaces = 2,
                     ThousandsSeparator = true,
                     Font = new Font("Segoe UI Semibold", 10.5F),
-                    TextAlign = HorizontalAlignment.Right
+                    TextAlign = HorizontalAlignment.Right,
+                    InterceptArrowKeys = false,
+                    ReadOnly = true,          // calculated from the service invoices: to change an amount, correct the invoice in Billing
+                    TabStop = false,
+                    BackColor = AppTheme.Canvas
                 };
+                if (n.Controls.Count > 0) n.Controls[0].Visible = false; // no up/down buttons on a calculated figure
                 n.ValueChanged += (s, e) => { if (!isCalculatingTaxes) RecalculateTaxes(manualOverride: true); };
                 return n;
             }
@@ -697,13 +753,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numTotalAmountDue.BackColor = AppTheme.AccentSoft;
             numTotalAmountDue.ForeColor = AppTheme.AccentText;
             var taxFields = CreateFieldGrid(2,
-                ("Total sales (VAT inclusive)", numTotalSales), ("Less: VAT (12%)", numVat),
-                ("Amount net of VAT", numNetOfVat), ("Fuel surcharge (included in sales)", numFuelSurchargeTotal),
-                ("Less: withholding tax (2% EWT)", numWithholdingTax), null);
+                ("Total Sales (VAT Inclusive)", numTotalSales), ("Less: VAT (12%)", numVat),
+                ("Amount: Net of VAT", numNetOfVat), ("Fuel surcharge (added, no VAT)", numFuelSurchargeTotal),
+                ("Less: Withholding Tax (2% of net of VAT)", numWithholdingTax), null);
             taxFields.Dock = DockStyle.Fill;
             var totalBox = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.AccentSoft, Padding = new Padding(Dpi(18), Dpi(14), Dpi(18), Dpi(12)), Margin = new Padding(Dpi(20), 0, 0, Dpi(8)) };
             var lblDueCaption = new Label { Dock = DockStyle.Top, Height = Dpi(24), Text = "TOTAL AMOUNT DUE", Font = new Font("Segoe UI Semibold", 9.5F), ForeColor = AppTheme.AccentText };
-            var lblDueNote = new Label { Dock = DockStyle.Bottom, Height = Dpi(64), Text = "= Net of VAT + VAT − withholding tax.\nFigures are worked out from the table; change any of them to override.", Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.AccentText };
+            var lblDueNote = new Label { Dock = DockStyle.Bottom, Height = Dpi(64), Text = "= Net of VAT + fuel surcharge + VAT − withholding tax.\nVAT and the withholding tax are on the freight only. These come from the service invoices on this statement: to change an amount, correct the invoice in Billing.", Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.AccentText };
             numTotalAmountDue.Dock = DockStyle.Top;
             totalBox.Controls.Add(numTotalAmountDue);
             totalBox.Controls.Add(lblDueCaption);
@@ -725,7 +781,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var lblSiHint = new Label
             {
                 Height = Dpi(24),
-                Text = "Saving with an SI number creates or updates the matching billing invoice.",
+                Text = "Service invoices are made in Billing and listed here automatically.",
                 Font = new Font("Segoe UI", 8.75F),
                 ForeColor = AppTheme.TextMuted,
                 TextAlign = ContentAlignment.TopLeft
@@ -733,10 +789,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             // ---------------- Cards
             var card1 = CreateSectionCard(1, "Client & SOA type", "Who the statement is for, and whether it bills normal dispatches or special trips (never both).", gridClient, lblPopulateHint);
-            var cardPicker = CreateSectionCard(2, "Unpaid service invoices", "Tick the client's service invoices to put on this statement, or type a trip report or dispatch number.", BuildDispatchPicker());
+            var cardPicker = CreateSectionCard(2, "Ready service invoices", "Tick the client's service invoices to put on this statement, or type a trip report or dispatch number.", BuildDispatchPicker());
             var card2 = CreateSectionCard(3, "Trips & stores", "Every trip and store billed on this statement.", bar, lblItemsHint, pnlItemsGridHost, lblItemsTotals);
-            var card3 = CreateSectionCard(4, "Taxes & total", "VAT, withholding tax and the amount the client pays.", taxLayout, BuildSoaAdjustPanel());
-            var card4 = CreateSectionCard(5, "Sales invoice & sign-off", "The SI number and the people who prepare and receive the statement.", gridSign, lblSiHint);
+            var card3 = CreateSectionCard(4, "Totals", "VAT, withholding tax and the amount the client pays. They follow the service invoices and can't be typed.", taxLayout, BuildSoaAdjustPanel());
+            var card4 = CreateSectionCard(5, "Sign-off", "The service invoices on this statement and the people who prepare and receive it.", gridSign, lblSiHint);
+            soaCardClient = card1; soaCardPicker = cardPicker; soaCardLines = card2; soaCardTotals = card3; soaCardSign = card4;
             pnlFormBody.Controls.Add(card4);
             pnlFormBody.Controls.Add(CreateSectionSpacer());
             pnlFormBody.Controls.Add(card3);
@@ -755,7 +812,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnPrintDrawer = MakeFormButton("🖨  Print SOA", "secondary", Dpi(150));
             btnPrintDrawer.Height = Dpi(40);
             btnPrintDrawer.Click += (s, e) => PrintCurrentDraftSoa();
-            btnDeleteSoa = MakeFormButton("Delete statement", "danger", Dpi(160));
+            btnDeleteSoa = MakeFormButton("Cancel statement", "danger", Dpi(160));
             btnDeleteSoa.Height = Dpi(40);
             btnDeleteSoa.Click += BtnDeleteSoa_Click;
             btnClearForm = MakeFormButton("Clear form", "secondary", Dpi(130));
@@ -829,7 +886,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ClearForm();
             ApplyFormMode();
             SetFormVisibility(true);
-            rateCache.Clear();
             RefreshPicker();
             cbClient.Focus();
         }
@@ -838,7 +894,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string why = MJdatabase.WhySoaCannotBeEdited(soa);
             if (why.Length > 0)
             {
-                MessageBox.Show(this.FindForm(), why, "Edit statement", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // Nov 8: it still opens, read-only, with its history (the reason is shown at the top of the page).
+                var ci = MJdatabase.GetSoaCancelInfo(soa.Id);
+                if (ci.Any) why += $"\n\nCancelled{(ci.By.Length > 0 ? " by " + ci.By : "")}{(ci.At.HasValue ? " on " + ci.At.Value.ToString("MMM d, yyyy h:mm tt") : "")}." + (ci.Reason.Length > 0 ? $"\nReason: {ci.Reason}" : "");
+                selectedSoa = soa;
+                BindSoaToDrawer(soa);
+                isEditingExisting = true;
+                ApplyFormMode();
+                SetFormVisibility(true);
+                EnterSoaViewOnly(soa, why);
                 return;
             }
             selectedSoa = soa;
@@ -846,14 +910,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             isEditingExisting = true;
             ApplyFormMode();
             SetFormVisibility(true);
-            rateCache.Clear();
             RefreshPicker();
         }
         private void ApplyFormMode()
         {
             btnDeleteSoa.Visible = isEditingExisting;
             btnClearForm.Visible = !isEditingExisting;
-            btnSaveSoa.Text = isEditingExisting ? "💾  Save changes" : "💾  Save & create invoice";
+            btnSaveSoa.Text = isEditingExisting ? "💾  Save changes" : "💾  Save statement";
             lblFormHeader.Text = isEditingExisting && selectedSoa != null
                 ? $"Statement  ·  {selectedSoa.SoaNumber}" + (string.IsNullOrWhiteSpace(selectedSoa.SalesInvoiceNo) ? "" : $"  (SI {selectedSoa.SalesInvoiceNo})")
                 : $"New Statement of Account  ·  {txtSoaNumber.Text}";
@@ -869,7 +932,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DeliveryType", HeaderText = "Type", FillWeight = 50, MinimumWidth = 40, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter } });
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TotalSalesVatInc", HeaderText = "Gross Sales", FillWeight = 95, MinimumWidth = 80, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleRight, Format = "N2" } });
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TotalAmount", HeaderText = "Total Due (PHP)", FillWeight = 105, MinimumWidth = 85, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleRight, Format = "N2", Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold) } });
-            gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "SalesInvoiceNo", HeaderText = "SI no.", FillWeight = 80, MinimumWidth = 65, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter, Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold) } });
+            gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "SalesInvoiceNo", HeaderText = "Service invoices", FillWeight = 80, MinimumWidth = 65, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter, Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold) } });
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 75, MinimumWidth = 60, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter } });
         }
 
@@ -894,7 +957,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     RowMenu.Item("This client's invoices", () => FinanceHubView.Of(this)?.ShowInvoices(soa.ClientName))));
                 m.Items.Add(RowMenu.ExportSub(gridSoa, "Statements_Of_Account", "Statements of Account", () => PrintHelper.PrintGridReport("Statements of Account", gridSoa, "Issued statements of account.")));
                 m.Items.Add(RowMenu.Sep());
-                m.Items.Add(RowMenu.Danger("Delete statement…", () => { selectedSoa = soa; BtnDeleteSoa_Click(this, EventArgs.Empty); }));
+                m.Items.Add(RowMenu.Danger("Cancel statement…", () => { selectedSoa = soa; CancelStatement(soa); }));
             });
             gridSoa.KeyDown += (s, e) =>
             {
@@ -979,6 +1042,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void SetFormVisibility(bool visible)
         {
+            ExitSoaViewOnly(); // a read-only view never carries over to the next statement
             // Nov 6: a form is blank whenever it is opened or left.
             if (!visible && pnlForm.Visible && IsHandleCreated) ClearForm();
             if (visible) formDirty ??= new FormDirtyTracker(pnlForm);
@@ -1179,6 +1243,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (filterClient != "All clients" && !soa.ClientName.Equals(filterClient, StringComparison.OrdinalIgnoreCase)) return false;
                 if (string.IsNullOrEmpty(q) && (paidChip?.SelectedIndex ?? 0) == 0 && string.Equals(soa.Status, PayStatus.Paid, StringComparison.OrdinalIgnoreCase)) return false;
+                if (string.IsNullOrEmpty(q) && (cancelledChip?.SelectedIndex ?? 0) == 0 && (soa.Status ?? "").StartsWith("Cancelled", StringComparison.OrdinalIgnoreCase)) return false;
                 if (!string.IsNullOrEmpty(q))
                 {
                     bool match = (soa.SoaNumber?.ToLower().Contains(q) ?? false) ||
@@ -1212,12 +1277,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbClient.Text = soa.ClientName;
             txtClientAddress.Text = soa.ClientAddress;
             txtClientTin.Text = soa.ClientTin;
-            dtpIssueDate.Value = soa.IssueDate;
+            dtpIssueDate.SetSafe(soa.IssueDate);
             var period = (soa.PeriodCovered ?? "").Split(new[] { " to " }, StringSplitOptions.None);
             if (period.Length == 2 && DateTime.TryParse(period[0].Trim(), out var pFrom) && DateTime.TryParse(period[1].Trim(), out var pTo))
             {
-                dtpPeriodFrom.Value = pFrom;
-                dtpPeriodTo.Value = pTo;
+                dtpPeriodFrom.SetSafe(pFrom);
+                dtpPeriodTo.SetSafe(pTo);
             }
             cbDeliveryType.SelectedItem = string.IsNullOrEmpty(soa.DeliveryType) ? "REF" : soa.DeliveryType;
             cbSoaType.SelectedIndex = soa.SoaType == SoaTypes.Special ? 1 : 0;
@@ -1226,12 +1291,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtReceivedBy1.Text = soa.ReceivedBy1 ?? "";
             txtReceivedBy2.Text = soa.ReceivedBy2 ?? "";
 
-            numTotalSales.Value = Math.Min(numTotalSales.Maximum, Math.Max(numTotalSales.Minimum, soa.TotalSalesVatInc));
-            numVat.Value = Math.Min(numVat.Maximum, Math.Max(numVat.Minimum, soa.VatAmount));
-            numNetOfVat.Value = Math.Min(numNetOfVat.Maximum, Math.Max(numNetOfVat.Minimum, soa.NetOfVat));
-            numFuelSurchargeTotal.Value = Math.Min(numFuelSurchargeTotal.Maximum, Math.Max(numFuelSurchargeTotal.Minimum, soa.FuelSurchargeTotal));
-            numWithholdingTax.Value = Math.Min(numWithholdingTax.Maximum, Math.Max(numWithholdingTax.Minimum, soa.WithholdingTax));
-            numTotalAmountDue.Value = Math.Min(numTotalAmountDue.Maximum, Math.Max(numTotalAmountDue.Minimum, soa.TotalAmount));
+            numTotalSales.SetSafe(Math.Min(numTotalSales.Maximum, Math.Max(numTotalSales.Minimum, soa.TotalSalesVatInc)));
+            numVat.SetSafe(Math.Min(numVat.Maximum, Math.Max(numVat.Minimum, soa.VatAmount)));
+            numNetOfVat.SetSafe(Math.Min(numNetOfVat.Maximum, Math.Max(numNetOfVat.Minimum, soa.NetOfVat)));
+            numFuelSurchargeTotal.SetSafe(Math.Min(numFuelSurchargeTotal.Maximum, Math.Max(numFuelSurchargeTotal.Minimum, soa.FuelSurchargeTotal)));
+            numWithholdingTax.SetSafe(Math.Min(numWithholdingTax.Maximum, Math.Max(numWithholdingTax.Minimum, soa.WithholdingTax)));
+            numTotalAmountDue.SetSafe(Math.Min(numTotalAmountDue.Maximum, Math.Max(numTotalAmountDue.Minimum, soa.TotalAmount)));
 
             var items = MJdatabase.GetStatementOfAccountItems(soa.Id);
             gridItems.Rows.Clear();
@@ -1253,7 +1318,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             selectedSoa = null;
             txtSoaNumber.Text = MJdatabase.GenerateNextSoaNumber();
             cbClient.SelectedIndex = -1; cbClient.Text = ""; txtClientAddress.Text = ""; txtClientTin.Text = ""; // Nov 6: blank until a client is picked
-            dtpIssueDate.Value = DateTime.Today;
+            dtpIssueDate.SetSafe(DateTime.Today);
             cbDeliveryType.SelectedIndex = -1;
             cbSoaType.SelectedIndex = 0;
             gridItems.Rows.Clear();
@@ -1261,12 +1326,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtPreparedBy.Text = "";
             txtReceivedBy1.Text = "";
             txtReceivedBy2.Text = "";
-            numTotalSales.Value = 0;
-            numVat.Value = 0;
-            numNetOfVat.Value = 0;
-            numFuelSurchargeTotal.Value = 0;
-            numWithholdingTax.Value = 0;
-            numTotalAmountDue.Value = 0;
+            numTotalSales.SetSafe(0);
+            numVat.SetSafe(0);
+            numNetOfVat.SetSafe(0);
+            numFuelSurchargeTotal.SetSafe(0);
+            numWithholdingTax.SetSafe(0);
+            numTotalAmountDue.SetSafe(0);
             UpdateItemsSummary();
             if (pnlForm.Visible) ApplyFormMode();
         }
@@ -1321,7 +1386,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private static void SetNum(NumericUpDown n, decimal v)
         {
-            n.Value = Math.Min(n.Maximum, Math.Max(n.Minimum, Math.Round(v, 2)));
+            n.SetSafe(Math.Round(v, 2));
         }
 
         private void RecalculateTaxes(bool manualOverride)
@@ -1347,12 +1412,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         fuelSum += rFuel;
                     }
 
-                    decimal totalSales = amountSum + fuelSum;
-                    decimal vat = totalSales / 1.12m * 0.12m;
-                    decimal netOfVat = totalSales / 1.12m;
-                    decimal withholdingTax = netOfVat * 0.02m;
-                    // totalSales already includes fuel (VAT-inclusive), so fuel is not added a second time.
-                    decimal totalDue = netOfVat + vat - withholdingTax;
+                    // Nov 7: one formula (SoaTotals): VAT and the 2% withholding tax are on the freight only; the fuel surcharge is added outside both.
+                    // The statement follows its trips' service invoices; an old statement that made its own invoice keeps the old rule.
+                    decimal totalSales, vat, netOfVat, withholdingTax, totalDue;
+                    var invTotals = InvoiceTotalsOfLines();
+                    if (invTotals != null)
+                    {
+                        var t = SoaTotals.From(invTotals.Value.Freight, invTotals.Value.Fuel);
+                        totalSales = t.TotalSales; vat = t.Vat; netOfVat = t.NetOfVat; withholdingTax = t.Withholding; totalDue = t.Due; fuelSum = t.Fuel;
+                    }
+                    else if (IsLegacySoa())
+                    {
+                        totalSales = amountSum + fuelSum;
+                        vat = totalSales / 1.12m * 0.12m;
+                        netOfVat = totalSales / 1.12m;
+                        withholdingTax = netOfVat * 0.02m;
+                        totalDue = netOfVat + vat - withholdingTax; // old rule: fuel inside the sales
+                    }
+                    else
+                    {
+                        var t = SoaTotals.From(amountSum, fuelSum);
+                        totalSales = t.TotalSales; vat = t.Vat; netOfVat = t.NetOfVat; withholdingTax = t.Withholding; totalDue = t.Due; fuelSum = t.Fuel;
+                    }
                     SetNum(numTotalSales, totalSales);
                     SetNum(numVat, vat);
                     SetNum(numNetOfVat, netOfVat);
@@ -1367,7 +1448,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     decimal netOfVat = numNetOfVat.Value;
                     decimal fuel = numFuelSurchargeTotal.Value;
                     decimal wtax = numWithholdingTax.Value;
-                    decimal totalDue = netOfVat + vat - wtax;
+                    decimal totalDue = netOfVat + fuel + vat - wtax;
                     SetNum(numTotalAmountDue, totalDue);
                 }
             }
@@ -1646,25 +1727,44 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (selectedSoa == null || (pnlForm.Visible && !isEditingExisting))
             {
-                MessageBox.Show("Please select a Statement of Account to delete.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Please select a Statement of Account to cancel.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
+            CancelStatement(selectedSoa);
+        }
 
-            var confirm = MessageBox.Show($"Are you sure you want to remove Statement of Account #{selectedSoa.SoaNumber}?\n\n" + MJdatabase.DeletePolicyNote("StatementsOfAccount"), "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
-            if (confirm == DialogResult.Yes)
+        /// <summary>
+        /// Cancels a statement: asks why, says what happens (its service invoices return to "Ready for a statement"), and keeps the reason.
+        /// A paid statement can't be cancelled until its collection receipt is voided (offers to open Collections).
+        /// </summary>
+        private void CancelStatement(StatementOfAccount soa)
+        {
+            string why = MJdatabase.WhySoaCannotBeCancelled(soa);
+            if (why.Length > 0)
             {
-                try
+                if (MJdatabase.LiveReceiptCountForSoa(soa.Id) > 0)
                 {
-                    MJdatabase.DeleteStatementOfAccount(selectedSoa.Id);
-                    ToastHelper.ShowToast(this, MJdatabase.LastDeleteSummary, ToastType.Info);
-                    ClearForm();
-                    LoadData();
-                    SetFormVisibility(false);
+                    var go = MessageBox.Show(FindForm(), why + "\n\nOpen Collections & Receipts now?", "Cancel statement", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+                    if (go == DialogResult.Yes) FinanceHubView.Of(this)?.ShowCollections(soa.SoaNumber);
                 }
-                catch (Exception ex)
-                { ErrLog.Error("StatementOfAccountView", ex); 
-                    MessageBox.Show($"Delete failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                else QuietBox.Show(why, "Cancel statement", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            int invoices = 0;
+            try { invoices = MJdatabase.GetTripInvoices().Count(i => i.SoaId == soa.Id && i.Kind.Length > 0); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            if (!Forms.CancelStatementDialog.Prompt(FindForm(), soa.SoaNumber, soa.ClientName, invoices, soa.TotalAmount, out string reason)) return;
+            try
+            {
+                MJdatabase.CancelStatementOfAccount(soa.Id, reason);
+                ToastHelper.ShowToast(this, MJdatabase.LastDeleteSummary, ToastType.Info);
+                ClearForm();
+                LoadData();
+                SetFormVisibility(false);
+            }
+            catch (Exception ex)
+            {
+                ErrLog.Error("StatementOfAccountView", ex);
+                MessageBox.Show($"The statement could not be cancelled: {ex.Message}", "Cancel statement", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

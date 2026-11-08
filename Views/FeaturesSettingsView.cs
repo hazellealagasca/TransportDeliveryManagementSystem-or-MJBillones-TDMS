@@ -25,6 +25,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static readonly Option[] TableConfig =
         {
             new(Features.StoreTableEditHeader, "Show Column Edit Header in Edit Store Table", "The “✎ Edit” / “Customize table” controls that change a store table's columns, on New Dispatch Order and every other store table (Special Trip, Statement of Account lines, client stores), with the ✎ marks in the headers. When off, they are hidden on all of them and the column headers stay as they are; no saved data changes."),
+            new(Features.PaymentsWorkbench, "Two-pane Payments editors (Ledger Desk)", "The new layout of the Payments editors: one slim header with the live figures, the fields on the left and the running totals and problems on the right, no page scrolling. Only the layout changes: every rule, calculation and printout is the same. Off = the previous single-column layout. Takes effect the next time the screen is opened (restart the app to be sure)."),
             new(Features.AllInOneSummary, "Show All-in-One Summary", "The “▼ Show All-in-One Summary Overview” bar at the end of the Dispatch, Special Trip, Incident, Trip Reports, Order History, Statement of Account, Billing, Collections and Payments tables, with big colour-coded totals for what is shown and the order you click. Off by default: when off, the bar is not shown at all."),
         };
         private static readonly Option[] Popups =

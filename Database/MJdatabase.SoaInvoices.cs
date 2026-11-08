@@ -46,7 +46,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static void LinkTripInvoicesToSoa(SqliteConnection conn, SqliteTransaction tx, StatementOfAccount soa, int soaId, List<StatementOfAccountItem> items)
         {
             var problems = new List<string>();
-            var found = new List<(int Id, string Number, decimal Net)>();
+            var found = new List<(int Id, string Number, decimal Net, decimal Freight, decimal Fuel)>();
             int unlinked = (items ?? new()).Count(i => i.DeliveryId <= 0 && i.SpecialTripId <= 0);
             if (unlinked > 0) problems.Add($"{unlinked} line(s) are not linked to a trip, so they have no service invoice. Add trips from the list instead of typing lines.");
             var trips = (items ?? new()).Where(i => i.DeliveryId > 0 || i.SpecialTripId > 0)
@@ -60,7 +60,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 c.Transaction = tx;
                 c.CommandText = @"SELECT i.Id, i.InvoiceNumber, i.NetAmount, COALESCE(i.Status,''), COALESCE(i.ClientName,''),
                                          CASE WHEN s.Id IS NULL OR COALESCE(s.Status,'') = 'Cancelled' COLLATE NOCASE THEN 0 ELSE s.Id END, COALESCE(s.SoaNumber,''),
-                                         (SELECT COALESCE(SUM(r.AmountPaid),0) FROM CollectionReceipts r WHERE r.InvoiceId = i.Id AND COALESCE(r.IsVoid,0) = 0)
+                                         (SELECT COALESCE(SUM(r.AmountPaid),0) FROM CollectionReceipts r WHERE r.InvoiceId = i.Id AND COALESCE(r.IsVoid,0) = 0),
+                                         COALESCE(i.TotalAmount,0), COALESCE(i.FuelSurcharge,0)
                                   FROM Invoices i LEFT JOIN StatementsOfAccount s ON s.Id = COALESCE(i.SoaId,0)
                                   WHERE " + (did > 0 ? "COALESCE(i.DeliveryId,0) = @k" : "COALESCE(i.SpecialTripId,0) = @k") + @"
                                     AND COALESCE(i.Status,'') <> 'Cancelled' COLLATE NOCASE
@@ -75,30 +76,33 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int onSoa = Convert.ToInt32(r.GetValue(5));
                 string onSoaNo = r.GetString(6);
                 decimal paid = Centavos(Convert.ToDecimal(r.GetValue(7)));
+                decimal invTotal = Centavos(Convert.ToDecimal(r.GetValue(8))), invFuel = Centavos(Convert.ToDecimal(r.GetValue(9)));
                 if (onSoa > 0 && onSoa != soaId) problems.Add($"{label}: SI {no} is already on {onSoaNo}.");
                 else if (paid > 0 || st.Equals("Paid", StringComparison.OrdinalIgnoreCase)) problems.Add($"{label}: SI {no} already has a collection receipt, so it can't go on a statement.");
                 else if (st.Equals("Draft", StringComparison.OrdinalIgnoreCase) || net <= 0) problems.Add($"{label}: SI {no} has no amount yet. Finish it in Billing.");
                 else if (!string.Equals(client.Trim(), (soa.ClientName ?? "").Trim(), StringComparison.OrdinalIgnoreCase)) problems.Add($"{label}: SI {no} is for {client}, not {soa.ClientName}.");
-                else found.Add((id, no, net));
+                else found.Add((id, no, net, invTotal - invFuel, invFuel));
             }
             if (found.Count == 0 && problems.Count == 0) problems.Add("Add at least one trip that has a service invoice.");
             if (problems.Count > 0) throw new InvalidOperationException("This statement can't be saved yet:\n\n• " + string.Join("\n• ", problems));
 
-            decimal total = found.Sum(f => f.Net);
-            if (Math.Abs(total - soa.TotalAmount) > 0.05m)
-                throw new InvalidOperationException($"The statement's total (PHP {soa.TotalAmount:N2}) must be the total of its service invoices (PHP {total:N2}). Nothing was saved.");
+            // Nov 7: the statement's totals are worked out from its invoices' freight and fuel surcharge (VAT and the 2% withholding on the freight only).
+            var totals = SoaTotals.From(found.Sum(f => f.Freight), found.Sum(f => f.Fuel));
+            if (Math.Abs(totals.Due - soa.TotalAmount) > 0.05m)
+                throw new InvalidOperationException($"The statement's total (PHP {soa.TotalAmount:N2}) must be what its service invoices work out to (PHP {totals.Due:N2}: freight PHP {totals.TotalSales:N2}, fuel surcharge PHP {totals.Fuel:N2}, less withholding tax PHP {totals.Withholding:N2}). Nothing was saved.");
 
             // Invoices of trips taken off the statement go back to being lone invoices (only while nothing is paid on them).
             var keep = new HashSet<int>(found.Select(f => f.Id));
-            var drop = new List<(int Id, string No, decimal Paid)>();
+            var drop = new List<(int Id, string No, decimal Paid, decimal Freight)>();
             using (var c = conn.CreateCommand())
             {
                 c.Transaction = tx;
-                c.CommandText = @"SELECT Id, InvoiceNumber, (SELECT COALESCE(SUM(AmountPaid),0) FROM CollectionReceipts r WHERE r.InvoiceId = Invoices.Id AND COALESCE(r.IsVoid,0) = 0)
+                c.CommandText = @"SELECT Id, InvoiceNumber, (SELECT COALESCE(SUM(AmountPaid),0) FROM CollectionReceipts r WHERE r.InvoiceId = Invoices.Id AND COALESCE(r.IsVoid,0) = 0),
+                                         COALESCE(TotalAmount,0), COALESCE(FuelSurcharge,0)
                                   FROM Invoices WHERE COALESCE(SoaId,0) = @sid AND COALESCE(Status,'') <> 'Cancelled' COLLATE NOCASE";
                 c.Parameters.AddWithValue("@sid", soaId);
                 using var r = c.ExecuteReader();
-                while (r.Read()) if (!keep.Contains(r.GetInt32(0))) drop.Add((r.GetInt32(0), r.IsDBNull(1) ? "" : r.GetString(1), Centavos(Convert.ToDecimal(r.GetValue(2)))));
+                while (r.Read()) if (!keep.Contains(r.GetInt32(0))) drop.Add((r.GetInt32(0), r.IsDBNull(1) ? "" : r.GetString(1), Centavos(Convert.ToDecimal(r.GetValue(2))), Centavos(Convert.ToDecimal(r.GetValue(3))) - Centavos(Convert.ToDecimal(r.GetValue(4)))));
             }
             var paidDrop = drop.Where(d => d.Paid > 0).ToList();
             if (paidDrop.Count > 0) throw new InvalidOperationException($"SI {string.Join(", ", paidDrop.Select(d => d.No))} on this statement already has a collection receipt, so its trip can't be taken off.");
@@ -106,25 +110,35 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 using var u = conn.CreateCommand();
                 u.Transaction = tx;
-                u.CommandText = "UPDATE Invoices SET SoaId = 0 WHERE Id = @id";
+                // Back to a lone invoice: no withholding share (the computation belongs to the statement only).
+                u.CommandText = "UPDATE Invoices SET SoaId = 0, Deductions = 0, NetAmount = TotalAmount WHERE Id = @id";
                 u.Parameters.AddWithValue("@id", d.Id);
                 u.ExecuteNonQuery();
             }
-            foreach (var f in found)
+            // The statement's withholding is worked out once on its total (as on the statement sheet) and shared out over its invoices,
+            // so each invoice's net due is what is collected for it and the shares add up to the statement's total due exactly.
+            var shares = SoaTotals.Share(totals.Withholding, found.Select(f => f.Freight).ToArray());
+            for (int k = 0; k < found.Count; k++)
             {
+                var f = found[k];
                 using var u = conn.CreateCommand();
                 u.Transaction = tx;
-                u.CommandText = "UPDATE Invoices SET SoaId = @sid WHERE Id = @id";
+                u.CommandText = "UPDATE Invoices SET SoaId = @sid, Deductions = @w, NetAmount = TotalAmount - @w WHERE Id = @id";
                 u.Parameters.AddWithValue("@sid", soaId);
+                u.Parameters.AddWithValue("@w", shares[k]);
                 u.Parameters.AddWithValue("@id", f.Id);
                 u.ExecuteNonQuery();
             }
             soa.SalesInvoiceNo = string.Join(", ", found.Select(f => f.Number));
+            // The saved figures of the statement are the formula's.
+            soa.TotalSalesVatInc = totals.TotalSales; soa.VatAmount = totals.Vat; soa.NetOfVat = totals.NetOfVat; soa.FuelSurchargeTotal = totals.Fuel; soa.WithholdingTax = totals.Withholding; soa.TotalAmount = totals.Due;
             using (var u = conn.CreateCommand())
             {
                 u.Transaction = tx;
-                u.CommandText = "UPDATE StatementsOfAccount SET SalesInvoiceNo = @si WHERE Id = @sid";
+                u.CommandText = "UPDATE StatementsOfAccount SET SalesInvoiceNo = @si, TotalSalesVatInc = @ts, VatAmount = @va, NetOfVat = @nv, FuelSurchargeTotal = @fs, WithholdingTax = @wt, TotalAmount = @ta WHERE Id = @sid";
                 u.Parameters.AddWithValue("@si", soa.SalesInvoiceNo);
+                u.Parameters.AddWithValue("@ts", totals.TotalSales); u.Parameters.AddWithValue("@va", totals.Vat); u.Parameters.AddWithValue("@nv", totals.NetOfVat);
+                u.Parameters.AddWithValue("@fs", totals.Fuel); u.Parameters.AddWithValue("@wt", totals.Withholding); u.Parameters.AddWithValue("@ta", totals.Due);
                 u.Parameters.AddWithValue("@sid", soaId);
                 u.ExecuteNonQuery();
             }

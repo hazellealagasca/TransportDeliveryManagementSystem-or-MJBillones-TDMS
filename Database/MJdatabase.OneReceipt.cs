@@ -18,6 +18,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string SoaNumber = "";
         public string Client = "";
         public decimal Gross, Deductions, Net, Collected;
+        /// <summary>The fuel surcharge part of <see cref="Gross"/>.</summary>
+        public decimal Fuel;
+        /// <summary>The freight tariff part of the invoice (what the statement shows under Amount).</summary>
+        public decimal Freight => Math.Max(0m, Gross - Fuel);
         public string Status = "";
         public DateTime IssueDate, DueDate;
         /// <summary>Issued with an amount and nothing paid yet: can go on a statement or be collected.</summary>
@@ -36,6 +40,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public List<TripInvoice> Invoices = new();
         public decimal Gross => Invoices.Sum(i => i.Gross);
         public decimal Deductions => Invoices.Sum(i => i.Deductions);
+        public decimal Fuel => Invoices.Sum(i => i.Fuel);
         public decimal Net => Invoices.Sum(i => i.Net);
         public bool IsSoa => SoaId > 0;
         public string Title => IsSoa ? $"{SoaNumber} ({Invoices.Count} invoice{(Invoices.Count == 1 ? "" : "s")}: {string.Join(", ", Invoices.Select(i => i.Number))})" : $"SI {Invoices[0].Number}";
@@ -62,7 +67,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                      CASE WHEN s.Id IS NULL OR COALESCE(s.Status,'') = 'Cancelled' COLLATE NOCASE THEN 0 ELSE s.Id END,
                                      COALESCE(s.SoaNumber,''), COALESCE(i.ClientName,''), i.TotalAmount, i.Deductions, i.NetAmount, COALESCE(i.Status,''),
                                      i.IssueDate, i.DueDate,
-                                     (SELECT COALESCE(SUM(r.AmountPaid),0) FROM CollectionReceipts r WHERE r.InvoiceId = i.Id AND COALESCE(r.IsVoid,0) = 0)
+                                     (SELECT COALESCE(SUM(r.AmountPaid),0) FROM CollectionReceipts r WHERE r.InvoiceId = i.Id AND COALESCE(r.IsVoid,0) = 0),
+                                     COALESCE(i.FuelSurcharge,0)
                               FROM Invoices i LEFT JOIN StatementsOfAccount s ON s.Id = COALESCE(i.SoaId,0)
                               WHERE COALESCE(i.Status,'') <> 'Cancelled' COLLATE NOCASE";
             using var r = c.ExecuteReader();
@@ -83,7 +89,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     Status = r.GetString(10),
                     IssueDate = DateTime.TryParse(r.IsDBNull(11) ? "" : r.GetString(11), out var d1) ? d1 : DateTime.Today,
                     DueDate = DateTime.TryParse(r.IsDBNull(12) ? "" : r.GetString(12), out var d2) ? d2 : DateTime.Today,
-                    Collected = Centavos(Convert.ToDecimal(r.GetValue(13)))
+                    Collected = Centavos(Convert.ToDecimal(r.GetValue(13))),
+                    Fuel = Centavos(Convert.ToDecimal(r.GetValue(14)))
                 };
                 if (t.SoaId == 0) t.SoaNumber = "";
                 list.Add(t);
@@ -129,11 +136,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// Records ONE collection receipt for the full amount of the statement (every open invoice on it) or of the lone invoice.
         /// Each invoice turns Paid. Returns the rows written.
         /// </summary>
-        public static List<CollectionReceipt> SaveOneReceipt(string receiptNumber, PayTarget target, string method, string reference, string notes, DateTime? paymentDate = null)
+        public static List<CollectionReceipt> SaveOneReceipt(string receiptNumber, PayTarget target, string method, string reference, string notes, DateTime? paymentDate = null, bool crossTypeConfirmed = false)
         {
             string no = (receiptNumber ?? "").Trim();
-            var why = CheckReceiptNumber(no);
-            if (why != null) throw new InvalidOperationException(why);
+            EnsureNumberSchema(); // before the write transaction: it may write
             if (target == null || target.Invoices.Count == 0) throw new InvalidOperationException("Pick the statement or the invoice being paid.");
             // The day the money was received: today or earlier (a check collected on Friday is entered on Friday's date), never before the invoice.
             DateTime payDate = (paymentDate ?? DateTime.Today).Date;
@@ -143,12 +149,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (target.Invoices.Count > 1) EnsureReceiptSchemaForSoa();
             EnsureWorkflowColumns();
             var rows = new List<CollectionReceipt>();
+            NumberCheck? numberCheck = null;
             using (var conn = new SqliteConnection(connectionString))
             {
                 conn.Open();
-                using var tx = conn.BeginTransaction();
+                using var tx = conn.BeginTransaction(deferred: false); // the write lock is taken FIRST, so two PCs cannot both take the same receipt number
                 try
                 {
+                    var numberResult = LoadNumberIndex().Check(NumberKind.CR, no);
+                    if (numberResult.Blocked) throw new InvalidOperationException(numberResult.Why());
+                    if (numberResult.TickNeeded && !crossTypeConfirmed)
+                        throw new NumberNeedsConfirmationException(numberResult.TickMessage() + " Confirm it on the form, then save again.");
+                    numberCheck = numberResult;
                     if (target.IsSoa)
                     {
                         // Nov 6 workflow: a statement is collected once, in full. A paid or cancelled one can't get another receipt.
@@ -195,9 +207,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         using (var ins = conn.CreateCommand())
                         {
                             ins.Transaction = tx;
-                            ins.CommandText = @"INSERT INTO CollectionReceipts (ReceiptNumber, InvoiceId, InvoiceNumber, PaymentDate, AmountPaid, PaymentMethod, ReferenceNumber, Notes, SoaId, Status)
-                                                VALUES (@rn, @iid, @in, @pd, @ap, @pm, @rf, @n, @sid, 'Completed'); SELECT last_insert_rowid();";
+                            ins.CommandText = @"INSERT INTO CollectionReceipts (ReceiptNumber, NumberKey, InvoiceId, InvoiceNumber, PaymentDate, AmountPaid, PaymentMethod, ReferenceNumber, Notes, SoaId, Status)
+                                                VALUES (@rn, @nk, @iid, @in, @pd, @ap, @pm, @rf, @n, @sid, 'Completed'); SELECT last_insert_rowid();";
                             ins.Parameters.AddWithValue("@rn", cr.ReceiptNumber);
+                            ins.Parameters.AddWithValue("@nk", NumberKey.Of(NumberKind.CR, cr.ReceiptNumber));
                             ins.Parameters.AddWithValue("@iid", cr.InvoiceId);
                             ins.Parameters.AddWithValue("@in", cr.InvoiceNumber);
                             ins.Parameters.AddWithValue("@pd", cr.PaymentDate.ToString("yyyy-MM-dd"));
@@ -220,6 +233,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     throw;
                 }
             }
+            if (numberCheck != null) RecordNumberAcks(numberCheck, no);
             try
             {
                 string what = target.IsSoa ? $"statement {target.SoaNumber} ({string.Join(", ", target.Invoices.Select(i => "SI " + i.Number))})" : $"SI {target.Invoices[0].Number}";
@@ -231,23 +245,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>Changes the receipt number, method, reference and notes of every row of one receipt (the amounts never change).</summary>
-        public static void UpdateReceiptDetails(string oldNumber, string newNumber, string method, string reference, string notes, DateTime? paymentDate = null)
+        public static void UpdateReceiptDetails(string oldNumber, string newNumber, string method, string reference, string notes, DateTime? paymentDate = null, bool crossTypeConfirmed = false)
         {
+            EnsureNumberSchema(); // before the write transaction: it may write
             string oldNo = (oldNumber ?? "").Trim(), newNo = (newNumber ?? "").Trim();
-            if (!string.Equals(oldNo, newNo, StringComparison.OrdinalIgnoreCase))
-            {
-                var why = CheckReceiptNumber(newNo, oldNo);
-                if (why != null) throw new InvalidOperationException(why);
-            }
+            bool renamed = !string.Equals(oldNo, newNo, StringComparison.OrdinalIgnoreCase);
             if (string.IsNullOrWhiteSpace(method)) throw new InvalidOperationException("Choose the payment method.");
             int n;
+            NumberCheck? numberCheck = null;
             using (var conn = new SqliteConnection(connectionString))
             {
                 conn.Open();
+                using var tx = conn.BeginTransaction(deferred: false); // write lock first: the number check and the update cannot be interleaved with another PC
+                if (renamed)
+                {
+                    var chk = LoadNumberIndex().Check(NumberKind.CR, newNo, 0, oldNo);
+                    if (chk.Blocked) throw new InvalidOperationException(chk.Why());
+                    if (chk.TickNeeded && !crossTypeConfirmed)
+                        throw new NumberNeedsConfirmationException(chk.TickMessage() + " Confirm it on the form, then save again.");
+                    numberCheck = chk;
+                }
                 if (paymentDate.HasValue)
                 {
                     // Not in the future, and not before the invoice(s) this receipt paid.
                     using var q = conn.CreateCommand();
+                    q.Transaction = tx;
                     q.CommandText = "SELECT MAX(i.IssueDate) FROM CollectionReceipts r JOIN Invoices i ON i.Id = r.InvoiceId WHERE TRIM(r.ReceiptNumber) = @on COLLATE NOCASE AND COALESCE(r.IsVoid,0) = 0";
                     q.Parameters.AddWithValue("@on", oldNo);
                     DateTime issued = DateTime.TryParse(Convert.ToString(q.ExecuteScalar()), out var iss) ? iss : DateTime.MinValue;
@@ -255,17 +277,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (dateWhy != null) throw new InvalidOperationException(dateWhy);
                 }
                 using var c = conn.CreateCommand();
-                c.CommandText = "UPDATE CollectionReceipts SET ReceiptNumber=@nn, PaymentMethod=@pm, ReferenceNumber=@rf, Notes=@n" + (paymentDate.HasValue ? ", PaymentDate=@pd" : "") + " WHERE TRIM(ReceiptNumber) = @on COLLATE NOCASE AND COALESCE(IsVoid,0) = 0";
+                c.Transaction = tx;
+                c.CommandText = "UPDATE CollectionReceipts SET ReceiptNumber=@nn, NumberKey=@nk, PaymentMethod=@pm, ReferenceNumber=@rf, Notes=@n" + (paymentDate.HasValue ? ", PaymentDate=@pd" : "") + " WHERE TRIM(ReceiptNumber) = @on COLLATE NOCASE AND COALESCE(IsVoid,0) = 0";
                 if (paymentDate.HasValue) c.Parameters.AddWithValue("@pd", paymentDate.Value.Date.ToString("yyyy-MM-dd"));
                 c.Parameters.AddWithValue("@nn", newNo);
+                c.Parameters.AddWithValue("@nk", NumberKey.Of(NumberKind.CR, newNo));
                 c.Parameters.AddWithValue("@pm", method.Trim());
                 c.Parameters.AddWithValue("@rf", (reference ?? "").Trim());
                 c.Parameters.AddWithValue("@n", (notes ?? "").Trim());
                 c.Parameters.AddWithValue("@on", oldNo);
                 n = c.ExecuteNonQuery();
+                if (n == 0) throw new InvalidOperationException($"Receipt {oldNo} was not found (it may have been voided).");
+                tx.Commit();
             }
-            if (n == 0) throw new InvalidOperationException($"Receipt {oldNo} was not found (it may have been voided).");
-            try { LogAuditTrail("UPDATE", "CollectionReceipts", 0, newNo, "ReceiptNumber", oldNo, newNo, $"Receipt {oldNo} details updated ({n} row(s)): {method}, ref {reference}"); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            if (numberCheck != null) RecordNumberAcks(numberCheck, newNo);
+            try { LogAuditTrail("UPDATE", "CollectionReceipts", 0, newNo, "ReceiptNumber", oldNo, newNo, $"Receipt {oldNo} details updated ({n} row(s)): {method}, ref {reference}" + (renamed ? $"; the receipt number changed and {oldNo} is released" : "")); } catch (Exception ex) { ErrLog.Swallowed(ex); }
         }
 
         // ------------------------------------------------------------------ Schema: a receipt number shared by the rows of one statement

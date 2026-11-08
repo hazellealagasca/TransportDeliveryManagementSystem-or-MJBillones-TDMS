@@ -13,11 +13,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     /// Slim strip at the top of a Payments form with the live totals: Gross · Deductions / advances · Net due ·
     /// Payment (Unpaid / Paid in full: payments are always in full) · Validation status. Updates as the form is filled in.
     /// </summary>
-    public sealed class PaymentSummaryStrip : Control
+    public sealed class PaymentSummaryStrip : Control, IZoomAware
     {
         private decimal gross, deductions, paid;
         private int problems, warnings;
         private string status = "";
+        /// <summary>Workbench header mode: no outer frame, sits inside the one 56 px header.</summary>
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden), System.ComponentModel.Browsable(false)] public bool Compact { get; set; }
+        /// <summary>The "Payment: Unpaid" cell means nothing on a record that is not saved yet; the workbench hides it.</summary>
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden), System.ComponentModel.Browsable(false)] public bool ShowPayment { get; set; } = true;
+        /// <summary>Caption of the third figure ("Net due"; "Amount due" on a receipt).</summary>
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden), System.ComponentModel.Browsable(false)] public string NetCaption { get; set; } = "Net due";
+        /// <summary>Caption of the first figure ("Gross"; "Amount" on a service invoice).</summary>
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden), System.ComponentModel.Browsable(false)] public string FirstCaption { get; set; } = "Gross";
+        /// <summary>Caption of the second figure (default "Deductions"; "Fuel surcharge" on a service invoice).</summary>
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden), System.ComponentModel.Browsable(false)] public string? SecondCaption { get; set; }
+        /// <summary>True when the second figure is added to the first (a service invoice: amount + fuel) instead of taken off it.</summary>
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden), System.ComponentModel.Browsable(false)] public bool SecondIsAddition { get; set; }
+        /// <summary>False on a service invoice: it shows only the figures typed on it, no total (the first computation is on the statement of account).</summary>
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden), System.ComponentModel.Browsable(false)] public bool ShowNet { get; set; } = true;
         public PaymentSummaryStrip()
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
@@ -25,8 +39,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Dock = DockStyle.Top;
             Height = D(46);
         }
-        private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
-        protected override void OnDpiChangedAfterParent(EventArgs e) { base.OnDpiChangedAfterParent(e); Height = D(46); }
+        private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f * UiZoom.Factor);
+        public void ZoomChanged() { Height = D(Compact ? 40 : 46); if (Compact && Dock == DockStyle.Right) Width = D(620); Invalidate(); }
+        protected override void OnDpiChangedAfterParent(EventArgs e) { base.OnDpiChangedAfterParent(e); Height = D(Compact ? 40 : 46); }
         protected override void OnPaddingChanged(EventArgs e) { base.OnPaddingChanged(e); Invalidate(); }
         public void SetTotals(decimal gross, decimal deductions, decimal paid, decimal balance, int problems, int warnings = 0, string? status = null)
         {
@@ -39,27 +54,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var g = e.Graphics;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             g.Clear(AppTheme.Canvas);
-            var r = new Rectangle(Padding.Left, D(4), Math.Max(D(100), Width - Padding.Horizontal) - 1, Height - D(9));
-            using (var b = new SolidBrush(AppTheme.Surface)) g.FillRectangle(b, r);
-            using (var p = new Pen(AppTheme.Border)) g.DrawRectangle(p, r);
+            var r = Compact ? new Rectangle(0, 0, Math.Max(D(100), Width) - 1, Height - 1)
+                            : new Rectangle(Padding.Left, D(4), Math.Max(D(100), Width - Padding.Horizontal) - 1, Height - D(9));
+            if (!Compact)
+            {
+                using (var b = new SolidBrush(AppTheme.Surface)) g.FillRectangle(b, r);
+                using (var p = new Pen(AppTheme.Border)) g.DrawRectangle(p, r);
+            }
             string Money(decimal v) => "₱" + v.ToString("N2");
+            decimal net = SecondIsAddition ? gross + deductions : gross - deductions;
             var parts = new (string Cap, string Val, Color Ink)[]
             {
-                ("Gross", Money(gross), AppTheme.TextPrimary),
-                ("Deductions / advances", Money(deductions), AppTheme.TextPrimary),
-                ("Net due", Money(Math.Max(0m, gross - deductions)), AppTheme.TextPrimary),
-                ("Payment", gross - deductions > 0 && paid >= gross - deductions ? "Paid in full" : "Unpaid", gross - deductions > 0 && paid >= gross - deductions ? AppTheme.SuccessText : AppTheme.WarningText),
+                (FirstCaption, Money(gross), AppTheme.TextPrimary),
+                (SecondCaption ?? (Compact ? "Deductions" : "Deductions / advances"), Money(deductions), AppTheme.TextPrimary),
+                (NetCaption, Money(Math.Max(0m, net)), AppTheme.TextPrimary),
+                ("Payment", net > 0 && paid >= net ? "Paid in full" : "Unpaid", net > 0 && paid >= net ? AppTheme.SuccessText : AppTheme.WarningText),
             };
             string vs = status.Length > 0 ? status : problems > 0 ? $"✗ {problems} to fix" : warnings > 0 ? $"⚠ {warnings} to review" : "✓ Ready to save";
             Color vc = problems > 0 ? AppTheme.DangerText : warnings > 0 ? AppTheme.WarningText : AppTheme.SuccessText;
+            if (!ShowNet) parts = parts.Where((_, k) => k != 2).ToArray();
+            if (!ShowPayment) parts = parts.Take(ShowNet ? 3 : 2).ToArray();
             int n = parts.Length + 1;
             int w = r.Width / n;
-            using var cf = new Font("Segoe UI", 8.25F);
-            using var vf = new Font("Segoe UI Semibold", 10.5F);
+            using var cf = new Font("Segoe UI", 8.25F * UiZoom.Factor);
+            using var vf = new Font("Segoe UI Semibold", 10.5F * UiZoom.Factor);
             for (int i = 0; i < n; i++)
             {
                 int x = r.Left + i * w;
-                string cap = i < parts.Length ? parts[i].Cap : "Validation";
+                string cap = i < parts.Length ? parts[i].Cap : (Compact ? "Checks" : "Validation");
                 string val = i < parts.Length ? parts[i].Val : vs;
                 Color ink = i < parts.Length ? parts[i].Ink : vc;
                 if (i > 0) using (var p = new Pen(AppTheme.Border)) g.DrawLine(p, x, r.Top + D(6), x, r.Bottom - D(6));
@@ -134,16 +156,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
     /// <summary>The live checklist above Save: ✓ passed (green), ⚠ to review (amber), ✗ to fix (red).</summary>
-    public sealed class ValidationChecklist : Control
+    public sealed class ValidationChecklist : Control, IZoomAware
     {
         private List<PaymentCheck> checks = new List<PaymentCheck>();
+        /// <summary>Workbench mode: only the failing (✗) and to-review (⚠) lines are drawn; passing rules collapse into one summary line.</summary>
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden), System.ComponentModel.Browsable(false)] public bool ShowOnlyProblems { get; set; }
+        /// <summary>Maps a line to the field it is about, so clicking the line jumps to that field (set by the screen; null = not clickable).</summary>
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden), System.ComponentModel.Browsable(false)] public Func<PaymentCheck, Control?>? FocusResolver { get; set; }
+        private IReadOnlyList<PaymentCheck> Shown => ShowOnlyProblems ? checks.Where(c => !c.Passed || c.Warning).ToList() : checks;
         public ValidationChecklist()
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
             SetStyle(ControlStyles.Selectable, false);
             Dock = DockStyle.Top;
         }
-        private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
+        private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f * UiZoom.Factor);
+        public void ZoomChanged() { if (checks.Count > 0) SetChecks(checks); Invalidate(); }
         public int Failed => checks.Count(c => !c.Passed);
         public int Warnings => checks.Count(c => c.Passed && c.Warning);
         public bool AllPassed => checks.All(c => c.Passed);
@@ -151,29 +179,49 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public void SetChecks(IEnumerable<PaymentCheck> list)
         {
             checks = list.ToList();
-            int cols = Width > D(700) ? 2 : 1;
-            int rows = (checks.Count + cols - 1) / cols;
+            int cols = ShowOnlyProblems ? 1 : Width > D(700) ? 2 : 1;
+            int rows = (Shown.Count + cols - 1) / cols;
             int want = D(30) + rows * D(22) + D(8);
             if (Height != want) Height = want;
             Invalidate();
         }
         protected override void OnResize(EventArgs e) { base.OnResize(e); if (checks.Count > 0) SetChecks(checks); }
+        protected override void OnMouseClick(MouseEventArgs e)
+        {
+            base.OnMouseClick(e);
+            if (FocusResolver == null || e.Y < D(28)) return;
+            int cols = ShowOnlyProblems ? 1 : Width > D(700) ? 2 : 1;
+            int cw = (Width - D(20)) / cols;
+            int col = Math.Min(cols - 1, Math.Max(0, (e.X - D(10)) / Math.Max(1, cw))), row = (e.Y - D(28)) / D(22);
+            int i = row * cols + col;
+            var shown = Shown;
+            if (i < 0 || i >= shown.Count || shown[i].Passed && !shown[i].Warning) return;
+            var target = FocusResolver(shown[i]);
+            if (target == null || target.IsDisposed || !target.Visible) return;
+            try { target.Focus(); (target as TextBoxBase)?.SelectAll(); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+        }
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            Cursor = FocusResolver != null && e.Y >= D(28) && Failed + Warnings > 0 ? Cursors.Hand : Cursors.Default;
+        }
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             g.Clear(AppTheme.Surface);
             using (var p = new Pen(AppTheme.Border)) g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
-            using var hf = new Font("Segoe UI Semibold", 9.5F);
-            using var f = new Font("Segoe UI", 9F);
+            using var hf = new Font("Segoe UI Semibold", 9.5F * UiZoom.Factor);
+            using var f = new Font("Segoe UI", 9F * UiZoom.Factor);
             int failed = Failed;
-            string head = failed == 0 ? $"✓ All {checks.Count} checks passed — ready to save" : $"Validation: {checks.Count - failed} of {checks.Count} passed · {failed} to fix before saving";
+            string head = failed == 0 ? $"✓ All {checks.Count} checks passed — ready to save" : ShowOnlyProblems ? $"Needs attention · {failed} to fix  ({checks.Count - failed} of {checks.Count} checks pass)" : $"Validation: {checks.Count - failed} of {checks.Count} passed · {failed} to fix before saving";
             TextRenderer.DrawText(g, head, hf, new Rectangle(D(10), D(4), Width - D(20), D(22)), failed == 0 ? AppTheme.SuccessText : AppTheme.DangerText, TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.VerticalCenter);
-            int cols = Width > D(700) ? 2 : 1;
+            int cols = ShowOnlyProblems ? 1 : Width > D(700) ? 2 : 1;
             int cw = (Width - D(20)) / cols;
-            for (int i = 0; i < checks.Count; i++)
+            var shown = Shown;
+            for (int i = 0; i < shown.Count; i++)
             {
-                var c = checks[i];
+                var c = shown[i];
                 int col = i % cols, row = i / cols;
                 string mark = !c.Passed ? "✗" : c.Warning ? "⚠" : "✓";
                 Color ink = !c.Passed ? AppTheme.DangerText : c.Warning ? AppTheme.WarningText : AppTheme.SuccessText;

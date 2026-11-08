@@ -137,8 +137,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 numDelG = new NumericUpDown(); numDelE = new NumericUpDown();
                 Add2(Cap("Delivered G crates"), Cap("Delivered E crates"));
                 foreach (var n in new[] { numDelG, numDelE }) { n.Minimum = 0; n.Maximum = 99999; Field(n); n.TextAlign = HorizontalAlignment.Right; }
-                numDelG.Value = Math.Min(numDelG.Maximum, this.deliveredG);
-                numDelE.Value = Math.Min(numDelE.Maximum, this.deliveredE);
+                numDelG.SetSafe(Math.Min(numDelG.Maximum, this.deliveredG));
+                numDelE.SetSafe(Math.Min(numDelE.Maximum, this.deliveredE));
                 numDelG.ValueChanged += (s, e) => deliveredG = (int)numDelG.Value;
                 numDelE.ValueChanged += (s, e) => deliveredE = (int)numDelE.Value;
                 Add2(numDelG, numDelE);
@@ -147,8 +147,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Add2(Cap("Returned G crates"), Cap("Returned E crates"));
             foreach (var n in new[] { numRetG, numRetE }) { n.Minimum = 0; n.Maximum = 99999; Field(n); n.TextAlign = HorizontalAlignment.Right; }
-            numRetG.Value = Math.Min(numRetG.Maximum, originalRetG);
-            numRetE.Value = Math.Min(numRetE.Maximum, originalRetE);
+            numRetG.SetSafe(Math.Min(numRetG.Maximum, originalRetG));
+            numRetE.SetSafe(Math.Min(numRetE.Maximum, originalRetE));
             numRetG.ValueChanged += (s, e) => UpdateStatus();
             numRetE.ValueChanged += (s, e) => UpdateStatus();
             Add2(numRetG, numRetE);
@@ -203,7 +203,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 n.Enter += (s, e) => BeginInvoke(new Action(SelectAll));
                 n.MouseUp += (s, e) => { if (n.Focused && e.Button == MouseButtons.Left) SelectAll(); };
             }
-            if (int.TryParse((drops ?? "").Trim(), out int dp) && dp > 0) numDrops.Value = Math.Min(999, dp);
+            if (int.TryParse((drops ?? "").Trim(), out int dp) && dp > 0) numDrops.SetSafe(Math.Min(999, dp));
             txtRep.Text = representative; Field(txtRep); txtRep.MaxLength = 120;
             Add2(numDrops, txtRep);
             Add2(Cap("Store in (time)"), Cap("Store out (time)"));

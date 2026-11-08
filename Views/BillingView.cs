@@ -128,6 +128,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var menuActions = new ContextMenuStrip();
             menuActions.Items.Add("🧾 Make a statement of account (SOA)", null, (s, e) => OpenStatementOfAccount());
+            menuActions.Items.Add("📋 Cancelled as typing mistakes…", null, (s, e) => { using var dlg = new Forms.TypingMistakeReportDialog(); dlg.ShowDialog(FindForm()); });
             menuActions.Items.Add("📊 Export invoices to CSV", null, (s, e) => DataExportHelper.ExportToCsv(gridInvoices, "Billing_Invoices", "Invoices and Accounts Receivable"));
             menuActions.Items.Add("🖨️ Print invoice register", null, (s, e) => BtnPrint_Click(this, EventArgs.Empty));
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
@@ -199,15 +200,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         // ------------------------------------------------------------------ Full-page form (same tab, back button, section cards)
         private FullPageFormKit? formKit;
+        /// <summary>Live check of the typed Service Invoice No.: unique in any spelling, same-digits warning with a confirmation tick (plan 17).</summary>
+        private NumberFieldGuard billNumberGuard = null!;
         private void InitFullPageForm()
         {
+            billNumberGuard = new NumberFieldGuard(txtInvoiceNumber, NumberKind.SI, () => selectedInvoice?.Id ?? 0);
+            billNumberGuard.Changed += () => ScheduleBillGuide();
             formKit = new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to invoices");
             formKit.Build(new[]
             {
-                new FullPageFormKit.Section("Invoice & order", "Which dispatch this invoice bills and who it is for.", lblInvoiceNumber, txtInvoiceNumber, lblDel, cbDelivery, lblLoadingSchedule, txtLoadingSchedule, lblClient, cbClient),
+                new FullPageFormKit.Section("Invoice & order", "Which dispatch this invoice bills and who it is for.", lblInvoiceNumber, txtInvoiceNumber, billNumberGuard.Message, billNumberGuard.Tick, lblDel, cbDelivery, lblLoadingSchedule, txtLoadingSchedule, lblClient, cbClient),
                 new FullPageFormKit.Section("Amounts", "Gross amount, deductions and the net amount due.", pnlClientSpacer, tblAmounts, pnlAmountsSpacer, pnlNetDue, pnlNetDueSpacer, lblTariffMatch, BuildBillAdjustPanel())
             });
             InitBillGuide();
+            if (Features.On(Features.PaymentsWorkbench)) ApplyBillWorkbench(); // Ledger Desk layout (Settings → Features can switch it off)
             if (btnToggleForm != null)
             {
                 btnToggleForm.Text = "＋ New invoice";
@@ -259,13 +265,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridInvoices.ShowCellToolTips = false;
             gridInvoices.Columns.Clear();
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "InvoiceNumber", HeaderText = "Invoice #", FillWeight = 12F, MinimumWidth = 100, ReadOnly = true });
-            gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "LoadingScheduleNumber", HeaderText = "Schedule #", FillWeight = 12F, MinimumWidth = 100, ReadOnly = true });
+            gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TripReportNumber", HeaderText = "Trip report #", FillWeight = 14F, MinimumWidth = 110, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DispatchNumber", HeaderText = "Dispatch #", FillWeight = 12F, MinimumWidth = 100, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ClientName", HeaderText = "Client", FillWeight = 18F, MinimumWidth = 120, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "IssueDate", HeaderText = "Date", DefaultCellStyle = { Format = "MM/dd/yyyy" }, FillWeight = 10F, MinimumWidth = 85, ReadOnly = true });
-            gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TotalAmount", HeaderText = "Gross", DefaultCellStyle = { Format = "N2" }, FillWeight = 12F, MinimumWidth = 90, ReadOnly = true });
-            gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Deductions", HeaderText = "Deductions", DefaultCellStyle = { Format = "N2" }, FillWeight = 11F, MinimumWidth = 85, ReadOnly = true });
-            gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "NetAmount", HeaderText = "Net Due", DefaultCellStyle = { Format = "N2" }, FillWeight = 12F, MinimumWidth = 90, ReadOnly = true });
+            gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Freight", HeaderText = "Amount", DefaultCellStyle = { Format = "N2" }, FillWeight = 12F, MinimumWidth = 95, ReadOnly = true });
+            gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "FuelSurcharge", HeaderText = "Fuel surcharge", DefaultCellStyle = { Format = "N2" }, FillWeight = 12F, MinimumWidth = 95, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 10F, MinimumWidth = 80, ReadOnly = true });
             gridInvoices.CellFormatting -= GridInvoices_CellFormatting;
             gridInvoices.CellFormatting += GridInvoices_CellFormatting;
@@ -312,21 +317,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (cbDelivery.SelectedIndex >= 0 && cbDelivery.SelectedIndex < completedDeliveries.Count)
             {
                 var del = completedDeliveries[cbDelivery.SelectedIndex];
+                ApplyTripLock(); // Nov 7: the trip is fixed once it is picked
                 var schedules = MJdatabase.GetLoadingSchedules();
                 var ls = schedules.FirstOrDefault(s => s.Id == del.LoadingScheduleId);
 
-                if (ls != null)
-                {
-                    txtLoadingSchedule.Text = $"{ls.ScheduleNumber} | {ls.TotalCrates:N0} Crates ({ls.GCrate}G + {ls.ECrate}E) | {ls.Destination}";
-                }
-                else if (!string.IsNullOrWhiteSpace(del.LoadingScheduleInfo))
-                {
-                    txtLoadingSchedule.Text = $"Loading Info: {del.LoadingScheduleInfo}";
-                }
-                else
-                {
-                    txtLoadingSchedule.Text = "(No Loading Schedule Linked)";
-                }
+                txtLoadingSchedule.Text = TripReportSummary(del); // Nov 7: the completed trip report of this trip (not the loading schedule)
 
                 // The trip's own client comes first (parsing the loading info split names that contain " - ").
                 string clientName = (del.ClientName ?? "").Trim();
@@ -367,8 +362,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     lblTariffMatch.Text = $"✓ {tariffDesc} -> PHP {calculatedAmount:N2}";
                     lblTariffMatch.Visible = true;
                     if (calculatedAmount > numTotalAmount.Maximum) numTotalAmount.Maximum = calculatedAmount * 2;
-                    numTotalAmount.Value = Math.Max(numTotalAmount.Minimum, Math.Min(numTotalAmount.Maximum, calculatedAmount));
-                    numDeductions.Value = 0;
+                    numTotalAmount.SetSafe(Math.Max(numTotalAmount.Minimum, Math.Min(numTotalAmount.Maximum, calculatedAmount)));
+                    numFuel.SetSafe(0);
                     RecalculateNet(sender, e);
                     return;
                 }
@@ -378,8 +373,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     lblTariffMatch.Text = $"Special trip charge -> PHP {calculatedAmount:N2}";
                     lblTariffMatch.Visible = true;
                     if (calculatedAmount > numTotalAmount.Maximum) numTotalAmount.Maximum = calculatedAmount * 2;
-                    numTotalAmount.Value = Math.Max(numTotalAmount.Minimum, Math.Min(numTotalAmount.Maximum, calculatedAmount));
-                    numDeductions.Value = 0;
+                    numTotalAmount.SetSafe(Math.Max(numTotalAmount.Minimum, Math.Min(numTotalAmount.Maximum, calculatedAmount)));
+                    numFuel.SetSafe(0);
                     RecalculateNet(sender, e);
                     return;
                 }
@@ -388,21 +383,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblTariffMatch.Visible = true;
 
                 if (calculatedAmount > numTotalAmount.Maximum) numTotalAmount.Maximum = calculatedAmount * 2;
-                numTotalAmount.Value = Math.Max(numTotalAmount.Minimum, Math.Min(numTotalAmount.Maximum, calculatedAmount));
+                numTotalAmount.SetSafe(Math.Max(numTotalAmount.Minimum, Math.Min(numTotalAmount.Maximum, calculatedAmount)));
 
-                var incidents = MJdatabase.GetIncidentReports().FindAll(ir => ir.DeliveryId == del.Id && !ir.ChargeableToCrew && ir.Status != "Rejected");
-                decimal totalDeductions = incidents.Sum(ir => ir.EstimatedCost);
-                if (totalDeductions > numDeductions.Maximum) numDeductions.Maximum = totalDeductions * 2;
-                numDeductions.Value = Math.Max(numDeductions.Minimum, Math.Min(numDeductions.Maximum, totalDeductions));
-
-                if (incidents.Count > 0)
-                {
-                    string incNote = string.Join("; ", incidents.Select(i => $"{i.Cause} ({i.DamagedQuantity} damaged crates - PHP {i.EstimatedCost:N2})"));
-                    lblTariffMatch.Text = $"{(calculatedAmount > 0 ? "✓ " : "")}{tariffDesc} (Less incident damage PHP {totalDeductions:N2}) -> PHP {Math.Max(0, calculatedAmount - totalDeductions):N2}";
-                }
+                // Nov 7: no deductions on an invoice. The fuel surcharge is typed (the Rate Matrix only gives the freight tariff).
+                numFuel.SetSafe(0);
 
                 RecalculateNet(sender, e);
             }
+        }
+
+        /// <summary>One line about the trip's completed trip report: its number, the date it was completed, crates and who received.</summary>
+        private string TripReportSummary(Delivery del)
+        {
+            try
+            {
+                TripReport? tr;
+                if (del.Id < 0) tr = MJdatabase.GetTripReports().Where(t => t.SpecialTripId == -del.Id && !string.Equals(t.Status, TripReportStatus.Draft, StringComparison.OrdinalIgnoreCase)).OrderByDescending(t => t.Id).FirstOrDefault();
+                else MJdatabase.GetTripReportsByDelivery().TryGetValue(del.Id, out tr);
+                if (tr == null) return IsChargeableCancelled(del) ? "(Cancelled trip: it has no trip report)" : "(No completed trip report yet)";
+                string who = (tr.StoreManagerName ?? "").Trim();
+                return $"{tr.TripReportNumber} · completed {tr.ReportDate:dd-MMM-yyyy} · delivered {tr.DeliveredCrates:N0}, returned {tr.ReturnedCrates:N0}" + (who.Length > 0 ? $" · received by {who}" : "");
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); return ""; }
+        }
+
+        /// <summary>Nov 7: the invoiced trip can't be changed: once it is picked (or the invoice is saved) the box is locked; Clear form unlocks it.</summary>
+        private void ApplyTripLock()
+        {
+            cbDelivery.Enabled = selectedInvoice == null && cbDelivery.SelectedIndex < 0;
         }
 
         private void UpdateClientContactHint()
@@ -423,8 +431,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void RecalculateNet(object? sender, EventArgs e)
         {
             if (isBindingForm) return;
-            decimal net = numTotalAmount.Value - numDeductions.Value;
-            lblNetAmount.Text = $"Net Due Amount: PHP {net:N2}";
+            decimal net = numTotalAmount.Value + numFuel.Value; // stored as the invoice's total; never shown as a computed figure on the invoice
+            lblNetAmount.Text = "";
             DateTime baseDate = selectedInvoice != null ? selectedInvoice.IssueDate : DateTime.Today;
             lblDueDate.Text = $"Payment Due Date (15 Days): {(selectedInvoice != null ? selectedInvoice.DueDate : baseDate.AddDays(15)):MM/dd/yyyy}";
         }
@@ -482,40 +490,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int dIdx = completedDeliveries.FindIndex(d => d.Id == selectedInvoice.DeliveryId);
                 if (dIdx >= 0 && dIdx < cbDelivery.Items.Count) cbDelivery.SelectedIndex = dIdx;
 
-                if (!string.IsNullOrEmpty(selectedInvoice.LoadingScheduleNumber))
                 {
-                    txtLoadingSchedule.Text = $"Schedule #{selectedInvoice.LoadingScheduleNumber} | Dispatch #{selectedInvoice.DispatchNumber}";
-                }
-                else
-                {
-                    var allDel = MJdatabase.GetDeliveries();
-                    var del = allDel.FirstOrDefault(d => d.Id == selectedInvoice.DeliveryId);
-                    if (del != null)
-                    {
-                        var schedules = MJdatabase.GetLoadingSchedules();
-                        var ls = schedules.FirstOrDefault(s => s.Id == del.LoadingScheduleId);
-                        if (ls != null)
-                        {
-                            txtLoadingSchedule.Text = $"{ls.ScheduleNumber} | {ls.TotalCrates:N0} Crates ({ls.GCrate}G + {ls.ECrate}E) | {ls.Destination}";
-                        }
-                        else
-                        {
-                            txtLoadingSchedule.Text = !string.IsNullOrEmpty(del.LoadingScheduleInfo) ? del.LoadingScheduleInfo : "(No Loading Schedule)";
-                        }
-                    }
-                    else
-                    {
-                        txtLoadingSchedule.Text = "(Delivery Reference Recorded)";
-                    }
+                    var invDel = selectedInvoice.DeliveryId > 0 ? MJdatabase.GetDeliveryById(selectedInvoice.DeliveryId) : null;
+                    txtLoadingSchedule.Text = invDel != null ? TripReportSummary(invDel)
+                        : (!string.IsNullOrWhiteSpace(selectedInvoice.TripReportNumber) ? selectedInvoice.TripReportNumber : "(Trip report recorded on the invoice)");
                 }
 
                 txtInvoiceNumber.Text = selectedInvoice.InvoiceNumber;
                 cbClient.Text = selectedInvoice.ClientName;
-                numTotalAmount.Value = selectedInvoice.TotalAmount;
-                numDeductions.Value = selectedInvoice.Deductions;
+                numTotalAmount.SetSafe(Math.Min(numTotalAmount.Maximum, selectedInvoice.Freight)); // Amount (freight tariff); the fuel surcharge is on top
+                numFuel.SetSafe(Math.Min(numFuel.Maximum, selectedInvoice.FuelSurcharge));
                 RecalculateNet(this, EventArgs.Empty);
                 lblDueDate.Text = $"Payment Due Date (15 Days): {selectedInvoice.DueDate:MM/dd/yyyy}";
                 lblFormHeader.Text = $"Invoice #{selectedInvoice.InvoiceNumber}";
+                ApplyTripLock(); // a saved invoice keeps its trip
             }
             finally
             {
@@ -551,23 +539,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var onStatement = MJdatabase.GetBilledDeliveryIds(0);
                 chargeFees = MJdatabase.GetChargeableCancelledFees();
                 // Billable: completed trips with a trip report, plus cancelled trips marked chargeable. Cancelled no-charge trips never appear.
-                completedDeliveries = MJdatabase.GetDeliveries().FindAll(d => ((d.Status == "Completed" && reportedIds.Contains(d.Id)) || IsChargeableCancelled(d)) && !invoicedDeliveryIds.Contains(d.Id) && !onStatement.ContainsKey(d.Id));
+                var waitingIds = new HashSet<int>(MJdatabase.GetTripsWaitingForInvoice().Where(w => w.DeliveryId > 0).Select(w => w.DeliveryId)); // the one shared list (plan section 4)
+                completedDeliveries = MJdatabase.GetDeliveries().FindAll(d => waitingIds.Contains(d.Id));
                 completedDeliveries.AddRange(SpecialTripsToInvoice()); // Nov 6: completed special trips with a trip report
-                var schedulesList = MJdatabase.GetLoadingSchedules();
-                var schedDict = schedulesList.ToDictionary(s => s.Id, s => s);
-
+                // Nov 7: each trip is listed by its trip report number, then its dispatch and client (no loading schedule number).
+                var reportNos = MJdatabase.GetTripReportsByDelivery();
+                var specialLinks = MJdatabase.GetSpecialTripLinks();
                 cbDelivery.Items.Clear();
                 foreach (var d in completedDeliveries)
                 {
-                    string sNum = schedDict.TryGetValue(d.LoadingScheduleId, out var s) ? s.ScheduleNumber : "";
-                    if (!string.IsNullOrEmpty(sNum))
-                    {
-                        cbDelivery.Items.Add($"{d.DispatchNumber} • {sNum} - {d.LoadingScheduleInfo}{(IsChargeableCancelled(d) ? $"  [Cancelled – chargeable ₱{chargeFees[d.Id]:N2}]" : "")}");
-                    }
-                    else
-                    {
-                        cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo}{(IsChargeableCancelled(d) ? $"  [Cancelled – chargeable ₱{chargeFees[d.Id]:N2}]" : "")}");
-                    }
+                    string trNo = d.Id < 0 ? (specialLinks.TryGetValue(-d.Id, out var spl) ? spl.TripReportNumber : "") : (reportNos.TryGetValue(d.Id, out var rep0) ? rep0.TripReportNumber : "");
+                    cbDelivery.Items.Add($"{(trNo.Length > 0 ? trNo + " · " : "")}{d.DispatchNumber} · {d.ClientName}{(IsChargeableCancelled(d) ? $"  [Cancelled – chargeable ₱{chargeFees[d.Id]:N2}]" : "")}");
                 }
                 if (cbDelivery.Items.Count > 0)
                 {
@@ -616,13 +598,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 if (!ValidationHelper.ValidateRequiredText(txtInvoiceNumber, "Invoice Number", valErrors)) firstInvalid ??= txtInvoiceNumber;
                 if (!ValidationHelper.ValidateRequiredCombo(cbClient, "Client Company", valErrors)) firstInvalid ??= cbClient;
-                if (!ValidationHelper.ValidatePositiveNumber(numTotalAmount, "Total Gross Amount", valErrors)) firstInvalid ??= numTotalAmount;
-                if (numDeductions.Value > numTotalAmount.Value)
-                {
-                    ValidationHelper.ApplyValidationState(numDeductions, false, "Deductions cannot exceed Gross Amount.");
-                    valErrors.Add("Deductions cannot exceed the gross invoice amount.");
-                    firstInvalid ??= numDeductions;
-                }
+                if (!ValidationHelper.ValidatePositiveNumber(numTotalAmount, "Amount (freight tariff)", valErrors)) firstInvalid ??= numTotalAmount;
 
                 if (!ValidationHelper.ShowValidationSummaryIfAny(this, valErrors, firstInvalid))
                 {
@@ -660,18 +636,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
-                decimal total = numTotalAmount.Value;
-                decimal ded = numDeductions.Value;
+                decimal fuel = numFuel.Value;
+                decimal total = numTotalAmount.Value + fuel; // what the trip is billed in all: freight tariff + fuel surcharge
 
                 // Nov 6 workflow: no amount yet (no rate) is allowed; the invoice is kept as a Draft until it gets its amount.
-
-                if (ded > total)
-                {
-                    MessageBox.Show($"Deductions (PHP {ded:N2}) cannot exceed the gross invoice amount (PHP {total:N2}).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-
-                decimal net = total - ded;
+                // Nov 7: no deductions on an invoice; the net due is the whole amount.
+                decimal net = total;
 
                 Invoice inv = new Invoice
                 {
@@ -682,12 +652,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     IssueDate = DateTime.Now,
                     DueDate = DateTime.Now.AddDays(15),
                     TotalAmount = total,
-                    Deductions = ded,
+                    FuelSurcharge = fuel,
+                    Deductions = 0,
                     NetAmount = net,
                     Status = total > 0 ? PayStatus.Unpaid : PayStatus.Draft
                 };
 
-                MJdatabase.SaveInvoice(inv);
+                MJdatabase.SaveInvoice(inv, crossTypeConfirmed: billNumberGuard.CrossTypeConfirmed);
                 if (selDel.Id < 0) MJdatabase.LinkSpecialTripInvoice(inv.Id, -selDel.Id);
                 BillAfterSave(inv.Id, inv.InvoiceNumber);
                 if (inv.Status == PayStatus.Draft) ToastHelper.ShowToast(this, $"Invoice {inv.InvoiceNumber} saved as a draft — add its amount before it can go on a statement", ToastType.Warning);
@@ -744,28 +715,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 selectedInvoice.InvoiceNumber = invNum;
 
-                decimal total = numTotalAmount.Value;
-                decimal ded = numDeductions.Value;
+                decimal fuel = numFuel.Value;
+                decimal total = numTotalAmount.Value + fuel; // freight tariff + fuel surcharge
 
                 // Nov 6 workflow: an amount of PHP 0.00 keeps (or makes) the invoice a Draft instead of being refused.
-
-                if (ded > total)
-                {
-                    MessageBox.Show($"Deductions (PHP {ded:N2}) cannot exceed the gross invoice amount (PHP {total:N2}).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-
-                decimal net = total - ded;
+                // Nov 7: no deductions on an invoice; the net due is the whole amount.
+                decimal net = total;
                 decimal alreadyCollected = MJdatabase.GetTotalCollectedForInvoice(selectedInvoice.Id);
                 if (net < alreadyCollected)
                 {
-                    MessageBox.Show($"The updated Net Amount (PHP {net:N2}) cannot be less than the payments already collected for this invoice (PHP {alreadyCollected:N2}).", "Invoice Update Restricted", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show($"The updated total (PHP {net:N2}) cannot be less than the payments already collected for this invoice (PHP {alreadyCollected:N2}).", "Invoice Update Restricted", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
                 selectedInvoice.ClientName = cbClient.Text.Trim();
                 selectedInvoice.TotalAmount = total;
-                selectedInvoice.Deductions = ded;
+                selectedInvoice.FuelSurcharge = fuel;
+                selectedInvoice.Deductions = 0;
                 selectedInvoice.NetAmount = net;
 
                 if (total <= 0) selectedInvoice.Status = PayStatus.Draft;
@@ -774,7 +740,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     // A draft (e.g. from a completed special trip) becomes a real invoice once it has an amount.
                     selectedInvoice.Status = "Unpaid";
                 }
-                MJdatabase.SaveInvoice(selectedInvoice);
+                MJdatabase.SaveInvoice(selectedInvoice, crossTypeConfirmed: billNumberGuard.CrossTypeConfirmed);
                 BillAfterSave(selectedInvoice.Id, selectedInvoice.InvoiceNumber);
                 QuietBox.Show("Invoice updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
@@ -787,6 +753,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show($"Failed to update invoice: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally { BillSaveFinished(); }
+        }
+
+        /// <summary>"Re-enter" for an invoice cancelled as a typing mistake: reopens the same record (keeping its number) so it can be corrected.</summary>
+        private void ReinstateInvoiceNow(Invoice inv)
+        {
+            try
+            {
+                if (MessageBox.Show(FindForm(), $"Reinstate invoice {inv.InvoiceNumber} so it can be corrected?\n\nIt keeps its number. After you correct it, save it as usual.", "Reinstate invoice", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                MJdatabase.ReinstateInvoice(inv.Id);
+                ToastHelper.ShowToast(this, $"Invoice {inv.InvoiceNumber} reinstated. Choose Edit invoice to correct it.", ToastType.Success);
+                LoadData();
+            }
+            catch (Exception ex) { MessageBox.Show(FindForm(), ex.Message, "Reinstate invoice", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
 
         private void BtnDelete_Click(object? sender, EventArgs e)
@@ -806,13 +785,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
-                var res = MessageBox.Show($"Are you sure you want to delete Invoice {selectedInvoice.InvoiceNumber}?\n\n" + MJdatabase.DeletePolicyNote("Invoices"), "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
-                if (res == DialogResult.Yes)
+                // Plan 17.6: say WHY. A typing mistake keeps the number for the corrected record; a real void burns it.
+                bool proceed = Forms.CancelInvoiceDialog.Prompt(FindForm(), selectedInvoice.InvoiceNumber, out bool typingMistake, out string cancelReason);
+                if (proceed)
                 {
-                    bool deleted = MJdatabase.DeleteRecord("Invoices", selectedInvoice.Id);
+                    bool deleted = MJdatabase.CancelInvoice(selectedInvoice.Id, typingMistake, cancelReason);
                     if (deleted)
                     {
-                        QuietBox.Show(MJdatabase.LastDeleteSummary, "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        QuietBox.Show(MJdatabase.LastDeleteSummary + (typingMistake ? $"\n\nIts number {selectedInvoice.InvoiceNumber} is kept for {MJdatabase.PendingReenterDays} days. Right-click the cancelled invoice and choose Reinstate to correct it." : $"\n\nThe number {selectedInvoice.InvoiceNumber} can never be used again."), "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         ClearFields();
                         LoadData();
                     }
@@ -873,9 +853,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     isBindingForm = true;
                     cbClient.Text = "";
                     txtLoadingSchedule.Text = "";
-                    numTotalAmount.Value = 0;
-                    numDeductions.Value = 0;
-                    lblNetAmount.Text = "Net Due Amount: PHP 0.00";
+                    numTotalAmount.SetSafe(0);
+                    numFuel.SetSafe(0);
+                    lblNetAmount.Text = "";
                     lblFormHeader.Text = "Generate Service Invoice";
                     isBindingForm = false;
                 }
@@ -913,14 +893,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void ClearFields()
         {
-            cbDelivery.Enabled = true; // Nov 6: unlocked after a special-trip invoice
             selectedInvoice = null;
+            cbDelivery.SelectedIndex = -1; // Nov 7: Clear form frees the trip box again
+            cbDelivery.Enabled = true;
             txtInvoiceNumber.Text = "";
+            billNumberGuard?.Reset();
             lblFormHeader.Text = "Generate Service Invoice";
             txtLoadingSchedule.Text = "";
             cbClient.Text = "";
-            numTotalAmount.Value = 0; // filled from the trip's rate when a dispatch is picked
-            numDeductions.Value = 0;
+            numTotalAmount.SetSafe(0); // filled from the trip's rate when a dispatch is picked
+            numFuel.SetSafe(0);
             lblTariffMatch.Visible = false;
             lblDueDate.Text = $"Payment Due Date (15 Days): {DateTime.Today.AddDays(15):MM/dd/yyyy}";
             RecalculateNet(this, EventArgs.Empty);
@@ -1005,7 +987,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     RowMenu.Item("Statements of account for this client", () => FinanceHubView.Of(this)?.ShowStatements(inv.ClientName))));
                 m.Items.Add(RowMenu.ExportSub(gridInvoices, "Billing_Invoices", "Invoices and Accounts Receivable", () => BtnPrint_Click(this, EventArgs.Empty)));
                 m.Items.Add(RowMenu.Sep());
-                m.Items.Add(RowMenu.Danger(paid > 0 ? "Delete invoice… (has payments)" : "Delete / void invoice…", () => { selectedInvoice = inv; BtnDelete_Click(this, EventArgs.Empty); }));
+                if (MJdatabase.CanReinstateInvoice(inv))
+                    m.Items.Add(RowMenu.Good("Reinstate to correct (cancelled as a typing mistake)…", () => ReinstateInvoiceNow(inv)));
+                m.Items.Add(RowMenu.Danger(paid > 0 ? "Cancel invoice… (has payments)" : "Cancel / void invoice…", () => { selectedInvoice = inv; BtnDelete_Click(this, EventArgs.Empty); }));
             }, allowMultiSelect: true);
         }
         private void BuildMultiInvoiceMenu(ContextMenuStrip m, List<Invoice> invs)

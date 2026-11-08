@@ -16,51 +16,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Links a service invoice made in Billing to its special trip (Nov 6).</summary>
         public static void LinkSpecialTripInvoice(int invoiceId, int tripId) { if (invoiceId > 0 && tripId > 0) LinkInvoiceToSpecialTrip(invoiceId, tripId); }
 
-        /// <summary>Why this SI number can't be used, or null when it is fine. <paramref name="exceptInvoiceId"/> is the invoice being edited.</summary>
+        /// <summary>Why this SI number can't be used, or null when it is fine. <paramref name="exceptInvoiceId"/> is the invoice being edited or reinstated.
+        /// The rules live in <see cref="NumberIndex.Check"/> (plan 17): strict key, cancelled numbers stay used, a typing-mistake number is kept for its own record.</summary>
         public static string? CheckSiNumber(string? number, int exceptInvoiceId = 0)
         {
-            string n = (number ?? "").Trim();
-            if (n.Length == 0) return "Type the Service Invoice No. (it is not made by the system).";
-            if (n.Length > SiNumberMaxLength) return $"The Service Invoice No. can be at most {SiNumberMaxLength} characters.";
-            if (!Regex.IsMatch(n, @"^[A-Za-z0-9][A-Za-z0-9\-/]*$")) return "The Service Invoice No. can only have letters, digits, - and /.";
-            using var conn = new SqliteConnection(connectionString);
-            conn.Open();
-            using var c = conn.CreateCommand();
-            c.CommandText = "SELECT InvoiceNumber, ClientName, COALESCE(Status,'') FROM Invoices WHERE TRIM(InvoiceNumber) = @n COLLATE NOCASE AND Id <> @id LIMIT 1";
-            c.Parameters.AddWithValue("@n", n);
-            c.Parameters.AddWithValue("@id", exceptInvoiceId);
-            using var r = c.ExecuteReader();
-            if (r.Read())
-            {
-                string st = r.GetString(2);
-                return $"Service Invoice No. {n} is already used ({(r.IsDBNull(1) ? "" : r.GetString(1))}{(st.Length > 0 ? ", " + st : "")}). Numbers can't repeat.";
-            }
-            return null;
+            var c = LoadNumberIndex().Check(NumberKind.SI, number, exceptInvoiceId);
+            return c.Blocked ? c.Why() : null;
         }
 
         /// <summary>Why this receipt number can't be used, or null. A receipt for a statement is stored once per invoice with the same
         /// number, so rows of <paramref name="sameReceiptGroup"/> (the receipt being edited) don't count as a repeat.</summary>
         public static string? CheckReceiptNumber(string? number, string? sameReceiptGroup = null)
         {
-            string n = (number ?? "").Trim();
-            if (n.Length == 0) return "Type the Collection Receipt No. (it is not made by the system).";
-            if (!Regex.IsMatch(n, @"^\d{4,8}$")) return "The Collection Receipt No. must be 4 to 8 digits (numbers only).";
-            string key = n.TrimStart('0');
-            using var conn = new SqliteConnection(connectionString);
-            conn.Open();
-            using var c = conn.CreateCommand();
-            c.CommandText = "SELECT ReceiptNumber, COALESCE(IsVoid,0) FROM CollectionReceipts";
-            using var r = c.ExecuteReader();
-            while (r.Read())
-            {
-                string other = r.IsDBNull(0) ? "" : r.GetString(0).Trim();
-                if (sameReceiptGroup != null && string.Equals(other, sameReceiptGroup.Trim(), StringComparison.OrdinalIgnoreCase)) continue;
-                if (other.Length > 0 && other.All(char.IsDigit) && other.TrimStart('0') == key)
-                    return $"Collection Receipt No. {n} is already used{(Convert.ToInt32(r.GetValue(1)) == 1 ? " (by a voided receipt)" : "")}. Numbers can't repeat.";
-                if (string.Equals(other, n, StringComparison.OrdinalIgnoreCase))
-                    return $"Collection Receipt No. {n} is already used. Numbers can't repeat.";
-            }
-            return null;
+            var c = LoadNumberIndex().Check(NumberKind.CR, number, 0, sameReceiptGroup);
+            return c.Blocked ? c.Why() : null;
         }
 
         /// <summary>True when the special trip has a service invoice that is not cancelled.</summary>

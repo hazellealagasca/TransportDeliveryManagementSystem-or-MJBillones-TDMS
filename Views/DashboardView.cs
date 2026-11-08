@@ -623,11 +623,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (overdue.Count > 0)
                     items.Add(new ActionList.Item(AppTheme.Danger, $"{overdue.Count} invoice(s) overdue", $"{Peso(overdue.Sum(Balance))} past due · oldest {overdue.Min(i => i.DueDate):MMM d} ({overdue.OrderBy(i => i.DueDate).First().ClientName})", "Collect", () => MainForm.Instance?.ShowFinanceRecords("Billing", "Overdue"), "Billing", 0, overdue.Min(i => i.DueDate), overdue.Count));
-                var unbilled = dels.Where(d => Done(d.Status) && !invoicedIds.Contains(d.Id)).ToList();
-                var billedOnSoa = SafeBilled();
-                unbilled = unbilled.Where(d => !billedOnSoa.ContainsKey(d.Id)).ToList();
+                // The same list as the Billing worklist and its tab badge (plan section 4).
+                List<WaitingTripRow> unbilled; try { unbilled = MJdatabase.GetTripsWaitingForInvoice(); } catch (Exception wx) { ErrLog.Swallowed(wx); unbilled = new List<WaitingTripRow>(); }
                 if (unbilled.Count > 0)
-                    items.Add(new ActionList.Item(AppTheme.Warning, $"{unbilled.Count} delivered trip{(unbilled.Count == 1 ? "" : "s")} not billed yet", $"{unbilled.Select(d => d.ClientName).Distinct().Count()} client{(unbilled.Select(d => d.ClientName).Distinct().Count() == 1 ? "" : "s")} · make their service invoices (Billing), then group them on a statement", "Bill", () => MainForm.Instance?.NavigateToFinance("Billing"), "Billing", 1, unbilled.Min(d => d.DispatchDate), unbilled.Count));
+                    items.Add(new ActionList.Item(AppTheme.Warning, $"{unbilled.Count} trip{(unbilled.Count == 1 ? "" : "s")} waiting for their service invoice", $"{unbilled.Select(d => d.ClientName).Distinct().Count()} client{(unbilled.Select(d => d.ClientName).Distinct().Count() == 1 ? "" : "s")} · make their service invoices (Billing), then group them on a statement", "Bill", () => MainForm.Instance?.NavigateToFinance("Billing"), "Billing", 1, unbilled.Min(d => d.Date), unbilled.Count));
                 List<DuplicateBilling> billedTwice; try { billedTwice = MJdatabase.GetTripsBilledMoreThanOnce(); } catch { billedTwice = new List<DuplicateBilling>(); }
                 if (billedTwice.Count > 0)
                 {

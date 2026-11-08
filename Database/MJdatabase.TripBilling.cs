@@ -1,9 +1,17 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Data.Sqlite;
+using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database
 {
+    /// <summary>What the checks before an invoice save found (so the save can record confirmations and the audit entry after it commits).</summary>
+    public sealed class InvoicePrecheck
+    {
+        public NumberCheck? Number;
+        public string? RenamedFrom;
+    }
+
     /// <summary>The live (not cancelled) invoice that bills one trip.</summary>
     public sealed class LiveTripInvoice
     {
@@ -130,30 +138,46 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// Rules every save of a service invoice must pass, whichever screen or flow saves it:
         /// the number can't repeat, a trip has one live invoice, and an invoice on a live statement keeps its amounts and client.
         /// </summary>
-        private static void CheckInvoiceBeforeSave(Invoice inv)
+        private static InvoicePrecheck CheckInvoiceBeforeSave(Invoice inv, bool crossTypeConfirmed = false)
         {
-            string storedNo = ""; int storedSoa = 0, storedDelivery = 0, storedSpecial = 0; decimal storedTotal = 0, storedDed = 0; string storedClient = "";
+            var result = new InvoicePrecheck();
+            string storedNo = ""; int storedSoa = 0, storedDelivery = 0, storedSpecial = 0; decimal storedTotal = 0, storedDed = 0, storedFuel = 0; string storedClient = "";
             if (inv.Id > 0)
             {
                 EnsureSpecialTripColumns();
                 using var conn = new SqliteConnection(connectionString);
                 conn.Open();
                 using var c = conn.CreateCommand();
-                c.CommandText = "SELECT COALESCE(InvoiceNumber,''), COALESCE(SoaId,0), COALESCE(TotalAmount,0), COALESCE(Deductions,0), COALESCE(ClientName,''), COALESCE(DeliveryId,0), COALESCE(SpecialTripId,0) FROM Invoices WHERE Id = @id";
+                c.CommandText = "SELECT COALESCE(InvoiceNumber,''), COALESCE(SoaId,0), COALESCE(TotalAmount,0), COALESCE(Deductions,0), COALESCE(ClientName,''), COALESCE(DeliveryId,0), COALESCE(SpecialTripId,0), COALESCE(FuelSurcharge,0) FROM Invoices WHERE Id = @id";
                 c.Parameters.AddWithValue("@id", inv.Id);
                 using var r = c.ExecuteReader();
                 if (r.Read())
                 {
                     storedNo = r.GetString(0); storedSoa = r.GetInt32(1); storedTotal = Centavos(Convert.ToDecimal(r.GetValue(2)));
-                    storedDed = Centavos(Convert.ToDecimal(r.GetValue(3))); storedClient = r.GetString(4); storedDelivery = r.GetInt32(5); storedSpecial = r.GetInt32(6);
+                    storedDed = Centavos(Convert.ToDecimal(r.GetValue(3))); storedClient = r.GetString(4); storedDelivery = r.GetInt32(5); storedSpecial = r.GetInt32(6); storedFuel = Centavos(Convert.ToDecimal(r.GetValue(7)));
                 }
             }
 
-            // 1. The number: required, well formed, never repeated (cancelled invoices keep their numbers). Not rechecked when unchanged.
-            if (inv.Id <= 0 || !string.Equals(storedNo.Trim(), (inv.InvoiceNumber ?? "").Trim(), StringComparison.OrdinalIgnoreCase))
+            // 1. The number (plan 17): required, well formed, never repeated; checked here INSIDE the write transaction so two PCs cannot both take it.
+            //    A same-digits service invoice / receipt pair needs the person's confirmation. Not rechecked when the number is unchanged.
+            bool isNew = inv.Id <= 0;
+            bool renamed = !isNew && !string.Equals(storedNo.Trim(), (inv.InvoiceNumber ?? "").Trim(), StringComparison.OrdinalIgnoreCase);
+            if (isNew || renamed)
             {
-                var why = CheckSiNumber(inv.InvoiceNumber, inv.Id);
-                if (why != null) throw new InvalidOperationException(why + " Nothing was saved.");
+                var chk = LoadNumberIndex().Check(NumberKind.SI, inv.InvoiceNumber, inv.Id);
+                if (chk.Blocked) throw new InvalidOperationException(chk.Why() + " Nothing was saved.");
+                if (chk.TickNeeded && !crossTypeConfirmed)
+                    throw new NumberNeedsConfirmationException(chk.TickMessage() + " Confirm it on the form, then save again. Nothing was saved.");
+                result.Number = chk;
+            }
+            if (renamed)
+            {
+                // Changing the number of a saved invoice: Administrator only, and only before it is used downstream (statement, payment). The old number is released.
+                if (!SessionContext.IsAdmin)
+                    throw new InvalidOperationException($"Only the Administrator can change the Service Invoice No. of a saved invoice (now {storedNo}). If it was typed wrong, ask the Administrator, or cancel the invoice as a typing mistake and enter it again. Nothing was saved.");
+                if ((storedSoa > 0 && SoaIsLive(storedSoa)) || GetTotalCollectedForInvoice(inv.Id) > 0)
+                    throw new InvalidOperationException($"Invoice {storedNo} is on a statement or already paid, so its number can't be changed. Nothing was saved.");
+                result.RenamedFrom = storedNo.Trim();
             }
 
             // 2. One live invoice per dispatch. An old statement's invoice that bills the trip counts as well.
@@ -169,16 +193,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             // 3. A trip's invoice on a live statement is part of the statement's total: its amounts and client change on the statement.
             if (inv.Id > 0 && storedSoa > 0 && (storedDelivery > 0 || storedSpecial > 0) && SoaIsLive(storedSoa)
-                && (Centavos(inv.TotalAmount) != storedTotal || Centavos(inv.Deductions) != storedDed
+                && (Centavos(inv.TotalAmount) != storedTotal || Centavos(inv.Deductions) != storedDed || Centavos(inv.FuelSurcharge) != storedFuel
                     || !string.Equals((inv.ClientName ?? "").Trim(), storedClient.Trim(), StringComparison.OrdinalIgnoreCase)))
                 throw new InvalidOperationException($"Invoice {storedNo} is on a statement, so its amounts and client can't change here. Take its trip off the Statement of Account first. Nothing was saved.");
 
             // 4. Payments are always in full and there are no part payments, so once a receipt exists the invoice stays as it was paid.
             //    (Raising a paid invoice would leave it Unpaid with a receipt on it, which Collections refuses: it could never be settled.)
             if (inv.Id > 0 && GetTotalCollectedForInvoice(inv.Id) > 0
-                && (Centavos(inv.TotalAmount) != storedTotal || Centavos(inv.Deductions) != storedDed
+                && (Centavos(inv.TotalAmount) != storedTotal || Centavos(inv.Deductions) != storedDed || Centavos(inv.FuelSurcharge) != storedFuel
                     || !string.Equals((inv.ClientName ?? "").Trim(), storedClient.Trim(), StringComparison.OrdinalIgnoreCase)))
                 throw new InvalidOperationException($"Invoice {storedNo} already has a collection receipt, so its amounts and client can't change. Void the receipt in Collections & Receipts first. Nothing was saved.");
+            return result;
         }
     }
 }

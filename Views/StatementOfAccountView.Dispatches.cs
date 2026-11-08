@@ -24,7 +24,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private CheckBox chkPickerAllClients = null!;
         private Button btnRefreshFromTrips = null!;
         private readonly System.Windows.Forms.Timer pickerRefreshTimer = new System.Windows.Forms.Timer { Interval = 350 };
-        private readonly Dictionary<int, decimal> rateCache = new Dictionary<int, decimal>();
         private List<Delivery> deliveryCache = new List<Delivery>();
         private bool pickerReady = false;
         /// <summary>Completed trips in the period that still have no trip report (not listed; shown in the heading).</summary>
@@ -195,6 +194,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             var trucks = MJdatabase.GetTrucks();
             var links = MJdatabase.GetSpecialTripLinks();
+            var completed = MJdatabase.GetTripCompletedDates();
+            var invoices = MJdatabase.GetTripInvoices(); // Nov 7: the line's amount is the trip's service invoice, never worked out again here
             int trip = NextTripNumber();
             bool was = isBindingForm;
             isBindingForm = true;
@@ -208,9 +209,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     string tonnage = trk != null ? MJdatabase.TonnageLabel(trk) : "";
                     string driverHelper = $"{t.DriverName} / {t.AideName}".Trim(' ', '/');
                     string dest = string.IsNullOrWhiteSpace(t.DestinationAddress) ? t.Address : t.DestinationAddress;
-                    int r = gridItems.Rows.Add(trip, t.DispatchDate.ToString("yyyy-MM-dd"), "", "", dest, "SPECIAL", plate, tonnage, Math.Max(1, t.TotalStopsCount), t.TripCharge, 0m, driverHelper, "");
-                    gridItems.Rows[r].Cells["colTripReport"].Value = links.TryGetValue(t.Id, out var l) && l.HasReport ? l.TripReportNumber : t.OrderReference;
+                    var spInv = MJdatabase.TripInvoiceFor(invoices, 0, t.Id);
+                    int r = gridItems.Rows.Add(trip, completed.Iso(0, t.Id, t.DispatchDate.ToString("yyyy-MM-dd")), "", "", dest, "SPECIAL", plate, tonnage, Math.Max(1, t.TotalStopsCount), spInv?.Freight ?? t.TripCharge, spInv?.Fuel ?? 0m, driverHelper, "");
                     gridItems.Rows[r].Cells["colSpecialTrip"].Value = t.Id.ToString();
+                    gridItems.Rows[r].Cells["colTripReport"].Value = links.TryGetValue(t.Id, out var l) && l.HasReport ? l.TripReportNumber : t.OrderReference;
                     trip++;
                 }
             }
@@ -224,13 +226,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (DataGridViewRow r in gridItems.Rows)
                 if (int.TryParse(r.Cells["colDeliveryId"].Value?.ToString(), out int id) && id > 0) set.Add(id);
             return set;
-        }
-        private decimal RateFor(Delivery d)
-        {
-            if (rateCache.TryGetValue(d.Id, out var r)) return r;
-            try { r = MJdatabase.CalculateDeliveryTariff(d, out _); } catch { r = 0; }
-            rateCache[d.Id] = r;
-            return r;
         }
         private bool ClientMatches(Delivery d, string client)
         {
@@ -332,8 +327,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 .Where(d => d.HasValue).Select(d => d!.Value).ToList();
             if (dates.Count > 0)
             {
-                dtpPeriodFrom.Value = dates.Min();
-                dtpPeriodTo.Value = dates.Max();
+                dtpPeriodFrom.SetSafe(dates.Min());
+                dtpPeriodTo.SetSafe(dates.Max());
             }
             RecalculateTaxes(manualOverride: false);
             RefreshPicker();
@@ -395,12 +390,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (int.TryParse(r.Cells["colTripNo"].Value?.ToString(), out int n) && n > max) max = n;
             return max + 1;
         }
-        /// <summary>Adds each dispatch's stores as rows (the first row of a trip carries the rate). Returns how many had no rate.</summary>
+        /// <summary>Adds each dispatch's stores as rows (the first row of a trip carries its invoice's amount and fuel surcharge). Returns how many have no invoice amount.</summary>
         private int AppendDeliveries(List<Delivery> deliveries)
         {
             int unpriced = 0;
             var trucks = MJdatabase.GetTrucks();
             var reports = MJdatabase.GetTripReportsByDelivery();
+            var completed = MJdatabase.GetTripCompletedDates();
+            var invoices = MJdatabase.GetTripInvoices(); // Nov 7: the line's amount and fuel surcharge are the trip's service invoice, never worked out again here
             int trip = NextTripNumber();
             bool was = isBindingForm;
             isBindingForm = true;
@@ -413,8 +410,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     string tonnage = trk != null ? MJdatabase.TonnageLabel(trk) : "6T";
                     string driverHelper = $"{del.DriverName} / {del.AideDisplay}".Trim(' ', '/');
                     var lines = BuildTripLines(del, out int dropCount);
-                    string dateStr = del.DispatchDate.ToString("yyyy-MM-dd");
-                    decimal rate = RateFor(del);
+                    string dateStr = completed.Iso(del.Id, 0, del.DispatchDate.ToString("yyyy-MM-dd")); // date completed (trip report date)
+                    var tripInv = MJdatabase.TripInvoiceFor(invoices, del.Id, 0);
+                    decimal rate = tripInv?.Freight ?? 0m, fuelAmt = tripInv?.Fuel ?? 0m;
                     if (rate <= 0) unpriced++;
                     string did = del.Id.ToString();
                     string trNo = reports.TryGetValue(del.Id, out var rep0) ? rep0.TripReportNumber : "";
@@ -423,7 +421,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         bool first = true;
                         foreach (var ln in lines)
                         {
-                            int r = gridItems.Rows.Add(trip, dateStr, "", DrList.Join(ln.Drs), ln.Name, cbDeliveryType.Text, plate, tonnage, dropCount, first ? rate : 0m, 0m, driverHelper, did);
+                            int r = gridItems.Rows.Add(trip, dateStr, "", DrList.Join(ln.Drs), ln.Name, cbDeliveryType.Text, plate, tonnage, dropCount, first ? rate : 0m, first ? fuelAmt : 0m, driverHelper, did);
                             gridItems.Rows[r].Cells["colStoreCode"].Value = ln.Code;
                             gridItems.Rows[r].Cells["colTripReport"].Value = trNo;
                             gridItems.Rows[r].Cells["colCrates"].Value = ln.Crates;
@@ -432,7 +430,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                     else
                     {
-                        int r = gridItems.Rows.Add(trip, dateStr, "", "", del.Destination, cbDeliveryType.Text, plate, tonnage, dropCount, rate, 0m, driverHelper, did);
+                        int r = gridItems.Rows.Add(trip, dateStr, "", "", del.Destination, cbDeliveryType.Text, plate, tonnage, dropCount, rate, fuelAmt, driverHelper, did);
                         gridItems.Rows[r].Cells["colTripReport"].Value = trNo;
                         gridItems.Rows[r].Cells["colCrates"].Value = rep0 != null ? (rep0.DeliveredCrates > 0 ? rep0.DeliveredCrates : rep0.DeliveredGCrates + rep0.DeliveredECrates) : (del.TotalCrates > 0 ? del.TotalCrates : del.GCrate + del.ECrate);
                     }
@@ -500,7 +498,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         /// <summary>
         /// For trips already on the statement: re-reads store codes, names and DR numbers from their trip reports. Typed
-        /// amounts, fuel surcharges and zones are kept; a store new on the trip report gets its own line; a line whose
+        /// amounts and fuel surcharges are read again from the trip's service invoice; a store new on the trip report gets its own line; a line whose
         /// store is no longer on the trip report is kept and listed so the person can remove it. Never adds a trip twice.
         /// </summary>
         private void RefreshLinesFromTripReports()
@@ -513,6 +511,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
             var reported = MJdatabase.GetTripReportDeliveryIds();
+            var invoices = MJdatabase.GetTripInvoices();
+            var completedOn = MJdatabase.GetTripCompletedDates();
             int changed = 0, added = 0;
             var stale = new List<string>();
             var noReport = new List<string>();
@@ -528,6 +528,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (!reported.Contains(id)) { noReport.Add(del.DispatchNumber); continue; }
                     var lines = BuildTripLines(del, out int drops);
                     string trNo = MJdatabase.GetTripReportsByDelivery().TryGetValue(id, out var trRep) ? trRep.TripReportNumber : "";
+                    var tripInv = MJdatabase.TripInvoiceFor(invoices, id, 0);
                     var used = new HashSet<DataGridViewRow>();
                     var last = rows[rows.Count - 1];
                     foreach (var ln in lines)
@@ -568,6 +569,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         if (!int.TryParse(r.Cells["colDrops"].Value?.ToString(), out int old) || old != drops) { r.Cells["colDrops"].Value = drops; if (used.Contains(r)) changed++; }
                         if (!used.Contains(r)) stale.Add($"{del.DispatchNumber}: {(r.Cells["colDest"].Value?.ToString() ?? "").Trim()}");
                     }
+                    // Nov 7: the amount, fuel surcharge and date come from the invoice and the trip report (the first line of the trip carries the money).
+                    var tripRows = gridItems.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow && RowDeliveryId(r) == id).ToList();
+                    for (int k = 0; k < tripRows.Count; k++)
+                    {
+                        string wantDate = completedOn.Iso(id, 0, tripRows[k].Cells["colDate"].Value?.ToString());
+                        decimal wantAmt = k == 0 ? tripInv?.Freight ?? 0m : 0m, wantFuel = k == 0 ? tripInv?.Fuel ?? 0m : 0m;
+                        decimal.TryParse(tripRows[k].Cells["colAmount"].Value?.ToString(), out var haveAmt);
+                        decimal.TryParse(tripRows[k].Cells["colFuel"].Value?.ToString(), out var haveFuel);
+                        if (tripInv != null && (haveAmt != wantAmt || haveFuel != wantFuel)) { tripRows[k].Cells["colAmount"].Value = wantAmt; tripRows[k].Cells["colFuel"].Value = wantFuel; changed++; }
+                        if (!string.Equals(tripRows[k].Cells["colDate"].Value?.ToString() ?? "", wantDate, StringComparison.Ordinal)) tripRows[k].Cells["colDate"].Value = wantDate;
+                    }
                 }
             }
             finally
@@ -578,7 +590,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SizeItemsGrid();
             RefreshPicker();
             var msg = new List<string>();
-            msg.Add(changed == 0 && added == 0 ? "The lines already match the trip reports." : $"{changed} line{(changed == 1 ? "" : "s")} updated, {added} new store line{(added == 1 ? "" : "s")} added. Amounts, fuel surcharges and zones were kept.");
+            msg.Add(changed == 0 && added == 0 ? "The lines already match the trip reports." : $"{changed} line{(changed == 1 ? "" : "s")} updated, {added} new store line{(added == 1 ? "" : "s")} added. Amounts and fuel surcharges follow the service invoices.");
             if (stale.Count > 0) msg.Add($"Not on the trip report any more (check and remove if wrong):\n• {string.Join("\n• ", stale.Take(10))}{(stale.Count > 10 ? $"\n• … and {stale.Count - 10} more" : "")}");
             if (noReport.Count > 0) msg.Add($"No trip report found for: {string.Join(", ", noReport)} (left as they are).");
             QuietBox.Show(string.Join("\n\n", msg), "Refresh from trip reports", MessageBoxButtons.OK, stale.Count > 0 || noReport.Count > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
@@ -612,7 +624,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int unpriced = AppendDeliveries(fresh);
             AfterLinesAdded();
             string msg = $"Added {fresh.Count} dispatch{(fresh.Count == 1 ? "" : "es")} to the statement";
-            if (unpriced > 0) msg += $"; {unpriced} need an amount (no rate found)";
+            if (unpriced > 0) msg += $"; {unpriced} have no service invoice amount yet (make it in Billing)";
             ToastHelper.ShowToast(this, msg, unpriced > 0 ? ToastType.Warning : ToastType.Success);
         }
         /// <summary>Adds the dispatch typed in the box, checking it's completed, for this client and not billed already.</summary>

@@ -811,10 +811,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
 
                 UpdateTripCrateSummary();
-                numDeliveredECrates.Value = Math.Min(numDeliveredECrates.Maximum, sumLoadE);
-                numDeliveredGCrates.Value = Math.Min(numDeliveredGCrates.Maximum, sumLoadG);
-                numReturnedECrates.Value = Math.Min(numReturnedECrates.Maximum, sumRetE);
-                numReturnedGCrates.Value = Math.Min(numReturnedGCrates.Maximum, sumRetG);
+                numDeliveredECrates.SetSafe(Math.Min(numDeliveredECrates.Maximum, sumLoadE));
+                numDeliveredGCrates.SetSafe(Math.Min(numDeliveredGCrates.Maximum, sumLoadG));
+                numReturnedECrates.SetSafe(Math.Min(numReturnedECrates.Maximum, sumRetE));
+                numReturnedGCrates.SetSafe(Math.Min(numReturnedGCrates.Maximum, sumRetG));
 
                 // The manager name boxes are hidden on this form: the name always follows the first store's "Received by"
                 // (filling it only while empty kept the first letter typed, e.g. "P" from "Pedro Reyes").
@@ -1030,10 +1030,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 txtArrivalTime.Text = selectedTripReport.ArrivalTime ?? "";
                 txtDepartureTime.Text = selectedTripReport.DepartureTime ?? "";
-                numDeliveredGCrates.Value = Math.Max(0, selectedTripReport.DeliveredGCrates);
-                numDeliveredECrates.Value = Math.Max(0, selectedTripReport.DeliveredECrates);
-                numReturnedGCrates.Value = Math.Max(0, selectedTripReport.ReturnedGCrates);
-                numReturnedECrates.Value = Math.Max(0, selectedTripReport.ReturnedECrates);
+                numDeliveredGCrates.SetSafe(Math.Max(0, selectedTripReport.DeliveredGCrates));
+                numDeliveredECrates.SetSafe(Math.Max(0, selectedTripReport.DeliveredECrates));
+                numReturnedGCrates.SetSafe(Math.Max(0, selectedTripReport.ReturnedGCrates));
+                numReturnedECrates.SetSafe(Math.Max(0, selectedTripReport.ReturnedECrates));
                 txtStoreManagerLastName.Text = selectedTripReport.StoreManagerLastName ?? "";
                 txtStoreManagerFirstName.Text = selectedTripReport.StoreManagerFirstName ?? "";
                 txtStoreManagerMiddleName.Text = selectedTripReport.StoreManagerMiddleName ?? "";
@@ -1714,10 +1714,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             selectedTripReport = null;
             txtArrivalTime.Text = "";
             txtDepartureTime.Text = "";
-            numDeliveredGCrates.Value = 0;
-            numDeliveredECrates.Value = 0;
-            numReturnedGCrates.Value = 0;
-            numReturnedECrates.Value = 0;
+            numDeliveredGCrates.SetSafe(0);
+            numDeliveredECrates.SetSafe(0);
+            numReturnedGCrates.SetSafe(0);
+            numReturnedECrates.SetSafe(0);
             txtStoreManagerLastName.Text = "";
             txtStoreManagerFirstName.Text = "";
             txtStoreManagerMiddleName.Text = "";
@@ -1836,19 +1836,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 if (map.TryGetValue("DeliveredGCrates", out var dgc) && decimal.TryParse(dgc, out var dgcVal))
                 {
-                    numDeliveredGCrates.Value = Math.Min(numDeliveredGCrates.Maximum, Math.Max(numDeliveredGCrates.Minimum, dgcVal));
+                    numDeliveredGCrates.SetSafe(Math.Min(numDeliveredGCrates.Maximum, Math.Max(numDeliveredGCrates.Minimum, dgcVal)));
                 }
                 if (map.TryGetValue("DeliveredECrates", out var dec) && decimal.TryParse(dec, out var decVal))
                 {
-                    numDeliveredECrates.Value = Math.Min(numDeliveredECrates.Maximum, Math.Max(numDeliveredECrates.Minimum, decVal));
+                    numDeliveredECrates.SetSafe(Math.Min(numDeliveredECrates.Maximum, Math.Max(numDeliveredECrates.Minimum, decVal)));
                 }
                 if (map.TryGetValue("ReturnedGCrates", out var rgc) && decimal.TryParse(rgc, out var rgcVal))
                 {
-                    numReturnedGCrates.Value = Math.Min(numReturnedGCrates.Maximum, Math.Max(numReturnedGCrates.Minimum, rgcVal));
+                    numReturnedGCrates.SetSafe(Math.Min(numReturnedGCrates.Maximum, Math.Max(numReturnedGCrates.Minimum, rgcVal)));
                 }
                 if (map.TryGetValue("ReturnedECrates", out var rec) && decimal.TryParse(rec, out var recVal))
                 {
-                    numReturnedECrates.Value = Math.Min(numReturnedECrates.Maximum, Math.Max(numReturnedECrates.Minimum, recVal));
+                    numReturnedECrates.SetSafe(Math.Min(numReturnedECrates.Maximum, Math.Max(numReturnedECrates.Minimum, recVal)));
                 }
                 if (map.TryGetValue("StoreManagerLastName", out var sml) && !string.IsNullOrWhiteSpace(sml))
                 {

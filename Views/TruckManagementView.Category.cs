@@ -89,7 +89,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int cap = MJdatabase.LockedCapacity(name, cargo, (int)numCapacity.Value);
             bool was = isBindingForm;
             isBindingForm = true;
-            try { numCapacity.Value = Math.Min(numCapacity.Maximum, Math.Max(numCapacity.Minimum, cap)); } finally { isBindingForm = was; }
+            try { numCapacity.SetSafe(Math.Min(numCapacity.Maximum, Math.Max(numCapacity.Minimum, cap))); } finally { isBindingForm = was; }
             string combi = m.CombiMax == 0 ? "Combi not set" : $"Combi {m.CombiColdMax} cold + {m.CombiDryMax} dry";
             lblCatHint.Text = $"{m.CategoryName}: Dry {m.DryMax} · Cold {m.ColdMax} · {combi}. This truck ({cargo}) carries {cap:N0} crates.";
             lblCatHint.ForeColor = AppTheme.TextMuted;

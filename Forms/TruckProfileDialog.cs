@@ -219,7 +219,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private DateTimePicker DatePicker(DateTime? value)
         {
             var d = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", ShowCheckBox = true, Font = new Font("Segoe UI", 10F) };
-            d.Value = value ?? DateTime.Today;
+            d.SetSafe(value ?? DateTime.Today);
             d.Checked = value.HasValue;
             return d;
         }
@@ -324,8 +324,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var f = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, BackColor = AppTheme.Surface, Padding = new Padding(D(4)) };
             int fw = D(300);
             var lblMode = new Label { Text = "New maintenance entry", AutoSize = true, Font = new Font("Segoe UI Semibold", 10.5F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, 0, 0, D(4)) };
-            var dtpDate = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Width = fw, Font = new Font("Segoe UI", 10F), MaxDate = DateTime.Today.AddDays(1) };
-            var cbTask = new ComboBox { Width = fw, Font = new Font("Segoe UI", 10F), DropDownStyle = ComboBoxStyle.DropDown };
+            var dtpDate = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Width = fw, Font = new Font("Segoe UI", 10F) };
+            dtpDate.CapAtToday(1);
+            var cbTask =new ComboBox { Width = fw, Font = new Font("Segoe UI", 10F), DropDownStyle = ComboBoxStyle.DropDown };
             ProfileKit.Suggest(cbTask, "maintenance");
             var cbCat = new ComboBox { Width = fw, Font = new Font("Segoe UI", 10F), DropDownStyle = ComboBoxStyle.DropDownList };
             cbCat.Items.AddRange(new object[] { "Preventive", "Repair", "Inspection", "Tires", "Reefer / refrigeration", "Registration / compliance" });
@@ -355,7 +356,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 editing = m;
                 lblMode.Text = m == null ? "New maintenance entry" : $"Editing entry from {m.ServiceDate:MMM d, yyyy}";
-                dtpDate.Value = m?.ServiceDate ?? DateTime.Today;
+                dtpDate.SetSafe(m?.ServiceDate ?? DateTime.Today);
                 cbTask.Text = m?.Task ?? "";
                 cbCat.SelectedItem = m?.Category ?? "Preventive";
                 if (cbCat.SelectedIndex < 0) cbCat.SelectedIndex = 0;
@@ -363,7 +364,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 txtCost.Text = m != null && m.Cost > 0 ? m.Cost.ToString("0.00") : "";
                 txtShop.Text = m?.ServiceProvider ?? "";
                 dtpNext.Checked = m?.NextDueDate != null;
-                dtpNext.Value = m?.NextDueDate ?? DateTime.Today.AddMonths(3);
+                dtpNext.SetSafe(m?.NextDueDate ?? DateTime.Today.AddMonths(3));
                 txtNotes.Text = m?.Notes ?? "";
                 if (btnVoid != null) btnVoid.Visible = m != null;
                 lblMsg.Text = "";

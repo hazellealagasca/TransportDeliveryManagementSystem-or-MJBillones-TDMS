@@ -47,7 +47,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     int cap = MJdatabase.GetTruckTypeCapacity(cbType.Text.Trim());
                     if (cap > 0 && (selectedTruck == null || selectedTruck.Id == 0))
                     {
-                        numCapacity.Value = cap;
+                        numCapacity.SetSafe(cap);
                     }
                 }
             };
@@ -363,7 +363,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     cbType.Items.Add(selectedTruck.TruckType);
                 cbType.SelectedIndex = cbType.FindStringExact(selectedTruck.TruckType ?? "");
                 cbCargoType.SelectedItem = MJdatabase.NormalizeCargo(selectedTruck.CargoType);
-                numCapacity.Value = selectedTruck.CapacityCrates;
+                numCapacity.SetSafe(selectedTruck.CapacityCrates);
                 string curStatus = selectedTruck.Status;
                 if (curStatus.Equals("Available", StringComparison.OrdinalIgnoreCase)) curStatus = "Active";
                 if (curStatus.Equals("Inactive", StringComparison.OrdinalIgnoreCase)) curStatus = "Decommissioned";
@@ -665,7 +665,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         cbType.Items.Add(selectedTruck.TruckType);
                     cbType.SelectedIndex = cbType.FindStringExact(selectedTruck.TruckType ?? "");
                     cbCargoType.SelectedItem = MJdatabase.NormalizeCargo(selectedTruck.CargoType);
-                    numCapacity.Value = selectedTruck.CapacityCrates;
+                    numCapacity.SetSafe(selectedTruck.CapacityCrates);
                     cbStatus.SelectedItem = selectedTruck.Status;
                     txtRemarks.Text = selectedTruck.Remarks;
                     lblFormHeader.Text = "Truck Vehicle Details";
@@ -716,7 +716,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtPlate.Text = "";
             cbType.SelectedIndex = -1;
             cbType.Text = "";
-            numCapacity.Value = numCapacity.Minimum;
+            numCapacity.SetSafe(numCapacity.Minimum);
             cbStatus.SelectedIndex = 0;
             cbCargoType.SelectedIndex = -1;
             txtRemarks.Text = "";
@@ -1221,7 +1221,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (selectedTruckCategory != null)
             {
                 txtCatName.Text = selectedTruckCategory.CategoryName;
-                numCatCapacity.Value = selectedTruckCategory.CrateCapacity;
+                numCatCapacity.SetSafe(selectedTruckCategory.CrateCapacity);
             }
         }
 
@@ -1307,7 +1307,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             selectedTruckCategory = null;
             txtCatName.Clear();
-            numCatCapacity.Value = 300;
+            numCatCapacity.SetSafe(300);
         }
 }
 }

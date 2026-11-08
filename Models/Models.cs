@@ -645,9 +645,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string ClientName { get; set; } = string.Empty;
         public DateTime IssueDate { get; set; } = DateTime.Now;
         public DateTime DueDate { get; set; } = DateTime.Now.AddDays(15);
+        /// <summary>What the trip is billed in all (VAT inclusive): freight tariff + fuel surcharge.</summary>
         public decimal TotalAmount { get; set; }
+        /// <summary>Nov 7: invoices carry no deductions. Kept only because older records have the column; always 0 on save.</summary>
         public decimal Deductions { get; set; }
         public decimal NetAmount { get; set; }
+        /// <summary>The fuel surcharge part of <see cref="TotalAmount"/> (0 when none).</summary>
+        public decimal FuelSurcharge { get; set; }
+        /// <summary>The freight tariff part of the total: what the statement shows under Amount.</summary>
+        public decimal Freight => Math.Max(0m, TotalAmount - FuelSurcharge);
+        /// <summary>Number of the trip report of the invoiced trip (read from the trip report; blank when it has none).</summary>
+        public string TripReportNumber { get; set; } = string.Empty;
         public string Status { get; set; } = "Unpaid";
     }
 

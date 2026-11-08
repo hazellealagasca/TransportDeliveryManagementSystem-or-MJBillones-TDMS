@@ -1,3 +1,4 @@
+using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
 
@@ -25,10 +26,63 @@ public static partial class Checks
         Fresh();
         var (soa, items) = PrintSample(SoaTypes.Normal);
         string h = Html(PrintForms.StatementOfAccount(soa, items));
-        var must = new[] { "DR no.", "Destination", "Plate no.", "Tons", "Drops", "Freight tariff", "Fuel surcharge", "Driver / helper" };
-        var mustNot = new[] { "ZONE-X", "Total crates", "TRIP-XYZ", "S001", ">Zone<", "Trip report #" };
+        // Nov 7: the columns of the company's statement sheet.
+        var must = new[] { ">Trip<", ">Date store received<", ">Zone<", ">DR no.<", ">Destination<", ">Type of delivery<", ">Plate no.<", ">Tons<", ">No. of drops<", ">Amount<", ">Fuel surcharge<", ">Driver / Aide<" };
+        var mustNot = new[] { "Total crates", "TRIP-XYZ", "S001", "Trip report #", "Freight tariff", "Driver / helper" };
         var missing = must.Where(m => !h.Contains(m)).ToList(); var extra = mustNot.Where(m => h.Contains(m)).ToList();
         return missing.Count == 0 && extra.Count == 0 ? "" : $"missing [{string.Join(", ", missing)}] extra [{string.Join(", ", extra)}]";
+    }
+
+    [Check]
+    public static string SoaPrint_Normal_ColumnsInSheetOrder()
+    {
+        Fresh();
+        var (soa, items) = PrintSample(SoaTypes.Normal);
+        string h = Html(PrintForms.StatementOfAccount(soa, items));
+        var order = new[] { ">Trip<", ">Date store received<", ">Zone<", ">DR no.<", ">Destination<", ">Type of delivery<", ">Plate no.<", ">Tons<", ">No. of drops<", ">Amount<", ">Fuel surcharge<", ">Driver / Aide<" };
+        int last = -1; var bad = new List<string>();
+        foreach (var o in order) { int at = h.IndexOf(o); if (at < 0 || at < last) bad.Add(o); else last = at; }
+        return bad.Count == 0 && h.Contains("class='grid sheet'") && h.Contains("th class='num red'") ? "" : $"out of order or missing: {string.Join(", ", bad)}; sheet class {h.Contains("class='grid sheet'")}; red fuel heading {h.Contains("th class='num red'")}";
+    }
+
+    [Check]
+    public static string SoaPrint_DateCompleted_IsTripReportDate()
+    {
+        Fresh();
+        string bad = "";
+        string Print(string type, int deliveryId, int specialId)
+        {
+            var (soa, items) = PrintSample(type);
+            items[0].DeliveryId = deliveryId; items[0].SpecialTripId = specialId; items[0].DateReceived = "2026-11-01"; // the saved line holds the dispatch date
+            return Html(PrintForms.StatementOfAccount(soa, items));
+        }
+        // A dispatch with a finished trip report prints the report date, not the dispatch date saved on the line.
+        int d1 = Seed.Delivery();
+        int r1 = Seed.TripReport(d1);
+        Exec("UPDATE TripReports SET ReportDate = '2026-11-05', Status = 'Completed' WHERE Id = @i", ("@i", r1));
+        string h1 = Print(SoaTypes.Normal, d1, 0);
+        if (!h1.Contains("05-Nov-2026") || h1.Contains("01-Nov-2026")) bad += "dispatch with report did not print the report date; ";
+        // A draft report is not a completion: the saved line date stays.
+        int d2 = Seed.Delivery();
+        int r2 = Seed.TripReport(d2);
+        Exec("UPDATE TripReports SET ReportDate = '2026-11-06', Status = 'Draft' WHERE Id = @i", ("@i", r2));
+        string h2 = Print(SoaTypes.Normal, d2, 0);
+        if (h2.Contains("06-Nov-2026") || !h2.Contains("01-Nov-2026")) bad += "draft report was treated as completed; ";
+        // No report at all: the saved line date.
+        string h3 = Print(SoaTypes.Normal, Seed.Delivery(), 0);
+        if (!h3.Contains("01-Nov-2026")) bad += "no report: saved date missing; ";
+        // A special trip prints its trip report date.
+        int s1 = Seed.SpecialTrip();
+        int sr = Seed.TripReport(0, s1);
+        Exec("UPDATE TripReports SET ReportDate = '2026-11-07', Status = 'Completed' WHERE Id = @i", ("@i", sr));
+        string h4 = Print(SoaTypes.Special, 0, s1);
+        if (!h4.Contains("07-Nov-2026") || !h4.Contains(">Date completed<")) bad += "special trip did not print its report date; ";
+        // A special trip without a report prints the date it was marked completed.
+        int s2 = Seed.SpecialTrip();
+        Exec("UPDATE SpecialTrips SET CompletedAt = '2026-11-04 15:30:00' WHERE Id = @i", ("@i", s2));
+        string h5 = Print(SoaTypes.Special, 0, s2);
+        if (!h5.Contains("04-Nov-2026")) bad += "special trip without report did not print CompletedAt; ";
+        return bad;
     }
 
     [Check]
@@ -42,19 +96,87 @@ public static partial class Checks
     }
 
     [Check]
-    public static string SoaPrint_ExactlyFiveTotals()
+    public static string SoaPrint_TotalsBlock_IsTheStatementSheet()
     {
         Fresh();
-        string bad = "";
-        foreach (var type in new[] { SoaTypes.Normal, SoaTypes.Special })
+        // The company's own statement: freight 266,500.00 and fuel surcharge 65,424.00.
+        var t = SoaTotals.From(266500m, 65424m);
+        var soa = new StatementOfAccount { Id = 1, SoaNumber = "SOA-T-4", ClientName = "CLIENT A", SoaType = SoaTypes.Normal, IssueDate = DateTime.Today, TotalSalesVatInc = t.TotalSales, VatAmount = t.Vat, NetOfVat = t.NetOfVat, FuelSurchargeTotal = t.Fuel, WithholdingTax = t.Withholding, TotalAmount = t.Due };
+        var (_, items) = PrintSample(SoaTypes.Normal);
+        string h = Html(PrintForms.StatementOfAccount(soa, items));
+        var bad = new List<string>();
+        if (t.Vat != 28553.57m || t.NetOfVat != 237946.43m || t.Withholding != 4758.93m || t.Due != 327165.07m) bad.Add($"formula gave vat {t.Vat}, net {t.NetOfVat}, withholding {t.Withholding}, due {t.Due}");
+        var order = new[] { "Total Sales (VAT Inclusive)", "Less: VAT", "Amount: Net of VAT", "Fuel surcharge", "Add: VAT", "Less: Withholding Tax", "TOTAL AMOUNT DUE" };
+        int last = h.IndexOf("<tfoot>"); if (last < 0) bad.Add("no totals block under the table");
+        foreach (var o in order) { int at = h.IndexOf(">" + o + "<", Math.Max(0, last)); if (at < 0 || at < last) bad.Add("line missing or out of order: " + o); else last = at; }
+        foreach (var n in new[] { "266,500.00", "28,553.57", "237,946.43", "65,424.00", "4,758.93", "327,165.07" }) if (!h.Contains(n)) bad.Add("figure missing: " + n);
+        if (h.Contains("Expanded withholding tax")) bad.Add("the older five-line computation still prints");
+        return string.Join("; ", bad);
+    }
+
+    [Check]
+    public static string SoaPrint_OlderStatement_KeepsFiveLines()
+    {
+        Fresh();
+        // An older statement kept its fuel inside the sales, so it does not add up the sheet's way and keeps its own computation.
+        var soa = new StatementOfAccount { Id = 1, SoaNumber = "SOA-T-5", ClientName = "CLIENT A", SoaType = SoaTypes.Normal, IssueDate = DateTime.Today, TotalSalesVatInc = 1120m, VatAmount = 120m, NetOfVat = 1000m, FuelSurchargeTotal = 120m, WithholdingTax = 20m, TotalAmount = 1100m };
+        var (_, items) = PrintSample(SoaTypes.Normal);
+        string h = Html(PrintForms.StatementOfAccount(soa, items));
+        var must = new[] { "Total sales (VAT inclusive)", "VAT (12%)", "Net of VAT", "Expanded withholding tax (2%)", "Total amount due" };
+        var missing = must.Where(m => !h.Contains(m)).ToList();
+        return missing.Count == 0 && !h.Contains("Add: VAT") ? "" : $"missing [{string.Join(", ", missing)}]; sheet block printed: {h.Contains("Add: VAT")}";
+    }
+
+    [Check]
+    public static string SoaTotals_Formula_AndExactSharing()
+    {
+        var t = SoaTotals.From(266500m, 65424m);
+        var bad = new List<string>();
+        if (t.Due != t.NetOfVat + t.Fuel + t.Vat - t.Withholding) bad.Add("due is not net + fuel + vat - withholding");
+        if (t.Due != t.TotalSales + t.Fuel - t.Withholding) bad.Add("due is not sales + fuel - withholding");
+        // Odd centavos: the shares always add up to the statement's withholding exactly.
+        foreach (var f in new[] { new[] { 23500m, 23500m, 34500m }, new[] { 10000.01m, 3333.33m, 7777.77m, 1.05m }, new[] { 999.99m }, new decimal[] { 0m, 0m } })
         {
-            var (soa, items) = PrintSample(type);
-            string h = Html(PrintForms.StatementOfAccount(soa, items));
-            var must = new[] { "Total sales (VAT inclusive)", "VAT (12%)", "Net of VAT", "Expanded withholding tax (2%)", "Total amount due" };
-            var mustNot = new[] { "Add: VAT", "Fuel surcharge (included" };
-            var missing = must.Where(m => !h.Contains(m)).ToList(); var extra = mustNot.Where(m => h.Contains(m)).ToList();
-            if (missing.Count + extra.Count > 0) bad += $"{type}: missing [{string.Join(", ", missing)}] extra [{string.Join(", ", extra)}] ";
+            var whole = SoaTotals.From(f.Sum(), 0m).Withholding;
+            var shares = SoaTotals.Share(whole, f);
+            if (shares.Sum() != whole) bad.Add($"shares {string.Join("+", shares)} != {whole}");
         }
-        return bad;
+        return string.Join("; ", bad);
+    }
+
+    [Check]
+    public static string Soa_Save_SharesWithholding_AndReleasesDroppedTrips()
+    {
+        Fresh(); RunBackfill();
+        var trips = new List<(int Id, Invoice Inv)>();
+        foreach (var (freight, fuel) in new[] { (23500m, 6031m), (23500m, 6031m), (34500m, 8260m) })
+        {
+            int d = Seed.Delivery(); Seed.TripReport(d);
+            var inv = NewInvoice(d, freight + fuel); inv.FuelSurcharge = fuel;
+            MJdatabase.SaveInvoice(inv);
+            trips.Add((d, inv));
+        }
+        if (trips.Any(x => MJdatabase.GetInvoices().First(i => i.Id == x.Inv.Id).Deductions != 0m)) return "an invoice alone carries a withholding (the computation belongs to the statement)";
+        StatementOfAccountItem Line(int n, (int Id, Invoice Inv) x) => new() { TripNumber = n, DrNumbers = "DR-" + n, Destination = "Store " + n, PlateNumber = "ABC-123", Tonnage = "6T", DropCount = 1, Amount = x.Inv.Freight, FuelSurcharge = x.Inv.FuelSurcharge, DeliveryId = x.Id };
+        var all = SoaTotals.From(trips.Sum(x => x.Inv.Freight), trips.Sum(x => x.Inv.FuelSurcharge));
+        var soa = new StatementOfAccount { SoaNumber = "SOA-T-6", ClientName = "CLIENT A", SoaType = SoaTypes.Normal, IssueDate = DateTime.Today, PeriodCovered = "Nov 2026", TotalSalesVatInc = all.TotalSales, VatAmount = all.Vat, NetOfVat = all.NetOfVat, FuelSurchargeTotal = all.Fuel, WithholdingTax = all.Withholding, TotalAmount = all.Due, Status = PayStatus.Unpaid };
+        int id = MJdatabase.SaveStatementOfAccount(soa, trips.Select((x, i) => Line(i + 1, x)).ToList());
+        var invs = MJdatabase.GetInvoices().Where(i => trips.Any(x => x.Inv.Id == i.Id)).ToList();
+        var bad = new List<string>();
+        var saved = MJdatabase.GetStatementsOfAccount().First(s => s.Id == id);
+        if (saved.TotalAmount != all.Due || saved.WithholdingTax != all.Withholding || saved.FuelSurchargeTotal != all.Fuel) bad.Add($"saved due {saved.TotalAmount} withholding {saved.WithholdingTax} fuel {saved.FuelSurchargeTotal}");
+        if (invs.Sum(i => i.Deductions) != all.Withholding) bad.Add($"shares {invs.Sum(i => i.Deductions)} != withholding {all.Withholding}");
+        if (invs.Sum(i => i.NetAmount) != all.Due) bad.Add($"invoices' net {invs.Sum(i => i.NetAmount)} != statement due {all.Due}");
+        // Taking a trip off releases its invoice back to no share.
+        soa.Id = id;
+        var two = trips.Take(2).ToList();
+        var t2 = SoaTotals.From(two.Sum(x => x.Inv.Freight), two.Sum(x => x.Inv.FuelSurcharge));
+        soa.TotalSalesVatInc = t2.TotalSales; soa.VatAmount = t2.Vat; soa.NetOfVat = t2.NetOfVat; soa.FuelSurchargeTotal = t2.Fuel; soa.WithholdingTax = t2.Withholding; soa.TotalAmount = t2.Due;
+        MJdatabase.SaveStatementOfAccount(soa, two.Select((x, i) => Line(i + 1, x)).ToList());
+        var dropped = MJdatabase.GetInvoices().First(i => i.Id == trips[2].Inv.Id);
+        if (dropped.SoaId != 0 || dropped.Deductions != 0m || dropped.NetAmount != dropped.TotalAmount) bad.Add($"dropped invoice: soa {dropped.SoaId}, deductions {dropped.Deductions}, net {dropped.NetAmount}");
+        var kept = MJdatabase.GetInvoices().Where(i => two.Any(x => x.Inv.Id == i.Id)).ToList();
+        if (kept.Sum(i => i.NetAmount) != t2.Due) bad.Add($"kept invoices' net {kept.Sum(i => i.NetAmount)} != {t2.Due}");
+        return string.Join("; ", bad);
     }
 }

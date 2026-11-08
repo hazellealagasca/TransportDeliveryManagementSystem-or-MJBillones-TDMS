@@ -320,7 +320,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int fw = D(290);
             var f = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, BackColor = AppTheme.Surface, Padding = new Padding(D(4)) };
             Control L(string t) => new Label { Text = t, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextSecondary, Margin = new Padding(0, D(6), 0, D(2)) };
-            var dtp = new DateTimePicker { Width = fw, Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Font = new Font("Segoe UI", 10F), MaxDate = DateTime.Today };
+            var dtp = new DateTimePicker { Width = fw, Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Font = new Font("Segoe UI", 10F) };
+            dtp.CapAtToday();
             var cbType = new ComboBox { Width = fw, Font = new Font("Segoe UI", 10F), DropDownStyle = ComboBoxStyle.DropDown };
             ProfileKit.Suggest(cbType, suggestSource);
             cbType.Text = "";
@@ -337,7 +338,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbDispatch.SelectedIndexChanged += (s, e) =>
             {
                 var t = trips.FirstOrDefault(x => x.DispatchNumber == cbDispatch.Text);
-                if (t != null && t.DispatchDate.Date <= DateTime.Today) dtp.Value = t.DispatchDate.Date;
+                if (t != null && t.DispatchDate.Date <= DateTime.Today) dtp.SetSafe(t.DispatchDate.Date);
             };
             void Save()
             {

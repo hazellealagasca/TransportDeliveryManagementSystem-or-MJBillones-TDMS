@@ -791,7 +791,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (currentTripId > 0) return;
             if (!string.IsNullOrWhiteSpace(company)) cbCompany.Text = company.Trim();
-            dtpDispatchDate.Value = date < dtpDispatchDate.MinDate ? DateTime.Today : date;
+            dtpDispatchDate.SetSafe(date < dtpDispatchDate.MinDate ? DateTime.Today : date);
             if (!string.IsNullOrWhiteSpace(serviceType))
             {
                 int i = cbServiceType.FindStringExact(serviceType);
@@ -842,11 +842,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             currentTripId = 0;
             loadedTrip = null;
             txtOrderRef.Text = MJdatabase.GenerateNextSpecialTripReference();
-            dtpDispatchDate.Value = DateTime.Now;
+            dtpDispatchDate.SetSafe(DateTime.Now);
             cbCompany.Text = string.Empty;
             txtAddress.Text = string.Empty;
             txtDestination.Text = string.Empty;
-            numTripCharge.Value = 0;
+            numTripCharge.SetSafe(0);
             cbDepartureTime.Text = "";
             cbServiceType.SelectedIndex = -1;
             cbStatus.SelectedIndex = 0;
@@ -1013,7 +1013,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             currentTripId = loadedTrip.Id;
             txtOrderRef.Text = loadedTrip.OrderReference;
-            dtpDispatchDate.Value = loadedTrip.DispatchDate;
+            dtpDispatchDate.SetSafe(loadedTrip.DispatchDate);
             cbCompany.Text = loadedTrip.Company;
             cbDepartureTime.Text = loadedTrip.DepartureTime;
             txtAddress.Text = loadedTrip.Address;
@@ -1030,7 +1030,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             chkWithCollection.Checked = loadedTrip.WithCollection;
 
             txtDestination.Text = loadedTrip.DestinationAddress;
-            numTripCharge.Value = Math.Min(numTripCharge.Maximum, Math.Max(0m, loadedTrip.TripCharge));
+            numTripCharge.SetSafe(Math.Min(numTripCharge.Maximum, Math.Max(0m, loadedTrip.TripCharge)));
             // Older trips have no Mode of Payment yet: it is asked for on the next save.
             int mop = Array.FindIndex(PaymentModes, m => string.Equals(m, loadedTrip.ModeOfPayment?.Trim(), StringComparison.OrdinalIgnoreCase));
             cbPayment.SelectedIndex = mop;

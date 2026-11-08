@@ -70,8 +70,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbLicenseValidity = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 10F), Margin = new Padding(0, 0, Dp(12), 0) };
             cbLicenseValidity.Items.AddRange(new object[] { "5 years", "10 years", "Other (set expiry)" });
             cbLicenseValidity.SelectedIndex = 0;
-            dtpLicenseIssued = new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Font = new Font("Segoe UI", 10F), MaxDate = DateTime.Today, Margin = new Padding(0, 0, Dp(12), 0) };
-            dtpLicenseExpiry = new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Font = new Font("Segoe UI", 10F), Margin = new Padding(0, 0, Dp(12), 0) };
+            dtpLicenseIssued = new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Font = new Font("Segoe UI", 10F), Margin = new Padding(0, 0, Dp(12), 0) };
+            dtpLicenseIssued.CapAtToday();   // a license can't be issued in the future; the cap moves forward each day, even if this screen stays open overnight
+            dtpLicenseExpiry =new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Font = new Font("Segoe UI", 10F), Margin = new Padding(0, 0, Dp(12), 0) };
             lblLicenseStatus = new Label { Dock = DockStyle.Fill, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextMuted, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(0, Dp(4), 0, 0) };
             tbl.Controls.Add(L("License classification"), 0, 0);
             tbl.Controls.Add(L("Valid for"), 1, 0);
@@ -142,8 +143,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             settingLicense = true;
             try
             {
-                if (cbLicenseValidity.SelectedIndex == 0) dtpLicenseExpiry.Value = dtpLicenseIssued.Value.Date.AddYears(5);
-                else if (cbLicenseValidity.SelectedIndex == 1) dtpLicenseExpiry.Value = dtpLicenseIssued.Value.Date.AddYears(10);
+                if (cbLicenseValidity.SelectedIndex == 0) dtpLicenseExpiry.SetSafe(dtpLicenseIssued.Value.Date.AddYears(5));
+                else if (cbLicenseValidity.SelectedIndex == 1) dtpLicenseExpiry.SetSafe(dtpLicenseIssued.Value.Date.AddYears(10));
             }
             finally { settingLicense = false; }
             UpdateLicenseStatus();
@@ -183,8 +184,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 chkIsSeasonal.Checked = c.IsSeasonal;
                 cbLicenseClass.SelectedIndex = !c.HasLicense ? 2 : (c.LicenseClass.StartsWith("Professional", StringComparison.OrdinalIgnoreCase) ? 0 : 1);
                 var issued = c.LicenseIssued ?? (c.LicenseExpiry.HasValue ? c.LicenseExpiry.Value.AddYears(-5) : DateTime.Today);
-                dtpLicenseIssued.Value = issued > dtpLicenseIssued.MaxDate ? dtpLicenseIssued.MaxDate : issued;
-                dtpLicenseExpiry.Value = c.LicenseExpiry ?? dtpLicenseIssued.Value.AddYears(5);
+                dtpLicenseIssued.SetSafe(issued);
+                dtpLicenseExpiry.SetSafe(c.LicenseExpiry ?? dtpLicenseIssued.Value.AddYears(5));
             }
             finally { settingLicense = false; }
             SyncValidityFromDates();
@@ -202,9 +203,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbRole.SelectedIndex = -1;
                 chkIsSeasonal.Checked = false;
                 cbLicenseClass.SelectedIndex = 2;
-                dtpLicenseIssued.Value = DateTime.Today;
+                dtpLicenseIssued.SetSafe(DateTime.Today);
                 cbLicenseValidity.SelectedIndex = 0;
-                dtpLicenseExpiry.Value = DateTime.Today.AddYears(5);
+                dtpLicenseExpiry.SetSafe(DateTime.Today.AddYears(5));
             }
             finally { settingLicense = false; }
             UpdateLicenseEnabled();

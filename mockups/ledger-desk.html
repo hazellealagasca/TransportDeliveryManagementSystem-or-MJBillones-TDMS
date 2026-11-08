@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Ledger Desk — Payments mockup</title>
+<style>
+:root{
+  --bg:#0e1013; --shell:#12151a; --paper:#1a1d24; --tape:#14171c; --line:#2a2f39; --field:#13151a; --fieldline:#3a3f4b;
+  --text:#e9ecf1; --muted:#98a2b3; --faint:#6b7585; --accent:#e0555d; --accent-ink:#ff8a90; --accent-soft:rgba(224,85,93,.13);
+  --slab:#7b1d2b; --slab2:#5f1521; --onslab:#fff; --danger:#ff6b6b; --danger-soft:rgba(255,107,107,.12);
+  --warn:#f2a63d; --warn-soft:rgba(242,166,61,.13); --ok:#4cc38a; --info:#5aa9ff;
+  --btn2:#1b1e25; --btn2line:#414652; --shadow:0 10px 30px rgba(0,0,0,.35);
+  --mono:"Cascadia Mono",Consolas,monospace;
+}
+body.light{
+  --bg:#e9ecf1; --shell:#f4f5f8; --paper:#ffffff; --tape:#f7f8fb; --line:#e1e5ed; --field:#ffffff; --fieldline:#c6cddb;
+  --text:#141a26; --muted:#566074; --faint:#8a94a6; --accent:#a31f34; --accent-ink:#a31f34; --accent-soft:rgba(163,31,52,.09);
+  --slab:#8e1b2e; --slab2:#6d1322; --danger:#c62828; --danger-soft:rgba(198,40,40,.08); --warn:#b45309; --warn-soft:rgba(180,83,9,.09);
+  --ok:#157f4f; --info:#0b6bcb; --btn2:#ffffff; --btn2line:#c6cddb; --shadow:0 10px 30px rgba(20,26,38,.14);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.35 "Segoe UI Variable","Segoe UI",system-ui,sans-serif;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+/* ---------- ribbon (outside the app) ---------- */
+.ribbon{position:fixed;left:0;right:0;top:0;height:46px;z-index:50;display:flex;align-items:center;gap:14px;padding:0 18px;
+  background:#07080a;color:#d7dbe3;border-bottom:1px solid #20242c;font-size:13px}
+.ribbon b{letter-spacing:.14em;font-size:12px;color:#fff}
+.ribbon .tag{background:#2a1015;color:#ff9aa1;border:1px solid #5a2029;border-radius:20px;padding:2px 10px;font-size:11px;letter-spacing:.08em}
+.ribbon .sp{flex:1}
+.seg{display:inline-flex;border:1px solid #2c313b;border-radius:8px;overflow:hidden}
+.seg button{background:transparent;border:0;color:#aab2c0;padding:6px 12px;cursor:pointer;font-size:12.5px}
+.seg button.on{background:#e0555d;color:#fff}
+.ribbon label{display:flex;align-items:center;gap:6px;cursor:pointer;color:#aab2c0;font-size:12.5px}
+#wrap{position:absolute;left:0;right:0;top:46px;bottom:0;display:grid;place-items:center;overflow:hidden}
+#stage .main{zoom:var(--z,1)}
+#stage{position:absolute;left:0;top:0;transform-origin:0 0;display:flex;background:var(--shell);box-shadow:var(--shadow);border-radius:6px;overflow:hidden}
+/* ---------- app chrome ---------- */
+.side{width:96px;background:var(--shell);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:6px}
+.logo{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--slab),var(--accent));display:grid;place-items:center;color:#fff;font-weight:800;letter-spacing:.04em;margin-bottom:12px}
+.nav{width:64px;height:54px;border-radius:12px;display:grid;place-items:center;color:var(--muted);position:relative}
+.nav.on{background:var(--accent-soft);color:var(--accent-ink)} .nav.on::before{content:"";position:absolute;left:-16px;top:12px;bottom:12px;width:4px;border-radius:0 4px 4px 0;background:var(--accent)}
+.nav svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+.topbar{height:68px;display:flex;align-items:center;gap:18px;padding:0 24px;background:var(--shell);border-bottom:1px solid var(--line)}
+.topbar h1{font-size:22px;margin:0;font-weight:650}
+.user{display:flex;align-items:center;gap:10px;color:var(--muted)} .user i{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:700}
+.user b{color:var(--text);font-weight:600}.pill{font-size:11.5px;color:var(--accent-ink);background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);padding:1px 9px;border-radius:12px}
+.search{flex:1;max-width:520px;margin-left:auto;height:38px;border-radius:19px;background:var(--field);border:1px solid var(--fieldline);display:flex;align-items:center;padding:0 16px;color:var(--faint)}
+.chip{height:38px;padding:0 16px;border-radius:10px;display:flex;align-items:center;border:1px solid var(--line);color:var(--muted);background:var(--paper)}
+.chip.hot{color:var(--accent-ink);background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
+.hub{height:62px;display:flex;align-items:center;gap:8px;padding:0 24px;background:var(--shell);border-bottom:1px solid var(--line)}
+.hub button{height:38px;padding:0 18px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;font-weight:600}
+.hub button.on{background:var(--text);color:var(--shell);border-color:var(--text)}
+.hub .n{margin-left:6px;font-size:11.5px;padding:1px 7px;border-radius:10px;background:var(--accent);color:#fff}
+.content{flex:1;min-height:0;position:relative;padding:18px 24px 20px}
+/* ---------- buttons ---------- */
+.btn{height:36px;padding:0 18px;border-radius:9px;border:1px solid var(--btn2line);background:var(--btn2);color:var(--text);cursor:pointer;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 14px color-mix(in srgb,var(--accent) 35%,transparent)}
+body.light .btn.primary{background:var(--slab);border-color:var(--slab)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 55%,transparent);background:transparent}
+.btn[disabled]{opacity:.38;cursor:not-allowed;box-shadow:none;filter:none}
+.btn.tiny{height:30px;padding:0 12px;font-size:12.5px}
+/* ---------- list view ---------- */
+.list{position:absolute;inset:18px 24px 20px;display:flex;flex-direction:column;gap:16px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px}
+.queue{flex:none;height:208px;display:flex;flex-direction:column;overflow:hidden;border-top:3px solid var(--accent)}
+.qh{display:flex;align-items:center;gap:12px;padding:12px 16px 10px}
+.qh .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.qh h3{margin:0;font-size:15px;font-weight:650} .qh .sub{color:var(--muted);font-size:12.5px}
+.qh .sp{flex:1}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tblwrap{overflow:auto;flex:1;min-height:0}
+.tbl th{position:sticky;top:0;background:var(--tape);text-align:left;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:650;padding:8px 14px;border-bottom:1px solid var(--line);z-index:1}
+.tbl td{padding:0 14px;height:34px;border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px}
+.tbl tr.row{cursor:pointer} .tbl tr.row:hover td{background:color-mix(in srgb,var(--accent) 5%,transparent)}
+.tbl tr.sel td{background:var(--accent-soft)} .tbl tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.num{text-align:right;font-variant-numeric:tabular-nums} .tbl th.num{text-align:right}
+.age{font-weight:650;color:var(--muted)} .age.amber{color:var(--warn)} .age.red{color:var(--danger)}
+.badge{display:inline-block;padding:1px 9px;border-radius:10px;font-size:12px;font-weight:650}
+.badge.unpaid{background:rgba(90,169,255,.14);color:var(--info)} .badge.draft{background:var(--warn-soft);color:var(--warn)}
+.badge.paid{background:rgba(76,195,138,.14);color:var(--ok)} .badge.over{background:var(--danger-soft);color:var(--danger)}
+.ledger{flex:1;min-height:0;display:flex;flex-direction:column}
+.lt{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.lt h3{margin:0 10px 0 0;font-size:15px}
+.in{height:36px;border-radius:9px;background:var(--field);border:1px solid var(--fieldline);padding:0 12px;outline:0;min-width:0}
+.in:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.empty{display:grid;place-items:center;color:var(--muted);height:100%;text-align:center;padding:20px}
+/* ---------- editor ---------- */
+.editor{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg)}
+.eh{flex:none;height:60px;display:flex;align-items:center;gap:18px;padding:0 24px;background:var(--shell);border-bottom:1px solid var(--line)}
+.eh .t{font-size:18px;font-weight:650;white-space:nowrap} .eh .hint{color:var(--muted);font-size:12.5px;max-width:420px;line-height:1.25}
+.kpis{margin-left:auto;display:flex;gap:2px}
+.kpi{padding:0 18px;border-left:1px solid var(--line);min-width:128px} .kpi small{display:block;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.kpi b{font-size:17px;font-variant-numeric:tabular-nums;font-weight:650} .kpi.bad b{color:var(--danger)} .kpi.good b{color:var(--ok)}
+.split{flex:1;min-height:0;display:grid;gap:16px;padding:16px 24px}
+.pane{min-height:0;display:flex;flex-direction:column;gap:14px;overflow:auto}
+.sheet{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.sheet h4,.tape h4{margin:0 0 14px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;display:flex;gap:10px;align-items:center}
+.sheet h4 i,.tape h4 i{font-style:normal;width:22px;height:22px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;font-size:11.5px;letter-spacing:0}
+.f{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;min-width:0}
+.f label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:650}
+.f .in,.f select.in{width:100%;height:38px;font-size:14.5px}
+.f .in.right{text-align:right;font-variant-numeric:tabular-nums}
+.f .in.err{border-color:var(--danger);box-shadow:0 0 0 3px var(--danger-soft)} .f .in.flash{animation:fl .9s}
+@keyframes fl{0%,60%{box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 55%,transparent)}100%{box-shadow:none}}
+.msg{font-size:12.5px;min-height:16px} .msg.ok{color:var(--ok)} .msg.bad{color:var(--danger)} .msg.warn{color:var(--warn)}
+.msg a{color:var(--accent-ink);cursor:pointer;text-decoration:underline}
+.lock{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:9px;background:var(--tape);border:1px dashed var(--fieldline);color:var(--text)}
+.lock small{color:var(--faint);font-size:11px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 18px} .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 18px}
+.summary{border:1px solid var(--line);background:var(--tape);border-radius:10px;padding:12px 14px;display:grid;grid-template-columns:auto 1fr auto 1fr;gap:6px 16px;font-size:13.5px;margin:-2px 0 14px}
+.summary dt{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);align-self:center} .summary dd{margin:0;font-weight:600;overflow-wrap:anywhere}
+.tape{background:var(--tape);border:1px solid var(--line);border-radius:14px;padding:18px 20px;position:relative}
+.tape::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:repeating-linear-gradient(90deg,var(--line) 0 8px,transparent 8px 14px);border-radius:14px 14px 0 0;opacity:.7}
+.ln{display:flex;align-items:baseline;gap:8px;padding:5px 0;font-size:14px}
+.ln span:first-child{color:var(--muted)} .ln .lead{flex:1;border-bottom:2px dotted var(--fieldline);transform:translateY(-3px)}
+.ln b{font-variant-numeric:tabular-nums;font-weight:600;font-size:15px}
+.ln.sub span:first-child{padding-left:14px;color:var(--faint);font-size:13px}
+.slab{margin-top:14px;border-radius:12px;padding:16px 20px;background:linear-gradient(160deg,var(--slab),var(--slab2));color:var(--onslab);position:relative;overflow:hidden;box-shadow:0 12px 26px color-mix(in srgb,var(--slab) 40%,transparent)}
+.slab::after{content:"";position:absolute;right:-30px;top:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.06)}
+.slab small{display:block;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;opacity:.82;font-weight:700}
+.slab strong{display:block;text-align:right;font-size:30px;font-weight:650;font-variant-numeric:tabular-nums;margin-top:2px;letter-spacing:.01em}
+.slab em{display:block;text-align:right;font-style:normal;font-size:12px;opacity:.82;margin-top:2px}
+.attn{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--paper)}
+.attn h4{margin:0 0 10px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--danger);font-weight:700}
+.attn.clear h4{color:var(--ok)}
+.issue{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:9px;cursor:pointer;margin:0 -6px;font-size:13.5px}
+.issue:hover{background:var(--danger-soft)} .issue .x{flex:none;width:18px;height:18px;border-radius:50%;background:var(--danger);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;margin-top:1px}
+.issue.w .x{background:var(--warn)} .issue .go{margin-left:auto;color:var(--faint);white-space:nowrap}
+.passed{color:var(--muted);font-size:12.5px;margin-top:8px}
+.ab{flex:none;height:68px;display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:0 24px;background:var(--shell);border-top:1px solid var(--line)}
+.ab .note{margin-right:auto;color:var(--muted);font-size:13px}
+.ab .note b{color:var(--danger)}
+/* ---------- grids inside editors ---------- */
+.grid{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper);display:flex;flex-direction:column;min-height:0}
+.grid .gh{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--tape);border-bottom:1px solid var(--line)}
+.grid .gh h4{margin:0;flex:1} .grid .gb{overflow:auto;flex:1;min-height:0}
+.cellin{width:100%;height:28px;background:var(--field);border:1px solid var(--fieldline);border-radius:6px;padding:0 8px;text-align:right;font-variant-numeric:tabular-nums;outline:0}
+.cellin.zero{border:1.5px solid var(--warn);background:var(--warn-soft)} .cellin:focus{border-color:var(--accent)}
+.leftcol{display:grid;gap:14px;min-height:0;grid-template-rows:auto minmax(0,1fr) minmax(0,1fr)}
+.tabs2{display:none;gap:6px}
+.compact .leftcol{grid-template-rows:auto auto minmax(0,1fr)} .compact .tabs2{display:flex}
+.compact .gridA,.compact .gridB{display:none} .compact .gridA.show,.compact .gridB.show{display:flex}
+.compact .row3.meta{grid-template-columns:1fr 1fr}
+/* ---------- toast ---------- */
+#toasts{position:absolute;top:130px;right:28px;z-index:30;display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.toast{background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--ok);border-radius:10px;padding:12px 16px;box-shadow:var(--shadow);animation:in .25s ease;max-width:420px}
+.toast b{display:block}.toast span{color:var(--muted);font-size:13px}
+@keyframes in{from{transform:translateY(-8px);opacity:0}}
+/* ---------- design notes ---------- */
+body.notes [data-note]{outline:1.5px dashed var(--accent);outline-offset:3px;position:relative}
+body.notes [data-note]::before{content:attr(data-note);position:absolute;top:-12px;left:10px;z-index:9;background:var(--accent);color:#fff;font:700 10.5px/1 "Segoe UI",sans-serif;padding:3px 8px;border-radius:10px;white-space:nowrap;letter-spacing:.04em}
+</style>
+</head>
+<body>
+<div class="ribbon">
+  <b>THE LEDGER DESK</b><span class="tag">MOCKUP · NOT THE REAL APP · SAMPLE DATA</span>
+  <span class="sp"></span>
+  <span>Screen</span>
+  <div class="seg" id="sizeSeg"><button data-s="1920x1080" class="on">1920 × 1080</button><button data-s="1366x768">1366 × 768</button></div>
+  <span>Display size</span>
+  <div class="seg" id="zoomSeg"><button data-z="0.9">90%</button><button data-z="1" class="on">100%</button><button data-z="1.1">110%</button><button data-z="1.25">125%</button><button data-z="1.5">150%</button></div>
+  <div class="seg" id="themeSeg"><button data-t="dark" class="on">Dark</button><button data-t="light">Light</button></div>
+  <label><input type="checkbox" id="notesChk"> Design notes</label>
+</div>
+<div id="wrap"><div id="stage">
+  <aside class="side">
+    <div class="logo">MJ</div>
+    <div class="nav"><svg viewBox="0 0 24 24"><rect x="4" y="12" width="4" height="8"/><rect x="10" y="6" width="4" height="14"/><rect x="16" y="9" width="4" height="11"/></svg></div>
+    <div class="nav"><svg viewBox="0 0 24 24"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7"/><circle cx="7" cy="17" r="1.6"/><circle cx="17" cy="17" r="1.6"/></svg></div>
+    <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M16 8a3 3 0 0 1 0 6M18 19c0-2-1-3-2-4"/></svg></div>
+    <div class="nav on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5C9.5 8.5 10.7 8 12 8s2.5.6 2.5 1.7c0 2.2-5 1.3-5 3.6C9.5 14.5 10.7 15 12 15s2.5-.5 2.5-1.5"/></svg></div>
+    <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 5h9l7 7-8 8-8-8z"/><circle cx="9" cy="10" r="1.3"/></svg></div>
+    <div class="nav"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg></div>
+  </aside>
+  <section class="main">
+    <div class="topbar"><h1>Payments</h1><div class="user"><i>MB</i><b>Marie Ann J. Billones</b><span class="pill">Administrator</span></div>
+      <div class="search">Search orders, trucks, crew, clients, invoices…</div><div class="chip hot">34 new</div><div class="chip">Settings</div><div class="chip">Log out</div></div>
+    <div class="hub" id="hub"></div>
+    <div class="content" id="content"></div>
+  </section>
+  <div id="toasts"></div>
+</div></div>
+
+<script>
+/* ======================= sample data (all invented for the mockup) ======================= */
+const TODAY = new Date(2026,10,7);
+const fmt = n => (Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const peso = n => '₱'+fmt(n);
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const md = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+const mdy = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+const iso = d => d.toISOString().slice(0,10);
+
+const trips = [
+ {id:'BCS0005',client:'BCS GROUP COMPANY',date:'Nov 6',route:'R5 – Route 5: Pampanga Hub',report:'TRIP-20261106-044120',crates:140,truck:'CBA 2699 · Forward 6 tons',gross:21500,days:3,sched:'LS-0005 · 140 crates'},
+ {id:'BCS0006',client:'BCS GROUP COMPANY',date:'Nov 6',route:'R4 – Route 4: Bulacan North Depot',report:'TRIP-20261106-051807',crates:120,truck:'ICC 8370 · Forward 8 tons',gross:18250,days:2,sched:'LS-0006 · 120 crates'},
+ {id:'MB0001', client:'MILLENIUM FOOD BEVERAGE',date:'Nov 5',route:'MFB1 – Millenium Cavite Depot',report:'TRIP-20261105-133516',crates:96,truck:'NEG 1721 · Forward 6 tons',gross:12400,days:3,sched:'LS-0003 · 96 crates'},
+ {id:'8555',   client:'RED RIBBON BAKESHOP INC.',date:'Nov 5',route:'R2 – Tabuk · La Union Route',report:'TRIP-20261105-134444',crates:92,truck:'AWA 4297 · Forward 6 tons',gross:9800,days:2,sched:'LS-0002 · 92 crates'},
+ {id:'BUT0001',client:'butter world',date:'Nov 7',route:'BTW1 – Tarlac Central Store',report:'TRIP-20261107-020311',crates:60,truck:'CBA 2699 · Forward 6 tons',gross:7200,days:0,sched:'LS-0007 · 60 crates'},
+ {id:'BUT0002',client:'butter world',date:'Nov 7',route:'BTW2 – Concepcion Store',report:'TRIP-20261107-021944',crates:48,truck:'ICC 8370 · Forward 8 tons',gross:5600,days:0,sched:'LS-0008 · 48 crates'}
+];
+const S = {
+  used:['2451','SI-647','SI-1001','0765','SI-1002','8574','SI-TEST-1003','SI-2001','0202'],
+  invoices:[
+    {no:'0202',client:'butter world',trip:'BW0001',tripDate:new Date(2026,10,6),issued:new Date(2026,10,7),gross:45000,ded:0,status:'Unpaid',soa:null,lines:[{dr:'DR-9001, DR-9002',store:'BTW12H – Tarlac Central',tariff:30000},{dr:'DR-9003',store:'BTW12 – Concepcion',tariff:15000}]},
+    {no:'SI-3101',client:'BCS GROUP COMPANY',trip:'BCS0003',tripDate:new Date(2026,10,5),issued:new Date(2026,10,5),gross:15000,ded:267.86,status:'Unpaid',soa:null,lines:[{dr:'DR-7001, DR-7002',store:'RR-Laoag Bacarra (203077)',tariff:9000},{dr:'DR-7003',store:'RR-San Nicolas (204526)',tariff:6000}]},
+    {no:'SI-3102',client:'BCS GROUP COMPANY',trip:'BCS0004',tripDate:new Date(2026,10,6),issued:new Date(2026,10,6),gross:8500,ded:100.55,status:'Unpaid',soa:null,lines:[{dr:'DR-7004, DR-7005',store:'RR-Vigan (204811)',tariff:8500},{dr:'DR-7006',store:'RR-Candon (204930)',tariff:0}]},
+    {no:'SI-3103',client:'RED RIBBON BAKESHOP INC.',trip:'RR0002',tripDate:new Date(2026,10,4),issued:new Date(2026,10,4),gross:8500,ded:0,status:'Unpaid',soa:null,lines:[{dr:'DR-8101',store:'RR-Tabuk (205112)',tariff:8500}]},
+    {no:'SI-3001',client:'RED RIBBON BAKESHOP INC.',trip:'RR0001',tripDate:new Date(2026,10,3),issued:new Date(2026,10,3),gross:0,ded:0,status:'Draft',soa:null,lines:[]}
+  ],
+  statements:[
+    {no:'SOA-2026-0007',client:'BCS GROUP COMPANY',issued:new Date(2026,10,1),due:new Date(2026,10,5),net:23131.59,gross:23500,inv:['SI-2202'],status:'Unpaid'},
+    {no:'SOA-2026-0004',client:'RED RIBBON BAKESHOP INC.',issued:new Date(2026,10,5),due:new Date(2026,10,20),net:8399.45,gross:8500,inv:['SI-2201'],status:'Unpaid'}
+  ],
+  receipts:[{no:'0006',target:'SOA-2026-0005 · SI-2001',date:new Date(2026,10,7),amount:19500,method:'Check',ref:'CHK-100245',notes:'Sample complete order'}],
+  usedReceipts:['0001','0002','0003','0004','0005','0006'],
+  tripsLeft:[...trips]
+};
+const norm = s => s.toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/^SI(?=\d)/,'').replace(/^0+(?=\d)/,'');
+
+/* ======================= shell ======================= */
+const ui = {tab:'billing', mode:'list', sel:{}, draft:null, ready:{} /* ticked SOA invoice numbers */};
+const TABS=[['billing','Billing Invoices'],['soa','Statement of Account'],['coll','Collections & Receipts'],['hist','Finance History']];
+const $ = (s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+function hub(){
+  $('#hub').innerHTML = TABS.map(([k,l])=>`<button data-k="${k}" class="${ui.tab===k?'on':''}">${l}${k==='billing'?`<span class="n">${S.tripsLeft.length}</span>`:''}${k==='coll'?`<span class="n">${payTargets().length}</span>`:''}</button>`).join('');
+  $$('#hub button').forEach(b=>b.onclick=()=>{ui.tab=b.dataset.k;ui.mode='list';render()});
+}
+function toast(title,sub){const t=document.createElement('div');t.className='toast';t.innerHTML=`<b>${title}</b><span>${sub||''}</span>`;$('#toasts').append(t);setTimeout(()=>t.remove(),4200)}
+function render(){hub();const c=$('#content');c.innerHTML='';
+  if(ui.tab==='hist')return c.innerHTML=`<div class="list"><div class="card" style="flex:1" data-note="UNCHANGED IN THIS PHASE"><div class="empty"><div><h2 style="margin:0 0 6px">Finance History</h2>Settled records, the order chain and the change log keep their current layout.<br>Paid and cancelled documents live here.</div></div></div></div>`;
+  if(ui.mode==='edit'){ui.tab==='billing'?editBilling(c):ui.tab==='soa'?editSoa(c):editColl(c)}else{ui.tab==='billing'?listBilling(c):ui.tab==='soa'?listSoa(c):listColl(c)}
+}
+/* ======================= list pattern ======================= */
+function listShell(c,o){
+  c.innerHTML=`<div class="list">
+   <div class="card queue" data-note="THE QUEUE · max 185 px · own card">
+    <div class="qh"><i class="dot"></i><div><h3>${o.title}</h3><div class="sub">${o.sub}</div></div><span class="sp"></span>
+      <select class="in" id="qf" style="width:200px">${o.clients}</select><input class="in" id="qs" placeholder="${o.ph}" style="width:240px">
+      <button class="btn primary" id="qgo" data-note="PRIMARY ACTION · INLINE" disabled>${o.cta}</button></div>
+    <div class="tblwrap"><table class="tbl" id="qt"></table></div></div>
+   <div class="card ledger" data-note="THE LEDGER · fills the rest">
+    <div class="lt"><h3>${o.ledger}</h3><input class="in" id="ls" placeholder="Search…" style="width:240px"><span class="btn tiny" style="pointer-events:none">All dates ▾</span><span class="btn tiny" style="pointer-events:none">Sort: Newest first ▾</span>
+      <span style="flex:1"></span>${o.tools||''}<button class="btn" id="newblank" data-note="SECONDARY OUTLINE">+ ${o.blank}</button></div>
+    <div class="tblwrap"><table class="tbl" id="lt"></table></div></div></div>`;
+}
+function rowsFilter(){return {c:$('#qf').value,q:$('#qs').value.toLowerCase()}}
+function ageCls(d){return d>=3?'red':d>=2?'amber':''}
+function ageTxt(d){return (d>=3?'● ':d>=2?'◐ ':'')+(d===0?'today':d+' d')}
+/* ---- Billing ---- */
+function listBilling(c){
+  const cl=[...new Set(S.tripsLeft.map(t=>t.client))];
+  listShell(c,{title:`${S.tripsLeft.length} trips waiting for their service invoice`,sub:`${peso(S.tripsLeft.reduce((a,t)=>a+t.gross,0))} expected`,clients:'<option>All clients</option>'+cl.map(x=>`<option>${x}</option>`).join(''),ph:'Search trip, client, route…',cta:'+ Create Invoice ▸',ledger:'Invoices',blank:'New blank invoice'});
+  const draw=()=>{const f=rowsFilter();const r=S.tripsLeft.filter(t=>(f.c==='All clients'||t.client===f.c)&&(t.id+t.client+t.route).toLowerCase().includes(f.q));
+    $('#qt').innerHTML=`<thead><tr><th>Trip</th><th>Client</th><th>Date</th><th>Route</th><th>Trip report</th><th class="num">Crates</th><th class="num">Expected</th><th>Waiting</th></tr></thead><tbody>`+(r.length?r.map(t=>`<tr class="row ${ui.sel.trip===t.id?'sel':''}" data-id="${t.id}"><td><b>${t.id}</b></td><td>${t.client}</td><td>${t.date}</td><td>${t.route}</td><td>${t.report}</td><td class="num">${t.crates}</td><td class="num">${peso(t.gross)}</td><td class="age ${ageCls(t.days)}">${ageTxt(t.days)}</td></tr>`).join(''):`<tr><td colspan="8"><div class="empty" style="height:90px">All caught up — nothing is waiting for its service invoice.</div></td></tr>`)+'</tbody>';
+    $$('#qt tr.row').forEach(tr=>{tr.onclick=()=>{ui.sel.trip=tr.dataset.id;draw()};tr.ondblclick=()=>startInvoice(tr.dataset.id)});
+    $('#qgo').disabled=!ui.sel.trip||!S.tripsLeft.find(t=>t.id===ui.sel.trip);
+  };
+  draw();$('#qf').onchange=$('#qs').oninput=draw;$('#qgo').onclick=()=>startInvoice(ui.sel.trip);$('#newblank').onclick=()=>startInvoice(null);
+  ledgerBilling();$('#ls').oninput=ledgerBilling;
+}
+function ledgerBilling(){const q=($('#ls')||{value:''}).value.toLowerCase();
+  const r=S.invoices.filter(i=>(i.no+i.client+i.trip).toLowerCase().includes(q));
+  $('#lt').innerHTML=`<thead><tr><th>Invoice #</th><th>Client</th><th>Trip</th><th>Issued</th><th>Due</th><th class="num">Net due</th><th>Status</th></tr></thead><tbody>`+r.map(i=>{const due=addDays(i.issued,15),net=i.gross-i.ded;return `<tr class="row"><td><b>${i.no}</b></td><td>${i.client}</td><td>${i.trip}</td><td>${md(i.issued)}</td><td>${i.status==='Draft'?'—':md(due)}</td><td class="num">${peso(net)}</td><td><span class="badge ${i.status==='Draft'?'draft':'unpaid'}">${i.status}</span></td></tr>`}).join('')+'</tbody>';
+}
+/* ---- SOA list ---- */
+const ready=()=>S.invoices.filter(i=>i.status==='Unpaid'&&!i.soa);
+function listSoa(c){
+  const cl=[...new Set(ready().map(i=>i.client))];
+  listShell(c,{title:`${ready().length} service invoices ready for a statement`,sub:`${peso(ready().reduce((a,i)=>a+i.gross-i.ded,0))} · ${cl.length} clients`,clients:'<option>All clients</option>'+cl.map(x=>`<option>${x}</option>`).join(''),ph:'Search SI, trip, client…',cta:'Make statement ▸',ledger:'Statements of Account',blank:'New blank statement',
+   tools:`<button class="btn tiny" id="bEdit" disabled>✎ Edit statement</button><button class="btn tiny danger" id="bCancel" disabled>⛔ Cancel statement</button><button class="btn tiny" id="bPrint" disabled>🖨 Print official SOA</button>`});
+  const qh=$('.qh .sp');const all=document.createElement('label');all.style.cssText='display:flex;gap:6px;align-items:center;color:var(--muted);cursor:pointer';all.innerHTML='<input type="checkbox" id="qall"> Select all';qh.after(all);
+  const draw=()=>{const f=rowsFilter();const r=ready().filter(i=>(f.c==='All clients'||i.client===f.c)&&(i.no+i.client+i.trip).toLowerCase().includes(f.q));
+    $('#qt').innerHTML=`<thead><tr><th style="width:36px"></th><th>Service invoice</th><th>Trip</th><th>Client</th><th>Trip date</th><th>Invoiced</th><th class="num">Amount</th><th>Waiting</th></tr></thead><tbody>`+(r.length?r.map(i=>{const d=Math.round((TODAY-i.issued)/864e5);return `<tr class="row ${ui.ready[i.no]?'sel':''}" data-no="${i.no}"><td><input type="checkbox" ${ui.ready[i.no]?'checked':''}></td><td><b>${i.no}</b></td><td>${i.trip}</td><td>${i.client}</td><td>${md(i.tripDate)}</td><td>${md(i.issued)}</td><td class="num">${peso(i.gross-i.ded)}</td><td class="age ${ageCls(d)}">${ageTxt(d)}</td></tr>`}).join(''):`<tr><td colspan="8"><div class="empty" style="height:90px">Nothing is waiting for a statement.</div></td></tr>`)+'</tbody>';
+    $$('#qt tr.row').forEach(tr=>{const no=tr.dataset.no,cb=$('input',tr);
+      const tick=()=>{const inv=S.invoices.find(x=>x.no===no);const cur=Object.keys(ui.ready).find(k=>ui.ready[k]);const curC=cur&&S.invoices.find(x=>x.no===cur).client;
+        if(cb.checked){if(curC&&curC!==inv.client){ui.ready={};toast('One statement is for one client','The selection moved to '+inv.client+'.')} ui.ready[no]=true}else delete ui.ready[no];draw()};
+      cb.onclick=e=>{e.stopPropagation();tick()};tr.onclick=()=>{cb.checked=!cb.checked;tick()};tr.ondblclick=()=>{ui.ready={[no]:true};go()}});
+    const n=Object.keys(ui.ready).length,focus=r.find(x=>ui.ready[x.no])||r[0];
+    const tgt=n?r.filter(x=>ui.ready[x.no]):focus?ready().filter(x=>x.client===focus.client):[];
+    $('#qgo').disabled=!tgt.length;$('#qgo').textContent=tgt.length?`Make statement ▸ ${tgt[0].client} · ${n?tgt.length+' invoice'+(tgt.length>1?'s':''):'all '+tgt.length} · ${peso(tgt.reduce((a,x)=>a+x.gross-x.ded,0))}`:'Make statement ▸';
+    $('#qall').checked=r.length>0&&n===r.filter(x=>x.client===(focus||{}).client).length&&n>0;
+  };
+  const go=()=>{const f=rowsFilter();const r=ready().filter(i=>(f.c==='All clients'||i.client===f.c));const n=Object.keys(ui.ready);let t=n.length?r.filter(x=>ui.ready[x.no]):r.filter(x=>x.client===(r[0]||{}).client);if(!t.length&&Object.keys(ui.ready).length===0){t=ready().filter(x=>x.client===(ready()[0]||{}).client)}startSoa(t)};
+  draw();$('#qf').onchange=$('#qs').oninput=draw;$('#qgo').onclick=go;
+  $('#qall').onchange=e=>{ui.ready={};if(e.target.checked){const f=rowsFilter();const r=ready().filter(i=>(f.c==='All clients'||i.client===f.c));const c0=(r[0]||{}).client;r.filter(x=>x.client===c0).forEach(x=>ui.ready[x.no]=true);if(r.some(x=>x.client!==c0))toast('Selected all of '+c0,'Other clients need their own statement.')}draw()};
+  $('#newblank').onclick=()=>startSoa([]);
+  const L=()=>{const q=$('#ls').value.toLowerCase();const r=S.statements.filter(s=>(s.no+s.client).toLowerCase().includes(q));
+    $('#lt').innerHTML=`<thead><tr><th>SOA ref #</th><th>Statement date</th><th>Client</th><th>Service invoices</th><th>Due</th><th class="num">Total due</th><th>Status</th></tr></thead><tbody>`+r.map(s=>{const od=s.due<TODAY;return `<tr class="row ${ui.sel.soa===s.no?'sel':''}" data-no="${s.no}"><td><b>${s.no}</b></td><td>${md(s.issued)}</td><td>${s.client}</td><td>${s.inv.join(', ')}</td><td>${md(s.due)}</td><td class="num">${peso(s.net)}</td><td><span class="badge ${od?'over':'unpaid'}">${od?'Overdue':'Unpaid'}</span></td></tr>`}).join('')+'</tbody>';
+    $$('#lt tr.row').forEach(tr=>tr.onclick=()=>{ui.sel.soa=tr.dataset.no;L()});
+    const has=!!S.statements.find(s=>s.no===ui.sel.soa);['bEdit','bCancel','bPrint'].forEach(id=>$('#'+id).disabled=!has)};
+  L();$('#ls').oninput=L;$('#bPrint').onclick=()=>toast('Print preview','The printable layout is unchanged.');$('#bEdit').onclick=()=>toast('Edit statement','Opens the same workbench with the statement loaded.');
+  $('#bCancel').onclick=()=>{const s=S.statements.find(x=>x.no===ui.sel.soa);if(!s)return;S.statements=S.statements.filter(x=>x!==s);ui.sel.soa=null;toast('Statement cancelled',s.no+' — its service invoices return to “ready for a statement”.');L()};
+}
+/* ---- Collections list ---- */
+function payTargets(){
+  const t=S.statements.filter(s=>s.status==='Unpaid').map(s=>({key:s.no,title:s.no,kind:'Statement',inv:s.inv.join(', '),client:s.client,issued:s.issued,due:s.due,gross:s.gross,net:s.net}));
+  ready().forEach(i=>t.push({key:'SI '+i.no,title:'(no statement)',kind:'Invoice',inv:i.no,client:i.client,issued:i.issued,due:addDays(i.issued,15),gross:i.gross,net:i.gross-i.ded,invObj:i}));
+  return t.sort((a,b)=>a.due-b.due);
+}
+function dueTxt(d){const n=Math.round((d-TODAY)/864e5);return n<0?`● ${-n} d overdue`:n===0?'due today':`due in ${n} d`}
+function listColl(c){
+  const pt=payTargets(),cl=[...new Set(pt.map(p=>p.client))];
+  listShell(c,{title:`${pt.length} statements / invoices waiting for payment`,sub:`${peso(pt.reduce((a,p)=>a+p.net,0))} · ${pt.filter(p=>p.due<TODAY).length} overdue`,clients:'<option>All clients</option>'+cl.map(x=>`<option>${x}</option>`).join(''),ph:'Search statement, SI, client…',cta:'+ Record Payment ▸',ledger:'Receipts',blank:'New blank receipt'});
+  const draw=()=>{const f=rowsFilter();const r=payTargets().filter(p=>(f.c==='All clients'||p.client===f.c)&&(p.title+p.inv+p.client).toLowerCase().includes(f.q));
+    $('#qt').innerHTML=`<thead><tr><th>Statement of Account</th><th>Service invoices</th><th>Client</th><th>Invoiced</th><th>Due date</th><th class="num">Amount due</th><th>Status</th></tr></thead><tbody>`+r.map(p=>`<tr class="row ${ui.sel.pay===p.key?'sel':''}" data-k="${p.key}"><td><b>${p.title}</b></td><td>${p.inv}</td><td>${p.client}</td><td>${md(p.issued)}</td><td>${mdy(p.due)}</td><td class="num">${peso(p.net)}</td><td class="age ${p.due<TODAY?'red':(p.due-TODAY)/864e5<=3?'amber':''}">${dueTxt(p.due)}</td></tr>`).join('')+'</tbody>';
+    $$('#qt tr.row').forEach(tr=>{tr.onclick=()=>{ui.sel.pay=tr.dataset.k;draw()};tr.ondblclick=()=>startColl(tr.dataset.k)});
+    const p=payTargets().find(x=>x.key===ui.sel.pay);$('#qgo').disabled=!p;$('#qgo').textContent=p?`+ Record Payment ▸ ${p.key} · ${peso(p.net)}`:'+ Record Payment ▸'};
+  draw();$('#qf').onchange=$('#qs').oninput=draw;$('#qgo').onclick=()=>startColl(ui.sel.pay);$('#newblank').onclick=()=>startColl(null);
+  const L=()=>{$('#lt').innerHTML=`<thead><tr><th>Receipt #</th><th>Paid for</th><th>Date</th><th class="num">Amount paid</th><th>Method</th><th>Reference #</th><th>Notes</th></tr></thead><tbody>`+S.receipts.map(r=>`<tr class="row"><td><b>${r.no}</b></td><td>${r.target}</td><td>${mdy(r.date)}</td><td class="num">${peso(r.amount)}</td><td>${r.method}</td><td>${r.ref||'—'}</td><td>${r.notes||''}</td></tr>`).join('')+'</tbody>'};L();$('#ls').oninput=L;
+}
+/* ======================= editor scaffolding ======================= */
+function editorShell(c,o){
+  c.innerHTML=`<div class="editor"><div class="eh" data-note="ONE 56 px HEADER"><button class="btn" id="back">← ${o.back}</button><div class="t">${o.title}</div><div class="hint" id="hint"></div>
+    <div class="kpis" id="kpis"></div></div>
+    <div class="split" style="grid-template-columns:${o.cols}" id="split"></div>
+    <div class="ab"><span class="note" id="abn"></span>${o.extra||''}<button class="btn" id="print">🖨 Print</button><button class="btn primary" id="save" disabled>${o.save}</button></div></div>`;
+  $('#back').onclick=()=>{ui.mode='list';render()};$('#print').onclick=()=>toast('Print','The printable layout is unchanged.');
+}
+function kpis(g,d,n,issues){$('#kpis').innerHTML=`<div class="kpi"><small>Gross</small><b>${peso(g)}</b></div><div class="kpi"><small>Deductions</small><b>${peso(d)}</b></div><div class="kpi"><small>${n.label||'Net due'}</small><b>${peso(n.v)}</b></div><div class="kpi ${issues?'bad':'good'}"><small>Checks</small><b>${issues?'● '+issues+' to fix':'✓ ready'}</b></div>`}
+function attn(box,issues,passed,total){
+  box.className='attn '+(issues.length?'':'clear');
+  box.innerHTML=issues.length?`<h4>Needs attention · ${issues.length}</h4>`+issues.map(i=>`<div class="issue ${i.w?'w':''}" data-f="${i.f||''}"><span class="x">${i.w?'!':'✕'}</span><span>${i.t}</span><span class="go">${i.f?'go to field ↗':''}</span></div>`).join('')+`<div class="passed">${passed} of ${total} checks pass</div>`
+   :`<h4>✓ All ${total} checks pass</h4><div class="passed">Nothing to fix — you can save.</div>`;
+  $$('.issue',box).forEach(el=>el.onclick=()=>{const t=document.getElementById(el.dataset.f);if(t){t.focus();t.classList.remove('flash');void t.offsetWidth;t.classList.add('flash')}});
+}
+/* ======================= EDITOR 1 · Service invoice (55 / 45) ======================= */
+function startInvoice(id){ui.mode='edit';ui.draft={trip:id,no:'',gross:null,ded:'0',reason:''};render()}
+function editBilling(c){
+  editorShell(c,{back:'Back to invoices',title:'New Service Invoice',cols:'55fr 45fr',save:'Issue invoice'});
+  const d=ui.draft;
+  $('#split').innerHTML=`<div class="pane"><div class="sheet" data-note="LEFT · THE SHEET"><h4><i>1</i>Invoice &amp; order</h4>
+    <div class="f"><label for="siNo">Service Invoice No. *</label><input class="in" id="siNo" autocomplete="off" placeholder="Type the SI No. from the printed invoice (e.g. 2451)" value="${d.no}"><div class="msg" id="siMsg"></div></div>
+    <div class="f"><label for="trip">Completed delivery trip *</label><select class="in" id="trip"><option value="">Choose a completed trip…</option>${S.tripsLeft.map(t=>`<option value="${t.id}" ${d.trip===t.id?'selected':''}>${t.id} · ${t.client}</option>`).join('')}</select></div>
+    <dl class="summary" id="sum" data-note="TRIP SUMMARY CARD · nothing clips"></dl>
+    <div class="row2"><div class="f"><label>Linked loading schedule / volume</label><div class="lock" id="sched"><span>—</span></div></div>
+    <div class="f"><label>Billed client</label><div class="lock" id="cli"><span>—</span></div></div></div></div>
+    <div class="sheet" data-note="CONTEXT · fills the dead space"><h4>Recent invoices · this client</h4><div id="recent" style="color:var(--faint)">Pick a trip to see the client’s latest service invoices.</div></div></div>
+    <div class="pane"><div class="tape" data-note="RIGHT · THE TAPE"><h4><i>2</i>Amounts</h4>
+    <div class="row2"><div class="f"><label for="gross">Standard gross (₱) *</label><input class="in right" id="gross" inputmode="decimal" placeholder="0.00" value="${d.gross??''}"></div>
+    <div class="f"><label for="ded">Deductions / damage (₱)</label><input class="in right" id="ded" inputmode="decimal" value="${d.ded}"></div></div>
+    <div class="f" id="reasonBox" style="display:none"><label for="reason">Adjustment reason *</label><input class="in" id="reason" placeholder="Why the amount differs from the rate (at least 10 characters)" value="${d.reason}"></div>
+    <div class="slab" data-note="THE ONE LOUD THING"><small>Net due</small><strong id="net">₱0.00</strong><em id="due">Due date appears once an amount is entered</em></div></div>
+    <div class="attn" id="attn" data-note="FAILURES ONLY"></div></div>`;
+  const sel=()=>S.tripsLeft.find(t=>t.id===$('#trip').value);
+  const calc=()=>{const t=sel(),no=$('#siNo').value.trim(),g=parseFloat($('#gross').value.replace(/,/g,''))||0,de=parseFloat($('#ded').value.replace(/,/g,''))||0,rs=$('#reason').value.trim();
+    d.no=no;d.trip=t?t.id:'';d.gross=$('#gross').value;d.ded=$('#ded').value;d.reason=rs;
+    $('#sum').innerHTML=t?`<dt>Dispatch</dt><dd>${t.id}</dd><dt>Date</dt><dd>${t.date}, 2026</dd><dt>Route</dt><dd style="grid-column:2/5">${t.route}</dd><dt>Crates</dt><dd>${t.crates}</dd><dt>Truck</dt><dd>${t.truck}</dd>`:`<dd style="grid-column:1/5;color:var(--faint)">Pick a trip to see its dispatch, route, date and crates here.</dd>`;
+    $('#recent').innerHTML=t?(()=>{const r=S.invoices.filter(i=>i.client===t.client&&i.status!=='Draft').slice(0,4);return r.length?`<table class="tbl"><tbody>${r.map(i=>`<tr><td><b>${i.no}</b></td><td>${i.trip}</td><td>${md(i.issued)}</td><td class="num">${peso(i.gross-i.ded)}</td><td><span class="badge unpaid">${i.status}</span></td></tr>`).join('')}</tbody></table>`:'No earlier invoices for this client.'})():'Pick a trip to see the client’s latest service invoices.';
+    $('#sched').innerHTML=t?`<span>${t.sched}</span>`:'<span>—</span>';$('#cli').innerHTML=t?`<span>${t.client}</span><small>locked to the trip</small>`:'<span>—</span>';
+    const differs=t&&(g!==t.gross||de>0);$('#reasonBox').style.display=differs&&g>0?'':'none';
+    // number check (live, exact: ignores case, spaces, SI prefix, leading zeros)
+    const hit=S.used.find(u=>norm(u)===norm(no)),m=$('#siMsg');
+    if(!no){m.className='msg';m.textContent=''}else if(hit){m.className='msg bad';m.innerHTML=`⛔ Service Invoice No. ${hit} is already used. A number can only be used once. <a>Open it</a>`}else{m.className='msg ok';m.textContent=`✓ SI ${no} is free · last used 2001 · next 2002`}
+    $('#siNo').classList.toggle('err',!!hit);
+    const net=Math.max(0,g-de);$('#net').textContent=peso(net);$('#due').textContent=g>0?'Payment due '+mdy(addDays(TODAY,15))+' · 15 days':'Due date appears once an amount is entered';
+    const iss=[];if(!no)iss.push({t:'Enter the Service Invoice No.',f:'siNo'});else if(hit)iss.push({t:`SI ${hit} is already used`,f:'siNo'});
+    if(!t)iss.push({t:'Choose the completed trip being billed',f:'trip'});
+    if(!(g>0))iss.push({t:'Gross amount must be more than ₱0.00',f:'gross'});else if(de>g)iss.push({t:'Deductions are more than the gross amount',f:'ded'});
+    if(differs&&g>0&&rs.length<10)iss.push({t:'Amount differs from the rate — write the adjustment reason',f:'reason',w:false});
+    kpis(g,de,{v:net},iss.length);attn($('#attn'),iss,5-iss.length,5);
+    $('#hint').textContent=t?`${t.id} · ${t.client} · ${t.crates} crates`:'Pick the completed trip this invoice bills.';
+    $('#abn').innerHTML=iss.length?`<b>✕ ${iss.length} to fix</b> before issuing`:'';$('#save').disabled=!!iss.length;
+  };
+  ['siNo','trip','gross','ded','reason'].forEach(i=>{$('#'+i).oninput=calc;$('#'+i).onchange=calc});
+  $('#trip').onchange=()=>{const t=sel();if(t&&!$('#gross').value)$('#gross').value=fmt(t.gross);calc()};
+  if(d.trip&&!d.gross){const t=sel();if(t)$('#gross').value=fmt(t.gross)}
+  calc();setTimeout(()=>$('#siNo').focus(),50);
+  $('#save').onclick=()=>{const t=sel(),g=parseFloat($('#gross').value.replace(/,/g,'')),de=parseFloat($('#ded').value.replace(/,/g,''))||0;
+    S.invoices.unshift({no:d.no,client:t.client,trip:t.id,tripDate:new Date(2026,10,6),issued:TODAY,gross:g,ded:de,status:'Unpaid',soa:null,lines:[{dr:'DR-NEW1',store:t.route.split(' – ')[1]||t.route,tariff:g}]});
+    S.used.push(d.no);S.tripsLeft=S.tripsLeft.filter(x=>x!==t);ui.sel.trip=null;ui.mode='list';render();toast('Invoice '+d.no+' issued',peso(g-de)+' · it now appears under “ready for a statement”.')};
+}
+/* ======================= EDITOR 2 · Statement of Account (60 / 40) ======================= */
+function startSoa(rows){ui.mode='edit';const client=rows[0]?rows[0].client:'';ui.draft={client,picked:Object.fromEntries(rows.map(r=>[r.no,true])),by:'',r1:'',r2:'',tab:'A',tariffs:{}};ui.ready={};render()}
+function editSoa(c){
+  editorShell(c,{back:'Back to statements',title:'New Statement of Account',cols:'60fr 40fr',save:'Save statement',extra:''});
+  const d=ui.draft,clients=[...new Set(ready().map(i=>i.client))];
+  $('#split').innerHTML=`<div class="pane" style="overflow:hidden"><div class="leftcol" id="lc">
+   <div class="sheet" data-note="① CLIENT &amp; ⑤ SIGN-OFF · one compact grid"><div class="row3 meta">
+     <div class="f"><label for="client">Billed to *</label><select class="in" id="client"><option value="">Choose a client…</option>${clients.map(x=>`<option ${d.client===x?'selected':''}>${x}</option>`).join('')}</select></div>
+     <div class="f"><label>SOA type</label><div class="lock"><span>Normal Operations SOA</span></div></div>
+     <div class="f"><label for="sdate">Statement date</label><input class="in" id="sdate" type="date" value="${iso(TODAY)}"></div>
+     <div class="f"><label for="dtype">Delivery type</label><select class="in" id="dtype"><option>REF</option><option>DRY</option></select></div>
+     <div class="f"><label>Period covered</label><div class="lock" id="period"><span>—</span><small>from the invoices</small></div></div>
+     <div class="f"><label for="by">Prepared by *</label><input class="in" id="by" value="${d.by}" placeholder="Billing officer"></div>
+     <div class="f"><label for="r1">Received by 1</label><input class="in" id="r1" value="${d.r1}"></div>
+     <div class="f"><label for="r2">Received by 2</label><input class="in" id="r2" value="${d.r2}"></div></div></div>
+   <div class="tabs2" id="t2"><button class="btn tiny" data-t="A">② Ready invoices</button><button class="btn tiny" data-t="B">③ Trip lines</button></div>
+   <div class="grid gridA ${d.tab==='A'?'show':''}" data-note="② READY SERVICE INVOICES"><div class="gh"><h4><i>2</i>Ready service invoices</h4><button class="btn tiny" id="selAll">Select all</button></div><div class="gb"><table class="tbl" id="pk"></table></div></div>
+   <div class="grid gridB ${d.tab==='B'?'show':''}" data-note="③ TRIPS &amp; STORES · amber = no amount"><div class="gh"><h4><i>3</i>Trips &amp; stores on this statement</h4></div><div class="gb"><table class="tbl" id="ln"></table></div></div>
+  </div></div>
+  <div class="pane"><div class="tape" data-note="④ TOTALS · live tape"><h4><i>4</i>Totals · from the service invoices</h4><div id="tp"></div>
+   <div class="slab"><small>Total amount due</small><strong id="tot">₱0.00</strong><em id="totn"></em></div></div>
+   <div class="attn" id="attn" data-note="FAILURES ONLY · click to jump"></div></div>`;
+  const list=()=>ready().filter(i=>!d.client||i.client===d.client);
+  const calc=()=>{
+    d.client=$('#client').value;d.by=$('#by').value;d.r1=$('#r1').value;d.r2=$('#r2').value;
+    const inv=list(),picked=inv.filter(i=>d.picked[i.no]);
+    $('#pk').innerHTML=`<thead><tr><th style="width:36px"></th><th>Service invoice</th><th>Trip</th><th>Trip date</th><th class="num">Amount</th><th>Waiting</th></tr></thead><tbody>`+(inv.length?inv.map(i=>{const w=Math.round((TODAY-i.issued)/864e5);return `<tr class="row ${d.picked[i.no]?'sel':''}" data-no="${i.no}"><td><input type="checkbox" ${d.picked[i.no]?'checked':''}></td><td><b>${i.no}</b></td><td>${i.trip}</td><td>${md(i.tripDate)}</td><td class="num">${peso(i.gross-i.ded)}</td><td class="age ${ageCls(w)}">${ageTxt(w)}</td></tr>`}).join(''):`<tr><td colspan="6"><div class="empty" style="height:80px">Choose a client to see its ready service invoices.</div></td></tr>`)+'</tbody>';
+    $$('#pk tr.row').forEach(tr=>{const no=tr.dataset.no;tr.onclick=e=>{d.picked[no]=!d.picked[no];calc()}});
+    const lines=[];picked.forEach(i=>i.lines.forEach((l,ix)=>lines.push({inv:i,l,key:i.no+ix})));
+    $('#ln').innerHTML=`<thead><tr><th>No.</th><th>DR numbers</th><th>Store</th><th class="num" style="width:150px">Freight tariff</th><th class="num" style="width:110px">Fuel</th></tr></thead><tbody>`+(lines.length?lines.map((x,n)=>{const v=d.tariffs[x.key]!==undefined?d.tariffs[x.key]:x.l.tariff;return `<tr><td>${n+1}</td><td>${x.l.dr}</td><td>${x.l.store}</td><td><input class="cellin ${parseFloat(v)>0?'':'zero'}" data-k="${x.key}" value="${fmt(parseFloat(v)||0)}" inputmode="decimal"></td><td class="num" style="color:var(--faint)">0.00</td></tr>`}).join(''):`<tr><td colspan="5"><div class="empty" style="height:80px">Tick invoices above and their trips and stores appear here.</div></td></tr>`)+'</tbody>';
+    $$('#ln .cellin').forEach(el=>{el.onchange=()=>{d.tariffs[el.dataset.k]=parseFloat(el.value.replace(/,/g,''))||0;calc()};el.onwheel=e=>e.preventDefault()});
+    const G=picked.reduce((a,i)=>a+i.gross,0),D=picked.reduce((a,i)=>a+i.ded,0),N=G-D,netOfVat=Math.round(G/1.12*100)/100,vat=G-netOfVat;
+    $('#tp').innerHTML=[['Total sales (VAT inclusive)',G],['Less: VAT (12%)',vat],['Amount net of VAT',netOfVat],['Fuel surcharge (included in sales)',0],['Less: withholding tax (2% EWT)',D]].map(([a,b])=>`<div class="ln"><span>${a}</span><span class="lead"></span><b>${fmt(b)}</b></div>`).join('');
+    $('#tot').textContent=peso(N);$('#totn').textContent=picked.length?`${picked.length} service invoice${picked.length>1?'s':''} · collected with ONE receipt`:'No invoice picked yet';
+    const dates=picked.map(i=>i.tripDate);$('#period').innerHTML=dates.length?`<span>${md(new Date(Math.min(...dates)))} → ${md(new Date(Math.max(...dates)))}</span><small>from the invoices</small>`:'<span>—</span><small>from the invoices</small>';
+    const zero=lines.filter(x=>!((d.tariffs[x.key]!==undefined?d.tariffs[x.key]:x.l.tariff)>0)).length;
+    const iss=[];if(!d.client)iss.push({t:'Choose the client company',f:'client'});if(!picked.length)iss.push({t:'Pick at least one ready service invoice',f:'selAll'});
+    if(zero)iss.push({t:`${zero} trip line${zero>1?'s':''} without an amount (amber)`,f:(document.querySelector('#ln .cellin.zero')||{}).id||'ln'});
+    if(!d.by.trim())iss.push({t:'Prepared by is required for the printed statement',f:'by'});
+    const rows2=$$('#ln .cellin.zero');if(rows2[0])rows2[0].id='zeroCell';if(zero)iss.find(x=>x.t.includes('without an amount')).f='zeroCell';
+    kpis(G,D,{v:N},iss.length);attn($('#attn'),iss,4-iss.length,4);
+    $('#hint').textContent=picked.length?`${picked.length} invoice${picked.length>1?'s':''} ready for ${d.client}`:'Choose the client, then tick its ready invoices.';
+    $('#abn').innerHTML=iss.length?`<b>✕ ${iss.length} to fix</b> before saving`:'';$('#save').disabled=!!iss.length;
+    $$('#t2 button').forEach(b=>b.classList.toggle('primary',b.dataset.t===d.tab));
+    $('.gridA').classList.toggle('show',d.tab==='A');$('.gridB').classList.toggle('show',d.tab==='B');
+  };
+  ['client','by','r1','r2','sdate','dtype'].forEach(i=>{$('#'+i).oninput=$('#'+i).onchange=()=>{if(i==='client'){d.picked={};list().forEach(x=>d.picked[x.no]=false)}calc()}});
+  $('#selAll').onclick=()=>{const inv=list();const all=inv.every(i=>d.picked[i.no]);inv.forEach(i=>d.picked[i.no]=!all);calc()};
+  $$('#t2 button').forEach(b=>b.onclick=()=>{d.tab=b.dataset.t;calc()});
+  calc();
+  $('#save').onclick=()=>{const picked=list().filter(i=>d.picked[i.no]);const G=picked.reduce((a,i)=>a+i.gross,0),N=picked.reduce((a,i)=>a+i.gross-i.ded,0);
+    const no='SOA-2026-00'+String(8+S.statements.length).padStart(2,'0');picked.forEach(i=>i.soa=no);
+    S.statements.unshift({no,client:d.client,issued:TODAY,due:addDays(TODAY,15),net:N,gross:G,inv:picked.map(i=>i.no),status:'Unpaid'});
+    ui.mode='list';render();toast('Statement '+no+' saved',peso(N)+' · now waiting for payment in Collections.')};
+}
+/* ======================= EDITOR 3 · Collection receipt (50 / 50) ======================= */
+function startColl(key){ui.mode='edit';ui.draft={key:key||'',no:'',method:'',ref:'',notes:'',date:iso(TODAY)};render()}
+function editColl(c){
+  editorShell(c,{back:'Back to receipts',title:'Collect payment',cols:'1fr 1fr',save:'Record payment'});
+  const d=ui.draft;
+  $('#split').innerHTML=`<div class="pane"><div class="sheet" data-note="LEFT · WHAT IS BEING PAID"><h4><i>1</i>Statement or invoice being paid</h4>
+    <div class="f"><label for="tgt">Statement of Account / invoice to collect *</label><select class="in" id="tgt"><option value="">Choose what is being paid…</option>${payTargets().map(p=>`<option value="${p.key}" ${d.key===p.key?'selected':''}>${p.key} · ${p.client} · ${peso(p.net)} · ${dueTxt(p.due)}</option>`).join('')}</select></div>
+    <div class="tape" style="margin-top:6px" id="brk"></div></div></div>
+   <div class="pane"><div class="sheet" data-note="RIGHT · COLLECTION DETAILS"><h4><i>2</i>Collection details</h4>
+    <div class="row2"><div class="f"><label for="rno">Collection Receipt No. *</label><input class="in" id="rno" autocomplete="off" value="${d.no}" placeholder="4 to 8 digits"><div class="msg" id="rmsg"></div></div>
+    <div class="f"><label for="pdate">Payment date *</label><input class="in" id="pdate" type="date" value="${d.date}"><div class="msg" id="dmsg"></div></div></div>
+    <div class="row2"><div class="f"><label>Amount (paid in full)</label><div class="lock" style="justify-content:flex-end;font-weight:650;font-variant-numeric:tabular-nums" id="amt">₱0.00</div></div>
+    <div class="f"><label for="meth">Payment method *</label><select class="in" id="meth"><option value="">Choose…</option><option>Cash</option><option>Check</option><option>Bank transfer</option><option>Online deposit</option><option>Other</option></select></div></div>
+    <div class="f"><label for="ref" id="reflbl">Payment / transaction reference #</label><input class="in" id="ref" value="${d.ref}" placeholder="e.g. CHK-990214, BDO-TXN-55410"></div>
+    <div class="f"><label for="notes">Notes</label><input class="in" id="notes" value="${d.notes}" placeholder="Optional"></div></div>
+    <div class="attn" id="attn" data-note="FAILURES ONLY"></div></div>`;
+  const calc=()=>{
+    const p=payTargets().find(x=>x.key===$('#tgt').value);d.key=p?p.key:'';d.no=$('#rno').value.trim();d.method=$('#meth').value;d.ref=$('#ref').value.trim();d.notes=$('#notes').value;d.date=$('#pdate').value;
+    const ded=p?p.gross-p.net:0;
+    $('#brk').innerHTML=p?`<div class="ln"><span>Client</span><span class="lead"></span><b>${p.client}</b></div><div class="ln"><span>${p.kind==='Statement'?'Statement':'Invoice'}</span><span class="lead"></span><b>${p.key} · ${md(p.issued)}</b></div><div class="ln"><span>Service invoices</span><span class="lead"></span><b>${p.inv}</b></div><div class="ln"><span>Original gross</span><span class="lead"></span><b>${fmt(p.gross)}</b></div><div class="ln"><span>Less EWT / deductions</span><span class="lead"></span><b>${fmt(ded)}</b></div><div class="slab"><small>Amount due · paid in full</small><strong>${peso(p.net)}</strong><em>${mdy(p.due)} · ${dueTxt(p.due).replace('● ','')}</em></div>`:`<div class="empty" style="height:150px">Pick a statement or invoice to see what it adds up to.</div>`;
+    $('#amt').textContent=p?peso(p.net):'₱0.00';
+    const cash=d.method==='Cash';$('#reflbl').textContent=d.method&&!cash?`Payment / transaction reference # * (required for ${d.method})`:'Payment / transaction reference #';
+    const dup=S.usedReceipts.find(u=>u.replace(/^0+/,'')===d.no.replace(/^0+/,'')&&d.no),fmtOk=/^\d{4,8}$/.test(d.no),m=$('#rmsg');
+    if(!d.no){m.className='msg';m.textContent='Last receipt used: 0006 · next: 0007'}else if(!fmtOk){m.className='msg bad';m.textContent='⛔ Must be 4 to 8 digits (numbers only).'}else if(dup){m.className='msg bad';m.innerHTML=`⛔ Receipt ${dup} is already used. <a>Open it</a>`}else{m.className='msg ok';m.textContent=`✓ ${d.no} is free`}
+    $('#rno').classList.toggle('err',!!(d.no&&(!fmtOk||dup)));
+    const dd=new Date(d.date),future=dd>TODAY,before=p&&dd<new Date(p.issued.getFullYear(),p.issued.getMonth(),p.issued.getDate());
+    $('#dmsg').className='msg '+(future||before?'bad':'');$('#dmsg').textContent=future?'⛔ Can’t be after today.':before?'⛔ Before the invoice date.':'';$('#pdate').classList.toggle('err',!!(future||before));
+    const iss=[];if(!p)iss.push({t:'Pick the statement or invoice being paid',f:'tgt'});
+    if(!d.no)iss.push({t:'Type the Collection Receipt No. (it is not made by the system)',f:'rno'});else if(!fmtOk||dup)iss.push({t:dup?`Receipt ${dup} is already used`:'Receipt No. must be 4 to 8 digits',f:'rno'});
+    if(!d.method)iss.push({t:'Choose the payment method',f:'meth'});else if(!cash&&!d.ref)iss.push({t:`Reference no. is required for ${d.method}`,f:'ref'});
+    if(future||before)iss.push({t:future?'Payment date is in the future':'Payment date is before the invoice date',f:'pdate'});
+    kpis(p?p.gross:0,p?ded:0,{v:p?p.net:0,label:'Amount due'},iss.length);attn($('#attn'),iss,5-iss.length,5);
+    $('#hint').textContent=p?`${p.key} · ${p.client}`:'One receipt pays the full amount.';$('#abn').innerHTML=iss.length?`<b>✕ ${iss.length} to fix</b> before recording`:'';$('#save').disabled=!!iss.length;
+  };
+  ['tgt','rno','meth','ref','notes','pdate'].forEach(i=>{$('#'+i).oninput=$('#'+i).onchange=calc});
+  if(d.method)$('#meth').value=d.method;calc();
+  $('#save').onclick=()=>{const p=payTargets().find(x=>x.key===d.key);
+    if(p.kind==='Statement'){S.statements.find(s=>s.no===p.key).status='Paid';S.statements=S.statements.filter(s=>s.status==='Unpaid')}else{p.invObj.status='Paid'}
+    S.receipts.unshift({no:d.no,target:p.key+' · '+p.inv,date:new Date(d.date),amount:p.net,method:d.method,ref:d.ref,notes:d.notes});S.usedReceipts.push(d.no);ui.sel.pay=null;ui.mode='list';render();toast('Payment recorded',`Receipt ${d.no} · ${peso(p.net)} · ${p.key} is paid.`)};
+}
+/* ======================= ribbon controls & scale-to-fit ======================= */
+let SIZE=[1920,1080];
+function fit(){const st=$('#stage'),w=$('#wrap');st.style.width=SIZE[0]+'px';st.style.height=SIZE[1]+'px';
+  const k=Math.min(w.clientWidth/SIZE[0],w.clientHeight/SIZE[1]);st.style.transform=`scale(${k})`;st.style.left=(w.clientWidth-SIZE[0]*k)/2+'px';st.style.top=(w.clientHeight-SIZE[1]*k)/2+'px';
+  const z=parseFloat(st.style.getPropertyValue('--z'))||1;st.classList.toggle('compact',SIZE[1]/z<900);}
+$$('#zoomSeg button').forEach(b=>b.onclick=()=>{$$('#zoomSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');$('#stage').style.setProperty('--z',b.dataset.z);fit()});
+$$('#sizeSeg button').forEach(b=>b.onclick=()=>{$$('#sizeSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');SIZE=b.dataset.s.split('x').map(Number);fit()});
+$$('#themeSeg button').forEach(b=>b.onclick=()=>{$$('#themeSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');document.body.classList.toggle('light',b.dataset.t==='light')});
+$('#notesChk').onchange=e=>document.body.classList.toggle('notes',e.target.checked);
+addEventListener('resize',fit);fit();render();
+</script>
+</body>
+</html>
