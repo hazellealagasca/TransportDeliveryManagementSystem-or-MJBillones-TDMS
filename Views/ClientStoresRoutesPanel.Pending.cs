@@ -187,7 +187,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (var (code, name) in pendingStores)
             {
                 try { MJdatabase.RegisterCompanyStore(clientName, code, name); }
-                catch (Exception ex) { errors.Add($"Store {code} – {name}: {ex.Message}"); }
+                catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.SavePending.Store", ex); errors.Add($"Store {code} – {name}: {ex.Message}"); }
             }
             var saved = MJdatabase.GetClientStores(clientName);
             foreach (var pr in pendingRoutes)
@@ -200,7 +200,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     // each typed store once, in the order typed, through the one writer
                     PendingRouteModel.SaveRouteStores(fresh, saved, PendingRouteModel.StoresToWrite(pr.Stores, pendingStores), errors);
                 }
-                catch (Exception ex) { errors.Add($"Route {pr.Code}: {ex.Message}"); }
+                catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.SavePending.Route", ex); errors.Add($"Route {pr.Code}: {ex.Message}"); }
             }
             pendingStores.Clear();
             pendingRoutes.Clear();

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
+using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
 
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
@@ -56,7 +57,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var st = saved.FirstOrDefault(s => SameCode(s.StoreCode, code));
                 if (st == null) continue;
                 try { if (MJdatabase.SetStoreOnRoute(route, st, true)) added++; }
-                catch (Exception ex) { errors.Add($"{code} on route {route.RouteCode}: {ex.Message}"); }
+                catch (Exception ex) { ErrLog.Error("PendingRouteModel.SaveRouteStores", ex); errors.Add($"{code} on route {route.RouteCode}: {ex.Message}"); }
             }
             return added;
         }
