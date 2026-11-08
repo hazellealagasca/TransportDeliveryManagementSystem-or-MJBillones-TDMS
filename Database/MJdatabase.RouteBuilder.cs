@@ -273,6 +273,88 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return true;
         }
 
+        /// <summary>
+        /// The list writer: saves a route's whole store list as given. Every other writer of route store text comes through
+        /// here, <see cref="SetStoreOnRoute"/>, or <see cref="SetRoutePlaces"/> followed by SaveDeliveryRoute (the Verify check
+        /// RouteStores_AllWritersCanonical keeps it that way). With <paramref name="conn"/> it writes inside that transaction.
+        /// </summary>
+        private static void WriteRoutePlaces(int routeId, List<string> places, SqliteConnection? conn = null, SqliteTransaction? tx = null)
+        {
+            using var own = conn == null ? new SqliteConnection(connectionString) : null;
+            if (own != null) own.Open();
+            using var cmd = (conn ?? own!).CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = "UPDATE DeliveryRoutes SET ConnectedPlaces = @p, UpdatedAt = datetime('now') WHERE Id = @id";
+            cmd.Parameters.AddWithValue("@p", string.Join("; ", places));
+            cmd.Parameters.AddWithValue("@id", routeId);
+            cmd.ExecuteNonQuery();
+        }
+
+        /// <summary>
+        /// The rename cascade for one store list: every entry that names the store before or after the change
+        /// (<see cref="PlaceIsStore"/>) becomes <see cref="PlaceFor"/> of the store after it. No entry is added or removed.
+        /// </summary>
+        public static List<string> RenamedPlaces(IEnumerable<string> places, ClientStore before, ClientStore after) =>
+            places.Select(p => PlaceIsStore(p, before) || PlaceIsStore(p, after) ? PlaceFor(after) : p).ToList();
+
+        /// <summary>A store was renamed or re-coded: its entries on every route of its client follow it. Returns the routes changed.</summary>
+        private static int RenameStoreOnRoutes(ClientStore before, ClientStore after)
+        {
+            if (!string.Equals(CleanStoreText(before.ClientCompanyName), CleanStoreText(after.ClientCompanyName), StringComparison.OrdinalIgnoreCase)) return 0;
+            if (PlaceFor(before) == PlaceFor(after)) return 0;
+            int changed = 0;
+            foreach (var r in OwnRoutes(after.ClientCompanyName))
+            {
+                var places = r.PlacesList;
+                var renamed = RenamedPlaces(places, before, after);
+                if (renamed.SequenceEqual(places)) continue;
+                WriteRoutePlaces(r.Id, renamed);
+                changed++;
+                try { LogAuditTrail("UPDATE", "DeliveryRoutes", r.Id, r.RouteCode, "ConnectedPlaces", r.ConnectedPlaces, string.Join("; ", renamed), $"Store {PlaceFor(before)} is now {PlaceFor(after)} on route {r.RouteCode}"); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            }
+            if (changed > 0) AppEvents.Raise(AppDataKind.Routes);
+            return changed;
+        }
+
+        /// <summary>
+        /// The canonical form of a whole store list: an entry that is exactly one of <paramref name="stores"/> becomes its
+        /// <see cref="PlaceFor"/> (kept as typed when that text would also name another store); a later entry for a store already
+        /// listed is dropped; other text is kept, with spaces tidied. Order is kept.
+        /// </summary>
+        public static List<string> CanonicalPlaces(IEnumerable<string> places, IReadOnlyList<ClientStore> stores)
+        {
+            var result = new List<string>();
+            var seen = new HashSet<int>();
+            foreach (var raw in places)
+            {
+                string p = CleanStoreText(raw);
+                if (p.Length == 0) continue;
+                var hits = stores.Where(st => PlaceIsStore(p, st)).Take(2).ToList();
+                if (hits.Count == 1)
+                {
+                    if (!seen.Add(hits[0].Id)) continue;
+                    string canon = PlaceFor(hits[0]);
+                    if (stores.Count(st => PlaceIsStore(canon, st)) == 1) p = canon;
+                }
+                result.Add(p);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Sets a route's whole store list in memory, in canonical form (<see cref="CanonicalPlaces"/> against the route's client's
+        /// stores); SaveDeliveryRoute saves it. A list edit, not an add: the one-route rule is not checked here. When the client's
+        /// stores cannot be read the list is set as given (spaces tidied) and the failure is logged.
+        /// </summary>
+        public static void SetRoutePlaces(DeliveryRoute route, IEnumerable<string> places)
+        {
+            if (route == null) return;
+            List<ClientStore> stores;
+            try { stores = GetClientStores(CleanStoreText(route.ClientCompanyName)); }
+            catch (Exception ex) { ErrLog.Swallowed(ex); stores = new List<ClientStore>(); }
+            route.ConnectedPlaces = string.Join("; ", CanonicalPlaces(places ?? Enumerable.Empty<string>(), stores));
+        }
+
         /// <summary>At start-up: every store's first-route label matches the routes (safe to repeat).</summary>
         public static void RecomputeAllStoreRouteLabels()
         {

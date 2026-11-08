@@ -194,7 +194,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 try
                 {
-                    var route = new DeliveryRoute { ClientCompanyName = clientName, RouteCode = pr.Code, RouteName = pr.Name, Description = "", ConnectedPlaces = "", IsActive = true };
+                    var route = new DeliveryRoute { ClientCompanyName = clientName, RouteCode = pr.Code, RouteName = pr.Name, Description = "", IsActive = true };
                     if (!MJdatabase.SaveDeliveryRoute(route)) { errors.Add($"Route {pr.Code}: it wasn't saved."); continue; }
                     var fresh = MJdatabase.GetDeliveryRoutesByClient(clientName, activeOnly: false).FirstOrDefault(x => string.Equals(x.RouteCode, pr.Code, StringComparison.OrdinalIgnoreCase)) ?? route;
                     // each typed store once, in the order typed, through the one writer

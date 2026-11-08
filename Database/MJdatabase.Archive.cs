@@ -80,7 +80,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (old != null)
                 {
                     var r = ResolveRouteFromLabel(old.ClientCompanyName, old.DestinationRoute);
-                    if (r != null) RemoveRoutePlace(r, old.StoreName);
+                    if (r != null) RemoveRoutePlace(r, old);
                 }
             }
             catch (Exception ex) { ErrLog.Swallowed(ex); }
@@ -120,7 +120,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (old != null)
                 {
                     var r = ResolveRouteFromLabel(old.ClientCompanyName, old.DestinationRoute);
-                    if (r != null) AddRoutePlace(r, old.StoreName);
+                    if (r != null) SetStoreOnRoute(r, old, true);
                 }
             }
             catch (Exception ex) { ErrLog.Swallowed(ex); }
@@ -195,19 +195,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 Exec("UPDATE ClientStores SET StoreCode = @c, StoreName = @n WHERE Id = @id", ("@c", newCode), ("@n", newName), ("@id", st.Id));
                 changed++;
-                if (newName == st.Name) continue;
+                var before = new ClientStore { ClientCompanyName = st.Client, StoreCode = st.Code, StoreName = st.Name };
+                var after = new ClientStore { ClientCompanyName = st.Client, StoreCode = newCode, StoreName = newName };
                 for (int i = 0; i < routes.Count; i++)
                 {
                     var rt = routes[i];
                     if (!string.Equals(rt.Client.Trim(), st.Client.Trim(), StringComparison.OrdinalIgnoreCase)) continue;
                     var parts = rt.Places.Split(new[] { ';', '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-                    bool hit = false;
-                    for (int k = 0; k < parts.Count; k++)
-                        if (SamePlace(parts[k], st.Name)) { parts[k] = newName; hit = true; }
-                    if (!hit) continue;
-                    string joined = string.Join("; ", parts);
-                    Exec("UPDATE DeliveryRoutes SET ConnectedPlaces = @p WHERE Id = @id", ("@p", joined), ("@id", rt.Id));
-                    routes[i] = (rt.Id, rt.Client, joined);
+                    var renamed = RenamedPlaces(parts, before, after); // the entries that are this store, now as "code - name"
+                    if (renamed.SequenceEqual(parts)) continue;
+                    WriteRoutePlaces(rt.Id, renamed, conn, tx);
+                    routes[i] = (rt.Id, rt.Client, string.Join("; ", renamed));
                 }
             }
             Exec("INSERT OR REPLACE INTO SystemSettings (SettingKey, SettingValue, Description, UpdatedAt) VALUES ('Fix.AutoStoreCodes.v1', 'done', 'Removed made-up store codes', datetime('now'))");

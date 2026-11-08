@@ -282,7 +282,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 string? problem = MJdatabase.CheckRouteCode(c, code, name);
                 if (problem != null) { Say("✕ " + problem, true); Outline(RouteProblemBox(code, name, problem)); return; }
-                var r = new DeliveryRoute { ClientCompanyName = c, RouteCode = code, RouteName = name, Description = "", ConnectedPlaces = "", IsActive = true };
+                var r = new DeliveryRoute { ClientCompanyName = c, RouteCode = code, RouteName = name, Description = "", IsActive = true };
                 if (!MJdatabase.SaveDeliveryRoute(r)) { Say("✕ The route wasn't saved.", true); return; }
                 txtNewCode.Clear(); txtNewName.Clear();
                 Outline(null);

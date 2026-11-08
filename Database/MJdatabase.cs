@@ -12808,7 +12808,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else store.Id = Convert.ToInt32(cmd.ExecuteScalar() ?? 0);
 
             }
-            // Keep the delivery route's store list in step with the client's stores.
+            // Keep the routes' store lists in step with the client's stores: a renamed or re-coded store keeps its place on every
+            // route it is on; a store moved to another route leaves the old one and is put on the new one (SetStoreOnRoute).
 
             try
 
@@ -12816,33 +12817,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 string client = (store.ClientCompanyName ?? "").Trim();
 
-                string oldName = old?.StoreName ?? "", oldRoute = old?.DestinationRoute ?? "";
+                var oldR = old == null ? null : ResolveRouteFromLabel(client, old.DestinationRoute ?? "");
 
-                string newName = (store.StoreName ?? "").Trim(), newRoute = (store.DestinationRoute ?? "").Trim();
+                var newR = ResolveRouteFromLabel(client, (store.DestinationRoute ?? "").Trim());
 
-                var oldR = ResolveRouteFromLabel(client, oldRoute);
+                if (old != null) RenameStoreOnRoutes(old, store);
 
-                var newR = ResolveRouteFromLabel(client, newRoute);
+                if (oldR != null && (newR == null || oldR.Id != newR.Id)) SetStoreOnRoute(oldR, store, false);
 
-                if (oldR != null && newR != null && oldR.Id == newR.Id)
-
-                {
-
-                    if (!SamePlace(oldName, newName)) ReplaceRoutePlace(newR, oldName, newName);
-
-                    else AddRoutePlace(newR, newName);
-
-                }
-
-                else
-
-                {
-
-                    if (oldR != null && oldName.Length > 0) RemoveRoutePlace(oldR, oldName);
-
-                    if (newR != null) AddRoutePlace(newR, newName);
-
-                }
+                if (newR != null) SetStoreOnRoute(newR, store, true);
 
             }
 
@@ -12877,7 +12860,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     var r = ResolveRouteFromLabel(old.ClientCompanyName, old.DestinationRoute);
 
-                    if (r != null) RemoveRoutePlace(r, old.StoreName);
+                    if (r != null) SetStoreOnRoute(r, old, false);
 
                 }
 
@@ -12941,43 +12924,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public static string RouteLabel(DeliveryRoute r) => $"{r.RouteCode} - {r.RouteName}";
 
-        private static void WriteRoutePlaces(int routeId, List<string> places)
-
-        {
-
-            using var conn = new SqliteConnection(connectionString);
-
-            conn.Open();
-
-            using var cmd = conn.CreateCommand();
-
-            cmd.CommandText = "UPDATE DeliveryRoutes SET ConnectedPlaces = @p, UpdatedAt = datetime('now') WHERE Id = @id";
-
-            cmd.Parameters.AddWithValue("@p", string.Join("; ", places));
-
-            cmd.Parameters.AddWithValue("@id", routeId);
-
-            cmd.ExecuteNonQuery();
-
-        }
-
-        private static void AddRoutePlace(DeliveryRoute r, string place)
-
-        {
-
-            if (string.IsNullOrWhiteSpace(place)) return;
-
-            var list = r.PlacesList;
-
-            if (list.Any(p => SamePlace(p, place))) return;
-
-            list.Add(place.Trim());
-
-            WriteRoutePlaces(r.Id, list);
-
-        }
-
-        private static void RemoveRoutePlace(DeliveryRoute r, string place)
+        /// <summary>
+        /// Takes every entry of the store off the route's list (<see cref="PlaceIsStore"/>, as SetStoreOnRoute removes), without
+        /// recomputing the store's route label: an archived store keeps the label, so a restore puts it back on the same route.
+        /// </summary>
+        private static void RemoveRoutePlace(DeliveryRoute r, ClientStore st)
 
         {
 
@@ -12985,25 +12936,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             int before = list.Count;
 
-            list.RemoveAll(p => SamePlace(p, place));
+            list.RemoveAll(p => PlaceIsStore(p, st));
 
             if (list.Count != before) WriteRoutePlaces(r.Id, list);
-
-        }
-
-        private static void ReplaceRoutePlace(DeliveryRoute r, string oldPlace, string newPlace)
-
-        {
-
-            var list = r.PlacesList;
-
-            int i = list.FindIndex(p => SamePlace(p, oldPlace));
-
-            if (i >= 0) list[i] = newPlace.Trim();
-
-            else if (!list.Any(p => SamePlace(p, newPlace))) list.Add(newPlace.Trim());
-
-            WriteRoutePlaces(r.Id, list);
 
         }
 

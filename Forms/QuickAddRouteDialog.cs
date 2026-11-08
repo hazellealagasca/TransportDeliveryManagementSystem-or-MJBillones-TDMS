@@ -37,6 +37,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly ErrorProvider errors = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink };
         private List<DeliveryRoute> allRoutes = new List<DeliveryRoute>();
         private List<ClientStore> clientStores = new List<ClientStore>();
+        private readonly Dictionary<string, string> storeKeys = new Dictionary<string, string>(StringComparer.Ordinal); // StoreKey cache for the loaded client
         private bool loading;
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
         public QuickAddRouteDialog(string? initialClient = null)
@@ -207,8 +208,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             string client = cbClient.Text.Trim();
             try { clientStores = client.Length == 0 ? new List<ClientStore>() : MJdatabase.GetClientStores(client); } catch { clientStores = new List<ClientStore>(); }
+            storeKeys.Clear();
             var storeSuggest = new AutoCompleteStringCollection();
-            foreach (var st in clientStores) storeSuggest.Add(StoreLabel(st.StoreCode, st.StoreName));
+            foreach (var st in clientStores) storeSuggest.Add(MJdatabase.PlaceFor(st));
             foreach (var r in allRoutes.Where(r => SameClient(r, client))) foreach (var p in r.PlacesList) storeSuggest.Add(p);
             txtStore.AutoCompleteCustomSource = storeSuggest;
             txtStore.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
@@ -231,11 +233,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtOrigin.AutoCompleteSource = AutoCompleteSource.CustomSource;
         }
         private static bool SameClient(DeliveryRoute r, string client) => string.Equals((r.ClientCompanyName ?? "").Trim(), client.Trim(), StringComparison.OrdinalIgnoreCase);
-        private static string StoreLabel(string? code, string? name) => string.IsNullOrWhiteSpace(code) ? (name ?? "").Trim() : $"{code!.Trim()} - {(name ?? "").Trim()}";
-        private static string StoreKey(string raw)
+        /// <summary>Which store a route entry is: "#id" when it is exactly one of the client's stores (PlaceIsStore), else its code or name.</summary>
+        private string StoreKey(string raw)
         {
-            var (code, name) = DeliveryRoute.SplitStoreCodeAndName(raw);
-            return (code.Length > 0 ? code : name).Trim().ToLowerInvariant();
+            if (storeKeys.TryGetValue(raw, out var key)) return key;
+            var hits = clientStores.Where(st => MJdatabase.PlaceIsStore(raw, st)).Take(2).ToList();
+            if (hits.Count == 1) key = "#" + hits[0].Id;
+            else
+            {
+                var (code, name) = DeliveryRoute.SplitStoreCodeAndName(raw);
+                key = (code.Length > 0 ? code : name).Trim().ToLowerInvariant();
+            }
+            storeKeys[raw] = key;
+            return key;
         }
         // ------------------------------------------------------------------ stores list
         private void AddStore()
@@ -243,8 +253,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string raw = Tidy(txtStore.Text);
             if (raw.Length == 0) return;
             // Typed only a code or only a name that matches a known store: use the full "code - name".
-            var known = clientStores.FirstOrDefault(st => string.Equals(st.StoreCode?.Trim(), raw, StringComparison.OrdinalIgnoreCase) || string.Equals(st.StoreName?.Trim(), raw, StringComparison.OrdinalIgnoreCase));
-            if (known != null) raw = StoreLabel(known.StoreCode, known.StoreName);
+            var known = clientStores.FirstOrDefault(st => string.Equals(st.StoreCode?.Trim(), raw, StringComparison.OrdinalIgnoreCase) || string.Equals(st.StoreName?.Trim(), raw, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(MJdatabase.CleanStoreText(raw), MJdatabase.PlaceFor(st), StringComparison.OrdinalIgnoreCase));
+            if (known != null) raw = MJdatabase.PlaceFor(known);
             string key = StoreKey(raw);
             if (lstStores.Items.Cast<object>().Any(o => StoreKey(o.ToString() ?? "") == key))
             {
@@ -349,7 +360,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (shared.Count > 0) Warn($"{shared.Count} of these store(s) are already on {r.RouteCode} - {r.RouteName} ({string.Join(", ", shared.Take(3))}{(shared.Count > 3 ? "…" : "")}).");
                     if (shared.Count > 0 && shared.Count == keys.Count && r.PlacesList.Count == keys.Count) issues.Add(($"{r.RouteCode} - {r.RouteName} already has exactly these stores. Use that route instead.", true));
                 }
-                int unknown = lstStores.Items.Cast<object>().Count(o => !clientStores.Any(st => StoreKey(StoreLabel(st.StoreCode, st.StoreName)) == StoreKey(o.ToString() ?? "")));
+                int unknown = lstStores.Items.Cast<object>().Count(o => !StoreKey(o.ToString() ?? "").StartsWith("#", StringComparison.Ordinal));
                 if (unknown > 0) Warn($"{unknown} new store(s) will be added to {client}'s store list.");
             }
             RenderIssues();
@@ -417,9 +428,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 RouteCode = code,
                 RouteName = name,
                 Description = description,
-                ConnectedPlaces = string.Join("; ", stores),
                 IsActive = chkIsActive.Checked
             };
+            MJdatabase.SetRoutePlaces(newRoute, stores); // known stores as "CODE - NAME"; new ones as typed (SaveDeliveryRoute adds them to the client)
 
             bool success;
             try { success = MJdatabase.SaveDeliveryRoute(newRoute); }

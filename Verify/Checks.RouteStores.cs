@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views;
@@ -733,5 +734,261 @@ public static partial class Checks
         if (Saved("PR-A") != "DD-1 - San Miguel; DD-2 - Tarlac") fails.Add($"PR-A saved \"{Saved("PR-A")}\"");
         if (Saved("PR-B") != "DD-2 - Tarlac; DD-3 - Capas") fails.Add($"PR-B saved \"{Saved("PR-B")}\"");
         return string.Join("; ", fails);
+    }
+
+    // ---- Task 9: every writer of route store text writes the canonical PlaceFor text, and a source scan keeps it that way.
+
+    private static long DwRoute(string code, string name, string places) =>
+        Exec("INSERT INTO DeliveryRoutes (ClientCompanyName, RouteCode, RouteName, ConnectedPlaces, IsActive) VALUES ('DWARDO', @c, @n, @p, 1)", ("@c", code), ("@n", name), ("@p", places));
+
+    private static long DwStoreOn(string code, string name, string routeLabel) =>
+        Exec("INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson) VALUES (0, 'DWARDO', @c, @n, @r, '')", ("@c", code), ("@n", name), ("@r", routeLabel));
+
+    private static ClientStore DwSaved(long id) => MJdatabase.GetClientStores("DWARDO", includeArchived: true).First(s => s.Id == id);
+
+    /// <summary>Adds a failure when the route's saved text is not <paramref name="want"/>, or when an entry of the store is not its canonical text.</summary>
+    private static void ExpectPlaces(List<string> fails, string when, long routeId, string want, ClientStore? st = null)
+    {
+        string saved = SavedPlaces((int)routeId);
+        if (saved != want) fails.Add($"{when}: route #{routeId} saved \"{saved}\", expected \"{want}\"");
+        if (st == null) return;
+        var entries = new DeliveryRoute { ConnectedPlaces = saved }.PlacesList.Where(p => MJdatabase.PlaceIsStore(p, st)).ToList();
+        if (entries.Count != 1 || entries[0] != MJdatabase.PlaceFor(st)) fails.Add($"{when}: route #{routeId} entries for the store [{string.Join(" | ", entries)}], expected exactly \"{MJdatabase.PlaceFor(st)}\"");
+    }
+
+    [Check]
+    public static string RouteStores_RenameCodedStoreStaysOnRoute()
+    {
+        Fresh();
+        long r1 = DwRoute("DW-R1", "North", "DD-1 - San Miguel; DD-2 - Tarlac");
+        long r2 = DwRoute("DW-R2", "South", "DD-2 - Tarlac; DD-3 - Capas"); // rule 16c: the same store on a second route
+        AddStore("DWARDO", "DD-1", "San Miguel");
+        AddStore("DWARDO", "DD-3", "Capas");
+        long id = DwStoreOn("DD-2", "Tarlac", "DW-R1 - North");
+        var fails = new List<string>();
+        var st = DwSaved(id);
+        st.StoreName = "Tarlac City";
+        MJdatabase.SaveClientStore(st);
+        ExpectPlaces(fails, "renamed", r1, "DD-1 - San Miguel; DD-2 - Tarlac City", st);
+        ExpectPlaces(fails, "renamed", r2, "DD-2 - Tarlac City; DD-3 - Capas", st);
+        st = DwSaved(id);
+        st.StoreCode = "DD-5"; // re-coded after it was put on routes (Review Focus 4)
+        MJdatabase.SaveClientStore(st);
+        ExpectPlaces(fails, "re-coded", r1, "DD-1 - San Miguel; DD-5 - Tarlac City", st);
+        ExpectPlaces(fails, "re-coded", r2, "DD-5 - Tarlac City; DD-3 - Capas", st);
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_RenameNameOnlyStoreUpdatesRouteText()
+    {
+        Fresh();
+        long r1 = DwRoute("DW-R1", "North", "DD-1 - San Miguel; Tarlac");
+        long r2 = DwRoute("DW-R2", "South", "Tarlac; DD-3 - Capas");
+        AddStore("DWARDO", "DD-1", "San Miguel");
+        AddStore("DWARDO", "DD-3", "Capas");
+        long id = DwStoreOn("", "Tarlac", "DW-R1 - North");
+        var fails = new List<string>();
+        var st = DwSaved(id);
+        st.StoreName = "Tarlac City";
+        MJdatabase.SaveClientStore(st);
+        ExpectPlaces(fails, "renamed", r1, "DD-1 - San Miguel; Tarlac City", st);
+        ExpectPlaces(fails, "renamed", r2, "Tarlac City; DD-3 - Capas", st);
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_AutoCodeCleanUpKeepsStoresOnRoutes()
+    {
+        Fresh();
+        Exec("DELETE FROM SystemSettings WHERE SettingKey = 'Fix.AutoStoreCodes.v1'");
+        long route = DwRoute("DW-R1", "North", "203077 - RR Laoag; R1-S02 - Paniqui; Elsewhere");
+        long laoag = DwStoreOn("R1-S01", "203077 - RR Laoag", ""); // the real code moves out of the name
+        long paniqui = DwStoreOn("R1-S02", "Paniqui", "");         // no real code: the made-up one is cleared
+        var fails = new List<string>();
+        MJdatabase.MigrateAutoStoreCodes();
+        var l = DwSaved(laoag);
+        var p = DwSaved(paniqui);
+        if (l.StoreCode != "203077" || l.StoreName != "RR Laoag") fails.Add($"Laoag saved as {l.StoreCode}|{l.StoreName}");
+        if (p.StoreCode != "" || p.StoreName != "Paniqui") fails.Add($"Paniqui saved as {p.StoreCode}|{p.StoreName}");
+        ExpectPlaces(fails, "after clean-up", route, "203077 - RR Laoag; Paniqui; Elsewhere", l);
+        ExpectPlaces(fails, "after clean-up", route, "203077 - RR Laoag; Paniqui; Elsewhere", p);
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_RegisterClientStoreWritesCanonicalPlace()
+    {
+        Fresh();
+        long route = DwRoute("DW-R1", "North", "DD-1 - San Miguel");
+        AddStore("DWARDO", "DD-1", "San Miguel");
+        var fails = new List<string>();
+        var st = MJdatabase.RegisterClientStore("DWARDO", "dd-2", " Tarlac ", "DW-R1 - North");
+        ExpectPlaces(fails, "registered", route, "DD-1 - San Miguel; DD-2 - Tarlac", st);
+        if (DwSaved(st.Id).DestinationRoute != "DW-R1 - North") fails.Add($"store route label \"{DwSaved(st.Id).DestinationRoute}\"");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_ArchiveRestoreDeleteUseTheStoreEntry()
+    {
+        Fresh();
+        long route = DwRoute("DW-R1", "North", "DD-1 - San Miguel; DD-2 - Tarlac; DD-3 - Capas");
+        AddStore("DWARDO", "DD-1", "San Miguel");
+        long tarlac = DwStoreOn("DD-2", "Tarlac", "DW-R1 - North");
+        long capas = DwStoreOn("DD-3", "Capas", "DW-R1 - North");
+        var fails = new List<string>();
+        MJdatabase.ArchiveClientStore((int)tarlac);
+        ExpectPlaces(fails, "archived", route, "DD-1 - San Miguel; DD-3 - Capas");
+        MJdatabase.RestoreClientStore((int)tarlac);
+        ExpectPlaces(fails, "restored", route, "DD-1 - San Miguel; DD-3 - Capas; DD-2 - Tarlac", DwSaved(tarlac));
+        MJdatabase.DeleteClientStore((int)capas);
+        ExpectPlaces(fails, "deleted", route, "DD-1 - San Miguel; DD-2 - Tarlac");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_SetRoutePlacesWritesCanonicalText()
+    {
+        Fresh();
+        AddStore("DWARDO", "DD-1", "San Miguel");
+        AddStore("DWARDO", "DD-2", "Tarlac");
+        AddStore("OTHER CLIENT", "OC-1", "Capas"); // another client's store is not one of DWARDO's
+        var route = new DeliveryRoute { ClientCompanyName = "DWARDO", RouteCode = "DW-R1", RouteName = "North", IsActive = true };
+        var fails = new List<string>();
+        // what the route screens hand over: a bare name, other case and spacing, a repeat of the same store, unknown text
+        MJdatabase.SetRoutePlaces(route, new[] { "Tarlac", " dd-1  -  san miguel ", "DD-2 - Tarlac", "  Capas ", "", "Nowhere   Store" });
+        const string want = "DD-2 - Tarlac; DD-1 - San Miguel; Capas; Nowhere Store";
+        if (route.ConnectedPlaces != want) fails.Add($"set \"{route.ConnectedPlaces}\", expected \"{want}\"");
+        var stores = MJdatabase.GetClientStores("DWARDO");
+        foreach (var st in stores.Where(s => s.StoreCode.StartsWith("DD-")))
+        {
+            var entries = route.PlacesList.Where(p => MJdatabase.PlaceIsStore(p, st)).ToList();
+            if (entries.Count != 1 || entries[0] != MJdatabase.PlaceFor(st)) fails.Add($"entries for {st.StoreCode} [{string.Join(" | ", entries)}]");
+        }
+        if (!MJdatabase.SaveDeliveryRoute(route)) fails.Add("SaveDeliveryRoute returned false");
+        string saved = Str("SELECT ConnectedPlaces FROM DeliveryRoutes WHERE RouteCode = 'DW-R1'");
+        if (saved != want) fails.Add($"saved \"{saved}\", expected \"{want}\"");
+        return string.Join("; ", fails);
+    }
+
+    // The source scan. Allowed to write DeliveryRoutes.ConnectedPlaces: the two files below (the one writer SetStoreOnRoute, the list
+    // writers WriteRoutePlaces and SetRoutePlaces, the reorder, the one-time repair), and two methods of MJdatabase.cs.
+    private static readonly string[] RouteTextWriterFiles = { "MJdatabase.RouteBuilder.cs", "MJdatabase.RouteRepair.cs" };
+
+    // In MJdatabase.cs only: EnsureDefaultDeliveryRoutes (the seed of the default routes) and SaveDeliveryRouteCore (the whole-route
+    // save behind SaveDeliveryRoute). Every other method of MJdatabase.cs that writes the text fails the scan.
+    private static readonly string[] RouteTextWriterMethodsInMJdatabase = { "EnsureDefaultDeliveryRoutes", "SaveDeliveryRouteCore" };
+
+    // A write: "ConnectedPlaces =" or "+=" in C# or SQL (not "==", and not "= reader.…", which only fills the model from a row it read),
+    // or an SQL INSERT INTO DeliveryRoutes that names the column.
+    private static readonly Regex PlacesAssign = new(@"\bConnectedPlaces\s*\+?=(?!=)(?!\s*reader\.)");
+    private static readonly Regex PlacesInsert = new(@"INSERT\s+(?:OR\s+\w+\s+)?INTO\s+DeliveryRoutes\b.*\bConnectedPlaces\b", RegexOptions.IgnoreCase);
+
+    /// <summary>Line ranges (0-based, inclusive) of the named methods: from the signature to its closing brace.</summary>
+    private static List<(int From, int To)> MethodSpans(string[] lines, IEnumerable<string> names)
+    {
+        var spans = new List<(int, int)>();
+        foreach (var n in names)
+        {
+            var head = new Regex(@"^\s*(?:public|private|internal|protected)\s[\w<>\[\],?\s]*\s" + Regex.Escape(n) + @"\s*\(");
+            int start = Array.FindIndex(lines, l => head.IsMatch(l));
+            if (start < 0) continue; // not found: nothing is allowed in its name
+            int depth = 0;
+            bool opened = false;
+            for (int i = start; i < lines.Length; i++)
+            {
+                foreach (char c in lines[i]) { if (c == '{') { depth++; opened = true; } else if (c == '}') depth--; }
+                if (opened && depth == 0) { spans.Add((start, i)); break; }
+            }
+        }
+        return spans;
+    }
+
+    /// <summary>Every source line under <paramref name="root"/> that writes a route's store text outside the allowlist, as "path:line: text".</summary>
+    private static List<string> RouteTextWritersOutsideAllowlist(string root)
+    {
+        string[] skipFolders = { "bin", "obj", "Verify", ".claude", ".git" };
+        var found = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories).OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+        {
+            string rel = Path.GetRelativePath(root, file).Replace('\\', '/');
+            if (rel.Split('/').Any(seg => skipFolders.Contains(seg, StringComparer.OrdinalIgnoreCase))) continue;
+            string name = Path.GetFileName(file);
+            if (RouteTextWriterFiles.Contains(name, StringComparer.OrdinalIgnoreCase)) continue;
+            var lines = File.ReadAllLines(file);
+            var allowed = name.Equals("MJdatabase.cs", StringComparison.OrdinalIgnoreCase) ? MethodSpans(lines, RouteTextWriterMethodsInMJdatabase) : new List<(int From, int To)>();
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string t = lines[i].TrimStart();
+                if (t.StartsWith("//") || t.StartsWith("*")) continue;
+                if (!PlacesAssign.IsMatch(lines[i]) && !PlacesInsert.IsMatch(lines[i])) continue;
+                if (allowed.Any(s => i >= s.From && i <= s.To)) continue;
+                found.Add($"{rel}:{i + 1}: {t}");
+            }
+        }
+        return found;
+    }
+
+    /// <summary>The app's source folder: walks up from where Verify runs to the folder that holds Database/MJdatabase.RouteBuilder.cs.</summary>
+    private static string? SourceRoot()
+    {
+        for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
+            if (File.Exists(Path.Combine(d.FullName, "Database", "MJdatabase.RouteBuilder.cs"))) return d.FullName;
+        return null;
+    }
+
+    [Check]
+    public static string RouteStores_AllWritersCanonical()
+    {
+        string? root = SourceRoot();
+        if (root == null) return $"source folder not found above {AppContext.BaseDirectory}";
+        if (!File.Exists(Path.Combine(root, "Database", "MJdatabase.cs"))) return $"Database/MJdatabase.cs not found in {root}";
+        var found = RouteTextWritersOutsideAllowlist(root);
+        return found.Count == 0 ? "" : $"{found.Count} write(s) of route store text outside the one writer: " + string.Join(" | ", found);
+    }
+
+    [Check]
+    public static string RouteStores_SourceScanCatchesNewWriter()
+    {
+        string root = Path.Combine(Root, $"scan_{Guid.NewGuid():N}");
+        void Put(string rel, params string[] lines)
+        {
+            string p = Path.Combine(root, rel);
+            Directory.CreateDirectory(Path.GetDirectoryName(p)!);
+            File.WriteAllLines(p, lines);
+        }
+        Put("Database/MJdatabase.RouteBuilder.cs", "route.ConnectedPlaces = string.Join(\"; \", places);");
+        Put("Database/MJdatabase.cs",
+            "public static partial class MJdatabase",
+            "{",
+            "    private static bool SaveDeliveryRouteCore(DeliveryRoute r)",
+            "    {",
+            "        cmd.CommandText = \"UPDATE DeliveryRoutes SET ConnectedPlaces = @p WHERE Id = @id\";",
+            "    }",
+            "    public static void SneakyWriter(DeliveryRoute r)",
+            "    {",
+            "        r.ConnectedPlaces = \"Tarlac\";",
+            "    }",
+            "    public static List<DeliveryRoute> Load()",
+            "    {",
+            "        list.Add(new DeliveryRoute { ConnectedPlaces = reader.GetString(4) });",
+            "    }",
+            "}");
+        Put("Views/NewPanel.cs",
+            "// route.ConnectedPlaces = \"only a comment\";",
+            "if (route.ConnectedPlaces == \"\") return;",
+            "route.ConnectedPlaces = string.Join(\"; \", names);",
+            "cmd.CommandText = \"INSERT INTO DeliveryRoutes (ClientCompanyName, RouteCode, ConnectedPlaces) VALUES (@c, @r, @p)\";",
+            "route.ConnectedPlaces += \"; Tarlac\";");
+        Put("Verify/Checks.Other.cs", "r.ConnectedPlaces = \"test data\";");
+        Put("obj/Generated.cs", "r.ConnectedPlaces = \"generated\";");
+        try
+        {
+            var found = RouteTextWritersOutsideAllowlist(root).Select(f => f.Substring(0, f.IndexOf(": ", StringComparison.Ordinal))).ToList();
+            string want = "Database/MJdatabase.cs:9, Views/NewPanel.cs:3, Views/NewPanel.cs:4, Views/NewPanel.cs:5";
+            return string.Join(", ", found) == want ? "" : $"scan found [{string.Join(", ", found)}], expected [{want}]";
+        }
+        finally { try { Directory.Delete(root, true); } catch (IOException) { } }
     }
 }
