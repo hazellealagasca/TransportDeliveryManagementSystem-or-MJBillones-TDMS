@@ -343,4 +343,37 @@ public static partial class Checks
         if (rows.Count(r => r.HiddenByRule) != 1) fails.Add($"{rows.Count(r => r.HiddenByRule)} hidden, expected 1");
         if (rows.Count != DwStores.Length) fails.Add("hidden stores must still be returned in the list");
         return string.Join("; ", fails);
+    }
+    [Check]
+    public static string RouteStores_ModelIgnoresArchivedRoutes()
+    {
+        var dw = ModelRoute(1, "DW", "DD-1 - San Miguel");
+        var old = ModelRoute(2, "DW9", "DD-1 - San Miguel; DD-3 - Capas");
+        old.IsActive = false;
+        var rows = RouteStoreListModel.Build(dw, DwStores, new[] { dw, old }, true);
+        var fails = new List<string>();
+        var capas = rows.First(r => r.Store.StoreCode == "DD-3");
+        if (capas.OtherRoutes.Count != 0) fails.Add($"DD-3 other routes \"{string.Join(",", capas.OtherRoutes)}\", expected none (DW9 is archived)");
+        if (capas.HiddenByRule) fails.Add("DD-3 hidden because of an archived route");
+        var sm = rows.First(r => r.Store.StoreCode == "DD-1");
+        if (sm.OtherRoutes.Count != 0) fails.Add($"DD-1 other routes \"{string.Join(",", sm.OtherRoutes)}\", expected none");
+        if (rows.Count(r => r.HiddenByRule) != 0) fails.Add($"{rows.Count(r => r.HiddenByRule)} hidden, expected 0");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_ModelCountsIgnoreSearchText()
+    {
+        var dw = ModelRoute(1, "DW", "DD-1 - San Miguel; DD-2 - Tarlac");
+        var dw1 = ModelRoute(2, "DW1", "DD-3 - Capas");
+        var rows = RouteStoreListModel.Build(dw, DwStores, new[] { dw, dw1 }, true);
+        var (on, hidden) = RouteStoreListModel.Counts(rows);
+        var fails = new List<string>();
+        if (on != 2) fails.Add($"{on} on this route, expected 2");
+        if (hidden != 1) fails.Add($"{hidden} hidden, expected 1");
+        var shown = rows.Where(r => RouteStoreListModel.Matches(r, "tarlac")).ToList();
+        if (shown.Count != 1 || shown[0].Store.StoreCode != "DD-2") fails.Add($"search \"tarlac\" showed {shown.Count} rows");
+        if (RouteStoreListModel.Counts(rows) != (2, 1)) fails.Add("counts changed after searching");
+        if (rows.Count(r => RouteStoreListModel.Matches(r, "")) != DwStores.Length) fails.Add("empty search must show every row");
+        return string.Join("; ", fails);
     }}

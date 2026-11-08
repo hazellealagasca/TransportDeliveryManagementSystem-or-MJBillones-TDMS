@@ -301,12 +301,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 btnRemove.Enabled = r != null;
                 if (r != null)
                 {
-                    var model = RouteStoreListModel.Build(r, stores, routes, false)
-                        .Where(x => q.Length == 0 || x.Store.StoreCode.Contains(q, StringComparison.OrdinalIgnoreCase) || x.Store.StoreName.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
-                    var onRows = model.Where(x => x.OnThisRoute).ToList();
-                    var availRows = model.Where(x => !x.OnThisRoute).ToList();
-                    int hidden = availRows.Count(x => x.HiddenByRule);
-                    AddNoteRow($"On this route ({onRows.Count})", "header");
+                    var model = RouteStoreListModel.Build(r, stores, routes, false); // routes: Build uses the active ones only
+                    var (onCount, hidden) = RouteStoreListModel.Counts(model); // counts ignore the search text
+                    var onRows = model.Where(x => x.OnThisRoute && RouteStoreListModel.Matches(x, q)).ToList();
+                    var availRows = model.Where(x => !x.OnThisRoute && RouteStoreListModel.Matches(x, q)).ToList();
+                    AddNoteRow($"On this route ({onCount})", "header");
                     foreach (var x in onRows) AddStoreRow(x);
                     AddNoteRow("Available to add", "header");
                     foreach (var x in availRows.Where(x => showHidden || !x.HiddenByRule)) AddStoreRow(x);

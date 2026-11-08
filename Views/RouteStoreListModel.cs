@@ -18,7 +18,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     {
         public static List<RouteStoreRow> Build(DeliveryRoute route, IEnumerable<ClientStore> stores, IEnumerable<DeliveryRoute> clientRoutes, bool oneRoutePerStore)
         {
-            var others = clientRoutes.Where(r => !IsSameRoute(r, route)).ToList();
+            var others = clientRoutes.Where(r => r.IsActive && !IsSameRoute(r, route)).ToList();
             var rows = new List<RouteStoreRow>();
             foreach (var st in stores)
             {
@@ -29,6 +29,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             return rows.OrderBy(r => r.OnThisRoute ? 0 : 1).ThenBy(r => r.Store.StoreName, StringComparer.OrdinalIgnoreCase).ToList();
         }
+
+        /// <summary>Counts of the whole list. Call it on the unfiltered rows: the search text must not change them.</summary>
+        public static (int OnThisRoute, int Hidden) Counts(IEnumerable<RouteStoreRow> rows) =>
+            (rows.Count(r => r.OnThisRoute), rows.Count(r => !r.OnThisRoute && r.HiddenByRule));
+
+        /// <summary>Whether a row passes the search text (store code or name). Filters what is displayed, never the counts.</summary>
+        public static bool Matches(RouteStoreRow row, string q) =>
+            q.Length == 0 || row.Store.StoreCode.Contains(q, StringComparison.OrdinalIgnoreCase) || row.Store.StoreName.Contains(q, StringComparison.OrdinalIgnoreCase);
 
         private static bool IsSameRoute(DeliveryRoute a, DeliveryRoute b) =>
             ReferenceEquals(a, b) || (a.Id != 0 && a.Id == b.Id) ||
