@@ -984,7 +984,7 @@ public static partial class Checks
     }
 
     /// <summary>The app's source folder: walks up from where Verify runs to the folder that holds Database/MJdatabase.RouteBuilder.cs.</summary>
-    private static string? SourceRoot()
+    private static string? RouteSourceRoot()
     {
         for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
             if (File.Exists(Path.Combine(d.FullName, "Database", "MJdatabase.RouteBuilder.cs"))) return d.FullName;
@@ -994,7 +994,7 @@ public static partial class Checks
     [Check]
     public static string RouteStores_AllWritersCanonical()
     {
-        string? root = SourceRoot();
+        string? root = RouteSourceRoot();
         if (root == null) return $"source folder not found above {AppContext.BaseDirectory}";
         if (!File.Exists(Path.Combine(root, "Database", "MJdatabase.cs"))) return $"Database/MJdatabase.cs not found in {root}";
         var found = RouteTextWritersOutsideAllowlist(root);
