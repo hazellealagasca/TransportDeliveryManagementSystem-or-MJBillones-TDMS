@@ -1,5 +1,6 @@
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
+using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views;
 
 namespace TDMS.Verify;
 
@@ -262,4 +263,84 @@ public static partial class Checks
         if (!Directory.Exists(backups) || Directory.GetFiles(backups, "before_route_places_*.db").Length == 0) fails.Add("no backup beside the copy");
         return string.Join("; ", fails);
     }
-}
+
+    // ---- Task 4: the panel's model (pure, no UI).
+
+    private static readonly ClientStore[] DwStores =
+    {
+        new() { StoreCode = "DD-1", StoreName = "San Miguel", ClientCompanyName = "DWARDO" },
+        new() { StoreCode = "DD-2", StoreName = "Tarlac", ClientCompanyName = "DWARDO" },
+        new() { StoreCode = "DD-3", StoreName = "Capas", ClientCompanyName = "DWARDO" },
+        new() { StoreCode = "DD-6", StoreName = "Paniqui", ClientCompanyName = "DWARDO" },
+    };
+
+    private static DeliveryRoute ModelRoute(int id, string code, string places) =>
+        new() { Id = id, ClientCompanyName = "DWARDO", RouteCode = code, RouteName = code, ConnectedPlaces = places };
+
+    [Check]
+    public static string RouteStores_ModelShowsStoresAlreadyOnRoute()
+    {
+        var dw = ModelRoute(1, "DW", "DD-1 - San Miguel; DD-2 - Tarlac; DD-6 - Paniqui");
+        var rows = RouteStoreListModel.Build(dw, DwStores, new[] { dw }, false);
+        var fails = new List<string>();
+        if (rows.Count != DwStores.Length) fails.Add($"{rows.Count} rows for {DwStores.Length} stores");
+        foreach (var code in new[] { "DD-1", "DD-2", "DD-6" })
+        {
+            var row = rows.FirstOrDefault(r => r.Store.StoreCode == code);
+            if (row == null || !row.OnThisRoute) fails.Add($"{code} not shown as on the route");
+        }
+        var capas = rows.FirstOrDefault(r => r.Store.StoreCode == "DD-3");
+        if (capas == null || capas.OnThisRoute) fails.Add("DD-3 shown as on the route");
+        if (rows.Count(r => r.OnThisRoute) != 3) fails.Add($"{rows.Count(r => r.OnThisRoute)} on this route, expected 3");
+        if (rows.Select(r => r.Store.StoreCode).Distinct().Count() != rows.Count) fails.Add("a store appears twice");
+        int firstAvail = rows.FindIndex(r => !r.OnThisRoute);
+        if (firstAvail >= 0 && rows.Skip(firstAvail).Any(r => r.OnThisRoute)) fails.Add("stores on the route are not listed first");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_ModelCountsDistinctStoresNotEntries()
+    {
+        var dw = ModelRoute(1, "DW", "DD-2 - Tarlac; Tarlac; dd-2 - tarlac; DD-1 - San Miguel");
+        var rows = RouteStoreListModel.Build(dw, DwStores, new[] { dw }, false);
+        var fails = new List<string>();
+        if (rows.Count(r => r.OnThisRoute) != 2) fails.Add($"{rows.Count(r => r.OnThisRoute)} on this route, expected 2 distinct stores");
+        if (rows.Count(r => r.Store.StoreCode == "DD-2") != 1) fails.Add("DD-2 listed more than once");
+        if (rows.Count != DwStores.Length) fails.Add($"{rows.Count} rows, expected {DwStores.Length}");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_ModelShowsOtherRoutes()
+    {
+        var dw = ModelRoute(1, "DW", "DD-1 - San Miguel; DD-2 - Tarlac");
+        var dw1 = ModelRoute(2, "DW1", "DD-1 - San Miguel; DD-3 - Capas");
+        var dw3 = ModelRoute(3, "DW3", "DD-1 - San Miguel; DD-1 - San Miguel");
+        var rows = RouteStoreListModel.Build(dw, DwStores, new[] { dw, dw1, dw3 }, false);
+        var fails = new List<string>();
+        var dd1 = rows.First(r => r.Store.StoreCode == "DD-1");
+        if (!dd1.OnThisRoute) fails.Add("DD-1 not on the route");
+        if (string.Join(",", dd1.OtherRoutes) != "DW1,DW3") fails.Add($"DD-1 other routes \"{string.Join(",", dd1.OtherRoutes)}\", expected \"DW1,DW3\"");
+        var dd2 = rows.First(r => r.Store.StoreCode == "DD-2");
+        if (dd2.OtherRoutes.Count != 0) fails.Add("DD-2 reports other routes");
+        var dd3 = rows.First(r => r.Store.StoreCode == "DD-3");
+        if (string.Join(",", dd3.OtherRoutes) != "DW1") fails.Add($"DD-3 other routes \"{string.Join(",", dd3.OtherRoutes)}\", expected \"DW1\"");
+        if (rows.Any(r => r.HiddenByRule)) fails.Add("a row is hidden although the one-route rule is off");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_ModelOneRoutePerStoreHidesOthers()
+    {
+        var dw = ModelRoute(1, "DW", "DD-1 - San Miguel");
+        var dw1 = ModelRoute(2, "DW1", "DD-1 - San Miguel; DD-3 - Capas");
+        var rows = RouteStoreListModel.Build(dw, DwStores, new[] { dw, dw1 }, true);
+        var fails = new List<string>();
+        if (rows.First(r => r.Store.StoreCode == "DD-3").HiddenByRule is false) fails.Add("DD-3 (on DW1 only) not hidden");
+        if (rows.First(r => r.Store.StoreCode == "DD-1").HiddenByRule) fails.Add("DD-1 is on this route, so it must stay visible");
+        if (rows.First(r => r.Store.StoreCode == "DD-2").HiddenByRule) fails.Add("DD-2 (on no route) hidden");
+        if (rows.First(r => r.Store.StoreCode == "DD-6").HiddenByRule) fails.Add("DD-6 (on no route) hidden");
+        if (rows.Count(r => r.HiddenByRule) != 1) fails.Add($"{rows.Count(r => r.HiddenByRule)} hidden, expected 1");
+        if (rows.Count != DwStores.Length) fails.Add("hidden stores must still be returned in the list");
+        return string.Join("; ", fails);
+    }}

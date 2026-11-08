@@ -27,6 +27,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private List<DeliveryRoute> routes = new List<DeliveryRoute>();
         private List<ClientStore> stores = new List<ClientStore>();
         private bool binding;
+        private bool showHidden; // Task 7 wires the one-route-per-store switch; until then nothing is hidden
+        private Button btnRemove = null!;
+        private sealed class GridNote { public string Kind = ""; }
 
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
 
@@ -109,7 +112,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 e.CellStyle.ForeColor = on ? AppTheme.SuccessText : AppTheme.TextSecondary;
                 e.CellStyle.Font = FontCache.Get("Segoe UI Semibold", LargePrint.Pt(10F, 8.5F));
             };
+            btnRemove = BigButton("Remove from this route", AppTheme.Danger);
+            btnRemove.Dock = DockStyle.Bottom;
+            btnRemove.Click += (s, e) => RemoveSelectedStore();
+            gridAssign.CellClick += (s, e) => { if (e.RowIndex >= 0 && gridAssign.Rows[e.RowIndex].Tag is GridNote n && n.Kind == "hidden") { showHidden = !showHidden; RenderAssign(); } };
             right.Controls.Add(gridAssign);
+            right.Controls.Add(btnRemove);
             right.Controls.Add(txtSearch);
             right.Controls.Add(lblAssignTitle);
             split.Controls.Add(left, 0, 0); split.Controls.Add(right, 1, 0);
@@ -260,7 +268,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 gridRoutes.Rows.Clear();
                 foreach (var r in routes)
                 {
-                    int n = stores.Count(st => r.PlacesList.Any(p => MJdatabase.PlaceIsStore(p, st)));
+                    int n = stores.Count(st => MJdatabase.StoreIsOnRoute(r, st));
                     int i = gridRoutes.Rows.Add(r.RouteCode, r.RouteName, $"{n} store{(n == 1 ? "" : "s")}");
                     gridRoutes.Rows[i].Height = gridRoutes.RowTemplate.Height;
                     if (string.Equals(r.RouteCode, keep, StringComparison.OrdinalIgnoreCase)) gridRoutes.CurrentCell = gridRoutes.Rows[i].Cells[0];
@@ -280,7 +288,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void RenderAssign()
         {
-            if (isPending()) { RenderPendingAssign(); return; } // Nov 6: client not saved yet
+            if (isPending()) { btnRemove.Visible = false; RenderPendingAssign(); return; } // Nov 6: client not saved yet
+            btnRemove.Visible = true;
             var r = SelectedRoute();
             lblAssignTitle.Text = r == null ? "Stores on this route — pick a route on the left" : $"Stores on route {r.RouteCode} — tick the stores it serves (same client only)";
             string q = txtSearch.Text.Trim();
@@ -289,23 +298,56 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 gridAssign.Rows.Clear();
                 gridAssign.Enabled = r != null;
-                foreach (var st in stores.Where(st => q.Length == 0 || st.StoreCode.Contains(q, StringComparison.OrdinalIgnoreCase) || st.StoreName.Contains(q, StringComparison.OrdinalIgnoreCase)).OrderBy(st => st.StoreName))
+                btnRemove.Enabled = r != null;
+                if (r != null)
                 {
-                    bool on = r != null && r.PlacesList.Any(p => MJdatabase.PlaceIsStore(p, st));
-                    int i = gridAssign.Rows.Add(on, st.StoreCode, st.StoreName, on ? "✔ On this route" : "Available");
-                    gridAssign.Rows[i].Tag = st;
-                    gridAssign.Rows[i].Height = gridAssign.RowTemplate.Height;
+                    var model = RouteStoreListModel.Build(r, stores, routes, false)
+                        .Where(x => q.Length == 0 || x.Store.StoreCode.Contains(q, StringComparison.OrdinalIgnoreCase) || x.Store.StoreName.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
+                    var onRows = model.Where(x => x.OnThisRoute).ToList();
+                    var availRows = model.Where(x => !x.OnThisRoute).ToList();
+                    int hidden = availRows.Count(x => x.HiddenByRule);
+                    AddNoteRow($"On this route ({onRows.Count})", "header");
+                    foreach (var x in onRows) AddStoreRow(x);
+                    AddNoteRow("Available to add", "header");
+                    foreach (var x in availRows.Where(x => showHidden || !x.HiddenByRule)) AddStoreRow(x);
+                    if (hidden > 0) AddNoteRow(showHidden ? $"{hidden} store{(hidden == 1 ? "" : "s")} already on another route are shown. Click to hide." : $"{hidden} store{(hidden == 1 ? "" : "s")} hidden: already on another route. Click to Show.", "hidden");
                 }
             }
             finally { binding = false; }
         }
 
-        private void ToggleStore(int rowIndex)
+        private void AddNoteRow(string text, string kind)
         {
-            if (isPending()) { TogglePendingStore(rowIndex); return; } // Nov 6: client not saved yet
+            int i = gridAssign.Rows.Add(false, "", text, "");
+            var row = gridAssign.Rows[i];
+            row.Tag = new GridNote { Kind = kind };
+            row.Cells["colOn"] = new DataGridViewTextBoxCell { Value = "" };
+            row.Height = gridAssign.RowTemplate.Height;
+            row.DefaultCellStyle.BackColor = AppTheme.SurfaceAlt;
+            row.DefaultCellStyle.Font = FontCache.Get("Segoe UI Semibold", LargePrint.Pt(10F, 8.5F));
+            foreach (DataGridViewCell c in row.Cells) c.ReadOnly = true;
+        }
+
+        private void AddStoreRow(RouteStoreRow x)
+        {
+            string also = x.OtherRoutes.Count > 0 ? "Also on " + string.Join(", ", x.OtherRoutes) : "";
+            string tag = x.OnThisRoute ? (also.Length > 0 ? "✔ On this route · " + also : "✔ On this route") : (also.Length > 0 ? also : "Available");
+            int i = gridAssign.Rows.Add(x.OnThisRoute, x.Store.StoreCode, x.Store.StoreName, tag);
+            gridAssign.Rows[i].Tag = x.Store;
+            gridAssign.Rows[i].Height = gridAssign.RowTemplate.Height;
+        }
+
+        private void RemoveSelectedStore()
+        {
             var r = SelectedRoute();
-            if (r == null || !(gridAssign.Rows[rowIndex].Tag is ClientStore st)) return;
-            bool include = gridAssign.Rows[rowIndex].Cells["colOn"].Value is bool b && b;
+            if (r == null) return;
+            if (!(gridAssign.CurrentRow?.Tag is ClientStore st)) { Say("Pick a store that is on this route, then press Remove.", false); return; }
+            if (!MJdatabase.StoreIsOnRoute(r, st)) { Say($"No change: {st.StoreName} is not on route {r.RouteCode}.", false); return; }
+            ApplyToggle(r, st, false);
+        }
+
+        private void ApplyToggle(DeliveryRoute r, ClientStore st, bool include)
+        {
             try
             {
                 bool changed = MJdatabase.SetStoreOnRoute(r, st, include);
@@ -315,6 +357,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 BeginInvoke(new Action(() => LoadRoutes(r.RouteCode)));
             }
             catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.ToggleStore", ex); Say("✕ " + ex.Message, true); BeginInvoke(new Action(() => LoadRoutes(r.RouteCode))); }
+        }
+        private void ToggleStore(int rowIndex)
+        {
+            if (isPending()) { TogglePendingStore(rowIndex); return; } // Nov 6: client not saved yet
+            var r = SelectedRoute();
+            if (r == null || !(gridAssign.Rows[rowIndex].Tag is ClientStore st)) return;
+            bool include = gridAssign.Rows[rowIndex].Cells["colOn"].Value is bool b && b;
+            ApplyToggle(r, st, include);
         }
     }
 }
