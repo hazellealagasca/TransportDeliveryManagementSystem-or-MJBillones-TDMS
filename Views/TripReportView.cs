@@ -1017,15 +1017,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 isBindingForm = true;
                 selectedTripReport = tr;
 
-                int dIdx = -1;
-                for (int i = 0; i < cbDelivery.Items.Count; i++)
-                {
-                    if ((cbDelivery.Items[i]?.ToString() ?? "").StartsWith(selectedTripReport.DispatchNumber + " - "))
-                    {
-                        dIdx = i;
-                        break;
-                    }
-                }
+                int dIdx = FindDeliveryItemIndex(selectedTripReport.DispatchNumber ?? ""); // also adds the trip when its report is already finished
                 if (dIdx >= 0) cbDelivery.SelectedIndex = dIdx;
 
                 txtArrivalTime.Text = selectedTripReport.ArrivalTime ?? "";
@@ -1064,33 +1056,42 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 // Special trips ticked "With Trip Report" are listed too (as "Special trip · destination"; Id = −trip Id).
                 try { allDeliveries.AddRange(MJdatabase.GetSpecialTripsForTripReports(reported)); }
                 catch (Exception sx) { ErrLog.Swallowed(sx); }
-                // Orders still needing a report come first: on the road, then delivered without a report, then the rest.
-                // Only dispatches marked Completed in Dispatch can get a trip report (plus any that already have one, so it can be edited).
-                var ordered = allDeliveries
-                    .Where(d => DispatchGate.IsCompleted(d.Status) || reported.Contains(d.DispatchNumber ?? "") || d.Id < 0)
-                    .OrderBy(d => activeStatuses.Contains(d.Status ?? "") ? 0
-                                : (string.Equals(d.Status, "Completed", StringComparison.OrdinalIgnoreCase) && !reported.Contains(d.DispatchNumber ?? "")) ? 1
-                                : string.Equals(d.Status, "Cancelled", StringComparison.OrdinalIgnoreCase) ? 3 : 2)
-                    .ToList();
+                // Nov 9: the drop-down lists only the trips that still WAIT for a report: completed dispatches (and completed special trips)
+                // with no report yet, or with a draft (tagged). A trip whose report is already finished is not listed: it cannot get a second
+                // one. The trip being edited stays in the list (and an old report's trip is added when it is opened, see FindDeliveryItemIndex).
+                // Oldest first, so the trip that has waited longest is on top.
+                var finishedReports = new HashSet<string>(allTripReports.Where(t => !string.Equals(t.Status, TripReportStatus.Draft, StringComparison.OrdinalIgnoreCase)).Select(t => t.DispatchNumber ?? ""), StringComparer.OrdinalIgnoreCase);
+                var draftReports = new HashSet<string>(allTripReports.Where(t => string.Equals(t.Status, TripReportStatus.Draft, StringComparison.OrdinalIgnoreCase)).Select(t => t.DispatchNumber ?? ""), StringComparer.OrdinalIgnoreCase);
                 string? keepDispatch = pnlForm.Visible ? GetSelectedDelivery()?.DispatchNumber : null;
+                var keepNumbers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (keepDispatch != null) keepNumbers.Add(keepDispatch);
+                if (pnlForm.Visible && isEditingExistingReport && selectedTripReport != null) keepNumbers.Add(selectedTripReport.DispatchNumber ?? "");
+                if (pendingOpenDispatch != null) keepNumbers.Add(pendingOpenDispatch);
+                var ordered = allDeliveries
+                    .Where(d => keepNumbers.Contains(d.DispatchNumber ?? "")
+                             || (!finishedReports.Contains(d.DispatchNumber ?? "") && (DispatchGate.IsCompleted(d.Status) || draftReports.Contains(d.DispatchNumber ?? ""))))
+                    .OrderBy(d => d.DispatchDate)
+                    .ThenBy(d => d.DispatchNumber, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                cbDelivery.MaxDropDownItems = 10;
                 bool wasBinding = isBindingForm;
                 isBindingForm = true;
                 cbDelivery.Items.Clear();
+                pickItemsAdded.Clear();
                 if (allDeliveries.Count == 0)
                 {
                     cbDelivery.Text = "(No dispatch orders created yet)";
                 }
                 else if (ordered.Count == 0)
                 {
-                    cbDelivery.Text = "(No completed dispatches yet — mark a dispatch completed first)";
+                    cbDelivery.Text = allDeliveries.Any(d => DispatchGate.IsCompleted(d.Status))
+                        ? "(Every completed dispatch already has a trip report)"
+                        : "(No completed dispatches yet — mark a dispatch completed first)";
                 }
                 else
                 {
                     foreach (var d in ordered)
-                    {
-                        string tag = reported.Contains(d.DispatchNumber ?? "") ? "  ✓ report filed" : d.Id < 0 && !DispatchGate.IsCompleted(d.Status) ? "  (special trip not completed yet)" : "";
-                        cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo} [{d.Status}] ({d.DriverName}){tag}");
-                    }
+                        cbDelivery.Items.Add(DeliveryPickText(d, draftReports.Contains(d.DispatchNumber ?? "")));
                     int keepIdx = keepDispatch == null ? -1 : FindDeliveryItemIndex(keepDispatch);
                     cbDelivery.SelectedIndex = keepIdx; // Nov 6: -1 (blank) unless a trip was already picked
                 }
@@ -1645,7 +1646,56 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if ((cbDelivery.Items[i]?.ToString() ?? "").StartsWith(dispatchNumber + " - ", StringComparison.OrdinalIgnoreCase)) return i;
             }
-            return -1;
+            // Nov 9: the list shows only trips still waiting for a report. Opening an existing report adds its trip so the form can show it.
+            var d = allDeliveries.FirstOrDefault(x => string.Equals(x.DispatchNumber, dispatchNumber, StringComparison.OrdinalIgnoreCase));
+            if (d == null) return -1;
+            bool draft = allTripReports.Any(t => string.Equals(t.DispatchNumber, d.DispatchNumber, StringComparison.OrdinalIgnoreCase)
+                                                 && string.Equals(t.Status, TripReportStatus.Draft, StringComparison.OrdinalIgnoreCase));
+            cbDelivery.Items.Add(DeliveryPickText(d, draft));
+            pickItemsAdded.Add(d.DispatchNumber ?? "");
+            return cbDelivery.Items.Count - 1;
+        }
+
+        /// <summary>Trips added to the drop-down only so an existing report could show them (see FindDeliveryItemIndex).</summary>
+        private readonly HashSet<string> pickItemsAdded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Takes those added trips out again (except the one now picked), so a new report's list shows only trips that still wait for a report.</summary>
+        private void DropAddedPickItems()
+        {
+            if (pickItemsAdded.Count == 0) return;
+            string selNo = GetSelectedDelivery()?.DispatchNumber ?? "";
+            bool was = isBindingForm;
+            isBindingForm = true;
+            try
+            {
+                for (int i = cbDelivery.Items.Count - 1; i >= 0; i--)
+                {
+                    string t = cbDelivery.Items[i]?.ToString() ?? "";
+                    string? no = pickItemsAdded.FirstOrDefault(n => t.StartsWith(n + " - ", StringComparison.OrdinalIgnoreCase));
+                    if (no != null && !string.Equals(no, selNo, StringComparison.OrdinalIgnoreCase)) cbDelivery.Items.RemoveAt(i);
+                }
+                pickItemsAdded.RemoveWhere(n => !string.Equals(n, selNo, StringComparison.OrdinalIgnoreCase));
+            }
+            finally { isBindingForm = was; }
+        }
+
+        /// <summary>
+        /// One short line for the Dispatch order drop-down: <c>Dispatch # - Client · Date · Route (+stops) · Driver</c> (and "draft saved").
+        /// It must keep starting with <c>"{Dispatch #} - "</c>: the form finds the chosen trip by that text.
+        /// </summary>
+        public static string DeliveryPickText(Delivery d, bool draft)
+        {
+            static string Cut(string? s, int max) { s = (s ?? "").Trim(); return s.Length <= max ? s : s.Substring(0, max - 1).TrimEnd() + "…"; }
+            var parts = new List<string>();
+            string client = Cut(d.ClientName, 30);
+            if (client.Length > 0) parts.Add(client);
+            parts.Add(d.DispatchDate.ToString("MMM d"));
+            string route = Cut(d.CleanRouteDisplay, 38);
+            parts.Add(d.Id < 0 ? "Special trip" + (route.Length > 0 ? " · " + route : "") : route);
+            string driver = Cut(d.DriverName, 24);
+            if (driver.Length > 0) parts.Add(driver);
+            if (draft) parts.Add("draft saved");
+            return $"{d.DispatchNumber} - {string.Join(" · ", parts)}";
         }
         /// <summary>Opens the trip report for a dispatch: its existing report for editing, or a new report with the dispatch picked.</summary>
         public void OpenForDispatch(string dispatchNumber)
@@ -1731,6 +1781,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (txtDrCheckedBy != null) txtDrCheckedBy.Text = "";
             if (txtGuardName != null) txtGuardName.Text = "";
             cbDelivery.SelectedIndex = -1; // Nov 6: no trip picked until the person picks one
+            DropAddedPickItems();          // Nov 9: and the list is back to only the trips that still wait for a report
             ResetTripOverview();
             if (pnlMultiDropInfo != null) pnlMultiDropInfo.Visible = false;
             if (tripCrateSummary != null) tripCrateSummary.Visible = false; // shown again with the store table
@@ -1824,7 +1875,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     for (int i = 0; i < cbDelivery.Items.Count; i++)
                         if ((cbDelivery.Items[i]?.ToString() ?? "").StartsWith(dn + " - ", StringComparison.Ordinal)) { idx = i; break; }
                 }
-                else if (map.TryGetValue("DeliveryIndex", out var dIdx) && int.TryParse(dIdx, out int oldIdx) && oldIdx >= 0 && oldIdx < cbDelivery.Items.Count) idx = oldIdx;
+                // Nov 9: no position fallback for old drafts. The list is now filtered and shorter, so a saved position would pick a different trip.
                 if (idx >= 0) cbDelivery.SelectedIndex = idx;
                 if (map.TryGetValue("ArrivalTime", out var at) && !string.IsNullOrWhiteSpace(at))
                 {
