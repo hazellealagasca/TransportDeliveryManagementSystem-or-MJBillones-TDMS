@@ -61,7 +61,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-        private static string Norm(string s) => System.Text.RegularExpressions.Regex.Replace((s ?? "").Trim(), @"\s+", " ").ToUpperInvariant();
 
 
 
@@ -189,14 +188,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void FillAvailable()
         {
             string q = (txtFilter.Text ?? "").Trim();
-            var chosen = new HashSet<string>(lstChosen?.Items.Cast<object>().Select(o => Norm(o.ToString() ?? "")) ?? Places.Select(Norm));
+            var chosen = lstChosen?.Items.Cast<object>().Select(o => o.ToString() ?? "").ToList() ?? Places;
             lstAvailable.BeginUpdate();
             lstAvailable.Items.Clear();
             foreach (var st in stores.OrderBy(x => x.StoreName, StringComparer.OrdinalIgnoreCase))
             {
-                if (chosen.Contains(Norm(st.StoreName ?? ""))) continue;
+                if (chosen.Any(p => MJdatabase.PlaceIsStore(p, st))) continue;
                 if (q.Length > 0 && !(st.StoreName ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) && !(st.StoreCode ?? "").Contains(q, StringComparison.OrdinalIgnoreCase)) continue;
-                var on = otherRoutes.FirstOrDefault(r => r.PlacesList.Any(p => Norm(p) == Norm(st.StoreName ?? "")));
+                var on = otherRoutes.FirstOrDefault(r => r.PlacesList.Any(p => MJdatabase.PlaceIsStore(p, st)));
                 lstAvailable.Items.Add(new StoreItem { Store = st, Note = on == null ? "" : $"on {on.RouteCode}" });
             }
             lstAvailable.EndUpdate();
@@ -231,7 +230,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             var picks = lstAvailable.SelectedItems.OfType<StoreItem>().ToList();
             if (picks.Count == 0) return;
-            foreach (var p in picks) lstChosen.Items.Add(p.Store.StoreName.Trim());
+            foreach (var p in picks) lstChosen.Items.Add(MJdatabase.PlaceFor(p.Store));
             lstChosen.SelectedIndex = lstChosen.Items.Count - 1;
             FillAvailable();
             UpdateCount();

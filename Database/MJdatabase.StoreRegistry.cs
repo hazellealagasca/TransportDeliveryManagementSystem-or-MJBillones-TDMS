@@ -108,8 +108,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>
-        /// Registers a store for a client on one of its routes: adds the client store and puts the store on the route's
-        /// store list, in one transaction (both are saved, or neither). Throws with a readable message when a rule fails.
+        /// Registers a store for a client on one of its routes: the client store and its canonical "CODE - NAME" entry on the route
+        /// are saved in one transaction, so both are saved or neither is. When the route refuses the store (the rules of
+        /// <see cref="SetStoreOnRoute"/>) nothing is saved. Throws with a readable message when a rule fails.
         /// </summary>
         public static ClientStore RegisterClientStore(string client, string code, string name, string routeLabel)
         {
@@ -123,51 +124,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             using (var conn = new SqliteConnection(connectionString))
             {
                 conn.Open();
-                using var tx = conn.BeginTransaction();
-                try
-                {
-                    using (var ins = conn.CreateCommand())
-                    {
-                        ins.Transaction = tx;
-                        ins.CommandText = @"INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson)
-                                            VALUES (@cid, @cl, @sc, @sn, @dr, ''); SELECT last_insert_rowid();";
-                        ins.Parameters.AddWithValue("@cid", clientId);
-                        ins.Parameters.AddWithValue("@cl", client);
-                        ins.Parameters.AddWithValue("@sc", cleanCode);
-                        ins.Parameters.AddWithValue("@sn", cleanName);
-                        ins.Parameters.AddWithValue("@dr", label);
-                        store.Id = Convert.ToInt32(ins.ExecuteScalar() ?? 0);
-                    }
-                    string current = "";
-                    using (var get = conn.CreateCommand())
-                    {
-                        get.Transaction = tx;
-                        get.CommandText = "SELECT COALESCE(ConnectedPlaces,'') FROM DeliveryRoutes WHERE Id = @id";
-                        get.Parameters.AddWithValue("@id", route.Id);
-                        current = Convert.ToString(get.ExecuteScalar()) ?? "";
-                    }
-                    var places = current.Split(';').Select(p => p.Trim()).Where(p => p.Length > 0).ToList();
-                    if (!places.Any(p => SamePlace(p, cleanName)))
-                    {
-                        places.Add(cleanName);
-                        using var upd = conn.CreateCommand();
-                        upd.Transaction = tx;
-                        upd.CommandText = "UPDATE DeliveryRoutes SET ConnectedPlaces = @p, UpdatedAt = datetime('now') WHERE Id = @id";
-                        upd.Parameters.AddWithValue("@p", string.Join("; ", places));
-                        upd.Parameters.AddWithValue("@id", route.Id);
-                        upd.ExecuteNonQuery();
-                    }
-                    tx.Commit();
-                }
-                catch
-                {
-                    try { tx.Rollback(); } catch (Exception rbx) { ErrLog.Swallowed(rbx); }
-                    throw;
-                }
+                using var tx = conn.BeginTransaction(); // immediate: no other writer can change the route list before the commit
+                string? refused = PlacesWithNewStore(route, store, out var places);
+                if (refused != null) throw new InvalidOperationException(refused); // nothing written; the transaction rolls back
+                using var ins = conn.CreateCommand();
+                ins.Transaction = tx;
+                ins.CommandText = @"INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson)
+                                    VALUES (@cid, @cl, @sc, @sn, @dr, ''); SELECT last_insert_rowid();";
+                ins.Parameters.AddWithValue("@cid", clientId);
+                ins.Parameters.AddWithValue("@cl", client);
+                ins.Parameters.AddWithValue("@sc", cleanCode);
+                ins.Parameters.AddWithValue("@sn", cleanName);
+                ins.Parameters.AddWithValue("@dr", label);
+                store.Id = Convert.ToInt32(ins.ExecuteScalar() ?? 0);
+                WriteRoutePlaces(route.Id, places, conn, tx);
+                tx.Commit();
             }
+            try { RecomputeStoreRouteLabels(client); } catch (Exception rex) { ErrLog.Swallowed(rex); }
+            try { LogAuditTrail("UPDATE", "DeliveryRoutes", route.Id, route.RouteCode, "ConnectedPlaces", null, null, $"Added store {PlaceFor(store)} to route {route.RouteCode}"); }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
             try { LogAuditTrail("ADD", "ClientStores", store.Id, $"{cleanCode} - {cleanName}", "DestinationRoute", "", label, $"Registered store {cleanCode} - {cleanName} for {client} on route {label}"); }
             catch (Exception ax) { ErrLog.Swallowed(ax); }
-            try { RecomputeStoreRouteLabels(client); } catch (Exception rex) { ErrLog.Swallowed(rex); }
+            AppEvents.Raise(AppDataKind.Routes);
             AppEvents.Raise(AppDataKind.Stores);
             return store;
         }

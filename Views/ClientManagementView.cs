@@ -1091,9 +1091,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             try
             {
-                MJdatabase.SaveClientStore(store);
-                lblSaveState.Text = $"Store saved {DateTime.Now:h:mm tt}";
-                lblSaveState.ForeColor = AppTheme.SuccessText;
+                string? routeProblem = MJdatabase.SaveClientStore(store);
+                lblSaveState.Text = routeProblem ?? $"Store saved {DateTime.Now:h:mm tt}";
+                lblSaveState.ForeColor = routeProblem == null ? AppTheme.SuccessText : AppTheme.WarningText;
             }
             catch (Exception ex)
             { ErrLog.Error("ClientManagementView", ex); 

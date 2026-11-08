@@ -27,6 +27,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private List<DeliveryRoute> routes = new List<DeliveryRoute>();
         private List<ClientStore> stores = new List<ClientStore>();
         private bool binding;
+        private bool showHidden; // show the stores the one-route rule hides
+        private CheckBox chkOneRoute = null!;
+        private TableLayoutPanel moveBar = null!;
+        private Button btnRemove = null!, btnUp = null!, btnDown = null!;
+        private List<string> onRouteOrder = new List<string>(); // store codes on the selected route, in stop order (unfiltered)
+        private string? reselectStore; // store code to select again after a move
+        private sealed class GridNote { public string Kind = ""; }
+        private readonly Label lblPreview;
+        private readonly StoreLookupPopup matches = new StoreLookupPopup(); // the client's stores that match what is typed
+        private Control? badBox; // the box outlined in red
+        private bool liveShowing; // lblMsg currently shows a live (as-you-type) message
 
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
 
@@ -44,7 +55,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tab2 = TabButton("Delivery routes");
             tabs.Controls.Add(tab1, 0, 0); tabs.Controls.Add(tab2, 1, 0);
 
-            lblMsg = new Label { Dock = DockStyle.Top, Height = D(28), Font = FontCache.Get("Segoe UI", LargePrint.Pt(10F, 8.75F)), ForeColor = AppTheme.TextSecondary, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(D(4), 0, 0, 0), UseMnemonic = false, AutoEllipsis = true };
+            lblMsg = new Label { Dock = DockStyle.Top, Height = D(LargePrint.Px(58, 50)), Font = FontCache.Get("Segoe UI", LargePrint.Pt(10F, 8.75F)), ForeColor = AppTheme.TextSecondary, TextAlign = ContentAlignment.TopLeft, Padding = new Padding(D(4), D(2), D(4), 0), UseMnemonic = false, AutoEllipsis = false }; // wraps: 2 to 3 lines
 
             // ---- page 1: quick-entry bar + the existing store table
             page1 = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Surface };
@@ -53,12 +64,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtName = Entry("Store Name", 340, upper: false);
             var btnAdd = BigButton("＋ Add store", AppTheme.Success);
             btnAdd.Click += (s, e) => AddStore();
+            var btnPaste = BigButton("Paste list…", AppTheme.Accent);
+            btnPaste.Click += (s, e) => PasteStores();
             txtCode.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; txtName.Focus(); } };
             txtName.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; AddStore(); } };
-            quick.Controls.AddRange(new Control[] { txtCode, txtName, btnAdd });
+            txtCode.TextChanged += (s, e) => LiveCheckStore(txtCode);
+            txtName.TextChanged += (s, e) => LiveCheckStore(txtName);
+            foreach (var box in new[] { txtCode, txtName })
+            {
+                var b = box;
+                b.LostFocus += (s, e) => { if (b.IsHandleCreated) b.BeginInvoke(new Action(() => { if (!txtCode.Focused && !txtName.Focused) matches.HideList(); })); };
+                b.KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) matches.HideList(); };
+            }
+            quick.Controls.AddRange(new Control[] { txtCode, txtName, btnAdd, btnPaste });
+            quick.Paint += (s, e) => PaintOutline(quick, e);
+            lblPreview = new Label { Dock = DockStyle.Top, Height = D(LargePrint.Px(22, 20)), Font = FontCache.Get("Segoe UI", LargePrint.Pt(9.5F, 8.5F)), ForeColor = AppTheme.AccentText, UseMnemonic = false, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(D(10), 0, 0, 0), Text = "" };
             storesGrid.Dock = DockStyle.Fill;
             StyleGrid(storesGrid as DataGridView);
             page1.Controls.Add(storesGrid);
+            page1.Controls.Add(lblPreview);
             page1.Controls.Add(quick);
             BuildPendingGrid(storesGrid); // Nov 6: a new client's stores before it is saved
 
@@ -75,6 +99,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnNewRoute.Click += (s, e) => AddRoute();
             txtNewName.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; AddRoute(); } };
             newBar.Controls.AddRange(new Control[] { txtNewCode, txtNewName, btnNewRoute });
+            newBar.Paint += (s, e) => PaintOutline(newBar, e);
+            txtNewCode.TextChanged += (s, e) => LiveCheckRoute();
+            txtNewName.TextChanged += (s, e) => LiveCheckRoute();
             gridRoutes = NewGrid();
             gridRoutes.MultiSelect = false;
             gridRoutes.Columns.Add(new DataGridViewTextBoxColumn { Name = "colCode", HeaderText = "Route Code", FillWeight = 60, ReadOnly = true });
@@ -91,6 +118,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // right: stores of the same client
             var right = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Surface };
             lblAssignTitle = new Label { Dock = DockStyle.Top, Height = D(30), Font = FontCache.Get("Segoe UI Semibold", LargePrint.Pt(11F, 9.5F)), ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.MiddleLeft, UseMnemonic = false, AutoEllipsis = true, Text = "Stores on this route" };
+            chkOneRoute = new CheckBox { Dock = DockStyle.Top, Height = D(LargePrint.Px(28, 24)), Text = "One route per store (a store may be on only one of this client's routes)", Font = FontCache.Get("Segoe UI", LargePrint.Pt(10F, 8.75F)), ForeColor = AppTheme.TextPrimary, UseMnemonic = false, Padding = new Padding(D(4), 0, 0, 0) };
+            chkOneRoute.CheckedChanged += (s, e) => { if (!binding) ApplyOneRouteSwitch(); };
             txtSearch = new TextBox { Dock = DockStyle.Top, Font = FontCache.Get("Segoe UI", LargePrint.Pt(11F, 9.75F)), PlaceholderText = "🔍 Search stores (code or name)…" };
             txtSearch.TextChanged += (s, e) => RenderAssign();
             gridAssign = NewGrid();
@@ -109,8 +138,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 e.CellStyle.ForeColor = on ? AppTheme.SuccessText : AppTheme.TextSecondary;
                 e.CellStyle.Font = FontCache.Get("Segoe UI Semibold", LargePrint.Pt(10F, 8.5F));
             };
+            btnRemove = BigButton("Remove from this route", AppTheme.Danger);
+            btnRemove.Dock = DockStyle.Bottom;
+            btnRemove.Click += (s, e) => RemoveSelectedStore();
+            btnUp = BigButton("▲ Move up", AppTheme.Accent);
+            btnDown = BigButton("▼ Move down", AppTheme.Accent);
+            btnUp.Dock = DockStyle.Fill; btnDown.Dock = DockStyle.Fill;
+            btnUp.Click += (s, e) => MoveSelectedStore(-1);
+            btnDown.Click += (s, e) => MoveSelectedStore(1);
+            moveBar = new TableLayoutPanel { Dock = DockStyle.Bottom, Height = D(LargePrint.Px(36, 30)), ColumnCount = 2, RowCount = 1, Margin = new Padding(0) };
+            moveBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50)); moveBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            moveBar.Controls.Add(btnUp, 0, 0); moveBar.Controls.Add(btnDown, 1, 0);
+            gridAssign.CurrentCellChanged += (s, e) => { if (!binding) UpdateMoveButtons(); };
+            gridAssign.CellClick += (s, e) => { if (e.RowIndex >= 0 && gridAssign.Rows[e.RowIndex].Tag is GridNote n && n.Kind == "hidden") { showHidden = !showHidden; RenderAssign(); } };
             right.Controls.Add(gridAssign);
+            right.Controls.Add(btnRemove);
+            right.Controls.Add(moveBar);
             right.Controls.Add(txtSearch);
+            right.Controls.Add(chkOneRoute);
             right.Controls.Add(lblAssignTitle);
             split.Controls.Add(left, 0, 0); split.Controls.Add(right, 1, 0);
             page2.Controls.Add(split);
@@ -125,7 +170,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             // Rule 16e: refresh when stores or routes change anywhere in the app.
             AppEvents.DataChanged += OnDataChanged;
-            Disposed += (s, e) => AppEvents.DataChanged -= OnDataChanged;
+            Disposed += (s, e) => { AppEvents.DataChanged -= OnDataChanged; try { matches.Dispose(); } catch (Exception ex) { ErrLog.Swallowed(ex); } };
         }
 
         private void OnDataChanged(AppDataKind k)
@@ -198,13 +243,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 b.ForeColor = on ? AppTheme.AccentText : AppTheme.TextSecondary;
                 b.Invalidate();
             }
-            lblMsg.Text = n == 1 ? "Type a store code and name, then press Enter. Stores are not tied to a route here." : "Pick a route on the left, then tick the stores it serves. A store can be on any of this client's routes.";
+            lblMsg.Text = n == 1 ? "Type a store code and name, then press Enter. Stores are not tied to a route here." : "Pick a route on the left, then tick the stores it serves. " + (client().Length > 0 && !isPending() && MJdatabase.GetOneRoutePerStore(client()) ? "Each store can be on only one of this client's routes." : "A store can be on any of this client's routes.");
             lblMsg.ForeColor = AppTheme.TextSecondary;
             if (n == 2) LoadRoutes();
         }
 
         private void Say(string text, bool bad)
         {
+            liveShowing = false;
             lblMsg.Text = text;
             lblMsg.ForeColor = bad ? AppTheme.DangerText : AppTheme.SuccessText;
         }
@@ -215,9 +261,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string c = client();
             try
             {
+                string? problem = MJdatabase.CheckCompanyStore(c, txtCode.Text, txtName.Text);
+                if (problem != null) { Say("✕ " + problem, true); Outline(StoreProblemBox(problem)); return; }
                 var st = MJdatabase.RegisterCompanyStore(c, txtCode.Text, txtName.Text);
+                txtCode.Clear(); txtName.Clear(); txtCode.Focus(); // clearing runs the live check, so say the result after it
+                Outline(null);
                 Say($"✔ Added {st.StoreCode} – {st.StoreName} to {c}'s stores.", false);
-                txtCode.Clear(); txtName.Clear(); txtCode.Focus();
                 reloadStores();
             }
             catch (InvalidOperationException ex) { Say("✕ " + ex.Message, true); }
@@ -229,18 +278,113 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (isPending()) { AddPendingRoute(); return; } // Nov 6: client not saved yet
             string c = client();
             string code = MJdatabase.CleanStoreCode(txtNewCode.Text), name = MJdatabase.CleanStoreText(txtNewName.Text);
-            if (c.Length == 0) { Say("✕ Save the client first.", true); return; }
-            if (code.Length == 0 || name.Length == 0) { Say("✕ Enter the route code and the route name.", true); return; }
             try
             {
-                var r = new DeliveryRoute { ClientCompanyName = c, RouteCode = code, RouteName = name, Description = "", ConnectedPlaces = "", IsActive = true };
+                string? problem = MJdatabase.CheckRouteCode(c, code, name);
+                if (problem != null) { Say("✕ " + problem, true); Outline(RouteProblemBox(code, name, problem)); return; }
+                var r = new DeliveryRoute { ClientCompanyName = c, RouteCode = code, RouteName = name, Description = "", IsActive = true };
                 if (!MJdatabase.SaveDeliveryRoute(r)) { Say("✕ The route wasn't saved.", true); return; }
-                Say($"✔ Route {code} – {name} created. Now tick its stores on the right.", false);
                 txtNewCode.Clear(); txtNewName.Clear();
+                Outline(null);
+                Say($"✔ Route {code} – {name} created. Now tick its stores on the right.", false);
                 AppEvents.Raise(AppDataKind.Routes);
                 LoadRoutes(code);
             }
-            catch (Exception ex) { Say("✕ " + ex.Message, true); }
+            catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.AddRoute", ex); Say("✕ " + ex.Message, true); }
+        }
+
+        // ---- checked entry: red outline, "Will save as", the client's matching stores, and the list paste
+
+        private void Outline(Control? box)
+        {
+            var old = badBox;
+            badBox = box;
+            old?.Parent?.Invalidate();
+            box?.Parent?.Invalidate();
+        }
+
+        private void PaintOutline(Control bar, PaintEventArgs e)
+        {
+            if (badBox == null || badBox.Parent != bar) return;
+            using var pen = new Pen(AppTheme.DangerText, Math.Max(2, D(2)));
+            var r = badBox.Bounds; r.Inflate(D(2), D(2));
+            e.Graphics.DrawRectangle(pen, r);
+        }
+
+        /// <summary>The box a store message is about: the code box when that code is the problem, otherwise the name box.</summary>
+        private TextBox StoreProblemBox(string problem)
+        {
+            string code = MJdatabase.CleanStoreCode(txtCode.Text);
+            if (code.Length == 0) return txtCode;
+            if (MJdatabase.CleanStoreText(txtName.Text).Length == 0) return txtName;
+            return problem.Contains("store code " + code) ? txtCode : txtName;
+        }
+
+        private TextBox RouteProblemBox(string code, string name, string problem)
+        {
+            if (code.Length == 0) return txtNewCode;
+            if (name.Length == 0) return txtNewName;
+            return problem.Contains("route named") ? txtNewName : txtNewCode;
+        }
+
+        /// <summary>As the store code or name is typed: the "Will save as" preview, a red outline when it is already taken, and the client's matching stores.</summary>
+        private void LiveCheckStore(TextBox typedIn)
+        {
+            try
+            {
+                lblPreview.Text = StorePasteModel.CodePreview(txtCode.Text);
+                string c = isPending() ? "" : client();
+                string? problem = null;
+                if (c.Length > 0 && (txtCode.Text.Trim().Length > 0 || txtName.Text.Trim().Length > 0))
+                    problem = MJdatabase.CheckCompanyStore(c, txtCode.Text, txtName.Text, partial: true);
+                ShowLive(problem, problem == null ? null : StoreProblemBox(problem));
+                if (c.Length > 0 && typedIn.Focused && typedIn.Text.Trim().Length > 0)
+                {
+                    var found = StoreDirectory.Search(MJdatabase.GetClientStores(c), typedIn.Text);
+                    if (found.Count > 0) matches.ShowMatches(typedIn, typedIn.RectangleToScreen(typedIn.ClientRectangle), found);
+                    else matches.HideList();
+                }
+                else matches.HideList();
+            }
+            catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.LiveCheckStore", ex); ShowLive("Couldn't check the store: " + ex.Message, null); }
+        }
+
+        private void LiveCheckRoute()
+        {
+            try
+            {
+                string c = isPending() ? "" : client();
+                string code = MJdatabase.CleanStoreCode(txtNewCode.Text), name = MJdatabase.CleanStoreText(txtNewName.Text);
+                string? problem = null;
+                if (c.Length > 0 && (code.Length > 0 || name.Length > 0)) problem = MJdatabase.CheckRouteCode(c, txtNewCode.Text, txtNewName.Text, partial: true);
+                ShowLive(problem, problem == null ? null : RouteProblemBox(code, name, problem));
+            }
+            catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.LiveCheckRoute", ex); ShowLive("Couldn't check the route: " + ex.Message, null); }
+        }
+
+        private void ShowLive(string? problem, Control? box)
+        {
+            Outline(problem == null ? null : box);
+            if (problem != null) { lblMsg.Text = "✕ " + problem; lblMsg.ForeColor = AppTheme.DangerText; liveShowing = true; }
+            else if (liveShowing) { lblMsg.Text = ""; lblMsg.ForeColor = AppTheme.TextSecondary; liveShowing = false; }
+        }
+
+        private void PasteStores()
+        {
+            string c = client();
+            if (isPending()) { Say("✕ Save the client first, then paste the list. A list cannot be pasted into a client that is not saved yet.", true); return; }
+            if (c.Length == 0) { Say("✕ Choose the client company first.", true); return; }
+            try
+            {
+                using var dlg = new PasteStoresDialog(c);
+                dlg.ShowDialog(this);
+                if (dlg.TotalAdded > 0)
+                {
+                    Say($"✔ Added {dlg.TotalAdded} store{(dlg.TotalAdded == 1 ? "" : "s")} to {c}'s stores from the pasted list.", false);
+                    reloadStores();
+                }
+            }
+            catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.PasteStores", ex); Say("✕ Couldn't paste the list: " + ex.Message, true); }
         }
 
         /// <summary>Called when another client is opened.</summary>
@@ -260,7 +404,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 gridRoutes.Rows.Clear();
                 foreach (var r in routes)
                 {
-                    int n = stores.Count(st => r.PlacesList.Any(p => MJdatabase.PlaceIsStore(p, st)));
+                    int n = stores.Count(st => MJdatabase.StoreIsOnRoute(r, st));
                     int i = gridRoutes.Rows.Add(r.RouteCode, r.RouteName, $"{n} store{(n == 1 ? "" : "s")}");
                     gridRoutes.Rows[i].Height = gridRoutes.RowTemplate.Height;
                     if (string.Equals(r.RouteCode, keep, StringComparison.OrdinalIgnoreCase)) gridRoutes.CurrentCell = gridRoutes.Rows[i].Cells[0];
@@ -280,7 +424,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void RenderAssign()
         {
-            if (isPending()) { RenderPendingAssign(); return; } // Nov 6: client not saved yet
+            if (isPending()) { btnRemove.Visible = false; moveBar.Visible = false; chkOneRoute.Visible = false; RenderPendingAssign(); return; } // Nov 6: client not saved yet
+            btnRemove.Visible = true;
+            moveBar.Visible = true;
+            chkOneRoute.Visible = true;
+            string clientName = client();
+            bool oneRoute = clientName.Length > 0 && MJdatabase.GetOneRoutePerStore(clientName);
+            if (chkOneRoute.Checked != oneRoute) { bool was = binding; binding = true; chkOneRoute.Checked = oneRoute; binding = was; }
             var r = SelectedRoute();
             lblAssignTitle.Text = r == null ? "Stores on this route — pick a route on the left" : $"Stores on route {r.RouteCode} — tick the stores it serves (same client only)";
             string q = txtSearch.Text.Trim();
@@ -289,31 +439,125 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 gridAssign.Rows.Clear();
                 gridAssign.Enabled = r != null;
-                foreach (var st in stores.Where(st => q.Length == 0 || st.StoreCode.Contains(q, StringComparison.OrdinalIgnoreCase) || st.StoreName.Contains(q, StringComparison.OrdinalIgnoreCase)).OrderBy(st => st.StoreName))
+                btnRemove.Enabled = r != null;
+                if (r != null)
                 {
-                    bool on = r != null && r.PlacesList.Any(p => MJdatabase.PlaceIsStore(p, st));
-                    int i = gridAssign.Rows.Add(on, st.StoreCode, st.StoreName, on ? "✔ On this route" : "Available");
-                    gridAssign.Rows[i].Tag = st;
-                    gridAssign.Rows[i].Height = gridAssign.RowTemplate.Height;
+                    var model = RouteStoreListModel.Build(r, stores, routes, oneRoute); // routes: Build uses the active ones only
+                    var (onCount, hidden) = RouteStoreListModel.Counts(model); // counts ignore the search text
+                    onRouteOrder = model.Where(x => x.OnThisRoute).Select(x => x.Store.StoreCode).ToList();
+                    var onRows = model.Where(x => x.OnThisRoute && RouteStoreListModel.Matches(x, q)).ToList();
+                    var availRows = model.Where(x => !x.OnThisRoute && RouteStoreListModel.Matches(x, q)).ToList();
+                    AddNoteRow($"On this route ({onCount})", "header");
+                    foreach (var x in onRows) AddStoreRow(x);
+                    AddNoteRow("Available to add", "header");
+                    foreach (var x in availRows.Where(x => showHidden || !x.HiddenByRule)) AddStoreRow(x);
+                    if (reselectStore != null)
+                    {
+                        foreach (DataGridViewRow gr in gridAssign.Rows)
+                            if (gr.Tag is ClientStore rs && rs.StoreCode == reselectStore && MJdatabase.StoreIsOnRoute(r, rs)) { gridAssign.CurrentCell = gr.Cells["colName"]; break; }
+                        reselectStore = null;
+                    }
+                    if (hidden > 0) AddNoteRow(showHidden ? $"{hidden} store{(hidden == 1 ? "" : "s")} already on another route are shown. Click to hide." : $"{hidden} store{(hidden == 1 ? "" : "s")} hidden: already on another route. Click to Show.", "hidden");
                 }
             }
             finally { binding = false; }
+            UpdateMoveButtons();
         }
 
+        /// <summary>Up is off on the first store of the route and Down on the last; both are off unless an "On this route" row is selected.</summary>
+        private void UpdateMoveButtons()
+        {
+            int i = -1;
+            if (!isPending() && SelectedRoute() != null && gridAssign.CurrentRow?.Tag is ClientStore st) i = onRouteOrder.IndexOf(st.StoreCode);
+            btnUp.Enabled = i > 0;
+            btnDown.Enabled = i >= 0 && i < onRouteOrder.Count - 1;
+        }
+
+        private void MoveSelectedStore(int delta)
+        {
+            var r = SelectedRoute();
+            if (r == null) return;
+            if (!(gridAssign.CurrentRow?.Tag is ClientStore st) || !MJdatabase.StoreIsOnRoute(r, st)) { Say("Pick a store that is on this route, then press Move up or Move down.", false); return; }
+            reselectStore = st.StoreCode; // set first: the change event may redraw the list before this method returns
+            try
+            {
+                bool changed = MJdatabase.MoveStoreOnRoute(r, st, delta);
+                Say(changed ? $"{st.StoreName} moved {(delta < 0 ? "up" : "down")} on route {r.RouteCode}." : $"No change: {st.StoreName} is already {(delta < 0 ? "first" : "last")} on route {r.RouteCode}.", false);
+                reloadStores();
+                BeginInvoke(new Action(() => LoadRoutes(r.RouteCode)));
+            }
+            catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.MoveStore", ex); Say("✕ " + ex.Message, true); BeginInvoke(new Action(() => LoadRoutes(r.RouteCode))); }
+        }
+
+        private void AddNoteRow(string text, string kind)
+        {
+            int i = gridAssign.Rows.Add(false, "", text, "");
+            var row = gridAssign.Rows[i];
+            row.Tag = new GridNote { Kind = kind };
+            row.Cells["colOn"] = new DataGridViewTextBoxCell { Value = "" };
+            row.Height = gridAssign.RowTemplate.Height;
+            row.DefaultCellStyle.BackColor = AppTheme.SurfaceAlt;
+            row.DefaultCellStyle.Font = FontCache.Get("Segoe UI Semibold", LargePrint.Pt(10F, 8.5F));
+            foreach (DataGridViewCell c in row.Cells) c.ReadOnly = true;
+        }
+
+        private void AddStoreRow(RouteStoreRow x)
+        {
+            string also = x.OtherRoutes.Count > 0 ? "Also on " + string.Join(", ", x.OtherRoutes) : "";
+            string tag = x.OnThisRoute ? (also.Length > 0 ? "✔ On this route · " + also : "✔ On this route") : (also.Length > 0 ? also : "Available");
+            int i = gridAssign.Rows.Add(x.OnThisRoute, x.Store.StoreCode, x.Store.StoreName, tag);
+            gridAssign.Rows[i].Tag = x.Store;
+            gridAssign.Rows[i].Height = gridAssign.RowTemplate.Height;
+        }
+
+        private void RemoveSelectedStore()
+        {
+            var r = SelectedRoute();
+            if (r == null) return;
+            if (!(gridAssign.CurrentRow?.Tag is ClientStore st)) { Say("Pick a store that is on this route, then press Remove.", false); return; }
+            if (!MJdatabase.StoreIsOnRoute(r, st)) { Say($"No change: {st.StoreName} is not on route {r.RouteCode}.", false); return; }
+            ApplyToggle(r, st, false);
+        }
+
+        /// <summary>The switch in the Delivery routes header: a refusal is shown inline and the switch goes back to what is saved.</summary>
+        private void ApplyOneRouteSwitch()
+        {
+            string c = client();
+            if (isPending() || c.Length == 0) return;
+            try
+            {
+                string? refused = MJdatabase.SetOneRoutePerStore(c, chkOneRoute.Checked);
+                if (refused != null) Say("✕ " + refused + " Use Remove from this route on the other routes.", true);
+                else Say(chkOneRoute.Checked ? "One route per store is on: a store can be added to a second route only after it is taken off the first." : "One route per store is off: a store can be on several routes.", false);
+            }
+            catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.OneRouteSwitch", ex); Say("✕ " + ex.Message, true); }
+            RenderAssign(); // puts the switch back to the saved value and redraws the list
+        }
+
+        private void ApplyToggle(DeliveryRoute r, ClientStore st, bool include)
+        {
+            try
+            {
+                if (include)
+                {
+                    string? why = MJdatabase.OneRouteRefusal(r, st);
+                    if (why != null) { Say("✕ " + why, true); BeginInvoke(new Action(() => LoadRoutes(r.RouteCode))); return; }
+                }
+                bool changed = MJdatabase.SetStoreOnRoute(r, st, include);
+                if (changed) Say(include ? $"✔ {st.StoreName} is now on route {r.RouteCode}." : $"{st.StoreName} was taken off route {r.RouteCode}.", false);
+                else Say(include ? $"No change: {st.StoreName} is already on route {r.RouteCode}." : $"No change: {st.StoreName} is not on route {r.RouteCode}.", false);
+                reloadStores();
+                BeginInvoke(new Action(() => LoadRoutes(r.RouteCode)));
+            }
+            catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.ToggleStore", ex); Say("✕ " + ex.Message, true); BeginInvoke(new Action(() => LoadRoutes(r.RouteCode))); }
+        }
         private void ToggleStore(int rowIndex)
         {
             if (isPending()) { TogglePendingStore(rowIndex); return; } // Nov 6: client not saved yet
             var r = SelectedRoute();
             if (r == null || !(gridAssign.Rows[rowIndex].Tag is ClientStore st)) return;
             bool include = gridAssign.Rows[rowIndex].Cells["colOn"].Value is bool b && b;
-            try
-            {
-                MJdatabase.SetStoreOnRoute(r, st, include);
-                Say(include ? $"✔ {st.StoreName} is now on route {r.RouteCode}." : $"{st.StoreName} was taken off route {r.RouteCode}.", false);
-                reloadStores();
-                BeginInvoke(new Action(() => LoadRoutes(r.RouteCode)));
-            }
-            catch (Exception ex) { Say("✕ " + ex.Message, true); BeginInvoke(new Action(() => LoadRoutes(r.RouteCode))); }
+            ApplyToggle(r, st, include);
         }
     }
 }

@@ -1826,7 +1826,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 var fresh = MJdatabase.GetDeliveryRoutes(activeOnly: false).FirstOrDefault(r => r.Id == route.Id) ?? route;
 
-                fresh.ConnectedPlaces = string.Join("; ", stores.Select(x => string.IsNullOrWhiteSpace(x.Code) ? x.Name : $"{x.Code} - {x.Name}"));
+                MJdatabase.SetRoutePlaces(fresh, stores.Select(x => string.IsNullOrWhiteSpace(x.Code) ? x.Name : $"{x.Code} - {x.Name}"));
 
                 MJdatabase.SaveDeliveryRoute(fresh);
 

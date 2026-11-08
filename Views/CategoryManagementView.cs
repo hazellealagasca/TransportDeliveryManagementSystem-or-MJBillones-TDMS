@@ -1217,7 +1217,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             routeToSave.RouteCode = code;
             routeToSave.RouteName = name;
             routeToSave.Description = txtRouteDescription.Text.Trim();
-            routeToSave.ConnectedPlaces = string.Join("; ", placesList);
+            MJdatabase.SetRoutePlaces(routeToSave, placesList);
             routeToSave.IsActive = chkRouteActive.Checked;
 
             bool success = MJdatabase.SaveDeliveryRoute(routeToSave);
@@ -1226,7 +1226,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.NotifyCategoriesChanged();
                 LoadClientRoutes(clientName, code);
                 FilterGrid();
-                QuietBox.Show($"Route '{code} - {name}' with {placesList.Count} store stop(s) saved successfully!", "Route Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"Route '{code} - {name}' with {routeToSave.PlacesList.Count} store stop(s) saved successfully!", "Route Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
@@ -1394,7 +1394,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         newR.RouteCode = rCode;
                         newR.RouteName = rName;
                         newR.Description = txtRouteDescription.Text.Trim();
-                        newR.ConnectedPlaces = string.Join("; ", placesList);
+                        MJdatabase.SetRoutePlaces(newR, placesList);
                         newR.IsActive = chkRouteActive.Checked;
                         MJdatabase.SaveDeliveryRoute(newR);
                     }
@@ -1496,7 +1496,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         rToSave.RouteCode = rCode;
                         rToSave.RouteName = rName;
                         rToSave.Description = txtRouteDescription.Text.Trim();
-                        rToSave.ConnectedPlaces = string.Join("; ", placesList);
+                        MJdatabase.SetRoutePlaces(rToSave, placesList);
                         rToSave.IsActive = chkRouteActive.Checked;
                         MJdatabase.SaveDeliveryRoute(rToSave);
                     }

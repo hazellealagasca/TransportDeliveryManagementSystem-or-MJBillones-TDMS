@@ -406,7 +406,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (blank == null)
             {
                 // Completely blank: no client, code or stores are filled in for you.
-                blank = new RouteRow(new DeliveryRoute { ClientCompanyName = "", RouteCode = presetCode ?? "", RouteName = "", Description = "", ConnectedPlaces = "", IsActive = true }, dirty: true);
+                blank = new RouteRow(new DeliveryRoute { ClientCompanyName = "", RouteCode = presetCode ?? "", RouteName = "", Description = "", IsActive = true }, dirty: true);
                 rows.Insert(0, blank);
                 BindGrid();
             }
@@ -440,9 +440,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var others = rows.Where(o => !ReferenceEquals(o, rr) && string.Equals((o.Route.ClientCompanyName ?? "").Trim(), client, StringComparison.OrdinalIgnoreCase)).Select(o => o.Route).ToList();
             using var dlg = new RouteStoresDialog(client, string.IsNullOrWhiteSpace(rr.Route.RouteName) ? (rr.Route.RouteCode ?? "New route") : rr.Route.RouteName, rr.Route.PlacesList, others);
             if (dlg.ShowDialog(FindForm()) != DialogResult.OK) return;
-            string joined = string.Join("; ", dlg.Places);
-            if (joined == (rr.Route.ConnectedPlaces ?? "")) return;
-            rr.Route.ConnectedPlaces = joined;
+            string before = rr.Route.ConnectedPlaces ?? "";
+            MJdatabase.SetRoutePlaces(rr.Route, dlg.Places); // canonical "CODE - NAME"; saved by SaveDeliveryRoute
+            if (rr.Route.ConnectedPlaces == before) return;
             rr.Dirty = true;
             binding = true;
             try

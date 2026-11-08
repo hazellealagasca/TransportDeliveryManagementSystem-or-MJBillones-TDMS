@@ -12765,9 +12765,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return list;
         }
 
-        public static void SaveClientStore(ClientStore store)
+        /// <summary>
+        /// Saves a client store and keeps the routes' store lists in step. Returns null when everything was saved, or a message to
+        /// show inline when the store was saved but a route list could not be updated (each failure is logged through ErrLog).
+        /// </summary>
+        public static string? SaveClientStore(ClientStore store)
         {
-            if (store == null || string.IsNullOrWhiteSpace(store.StoreName)) return;
+            if (store == null || string.IsNullOrWhiteSpace(store.StoreName)) return null;
             if (!string.IsNullOrWhiteSpace(store.StoreCode) && IsStoreCodeTaken(store.ClientCompanyName, store.StoreCode, store.Id))
 
                 throw new InvalidOperationException($"Store code \"{store.StoreCode.Trim()}\" is already used by another store of {store.ClientCompanyName}. Each store needs its own code.");
@@ -12813,45 +12817,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else store.Id = Convert.ToInt32(cmd.ExecuteScalar() ?? 0);
 
             }
-            // Keep the delivery route's store list in step with the client's stores.
-
-            try
-
+            // Keep the routes' store lists in step with the client's stores. Each step is tried on its own, so one failure does not
+            // skip the others: a store moved to another route leaves the old one (its old client's route, its old entry); a renamed or
+            // re-coded store keeps its own place on every route it is on; and it is put on its route (SetStoreOnRoute).
+            var problems = new List<string>();
+            void Step(string what, Action act)
             {
-
-                string client = (store.ClientCompanyName ?? "").Trim();
-
-                string oldName = old?.StoreName ?? "", oldRoute = old?.DestinationRoute ?? "";
-
-                string newName = (store.StoreName ?? "").Trim(), newRoute = (store.DestinationRoute ?? "").Trim();
-
-                var oldR = ResolveRouteFromLabel(client, oldRoute);
-
-                var newR = ResolveRouteFromLabel(client, newRoute);
-
-                if (oldR != null && newR != null && oldR.Id == newR.Id)
-
-                {
-
-                    if (!SamePlace(oldName, newName)) ReplaceRoutePlace(newR, oldName, newName);
-
-                    else AddRoutePlace(newR, newName);
-
-                }
-
-                else
-
-                {
-
-                    if (oldR != null && oldName.Length > 0) RemoveRoutePlace(oldR, oldName);
-
-                    if (newR != null) AddRoutePlace(newR, newName);
-
-                }
-
+                try { act(); }
+                catch (System.Exception ex) { ErrLog.Swallowed(ex); problems.Add($"{what}: {ex.Message}"); }
             }
-
-            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] store→route sync: {ex.Message}"); ErrLog.Swallowed(ex); }
+            DeliveryRoute? oldR = null, newR = null;
+            try
+            {
+                oldR = old == null ? null : ResolveRouteFromLabel((old.ClientCompanyName ?? "").Trim(), old.DestinationRoute ?? "");
+                newR = ResolveRouteFromLabel((store.ClientCompanyName ?? "").Trim(), (store.DestinationRoute ?? "").Trim());
+            }
+            catch (System.Exception ex) { ErrLog.Swallowed(ex); problems.Add("finding the store's routes: " + ex.Message); }
+            if (old is { } before && oldR is { } leave && (newR == null || leave.Id != newR.Id))
+                Step($"taking it off route {leave.RouteCode}", () => SetStoreOnRoute(leave, before, false));
+            if (old is { } renamedFrom) Step("renaming it on its routes", () => RenameStoreOnRoutes(renamedFrom, store));
+            if (newR is { } join) Step($"putting it on route {join.RouteCode}", () => SetStoreOnRoute(join, store, true));
+            return problems.Count == 0 ? null : "Store saved, but its route lists were not all updated (" + string.Join("; ", problems) + ").";
 
         }
 
@@ -12872,23 +12858,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.Parameters.AddWithValue("@id", storeId);
                 cmd.ExecuteNonQuery();
             }
-            try
-
+            // The deleted store leaves every route of its client it is on (else those routes would recreate it later).
+            if (old == null) return;
+            List<DeliveryRoute> holding;
+            try { holding = RoutesContainingStore(old.ClientCompanyName, old); }
+            catch (System.Exception ex) { ErrLog.Swallowed(ex); return; }
+            foreach (var r in holding)
             {
-
-                if (old != null)
-
-                {
-
-                    var r = ResolveRouteFromLabel(old.ClientCompanyName, old.DestinationRoute);
-
-                    if (r != null) RemoveRoutePlace(r, old.StoreName);
-
-                }
-
+                try { SetStoreOnRoute(r, old, false); }
+                catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] store delete→route {r.RouteCode}: {ex.Message}"); ErrLog.Swallowed(ex); }
             }
-
-            catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[DB] store delete→route sync: {ex.Message}"); ErrLog.Swallowed(ex); }
 
         }
 
@@ -12945,72 +12924,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         public static string RouteLabel(DeliveryRoute r) => $"{r.RouteCode} - {r.RouteName}";
-
-        private static void WriteRoutePlaces(int routeId, List<string> places)
-
-        {
-
-            using var conn = new SqliteConnection(connectionString);
-
-            conn.Open();
-
-            using var cmd = conn.CreateCommand();
-
-            cmd.CommandText = "UPDATE DeliveryRoutes SET ConnectedPlaces = @p, UpdatedAt = datetime('now') WHERE Id = @id";
-
-            cmd.Parameters.AddWithValue("@p", string.Join("; ", places));
-
-            cmd.Parameters.AddWithValue("@id", routeId);
-
-            cmd.ExecuteNonQuery();
-
-        }
-
-        private static void AddRoutePlace(DeliveryRoute r, string place)
-
-        {
-
-            if (string.IsNullOrWhiteSpace(place)) return;
-
-            var list = r.PlacesList;
-
-            if (list.Any(p => SamePlace(p, place))) return;
-
-            list.Add(place.Trim());
-
-            WriteRoutePlaces(r.Id, list);
-
-        }
-
-        private static void RemoveRoutePlace(DeliveryRoute r, string place)
-
-        {
-
-            var list = r.PlacesList;
-
-            int before = list.Count;
-
-            list.RemoveAll(p => SamePlace(p, place));
-
-            if (list.Count != before) WriteRoutePlaces(r.Id, list);
-
-        }
-
-        private static void ReplaceRoutePlace(DeliveryRoute r, string oldPlace, string newPlace)
-
-        {
-
-            var list = r.PlacesList;
-
-            int i = list.FindIndex(p => SamePlace(p, oldPlace));
-
-            if (i >= 0) list[i] = newPlace.Trim();
-
-            else if (!list.Any(p => SamePlace(p, newPlace))) list.Add(newPlace.Trim());
-
-            WriteRoutePlaces(r.Id, list);
-
-        }
 
         /// <summary>
 
@@ -13084,7 +12997,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                var match = stores.FirstOrDefault(x => SamePlace(x.StoreName, place));
+                // The one matcher (archived stores included): "DD-2 - Tarlac" is the store DD-2 Tarlac, never a new store of that name.
+                var match = stores.FirstOrDefault(x => PlaceIsStore(place, x));
 
                 if (match != null)
 
@@ -13097,16 +13011,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
 
                 // No made-up store codes: use the code written in the place ("203077 - RR-Laoag"), otherwise leave it blank for the user.
+                // The store name is the name part of the place, not the whole text.
 
-                string code = DeliveryRoute.SplitStoreCodeAndName(place).StoreCode;
+                var (code, name) = DeliveryRoute.SplitStoreCodeAndName(place);
+
+                code = code.Trim();
+
+                name = name.Trim();
 
                 if (code.Length > 0 && stores.Any(x => string.Equals(x.StoreCode, code, StringComparison.OrdinalIgnoreCase))) code = "";
 
                 Exec("INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute) VALUES (@cid, @cl, @sc, @sn, @l)",
 
-                    ("@cid", clientId), ("@cl", client), ("@sc", code), ("@sn", place.Trim()), ("@l", label));
+                    ("@cid", clientId), ("@cl", client), ("@sc", code), ("@sn", name), ("@l", label));
 
-                stores.Add(new ClientStore { StoreCode = code, StoreName = place.Trim(), DestinationRoute = label, ClientCompanyName = client });
+                stores.Add(new ClientStore { StoreCode = code, StoreName = name, DestinationRoute = label, ClientCompanyName = client });
 
             }
 
@@ -13118,7 +13037,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    foreach (var st in stores.Where(x => x.Id > 0 && OnThisRoute(x) && SamePlace(x.StoreName, gone)))
+                    foreach (var st in stores.Where(x => x.Id > 0 && OnThisRoute(x) && PlaceIsStore(gone, x) && !places.Any(n => PlaceIsStore(n, x))))
 
                         Exec("UPDATE ClientStores SET DestinationRoute = '' WHERE Id = @id", ("@id", st.Id));
 
