@@ -73,11 +73,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pendingGrid.Rows.Clear();
             foreach (var (code, name) in pendingStores)
             {
-                int n = pendingRoutes.Count(r => r.Stores.Contains(code));
-                int i = pendingGrid.Rows.Add(code, name, n > 0 ? $"On {n} route{(n == 1 ? "" : "s")} · not saved yet" : "Not saved yet");
+                int i = pendingGrid.Rows.Add(code, name, PendingRouteModel.StateText(PendingRouteModel.RoutesHoldingStore(PendingRouteSets(), code)));
                 pendingGrid.Rows[i].Height = pendingGrid.RowTemplate.Height;
             }
         }
+
+        /// <summary>Each pending route with its set of store codes (what the matcher in <see cref="PendingRouteModel"/> reads).</summary>
+        private IEnumerable<(string RouteCode, IEnumerable<string> StoreCodes)> PendingRouteSets() =>
+            pendingRoutes.Select(r => (r.Code, (IEnumerable<string>)r.Stores));
 
         private void AddPendingStore()
         {
@@ -89,10 +92,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (pendingStores.Any(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))) { Say($"✕ \"{name}\" is already in this list.", true); return; }
             try
             {
-                var owner = MJdatabase.FindStoreByCodeAnyClient(code);
-                if (owner != null) { Say($"✕ Record Already Exists: store code {code} belongs to \"{owner.StoreName}\" of {owner.ClientCompanyName}.", true); return; }
+                // the same check as a saved client; the new client has no stores yet, so "(new client)" stands in for its name
+                string who = MJdatabase.CleanStoreText(client());
+                string? problem = MJdatabase.CheckCompanyStore(who.Length > 0 ? who : "(new client)", code, name);
+                if (problem != null) { Say("✕ " + problem, true); return; }
             }
-            catch (Exception ex) { ErrLog.Swallowed(ex); }
+            catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.AddPendingStore", ex); Say("✕ Couldn't check the store: " + ex.Message, true); return; }
             pendingStores.Add((code, name));
             Say($"✔ {code} – {name} added. It is saved together with the client when you click Create client.", false);
             txtCode.Clear(); txtName.Clear(); txtCode.Focus();
@@ -149,8 +154,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 gridAssign.Enabled = r != null;
                 foreach (var (code, name) in pendingStores.Where(p => q.Length == 0 || p.Code.Contains(q, StringComparison.OrdinalIgnoreCase) || p.Name.Contains(q, StringComparison.OrdinalIgnoreCase)).OrderBy(p => p.Name))
                 {
-                    bool on = r != null && r.Stores.Contains(code);
-                    int i = gridAssign.Rows.Add(on, code, name, on ? "✔ On this route" : "Available");
+                    var holding = PendingRouteModel.RoutesHoldingStore(PendingRouteSets(), code);
+                    bool on = r != null && holding.Contains(r.Code, StringComparer.OrdinalIgnoreCase);
+                    var others = r == null ? holding : holding.Where(h => !string.Equals(h, r.Code, StringComparison.OrdinalIgnoreCase)).ToList();
+                    string state = on ? (others.Count > 0 ? $"✔ On this route · also on {string.Join(", ", others)}" : "✔ On this route")
+                        : others.Count > 0 ? $"Also on {string.Join(", ", others)}" : "Available";
+                    int i = gridAssign.Rows.Add(on, code, name, state);
                     gridAssign.Rows[i].Tag = code;
                     gridAssign.Rows[i].Height = gridAssign.RowTemplate.Height;
                 }
@@ -188,13 +197,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     var route = new DeliveryRoute { ClientCompanyName = clientName, RouteCode = pr.Code, RouteName = pr.Name, Description = "", ConnectedPlaces = "", IsActive = true };
                     if (!MJdatabase.SaveDeliveryRoute(route)) { errors.Add($"Route {pr.Code}: it wasn't saved."); continue; }
                     var fresh = MJdatabase.GetDeliveryRoutesByClient(clientName, activeOnly: false).FirstOrDefault(x => string.Equals(x.RouteCode, pr.Code, StringComparison.OrdinalIgnoreCase)) ?? route;
-                    foreach (var sc in pr.Stores)
-                    {
-                        var st = saved.FirstOrDefault(s => string.Equals(s.StoreCode, sc, StringComparison.OrdinalIgnoreCase));
-                        if (st == null) continue;
-                        try { MJdatabase.SetStoreOnRoute(fresh, st, true); }
-                        catch (Exception ex) { errors.Add($"{sc} on route {pr.Code}: {ex.Message}"); }
-                    }
+                    // each typed store once, in the order typed, through the one writer
+                    PendingRouteModel.SaveRouteStores(fresh, saved, PendingRouteModel.StoresToWrite(pr.Stores, pendingStores), errors);
                 }
                 catch (Exception ex) { errors.Add($"Route {pr.Code}: {ex.Message}"); }
             }

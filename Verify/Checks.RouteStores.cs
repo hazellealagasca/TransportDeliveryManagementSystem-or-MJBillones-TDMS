@@ -670,4 +670,68 @@ public static partial class Checks
         if (Str("SELECT SettingKey FROM SystemSettings WHERE SettingKey LIKE 'Routes.OneRoutePerStore.%'") != "Routes.OneRoutePerStore.DWARDO") fails.Add("key is not upper case");
         return string.Join("; ", fails);
     }
+
+    // ---- Task 8: the new-client path (pending stores and routes) follows the same rules.
+
+    [Check]
+    public static string RouteStores_PendingMembershipListsEveryRoute()
+    {
+        var routes = new List<(string, IEnumerable<string>)> { ("DW", new[] { "DD-1", "DD-2" }), ("DW1", new[] { "dd-2" }), ("DX", new[] { "DD-3" }) };
+        var fails = new List<string>();
+        string two = string.Join(",", PendingRouteModel.RoutesHoldingStore(routes, "DD-2"));
+        if (two != "DW,DW1") fails.Add($"DD-2 on \"{two}\", expected DW,DW1");
+        string one = string.Join(",", PendingRouteModel.RoutesHoldingStore(routes, "dd-1"));
+        if (one != "DW") fails.Add($"dd-1 on \"{one}\", expected DW");
+        if (PendingRouteModel.RoutesHoldingStore(routes, "DD-9").Count != 0) fails.Add("DD-9 found on a route");
+        string text = PendingRouteModel.StateText(PendingRouteModel.RoutesHoldingStore(routes, "DD-2"));
+        if (text != "On DW, DW1 · not saved yet") fails.Add($"state text \"{text}\"");
+        if (PendingRouteModel.StateText(new List<string>()) != "Not saved yet") fails.Add("empty state text wrong");
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_PendingStoreTickedTwiceSavesOnce()
+    {
+        var typed = new List<(string Code, string Name)> { ("DD-1", "San Miguel"), ("DD-2", "Tarlac"), ("DD-3", "Capas") };
+        var fails = new List<string>();
+        var write = PendingRouteModel.StoresToWrite(new[] { "dd-2", "DD-2", " DD-2 ", "DD-1", "ZZ-9" }, typed);
+        string got = string.Join(",", write.Select(w => w.Code));
+        if (got != "DD-1,DD-2") fails.Add($"stores to write \"{got}\", expected DD-1,DD-2 (typed order, once each, untyped dropped)");
+        // and through the real writer on a fresh database: ticking the same store twice leaves one entry
+        var route = RouteWithPlaces("");
+        var errors = new List<string>();
+        MJdatabase.RegisterCompanyStore("DWARDO", "DD-1", "San Miguel");
+        MJdatabase.RegisterCompanyStore("DWARDO", "DD-2", "Tarlac");
+        var savedStores = MJdatabase.GetClientStores("DWARDO");
+        int first = PendingRouteModel.SaveRouteStores(route, savedStores, write, errors);
+        int again = PendingRouteModel.SaveRouteStores(route, savedStores, write, errors);
+        var places = new DeliveryRoute { ConnectedPlaces = SavedPlaces(route.Id) }.PlacesList;
+        if (first != 2) fails.Add($"first save added {first}, expected 2");
+        if (again != 0) fails.Add($"second save added {again}, expected 0");
+        if (places.Count != 2 || places[0] != "DD-1 - San Miguel" || places[1] != "DD-2 - Tarlac") fails.Add($"saved \"{string.Join("; ", places)}\", expected \"DD-1 - San Miguel; DD-2 - Tarlac\"");
+        if (errors.Count != 0) fails.Add("errors: " + string.Join(" | ", errors));
+        return string.Join("; ", fails);
+    }
+
+    [Check]
+    public static string RouteStores_PendingCreateSavesWhatWasTyped()
+    {
+        Fresh();
+        var typed = new List<(string Code, string Name)> { ("DD-1", "San Miguel"), ("DD-2", "Tarlac"), ("DD-3", "Capas") };
+        var pendingRoutes = new List<(string Code, string Name, string[] Ticked)> { ("PR-A", "North", new[] { "DD-2", "DD-1" }), ("PR-B", "South", new[] { "dd-2", "DD-3" }) };
+        foreach (var (c, n) in typed) MJdatabase.RegisterCompanyStore("DWARDO", c, n);
+        var savedStores = MJdatabase.GetClientStores("DWARDO");
+        var errors = new List<string>();
+        foreach (var pr in pendingRoutes)
+        {
+            if (!MJdatabase.SaveDeliveryRoute(new DeliveryRoute { ClientCompanyName = "DWARDO", RouteCode = pr.Code, RouteName = pr.Name, Description = "", ConnectedPlaces = "", IsActive = true })) errors.Add("route " + pr.Code + " not saved");
+            var fresh = MJdatabase.GetDeliveryRoutesByClient("DWARDO", activeOnly: false).First(x => x.RouteCode == pr.Code);
+            PendingRouteModel.SaveRouteStores(fresh, savedStores, PendingRouteModel.StoresToWrite(pr.Ticked, typed), errors);
+        }
+        var fails = new List<string>(errors);
+        string Saved(string code) => string.Join("; ", MJdatabase.GetDeliveryRoutesByClient("DWARDO", activeOnly: false).First(x => x.RouteCode == code).PlacesList);
+        if (Saved("PR-A") != "DD-1 - San Miguel; DD-2 - Tarlac") fails.Add($"PR-A saved \"{Saved("PR-A")}\"");
+        if (Saved("PR-B") != "DD-2 - Tarlac; DD-3 - Capas") fails.Add($"PR-B saved \"{Saved("PR-B")}\"");
+        return string.Join("; ", fails);
+    }
 }
