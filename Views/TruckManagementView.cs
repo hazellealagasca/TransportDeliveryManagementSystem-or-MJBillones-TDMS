@@ -166,8 +166,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit = new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to trucks");
             formKit.Build(new[]
             {
-                new FullPageFormKit.Section("Vehicle", "Plate number, type, cargo zone and status.", tblPlateType, tblCargoStatus),
-                new FullPageFormKit.Section("Capacity", "Locked to the truck category and cargo type above.", lblCap, pnlCapRow, lblCatHint),
+                new FullPageFormKit.Section("Vehicle", "Plate number, type, crate zone and status.", tblPlateType, tblCargoStatus),
+                new FullPageFormKit.Section("Capacity", "Locked to the truck category and crate type above.", lblCap, pnlCapRow, lblCatHint),
                 new FullPageFormKit.Section("Remarks", "Anything to note about this truck.", lblRemarks, txtRemarks, pnlRemarksSpacer)
             });
             if (btnToggleForm != null)
@@ -280,7 +280,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridTrucks.Columns.Clear();
             gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "PlateNumber", HeaderText = "Plate Number", FillWeight = 14F, MinimumWidth = 110, ReadOnly = true });
             gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TruckType", HeaderText = "Truck Category", FillWeight = 18F, MinimumWidth = 125, ReadOnly = true });
-            gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "CargoType", HeaderText = "Cargo / Temp Type", FillWeight = 16F, MinimumWidth = 120, ReadOnly = true });
+            gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "CargoType", HeaderText = "Crate / Temp Type", FillWeight = 16F, MinimumWidth = 120, ReadOnly = true });
             gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "CapacityCrates", HeaderText = "Capacity", FillWeight = 12F, MinimumWidth = 85, ReadOnly = true });
             gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 12F, MinimumWidth = 85, ReadOnly = true });
             gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Remarks", HeaderText = "Condition Remarks", FillWeight = 28F, MinimumWidth = 135, ReadOnly = true });
@@ -451,7 +451,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 string? truckType = CommitCategoryFromForm(capacity);
                 if (truckType == null) return;
-                if (cbCargoType.SelectedIndex < 0) { MessageBox.Show("Please choose the cargo type (Cold / Chilled, Dry Goods or Combi).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbCargoType.Focus(); return; } // Nov 6
+                if (cbCargoType.SelectedIndex < 0) { MessageBox.Show("Please choose the crate type (Cold / Chilled, Dry Goods or Combi).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbCargoType.Focus(); return; } // Nov 6
                 capacity = MJdatabase.LockedCapacity(truckType, cbCargoType.SelectedItem?.ToString(), capacity);
                 Truck truck = new Truck
                 {
@@ -540,7 +540,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 bool statusChanged = !string.Equals(oldStatus.Trim(), newStatus.Trim(), StringComparison.OrdinalIgnoreCase);
                 string statusReason = "";
                 if (statusChanged && !AskStatusReason(selectedTruck, oldStatus, newStatus, out statusReason)) return;
-                if (cbCargoType.SelectedIndex < 0) { MessageBox.Show("Please choose the cargo type (Cold / Chilled, Dry Goods or Combi).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbCargoType.Focus(); return; } // Nov 6
+                if (cbCargoType.SelectedIndex < 0) { MessageBox.Show("Please choose the crate type (Cold / Chilled, Dry Goods or Combi).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbCargoType.Focus(); return; } // Nov 6
                 capacity = MJdatabase.LockedCapacity(truckType, cbCargoType.SelectedItem?.ToString(), capacity);
                 selectedTruck.PlateNumber = plateNumber;
                 selectedTruck.TruckType = truckType;

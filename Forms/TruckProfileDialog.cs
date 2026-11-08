@@ -148,7 +148,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Fact("Plate number", truck.PlateNumber);
             Fact("Truck type", truck.TruckType);
             Fact("Capacity", $"{truck.CapacityCrates:N0} crates");
-            Fact("Cargo type", truck.CargoType);
+            Fact("Crate type", truck.CargoType);
             Fact("Status", truck.Status);
             Fact("Odometer", specs.OdometerKm > 0 ? $"{specs.OdometerKm:N0} km" : "");
             Fact("Remarks", truck.Remarks);

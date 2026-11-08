@@ -5060,7 +5060,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     ValidationHelper.ApplyValidationState(cbCargoType, false, "Non-crate / specialized cargo is booked as a Special Trip.");
 
-                    valErrors.Add($"Cargo type '{cbCargoType.Text.Trim()}' is not a crate delivery. Book it as a Special Trip / Special Delivery instead.");
+                    valErrors.Add($"Crate type '{cbCargoType.Text.Trim()}' is not a crate delivery. Book it as a Special Trip / Special Delivery instead.");
 
                     firstInvalid ??= cbCargoType;
 

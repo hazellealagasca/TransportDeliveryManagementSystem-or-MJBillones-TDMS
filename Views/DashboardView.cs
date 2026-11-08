@@ -765,7 +765,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             else
             {
                 gridOperations.Columns.AddRange(Col("When", "When", 11, 90), Col("No", "Loading order #", 13, 110), Col("Client", "Client", 22, 130), Col("Route", "Route / destination", 22, 130),
-                    Col("Cargo", "Cargo", 11, 90), Col("Crates", "Crates", 8, 60, true), Col("Dispatch", "Dispatch", 11, 90), Col("Status", "Status", 11, 105));
+                    Col("Cargo", "Crate type", 11, 90), Col("Crates", "Crates", 8, 60, true), Col("Dispatch", "Dispatch", 11, 90), Col("Status", "Status", 11, 105));
                 var dispatchBySched = data.Deliveries.Where(d => !DispatchGate.IsCancelled(d.Status) && d.LoadingScheduleId > 0)
                     .GroupBy(d => d.LoadingScheduleId).ToDictionary(g => g.Key, g => g.First().DispatchNumber);
                 var list = data.Schedules.Where(s => s.ScheduleDate.Date >= from && s.ScheduleDate.Date <= to)

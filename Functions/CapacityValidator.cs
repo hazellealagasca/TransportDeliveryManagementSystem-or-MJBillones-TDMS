@@ -134,10 +134,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return R(CapacityState.NoCrates, 0, 0, "No crates entered", "Enter the crates for this trip before checking the truck.");
             // 2. D6
             if (cargo == MJdatabase.CargoCombi && (cold == 0 || dry == 0))
-                return R(CapacityState.CombiSplitMissing, 0, 0, "Combi needs both parts", "A Combi (Cold + Dry) load needs both cold crates and dry crates. Enter the split, or change the cargo type to Dry Goods or Cold / Chilled.");
+                return R(CapacityState.CombiSplitMissing, 0, 0, "Combi needs both parts", "A Combi (Cold + Dry) load needs both cold crates and dry crates. Enter the split, or change the crate type to Dry Goods or Cold / Chilled.");
             // 3. D7
             if (truckCargo == MJdatabase.CargoDry && cargo != MJdatabase.CargoDry)
-                return R(CapacityState.WrongTruck, 0, 0, "This truck can't keep goods cold", $"{plate} is a Dry Goods truck. {cargo} cargo needs a refrigerated (Cold / Chilled or Combi) truck.");
+                return R(CapacityState.WrongTruck, 0, 0, "This truck can't keep goods cold", $"{plate} is a Dry Goods truck. {cargo} crates need a refrigerated (Cold / Chilled or Combi) truck.");
             // 4. Weight: not used.
             // 5. S3 — pure loads
             if (cargo == MJdatabase.CargoDry)

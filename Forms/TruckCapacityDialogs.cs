@@ -96,7 +96,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
             var header = new Panel { Dock = DockStyle.Top, Height = D(64), BackColor = AppTheme.Surface, Padding = new Padding(D(20), D(10), D(20), D(6)) };
-            header.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(22), Text = "Crates each category can carry. A truck's capacity is locked to its category and cargo type. Combi = cold part + dry part; the Dry capacity is the truck's hard maximum.", Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, AutoEllipsis = true });
+            header.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(22), Text = "Crates each category can carry. A truck's capacity is locked to its category and crate type. Combi = cold part + dry part; the Dry capacity is the truck's hard maximum.", Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, AutoEllipsis = true });
             header.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(28), Text = "Truck categories & capacities", Font = new Font("Segoe UI Semibold", 13F), ForeColor = AppTheme.TextPrimary });
 
 

@@ -234,7 +234,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblCargoType.Name = "lblCargoType";
             lblCargoType.Size = new Size(214, 21);
             lblCargoType.TabIndex = 0;
-            lblCargoType.Text = "Cargo / Temp Type *:";
+            lblCargoType.Text = "Crate / Temp Type *:";
             lblStatus.AutoSize = true;
             lblStatus.Dock = DockStyle.Fill;
             lblStatus.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);

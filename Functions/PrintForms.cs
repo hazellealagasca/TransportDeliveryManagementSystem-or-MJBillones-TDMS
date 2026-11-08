@@ -508,7 +508,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 new PrintField("dispatch_no", "Dispatch #", d.DispatchNumber), new PrintField("status", "Status", d.Status),
                 new PrintField("client", "Client", d.ClientName), new PrintField("date", "Dispatch date", $"{D(d.DispatchDate)} · {d.DepartureTime}"),
                 new PrintField("route", "Route / destination", d.CleanRouteDisplay), new PrintField("schedule", "Loading order", d.LoadingScheduleInfo),
-                new PrintField("cargo", "Cargo", d.CargoType), new PrintField("priority", "Season", d.IsPeak ? "Peak season" : "Regular"),
+                new PrintField("cargo", "Crate type", d.CargoType), new PrintField("priority", "Season", d.IsPeak ? "Peak season" : "Regular"),
                 new PrintField("truck", "Truck", d.TruckInfo), new PrintField("driver", "Driver", d.DriverName),
                 new PrintField("aides", "Aides / helpers", string.IsNullOrWhiteSpace(d.AideDisplay) ? "None" : d.AideDisplay),
                 new PrintField("remarks", "Order remarks", d.Remarks, true, !string.IsNullOrWhiteSpace(d.Remarks), true)

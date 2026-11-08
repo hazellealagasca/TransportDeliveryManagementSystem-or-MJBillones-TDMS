@@ -17,7 +17,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>False when Special trips are turned off in Settings → Features &amp; Pop-ups.</summary>
         public static bool Enabled => Features.On(Features.SpecialTrips);
         /// <summary>The "book it as a Special Trip" hint for validation messages (empty when Special trips are off).</summary>
-        public static string SpecialHint => Enabled ? " Non-crate or specialized cargo must be booked as a Special Trip (choose \"" + SpecialOption + "\" under Cargo Type)." : "";
+        public static string SpecialHint => Enabled ? " Non-crate or specialized cargo must be booked as a Special Trip (choose \"" + SpecialOption + "\" under Crate / Temp Type)." : "";
         public static bool IsSpecial(string? cargoType)
         {
             if (!Enabled) return false;

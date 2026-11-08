@@ -531,7 +531,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ("Contact number", string.IsNullOrWhiteSpace(client?.ContactNumber) ? "—" : client!.ContactNumber, true),
                 ("Route / destination", routeText, true),
                 ("Order type", stops.Count > 1 || del.IsMultiDrop ? $"Multi-drop · {Math.Max(stops.Count, del.TotalStopsCount)} stores" : "Single drop", false),
-                ("Cargo", string.IsNullOrWhiteSpace(del.CargoType) ? "—" : del.CargoType, false),
+                ("Crate type", string.IsNullOrWhiteSpace(del.CargoType) ? "—" : del.CargoType, false),
                 ("Peak Season", del.IsPeak ? "Yes — peak season rate" : "No — regular rate", false),
                 ("Loading schedule", schedule != null ? $"{schedule.ScheduleNumber} ({schedule.Status})" : (del.LoadingScheduleId > 0 ? $"#{del.LoadingScheduleId}" : "—"), true)
             };

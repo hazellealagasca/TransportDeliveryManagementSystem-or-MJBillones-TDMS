@@ -20,7 +20,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private int Dp(int v) => PageKit.D(this, v);
         private void InitListPage()
         {
-            pageHeader = PageKit.Header("Trucks", "Your fleet — plate numbers, capacity, cargo type and whether each truck is free to dispatch.");
+            pageHeader = PageKit.Header("Trucks", "Your fleet — plate numbers, capacity, crate type and whether each truck is free to dispatch.");
             truckTiles = new TileStrip();
             tAll = truckTiles.Add(new StatTile("All trucks", AppTheme.Accent, "") { Clickable = true, Key = "all" });
             tReady = truckTiles.Add(new StatTile("Ready to dispatch", AppTheme.Success, "active and not on a trip") { Clickable = true, Key = "ready" });

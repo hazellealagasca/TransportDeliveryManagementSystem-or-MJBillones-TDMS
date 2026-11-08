@@ -84,7 +84,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (res.Cargo == MJdatabase.CargoDry) Row("Dry crates", res.Total.ToString("N0"), $"{m.DryMax:N0} max", res.Total > m.DryMax);
             else Row("Cold crates", res.Total.ToString("N0"), $"{m.ColdMax:N0} max", res.Total > m.ColdMax);
-            var lblTruck = new Label { Dock = DockStyle.Top, Height = D(26), Text = $"Truck: {truckName}   ·   Cargo: {res.Cargo}", Font = new Font("Segoe UI Semibold", 9.5F), ForeColor = AppTheme.TextSecondary, UseMnemonic = false };
+            var lblTruck = new Label { Dock = DockStyle.Top, Height = D(26), Text = $"Truck: {truckName}   ·   Crate type: {res.Cargo}", Font = new Font("Segoe UI Semibold", 9.5F), ForeColor = AppTheme.TextSecondary, UseMnemonic = false };
 
 
 
@@ -97,7 +97,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lvTrucks = new ListView { View = View.Details, FullRowSelect = true, MultiSelect = false, HeaderStyle = ColumnHeaderStyle.Nonclickable, Dock = DockStyle.Top, Height = D(150), BorderStyle = BorderStyle.FixedSingle, BackColor = AppTheme.Surface, ForeColor = AppTheme.TextPrimary, Font = new Font("Segoe UI", 9.5F) };
             lvTrucks.Columns.Add("Truck", D(120));
             lvTrucks.Columns.Add("Category", D(160));
-            lvTrucks.Columns.Add("Cargo", D(130));
+            lvTrucks.Columns.Add("Crate type", D(130));
             lvTrucks.Columns.Add("Load", D(160));
             foreach (var (t, r) in candidates)
                 lvTrucks.Items.Add(new ListViewItem(new[] { t.PlateNumber, t.TruckType, MJdatabase.NormalizeCargo(t.CargoType), $"{r.Total:N0} of {r.Limit:N0}" }) { Tag = t, ForeColor = AppTheme.TextPrimary });

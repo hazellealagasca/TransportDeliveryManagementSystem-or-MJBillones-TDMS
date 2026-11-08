@@ -527,7 +527,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblCargoType.Padding = new Padding(0, 0, 0, 1);
             lblCargoType.Size = new Size(234, 20);
             lblCargoType.TabIndex = 0;
-            lblCargoType.Text = "Cargo / Temp Type:";
+            lblCargoType.Text = "Crate / Temp Type:";
 
             lblPeakHeader.AutoSize = true;
             lblPeakHeader.Dock = DockStyle.Fill;

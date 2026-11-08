@@ -128,7 +128,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 keyValues.Add(("Plate Number", truck.PlateNumber));
                 keyValues.Add(("Truck Category / Type", truck.TruckType));
-                keyValues.Add(("Cargo / Temperature Zone", truck.CargoType));
+                keyValues.Add(("Crate / Temperature Zone", truck.CargoType));
                 keyValues.Add(("Max Crate Capacity", $"{truck.CapacityCrates:N0} Crates"));
                 keyValues.Add(("Current Operational Status", truck.Status));
                 keyValues.Add(("Total Dispatches Logged", $"{allDel.Count} Trips"));
@@ -203,7 +203,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 keyValues.Add(("E-Crates (Empty)", $"{sch.ECrate:N0} Crates"));
                 keyValues.Add(("Total Crates Volume", $"{sch.TotalCrates:N0} Crates"));
                 keyValues.Add(("Season Rate Tier", sch.IsPeak ? "🔥 Peak Season Rate" : "Regular Season Rate"));
-                keyValues.Add(("Cargo / Temperature Zone", sch.CargoType));
+                keyValues.Add(("Crate / Temperature Zone", sch.CargoType));
                 keyValues.Add(("Schedule Status", sch.Status));
                 keyValues.Add(("Operational Remarks", string.IsNullOrEmpty(sch.Remarks) ? "None" : sch.Remarks));
                 if (!string.IsNullOrEmpty(sch.CancellationReason))
@@ -287,7 +287,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 keyValues.Add(("G-Crates (Goods)", $"{del.GCrate:N0}"));
                 keyValues.Add(("E-Crates (Empty)", $"{del.ECrate:N0}"));
                 keyValues.Add(("Total Dispatched Crates", $"{del.TotalCrates:N0} Crates"));
-                keyValues.Add(("Cargo / Temp Category", del.CargoType));
+                keyValues.Add(("Crate / Temp Category", del.CargoType));
                 keyValues.Add(("Current Dispatch Status", del.Status));
                 keyValues.Add(("Delivery Remarks", string.IsNullOrEmpty(del.Remarks) ? "None" : del.Remarks));
                 if (!string.IsNullOrEmpty(del.CancellationReason))

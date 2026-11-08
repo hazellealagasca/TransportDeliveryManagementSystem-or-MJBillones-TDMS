@@ -619,7 +619,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 F("Driver", r.Driver);
                 F("Aides", r.Aides);
                 F("Crates", r.Crates > 0 ? r.Crates.ToString("N0") : "");
-                F("Cargo", r.Cargo);
+                F("Crate type", r.Cargo);
                 if (CanFin)
                 {
                     // The whole story of a completed trip: trip report → invoice → statement → receipt.

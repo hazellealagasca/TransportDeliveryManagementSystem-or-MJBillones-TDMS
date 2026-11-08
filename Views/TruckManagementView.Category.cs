@@ -73,7 +73,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string name = CleanCategoryName(cbType.Text);
             if (name.Length == 0)
             {
-                lblCatHint.Text = "Choose a category — its capacity fills in for the cargo type.";
+                lblCatHint.Text = "Choose a category — its capacity fills in for the crate type.";
                 lblCatHint.ForeColor = AppTheme.TextMuted;
                 return;
             }
