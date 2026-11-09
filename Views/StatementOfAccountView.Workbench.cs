@@ -59,8 +59,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Panel Gap() => new Panel { Dock = DockStyle.Top, Height = Dpi(14), BackColor = AppTheme.Canvas };
 
             var tabs = new Panel { Dock = DockStyle.Top, Height = Dpi(48), BackColor = AppTheme.Canvas, Padding = new Padding(0, Dpi(6), 0, Dpi(6)) };
-            btnTabInvoices = MakeFormButton("②  Ready service invoices", "primary", Dpi(250));
-            btnTabLines = MakeFormButton("③  Trips and stores on this statement", "secondary", Dpi(310));
+            btnTabInvoices = MakeFormButton("③  Ready service invoices", "primary", Dpi(250));
+            btnTabLines = MakeFormButton("④  Trips and stores on this statement", "secondary", Dpi(310));
             btnTabInvoices.Dock = DockStyle.Left; btnTabLines.Dock = DockStyle.Left;
             btnTabInvoices.Click += (s, e) => SoaShowTab(true);
             btnTabLines.Click += (s, e) => SoaShowTab(false);
@@ -69,7 +69,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tabs.Controls.Add(btnTabInvoices);
             soaCardLines.Dock = DockStyle.Top; soaCardPicker.Dock = DockStyle.Top; soaCardClient.Dock = DockStyle.Top;
 
-            var topLeft = Grow(); topLeft.Margin = new Padding(0, 0, Dpi(8), 0); topLeft.Controls.Add(soaCardClient);
+            var topLeft = Grow(); topLeft.Margin = new Padding(0, 0, Dpi(8), 0); topLeft.Controls.Add(BuildTripPayCard()); topLeft.Controls.Add(Gap()); topLeft.Controls.Add(soaCardClient); soaCardPay!.Dock = DockStyle.Top;
             soaTape = new TapeCard { EmptyText = "Pick the ready service invoices to see the statement add up.", Dock = DockStyle.Top };
             soaTape.Set("The statement adds up to", Array.Empty<(string, string)>(), "Total amount due", "₱0.00", "");
             var topRight = Grow(); topRight.Margin = new Padding(Dpi(8), 0, 0, 0); topRight.Controls.Add(soaTape);

@@ -158,6 +158,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Opens the Trip payments window: one row per trip of the statement; Apply writes the figures into the table.</summary>
         private void ShowTripPayments(bool auto)
         {
+            if (soaCardPay != null)   // the inline card (workbench layout) replaces the pop-up
+            {
+                if (!auto && gridPay != null) { try { pnlFormBody.ScrollControlIntoView(soaCardPay); gridPay.Focus(); } catch (Exception ex) { ErrLog.Swallowed(ex); } }
+                return;
+            }
             if (tripPaymentsOpen || gridItems == null) return;
             gridItems.EndEdit();
             var lines = CollectTripPayLines();
