@@ -68,7 +68,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                   ORDER BY i.Id DESC LIMIT 1";
                 c.Parameters.AddWithValue("@k", did > 0 ? did : sid);
                 using var r = c.ExecuteReader();
-                if (!r.Read()) { problems.Add($"{label}: no service invoice yet. Make it in Billing (type its SI No.), then add the trip here."); continue; }
+                if (!r.Read())
+                {
+                    // Nov 9 (statement first): a trip may go on a statement before its service invoice exists. Its amounts are the statement lines'
+                    // (typed on the statement); the invoice is made later in Billing with these amounts locked. Same client as the statement is still required.
+                    string tripClient;
+                    r.Close();
+                    using (var cc = conn.CreateCommand())
+                    {
+                        cc.Transaction = tx;
+                        cc.CommandText = did > 0 ? "SELECT COALESCE(ClientName,'') FROM Deliveries WHERE Id = @k" : "SELECT COALESCE(Company,'') FROM SpecialTrips WHERE Id = @k";
+                        cc.Parameters.AddWithValue("@k", did > 0 ? did : sid);
+                        tripClient = Convert.ToString(cc.ExecuteScalar()) ?? "";
+                    }
+                    if (!string.Equals(tripClient.Trim(), (soa.ClientName ?? "").Trim(), StringComparison.OrdinalIgnoreCase))
+                        problems.Add($"{label}: it is for {tripClient}, not {soa.ClientName}. One statement is for one client only.");
+                    else if (g.Sum(x => x.Amount) <= 0) problems.Add($"{label}: type its Amount before saving the statement.");
+                    else found.Add((0, "", 0m, Centavos(g.Sum(x => x.Amount)), Centavos(g.Sum(x => x.FuelSurcharge))));
+                    continue;
+                }
                 int id = r.GetInt32(0);
                 string no = r.IsDBNull(1) ? "" : r.GetString(1);
                 decimal net = Centavos(Convert.ToDecimal(r.GetValue(2)));
@@ -83,7 +101,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else if (!string.Equals(client.Trim(), (soa.ClientName ?? "").Trim(), StringComparison.OrdinalIgnoreCase)) problems.Add($"{label}: SI {no} is for {client}, not {soa.ClientName}.");
                 else found.Add((id, no, net, invTotal - invFuel, invFuel));
             }
-            if (found.Count == 0 && problems.Count == 0) problems.Add("Add at least one trip that has a service invoice.");
+            if (found.Count == 0 && problems.Count == 0) problems.Add("Add at least one completed trip report to the statement.");
             if (problems.Count > 0) throw new InvalidOperationException("This statement can't be saved yet:\n\n• " + string.Join("\n• ", problems));
 
             // Nov 7: the statement's totals are worked out from its invoices' freight and fuel surcharge (VAT and the 2% withholding on the freight only).
@@ -92,7 +110,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 throw new InvalidOperationException($"The statement's total (PHP {soa.TotalAmount:N2}) must be what its service invoices work out to (PHP {totals.Due:N2}: freight PHP {totals.TotalSales:N2}, fuel surcharge PHP {totals.Fuel:N2}, less withholding tax PHP {totals.Withholding:N2}). Nothing was saved.");
 
             // Invoices of trips taken off the statement go back to being lone invoices (only while nothing is paid on them).
-            var keep = new HashSet<int>(found.Select(f => f.Id));
+            var keep = new HashSet<int>(found.Where(f => f.Id > 0).Select(f => f.Id));
             var drop = new List<(int Id, string No, decimal Paid, decimal Freight)>();
             using (var c = conn.CreateCommand())
             {
@@ -121,6 +139,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             for (int k = 0; k < found.Count; k++)
             {
                 var f = found[k];
+                if (f.Id <= 0) continue; // no invoice yet: it takes its share of the withholding when it is made (ApplyStatementToNewInvoice)
                 using var u = conn.CreateCommand();
                 u.Transaction = tx;
                 u.CommandText = "UPDATE Invoices SET SoaId = @sid, Deductions = @w, NetAmount = TotalAmount - @w WHERE Id = @id";
@@ -129,7 +148,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 u.Parameters.AddWithValue("@id", f.Id);
                 u.ExecuteNonQuery();
             }
-            soa.SalesInvoiceNo = string.Join(", ", found.Select(f => f.Number));
+            soa.SalesInvoiceNo = string.Join(", ", found.Where(f => f.Id > 0).Select(f => f.Number));
             // The saved figures of the statement are the formula's.
             soa.TotalSalesVatInc = totals.TotalSales; soa.VatAmount = totals.Vat; soa.NetOfVat = totals.NetOfVat; soa.FuelSurchargeTotal = totals.Fuel; soa.WithholdingTax = totals.Withholding; soa.TotalAmount = totals.Due;
             using (var u = conn.CreateCommand())

@@ -32,7 +32,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Strict binding: only a trip with a saved trip report, not billed on a statement or another invoice.
             string? block = !(del.Id < 0 ? SpecialTripHasReport(-del.Id) : MJdatabase.HasTripReport(del.Id)) ? $"{del.DispatchNumber} has no saved trip report yet. File it first (Operations → Trip reports), then invoice the trip."
                 : del.Id > 0 && MJdatabase.GetLiveInvoiceForTrip(del.Id) is LiveTripInvoice liveInv ? $"{del.DispatchNumber} is already invoiced: {liveInv.Describe()}."
-                : MJdatabase.GetBilledDeliveryIds(0).TryGetValue(del.Id, out var soaNo) ? $"{del.DispatchNumber} is already on statement {soaNo}."
                 : del.Id < 0 && MJdatabase.SpecialTripHasActiveInvoice(-del.Id) ? $"{del.DispatchNumber} already has its service invoice."
                 : null;
             if (block != null) { MessageBox.Show(FindForm(), block, "Can't invoice this trip", MessageBoxButtons.OK, MessageBoxIcon.Information); return false; }
@@ -365,6 +364,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 string tariffDesc;
                 decimal calculatedAmount;
+                // Nov 9 (statement first): a trip already on a Statement of Account takes its Amount and Fuel surcharge from the statement, locked.
+                if (ApplyStatementLock(del)) { RecalculateNet(sender, e); return; }
                 if (IsChargeableCancelled(del))
                 {
                     // Cancelled but chargeable: bill the agreed fee recorded at cancellation; no incident deductions.
@@ -401,6 +402,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 RecalculateNet(sender, e);
             }
+        }
+
+        /// <summary>
+        /// True when the trip is on a live statement: the Amount and Fuel surcharge are filled from the statement line and locked
+        /// (disabled), so the invoice equals the statement. Otherwise both boxes are unlocked.
+        /// </summary>
+        private bool ApplyStatementLock(Delivery del)
+        {
+            StatementTripLine? line = null;
+            try { line = del.Id > 0 ? MJdatabase.GetStatementLineForTrip(del.Id) : MJdatabase.GetStatementLineForTrip(0, -del.Id); }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+            if (line == null)
+            {
+                numTotalAmount.Enabled = true; numFuel.Enabled = true;
+                return false;
+            }
+            if (line.Freight > numTotalAmount.Maximum) numTotalAmount.Maximum = line.Freight * 2;
+            numTotalAmount.SetSafe(line.Freight);
+            numFuel.SetSafe(Math.Min(numFuel.Maximum, line.Fuel));
+            numTotalAmount.Enabled = false; numFuel.Enabled = false;
+            lblTariffMatch.Text = $"🔒 On statement {line.SoaNumber}: Amount PHP {line.Freight:N2} + Fuel surcharge PHP {line.Fuel:N2} come from the statement and can't be changed here";
+            lblTariffMatch.Visible = true;
+            return true;
         }
 
         /// <summary>One line about the trip's completed trip report: its number, the date it was completed, crates and who received.</summary>
@@ -647,8 +671,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
-                decimal fuel = numFuel.Value;
-                decimal total = numTotalAmount.Value + fuel; // what the trip is billed in all: freight tariff + fuel surcharge
+                // Nov 9: a trip on a statement is invoiced for exactly the statement line's amounts (the boxes are locked; this is the real guard).
+                var stLine = selDel.Id > 0 ? MJdatabase.GetStatementLineForTrip(selDel.Id) : MJdatabase.GetStatementLineForTrip(0, -selDel.Id);
+                decimal fuel = stLine != null ? stLine.Fuel : numFuel.Value;
+                decimal total = stLine != null ? stLine.Freight + stLine.Fuel : numTotalAmount.Value + fuel; // what the trip is billed in all: freight tariff + fuel surcharge
 
                 // Nov 6 workflow: no amount yet (no rate) is allowed; the invoice is kept as a Draft until it gets its amount.
                 // Nov 7: no deductions on an invoice; the net due is the whole amount.
@@ -671,6 +697,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 MJdatabase.SaveInvoice(inv, crossTypeConfirmed: billNumberGuard.CrossTypeConfirmed);
                 if (selDel.Id < 0) MJdatabase.LinkSpecialTripInvoice(inv.Id, -selDel.Id);
+                if (stLine != null) MJdatabase.ApplyStatementToNewInvoice(inv.Id, selDel.Id > 0 ? selDel.Id : 0, selDel.Id < 0 ? -selDel.Id : 0); // on the statement, with its share of the withholding
                 BillAfterSave(inv.Id, inv.InvoiceNumber);
                 if (inv.Status == PayStatus.Draft) ToastHelper.ShowToast(this, $"Invoice {inv.InvoiceNumber} saved as a draft — add its amount before it can go on a statement", ToastType.Warning);
                 else if (batchQueue.Count == 0) QuietBox.Show("Service Invoice generated and issued with 15-day credit terms!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -912,6 +939,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblFormHeader.Text = "Generate Service Invoice";
             txtLoadingSchedule.Text = "";
             cbClient.Text = "";
+            numTotalAmount.Enabled = true; numFuel.Enabled = true; // unlocked again (a trip on a statement locks them)
             numTotalAmount.SetSafe(0); // filled from the trip's rate when a dispatch is picked
             numFuel.SetSafe(0);
             lblTariffMatch.Visible = false;

@@ -113,7 +113,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             var open = GetTripInvoices().Where(i => i.Open).ToList();
             var list = new List<PayTarget>();
-            foreach (var g in open.Where(i => i.SoaId > 0).GroupBy(i => i.SoaId))
+            var notInvoiced = GetSoaTripsWithoutInvoice(); // Nov 9: a statement is collected only when every trip on it has its invoice
+            foreach (var g in open.Where(i => i.SoaId > 0 && !notInvoiced.ContainsKey(i.SoaId)).GroupBy(i => i.SoaId))
                 list.Add(new PayTarget { SoaId = g.Key, SoaNumber = g.First().SoaNumber, Client = g.First().Client, Invoices = g.OrderBy(i => i.Number).ToList() });
             foreach (var i in open.Where(i => i.SoaId == 0))
                 list.Add(new PayTarget { Client = i.Client, Invoices = new List<TripInvoice> { i } });

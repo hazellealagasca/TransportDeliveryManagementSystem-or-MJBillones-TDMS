@@ -685,7 +685,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (row.IsNewRow) return;
                 bool linked = int.TryParse(row.Cells["colDeliveryId"].Value?.ToString(), out int did) && did > 0
                               || int.TryParse(row.Cells["colSpecialTrip"].Value?.ToString(), out int sid) && sid > 0;
-                if (linked) e.Cancel = true;
+                if (!linked) return;
+                // Nov 9 (statement first): on a trip that has no service invoice yet, ONLY Amount and Fuel surcharge can be typed (everything else comes from the trip report).
+                string colName = gridItems.Columns[e.ColumnIndex].Name;
+                if (colName is "colAmount" or "colFuel")
+                {
+                    try
+                    {
+                        int d0 = RowDeliveryId(row), s0 = RowSpecialTripId(row);
+                        if (!IsLegacySoa() && MJdatabase.GetLiveInvoiceForTrip(d0 > 0 ? d0 : 0, d0 > 0 ? 0 : s0) == null) return; // editable
+                    }
+                    catch (Exception ex) { ErrLog.Swallowed(ex); }
+                }
+                e.Cancel = true;
             };
             DrCellSupport.Attach((MultiValueGrid)gridItems, "colDr", "colDrBtn",
                 row => (row.Cells["colDest"].Value?.ToString() ?? "").Trim(),
@@ -876,7 +888,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     unpriced++;
                 }
             }
-            lblItemsTotals.Text = $"{gridItems.Rows.Count} rows  ·  {trips.Count} trips  ·  Amount ₱{amt:N2}  ·  Fuel ₱{fuel:N2}" +
+            lblItemsTotals.Text = $"{gridItems.Rows.Count} rows  ·  {trips.Count} trips  ·  Total Sales ₱{amt:N2} + Fuel Surcharge ₱{fuel:N2} = ₱{amt + fuel:N2} (VAT Inclusive)" +
                                   (unpriced > 0 ? $"   ·   ⚠ {unpriced} trip{(unpriced == 1 ? "" : "s")} without an amount" : "");
             lblItemsTotals.ForeColor = unpriced > 0 ? AppTheme.WarningText : AppTheme.TextSecondary;
         }
@@ -1621,11 +1633,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     LoadData();
                     SetFormVisibility(false);
-                    // Nov 6 workflow: straight on to the one Collection Receipt for this statement's full amount.
-                    int next = ChoiceDialog.Show(FindForm(), "SOA saved", $"Statement of Account {soa.SoaNumber} is saved",
-                        $"{(soa.SoaType == SoaTypes.Special ? "Special Trips SOA" : "Normal Operations SOA")} for {soa.ClientName} with service invoice(s) {soa.SalesInvoiceNo}.\n\nTotal amount due: PHP {soa.TotalAmount:N2}. It is collected with ONE receipt for the full amount.",
-                        "➜  Proceed to Collection Receipt", "🖨  Print SOA", "Close");
-                    if (next == 0) FinanceHubView.Of(this)?.ProceedToCollection(savedId);
+                    // Nov 9 (statement first): straight on to the Service Invoice list, where each trip's invoice number is TYPED and its amount is locked to this statement.
+                    // When every trip already has its invoice, straight on to the Collection Receipt as before.
+                    bool needInvoices = MJdatabase.GetSoaTripsWithoutInvoice().ContainsKey(savedId);
+                    int next = needInvoices
+                        ? ChoiceDialog.Show(FindForm(), "SOA saved", $"Statement of Account {soa.SoaNumber} is saved",
+                            $"{(soa.SoaType == SoaTypes.Special ? "Special Trips SOA" : "Normal Operations SOA")} for {soa.ClientName}.\n\nTotal amount due: PHP {soa.TotalAmount:N2}.\n\nNext: Service Invoice. Type each trip's invoice number; the amount is taken from this statement and can't be changed.",
+                            "➜  Proceed to Service Invoice", "🖨  Print SOA", "Close")
+                        : ChoiceDialog.Show(FindForm(), "SOA saved", $"Statement of Account {soa.SoaNumber} is saved",
+                            $"{(soa.SoaType == SoaTypes.Special ? "Special Trips SOA" : "Normal Operations SOA")} for {soa.ClientName} with service invoice(s) {soa.SalesInvoiceNo}.\n\nTotal amount due: PHP {soa.TotalAmount:N2}. It is collected with ONE receipt for the full amount.",
+                            "➜  Proceed to Collection Receipt", "🖨  Print SOA", "Close");
+                    if (next == 0) { if (needInvoices) FinanceHubView.Of(this)?.ShowInvoices(""); else FinanceHubView.Of(this)?.ProceedToCollection(savedId); }
                     else if (next == 1) PrintOfficialSoa(soa);
                 }
             }

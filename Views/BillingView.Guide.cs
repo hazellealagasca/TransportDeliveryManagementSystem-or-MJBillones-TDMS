@@ -278,7 +278,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         checks.Add(new PaymentCheck(billReported.Contains(d.Id) ? "Its trip report is saved" : $"{d.DispatchNumber} has no saved trip report — file it first", billReported.Contains(d.Id)));
                     bool onSoa = billOnSoa.TryGetValue(d.Id, out var soaNo);
                     billLive.TryGetValue(d.Id, out var dupInv); // a cancelled invoice is not a duplicate; an old statement's invoice is
-                    checks.Add(new PaymentCheck(dupInv != null ? $"{d.DispatchNumber} is already invoiced: {dupInv.Describe()}" : onSoa ? $"{d.DispatchNumber} is already on statement {soaNo}" : "Not billed yet: no live invoice or statement for this trip", !onSoa && dupInv == null));
+                    checks.Add(new PaymentCheck(dupInv != null ? $"{d.DispatchNumber} is already invoiced: {dupInv.Describe()}" : onSoa ? $"{d.DispatchNumber} is on statement {soaNo}: the amount and fuel surcharge come from it (locked)" : "Not billed yet: no live invoice or statement for this trip", dupInv == null)); // Nov 9: a trip on a statement is invoiced here
                     bool clientOk = string.Equals((d.ClientName ?? "").Trim(), client, StringComparison.OrdinalIgnoreCase);
                     checks.Add(new PaymentCheck(clientOk ? $"Client is the trip's client ({d.ClientName})" : $"Client must be {d.ClientName} (the trip's client)", clientOk));
                     bool datesOk = d.DispatchDate.Date <= DateTime.Today && (!billReports.TryGetValue(d.Id, out var tr) || (tr.ReportDate.Date <= DateTime.Today));

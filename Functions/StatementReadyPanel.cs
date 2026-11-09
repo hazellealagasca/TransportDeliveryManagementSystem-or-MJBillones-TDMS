@@ -94,7 +94,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Reads the list again from the database and redraws (keeps the ticks that are still valid).</summary>
         public void RefreshData()
         {
-            try { all = MJdatabase.GetInvoicesReadyForStatement(); }
+            // Nov 9 (statement first): the queue is the COMPLETED TRIP REPORTS that have no statement yet (not invoices). Row key = dispatch id.
+            // Special trips keep coming from their service invoices.
+            try
+            {
+                var today = DateTime.Today;
+                all = MJdatabase.GetTripReportsWaitingForStatement().Select(c => new ReadyInvoiceRow
+                {
+                    InvoiceId = c.DeliveryId, InvoiceNumber = c.TripReportNumber, TripNumber = c.DispatchNumber, ClientName = c.ClientName, Kind = "Normal",
+                    TripDate = c.ReportDate, IssueDate = c.ReportDate, Net = 0m, DaysWaiting = Math.Max(0, (int)(today - c.ReportDate.Date).TotalDays)
+                }).ToList();
+                all.AddRange(MJdatabase.GetInvoicesReadyForStatement().Where(r => r.Kind == "Special"));
+            }
             catch (Exception ex) { ErrLog.Swallowed(ex); all = new(); }
             picked.IntersectWith(all.Select(r => r.InvoiceId));
             rendering = true;
@@ -129,16 +140,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 grid.SuspendLayout();
                 grid.Columns.Clear(); grid.Rows.Clear();
                 grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "", FillWeight = 4, MinimumWidth = 34, SortMode = DataGridViewColumnSortMode.NotSortable });
-                AddCol("Service invoice", 12); AddCol("Trip", 12); AddCol("Client", 24); AddCol("Trip date", 10); AddCol("Invoiced", 10); AddCol("Amount", 12); AddCol("Waiting", 9);
+                AddCol("Trip report / SI", 12); AddCol("Dispatch", 12); AddCol("Client", 24); AddCol("Completed", 10); AddCol("Invoiced", 10); AddCol("Amount", 12); AddCol("Waiting", 9);
                 foreach (var r in rows)
                 {
-                    int i = grid.Rows.Add(picked.Contains(r.InvoiceId), r.InvoiceNumber, r.TripNumber + (r.Kind == "Special" ? " (special)" : ""), r.ClientName, r.TripDate.ToString("MMM d"), r.IssueDate.ToString("MMM d"), $"₱{r.Net:N2}", r.DaysWaiting == 0 ? "today" : $"{r.DaysWaiting} d");
+                    int i = grid.Rows.Add(picked.Contains(r.InvoiceId), r.InvoiceNumber, r.TripNumber + (r.Kind == "Special" ? " (special)" : ""), r.ClientName, r.TripDate.ToString("MMM d"), r.Kind == "Special" ? r.IssueDate.ToString("MMM d") : "no invoice yet", r.Net > 0 ? $"₱{r.Net:N2}" : "typed on the statement", r.DaysWaiting == 0 ? "today" : $"{r.DaysWaiting} d");
                     grid.Rows[i].Tag = r;
                 }
                 grid.ResumeLayout();
                 int clients = all.Select(r => r.ClientName).Distinct(StringComparer.OrdinalIgnoreCase).Count();
-                lblHeader.Text = $"{all.Count} service invoice{(all.Count == 1 ? "" : "s")} ready for a statement" + (all.Count > 0 ? $" · ₱{all.Sum(r => r.Net):N2} · {clients} client{(clients == 1 ? "" : "s")}" : "");
-                lblEmpty.Text = all.Count == 0 ? "Nothing is waiting. When a trip's service invoice is issued in Billing and is not on a statement, it appears here." : "No invoice matches your search.";
+                lblHeader.Text = $"{all.Count} completed trip report{(all.Count == 1 ? "" : "s")} waiting for a statement" + (all.Count > 0 ? $" · {clients} client{(clients == 1 ? "" : "s")}" : "");
+                lblEmpty.Text = all.Count == 0 ? "Nothing is waiting. When a trip report is completed and has no statement yet, it appears here." : "No trip report matches your search.";
                 lblEmpty.Visible = rows.Count == 0; lblEmpty.BringToFront(); grid.Visible = rows.Count > 0;
                 chkAll.Enabled = rows.Count > 0;
                 chkAll.Checked = rows.Count > 0 && picked.Count > 0 && rows.Where(r => Group(r) == SelectedGroup()).All(r => picked.Contains(r.InvoiceId)) && rows.All(r => Group(r) == SelectedGroup());
@@ -170,7 +181,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (t.Count == 0) { btnMake.Text = "Make statement ▸"; btnMake.Enabled = false; lblHint.Text = note ?? (all.Count > 0 ? "Tick invoices of one client, or press Select all." : ""); note = null; return; }
             btnMake.Enabled = true;
             string label = picked.Count > 0 ? $"{t.Count} invoice{(t.Count == 1 ? "" : "s")}" : $"all {t.Count} of this client";
-            btnMake.Text = $"Make statement ▸ {t[0].ClientName} · {label} · ₱{t.Sum(r => r.Net):N2}";
+            decimal known = t.Sum(r => r.Net);
+            btnMake.Text = $"＋ New Statement ▸ {t[0].ClientName} · {label.Replace("invoice", "trip report")}" + (known > 0 ? $" · ₱{known:N2}" : "");
             lblHint.Text = note ?? (picked.Count > 0 ? "One statement is for one client." : "Nothing ticked: this uses every ready invoice of the highlighted client.");
             note = null;
         }

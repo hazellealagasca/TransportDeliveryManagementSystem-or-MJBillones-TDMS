@@ -60,7 +60,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var reportedIds = GetTripReportDeliveryIds();
             var reports = GetTripReportsByDelivery();
             var live = GetLiveInvoicesByDelivery();
-            var onStatement = GetBilledDeliveryIds(0);
             var fees = GetChargeableCancelledFees();
             DateTime today = DateTime.Today;
 
@@ -69,7 +68,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 bool completed = string.Equals(d.Status, "Completed", StringComparison.OrdinalIgnoreCase) && reportedIds.Contains(d.Id);
                 bool chargeable = string.Equals(d.Status, "Cancelled", StringComparison.OrdinalIgnoreCase) && fees.ContainsKey(d.Id);
                 if (!completed && !chargeable) continue;
-                if (live.ContainsKey(d.Id) || onStatement.ContainsKey(d.Id)) continue;
+                // Nov 9 (statement first): a trip on a statement still waits for its invoice, so only a live invoice hides it.
+                if (live.ContainsKey(d.Id)) continue;
                 reports.TryGetValue(d.Id, out var tr);
                 DateTime since = tr != null && tr.ReportDate > DateTime.MinValue ? tr.ReportDate : d.DispatchDate;
                 rows.Add(new WaitingTripRow

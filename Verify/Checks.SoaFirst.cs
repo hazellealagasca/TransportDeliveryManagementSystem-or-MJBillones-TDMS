@@ -1,0 +1,60 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
+using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
+using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
+
+namespace TDMS.Verify;
+
+public static partial class Checks
+{
+    private static StatementOfAccountItem SoaLine(int deliveryId, decimal amount, decimal fuel) => new StatementOfAccountItem
+    { TripNumber = 1, DateReceived = DateTime.Today.ToString("yyyy-MM-dd"), Destination = "Store", DropCount = 1, Amount = amount, FuelSurcharge = fuel, DeliveryId = deliveryId };
+
+    /// <summary>Nov 9 (statement first): trip report -> statement (no invoice yet) -> invoice with the statement's locked amount -> collectable.</summary>
+    [Check]
+    public static string StatementFirst_TripReportToStatementToInvoiceToCollection()
+    {
+        Fresh(); RunBackfill();
+        int a = Seed.Delivery(client: "CLIENT A"); Seed.TripReport(a);
+        int b = Seed.Delivery(client: "CLIENT A"); Seed.TripReport(b);
+        int x = Seed.Delivery(client: "CLIENT B"); Seed.TripReport(x);
+        var q = MJdatabase.GetTripReportsWaitingForStatement();
+        if (q.Count != 3) return $"queue should list the 3 completed trip reports, has {q.Count}";
+        if (MJdatabase.WhySelectionNotOneClient(q) == null) return "ticking two clients was NOT refused";
+        if (MJdatabase.WhySelectionNotOneClient(q.Where(c => c.ClientName == "CLIENT A").ToList()) != null) return "one client was refused";
+
+        // a statement for CLIENT A with its two trips, no invoice yet
+        var t = SoaTotals.From(3000m, 100m);
+        var soa = new StatementOfAccount { ClientName = "CLIENT A", PeriodCovered = "2026-11-01 to 2026-11-09", IssueDate = DateTime.Today, DeliveryType = "REF", TotalSalesVatInc = t.TotalSales, VatAmount = t.Vat, NetOfVat = t.NetOfVat, FuelSurchargeTotal = t.Fuel, WithholdingTax = t.Withholding, TotalAmount = t.Due, SoaType = SoaTypes.Normal };
+        int soaId = MJdatabase.SaveStatementOfAccount(soa, new List<StatementOfAccountItem> { SoaLine(a, 2000m, 100m), SoaLine(b, 1000m, 0m) });
+        if (MJdatabase.GetTripReportsWaitingForStatement().Any(c => c.DeliveryId == a || c.DeliveryId == b)) return "the trips are still in the queue after the statement was saved";
+        if (MJdatabase.GetTripReportsWaitingForStatement().Count != 1) return "the other client's trip report left the queue";
+        if (!MJdatabase.GetSoaTripsWithoutInvoice().TryGetValue(soaId, out int missing) || missing != 2) return "the statement should have 2 trips without an invoice";
+
+        // a trip of another client can't be added
+        bool wrongClient = Refused(() => MJdatabase.SaveStatementOfAccount(new StatementOfAccount { ClientName = "CLIENT A", PeriodCovered = "x", IssueDate = DateTime.Today, DeliveryType = "REF", TotalSalesVatInc = 1000, TotalAmount = 1000, SoaType = SoaTypes.Normal },
+            new List<StatementOfAccountItem> { SoaLine(x, 1000m, 0m) }), out _);
+        if (!wrongClient) return "another client's trip was accepted on a statement";
+
+        // not collectable while a trip has no invoice
+        if (MJdatabase.GetPayTargets().Any(p => p.SoaId == soaId)) return "a half-invoiced statement is collectable";
+
+        // the invoice must equal the statement line
+        var line = MJdatabase.GetStatementLineForTrip(a);
+        if (line == null || line.Freight != 2000m || line.Fuel != 100m) return $"statement line for trip A: {(line == null ? "none" : line.Freight + "/" + line.Fuel)}";
+        var wrong = InvoiceWithNumber(a, "SI-9101", 2500m); wrong.FuelSurcharge = 100m; MJdatabase.SaveInvoice(wrong);
+        bool lockedRefused = Refused(() => MJdatabase.ApplyStatementToNewInvoice(wrong.Id, a), out _);
+        if (!lockedRefused) return "an invoice with a different amount was put on the statement";
+        MJdatabase.DeleteRecord("Invoices", wrong.Id);
+
+        var inv1 = InvoiceWithNumber(a, "SI-9102", 2100m); inv1.FuelSurcharge = 100m; MJdatabase.SaveInvoice(inv1); MJdatabase.ApplyStatementToNewInvoice(inv1.Id, a);
+        var inv2 = InvoiceWithNumber(b, "SI-9103", 1000m); inv2.FuelSurcharge = 0m; MJdatabase.SaveInvoice(inv2); MJdatabase.ApplyStatementToNewInvoice(inv2.Id, b);
+        decimal net = Convert.ToDecimal(Scalar("SELECT SUM(NetAmount) FROM Invoices WHERE SoaId=@s AND Status<>'Cancelled'", ("@s", soaId)) ?? 0);
+        if (net != t.Due) return $"the invoices' net amounts add up to {net}, the statement's total due is {t.Due}";
+        if (MJdatabase.GetSoaTripsWithoutInvoice().ContainsKey(soaId)) return "the statement still shows trips without an invoice";
+        if (!MJdatabase.GetPayTargets().Any(p => p.SoaId == soaId && p.Invoices.Count == 2)) return "the fully invoiced statement is not collectable";
+        return "";
+    }
+}

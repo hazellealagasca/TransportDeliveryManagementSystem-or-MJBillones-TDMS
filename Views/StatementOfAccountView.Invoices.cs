@@ -46,6 +46,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var ti = MJdatabase.TripInvoiceFor(all, d, d > 0 ? 0 : s);
                 string label = d > 0 ? (guideDeliveries.TryGetValue(d, out var del) ? del.DispatchNumber : $"dispatch #{d}")
                                      : (guideSpecials.TryGetValue(s, out var sp) ? sp.OrderReference : $"special trip #{s}");
+                if (ti == null) continue; // Nov 9 (statement first): no invoice yet is fine; the line's own Amount and Fuel are used
                 var why = MJdatabase.WhyTripNotReadyForSoa(ti, CurrentSoaId);
                 if (why != null) missing.Add($"{label}: {why}");
                 else if (!invs.Any(i => i.Id == ti!.Id)) invs.Add(ti!);
@@ -63,9 +64,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var rows = gridItems.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow).ToList();
             if (rows.Count == 0) return null;
             var (invs, missing) = LineInvoices(guideTripInvoices, rows);
-            if (missing.Count > 0 || invs.Count == 0) return null;
+            if (missing.Count > 0 || invs.Count == 0 || TripCountOf(rows) != invs.Count) return null; // Nov 9: only when EVERY trip has its invoice; otherwise the lines' own amounts are the source
             return (invs.Sum(i => i.Freight), invs.Sum(i => i.Fuel));
         }
+
+        /// <summary>How many distinct trips (dispatches and special trips) the lines bill.</summary>
+        private static int TripCountOf(List<DataGridViewRow> rows)
+            => rows.Select(r => (Del: RowDeliveryId(r), Sp: RowSpecialTripId(r))).Where(k => k.Del > 0 || k.Sp > 0).Distinct().Count();
 
         /// <summary>Checklist lines for the statement's service invoices (replaces the old "SI no." checks).</summary>
         private void AddInvoiceChecks(List<PaymentCheck> checks, List<DataGridViewRow> rows)
@@ -74,11 +79,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string list = string.Join(", ", invs.Select(i => i.Number));
             if (txtSalesInvoiceNo != null && txtSalesInvoiceNo.Text != list) txtSalesInvoiceNo.Text = list;
             if (rows.Count == 0) return;
+            int noInvoice = TripCountOf(rows) - invs.Count - missing.Count;
             checks.Add(new PaymentCheck(missing.Count == 0
-                    ? $"Every trip has its service invoice ({invs.Count}: {list})"
-                    : $"{missing.Count} trip(s) can't go on a statement yet: {string.Join("; ", missing.Take(3))}{(missing.Count > 3 ? " …" : "")}. Make each trip's service invoice in Billing first (type its SI No.).",
+                    ? (noInvoice > 0 ? $"{noInvoice} trip(s) have no service invoice yet: type their Amount and Fuel surcharge here; the invoice is made next (Service Invoice) with these amounts locked" + (invs.Count > 0 ? $"; {invs.Count} already invoiced ({list})" : "")
+                                     : $"Every trip has its service invoice ({invs.Count}: {list})")
+                    : $"{missing.Count} trip(s) can't go on a statement: {string.Join("; ", missing.Take(3))}{(missing.Count > 3 ? " …" : "")}.",
                 missing.Count == 0));
-            if (invs.Count > 0)
+            if (invs.Count > 0 && noInvoice == 0)
             {
                 decimal net = SoaTotals.From(invs.Sum(i => i.Freight), invs.Sum(i => i.Fuel)).Due;
                 bool same = Math.Abs(net - numTotalAmountDue.Value) <= 0.05m;
@@ -95,12 +102,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             var rows = gridItems.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow).ToList();
             var (invs, missing) = LineInvoices(MJdatabase.GetTripInvoices(), rows);
-            if (missing.Count > 0 || invs.Count == 0)
+            if (missing.Count > 0)
             {
-                MessageBox.Show(FindForm(), "This statement can't be saved yet:\n\n• " + (missing.Count > 0 ? string.Join("\n• ", missing) : "None of its trips has a service invoice.") +
-                    "\n\nEach trip needs its service invoice first: Billing → pick the trip → type the SI No.", "Service invoice needed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(FindForm(), "This statement can't be saved yet:\n\n• " + string.Join("\n• ", missing), "Check the trips", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
+            // Nov 9 (statement first): trips without an invoice use their own lines' Amount and Fuel; the totals on screen are already worked out from the lines.
+            if (invs.Count == 0 || TripCountOf(rows) != invs.Count) return true;
             var t = SoaTotals.From(invs.Sum(i => i.Freight), invs.Sum(i => i.Fuel));
             decimal net = t.Due;
             if (Math.Abs(net - numTotalAmountDue.Value) <= 0.05m) return true;

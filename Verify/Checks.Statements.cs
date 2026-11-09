@@ -97,8 +97,10 @@ public static partial class Checks
         var inv = InvoiceWithNumber(d, "SI-8601", 2000m);
         MJdatabase.SaveInvoice(inv);
         decimal net = Convert.ToDecimal(Scalar("SELECT NetAmount FROM Invoices WHERE Id=@i", ("@i", inv.Id)) ?? 0), gross = Convert.ToDecimal(Scalar("SELECT TotalAmount FROM Invoices WHERE Id=@i", ("@i", inv.Id)) ?? 0);
-        var ready = MJdatabase.GetInvoicesReadyForStatement();
-        if (ready.Count != 1) return $"ready list has {ready.Count}";
+        // Nov 9 (statement first): the queue is the completed trip reports with no statement (keyed by dispatch id), here one that already has an unpaid invoice.
+        var queue = MJdatabase.GetTripReportsWaitingForStatement();
+        if (queue.Count != 1) return $"queue has {queue.Count}";
+        var ready = queue.Select(c => new Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database.ReadyInvoiceRow { InvoiceId = c.DeliveryId, InvoiceNumber = c.TripReportNumber, TripNumber = c.DispatchNumber, ClientName = c.ClientName, Kind = "Normal", TripDate = c.ReportDate, IssueDate = c.ReportDate }).ToList();
         return RunOnSta(() =>
         {
             using var view = new Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views.StatementOfAccountView();

@@ -464,7 +464,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int ticked = 0;
             foreach (DataGridViewRow r in gridPicker.Rows)
                 if (r.Tag is PickRow pr && pr.State == PickState.Ready && !r.Cells["pkPick"].ReadOnly
-                    && (onlyInvoiceIds == null || (pr.Invoice != null && onlyInvoiceIds.Contains(pr.Invoice.Id)))) { r.Cells["pkPick"].Value = true; ticked++; }
+                    && (onlyInvoiceIds == null || onlyInvoiceIds.Contains(pr.Invoice != null ? pr.Invoice.Id : pr.Delivery.Id))) { r.Cells["pkPick"].Value = true; ticked++; } // trip-report rows (Nov 9) are keyed by their dispatch id
             if (ticked > 0) AddTickedDispatches();
             LoadSoaGuideCache();
             lastGoodClient = cbClient.Text.Trim();

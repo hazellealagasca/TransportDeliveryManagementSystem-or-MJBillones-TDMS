@@ -251,7 +251,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string type = CurrentSoaType;
             bool special = type == SoaTypes.Special;
             UpdateSoaTypeLock();
-            // Nov 6 workflow: the statement's source is the client's Unpaid service invoices of this SOA type.
+            // Nov 9 (statement first): for normal trips the source is the client's COMPLETED TRIP REPORTS that have no statement yet (no invoice needed).
+            if (!special) { RefreshPickerFromTripReports(client, reports, DeliveryIdsInTable()); return; }
+            // Special trips keep the service-invoice source.
             var candidates = MJdatabase.GetSoaCandidateInvoices(client, type, CurrentSoaId);
             var inTable = DeliveryIdsInTable();
             var inTableSpecial = SpecialTripIdsInTable();
@@ -307,6 +309,50 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 : rows.Count == 0
                     ? $"No unpaid {kind} service invoices for {client} that are not on a statement yet. Make them in Billing first."
                     : $"{rows.Count} unpaid {kind} service invoice{(rows.Count == 1 ? "" : "s")} for {client}  ·  ₱{readyTotal:N2} not on a statement yet";
+            UpdatePickerButtons();
+            ScheduleSoaGuide();
+        }
+
+        /// <summary>
+        /// Nov 9: the picker for a normal statement lists the client's completed trip reports that are on no statement yet (plus the trips already
+        /// on this one). The statement is made from them; each trip's Amount and Fuel surcharge are typed on its statement line.
+        /// </summary>
+        private void RefreshPickerFromTripReports(string client, Dictionary<int, TripReport> reports, HashSet<int> inTable)
+        {
+            var ticked = new HashSet<int>(gridPicker.Rows.Cast<DataGridViewRow>()
+                .Where(r => r.Cells["pkPick"].Value is true && r.Tag is PickRow pr && pr.Invoice == null && pr.Special == null).Select(r => ((PickRow)r.Tag!).Delivery.Id));
+            var rows = new List<PickRow>();
+            gridPicker.SuspendLayout();
+            gridPicker.Rows.Clear();
+            if (client.Length > 0)
+            {
+                var waiting = MJdatabase.GetTripReportsWaitingForStatement().Where(c => string.Equals(c.ClientName, client, StringComparison.OrdinalIgnoreCase)).Select(c => c.DeliveryId).ToHashSet();
+                foreach (var d in deliveryCache.Where(x => waiting.Contains(x.Id) || inTable.Contains(x.Id)).OrderBy(x => x.DispatchDate).ThenBy(x => x.Id))
+                {
+                    reports.TryGetValue(d.Id, out var tr);
+                    var pr = new PickRow { Delivery = d, Report = tr, State = inTable.Contains(d.Id) ? PickState.OnThisStatement : PickState.Ready };
+                    int i = gridPicker.Rows.Add(pr.State == PickState.Ready && ticked.Contains(d.Id), "—", (tr != null && tr.ReportDate > DateTime.MinValue ? tr.ReportDate : d.DispatchDate).ToString("MMM d, yyyy"),
+                        tr?.TripReportNumber ?? "—", d.DispatchNumber, d.CleanRouteDisplay, "typed on the statement", pr.State == PickState.OnThisStatement ? "✓ On this statement" : "Ready");
+                    var row = gridPicker.Rows[i];
+                    row.Tag = pr;
+                    if (pr.State != PickState.Ready)
+                    {
+                        row.Cells["pkPick"].ReadOnly = true;
+                        row.DefaultCellStyle.ForeColor = AppTheme.TextMuted;
+                        row.Cells["pkState"].Style.ForeColor = AppTheme.SuccessText;
+                    }
+                    else row.Cells["pkState"].Style.ForeColor = AppTheme.InfoText;
+                    rows.Add(pr);
+                }
+            }
+            gridPicker.ResumeLayout();
+            pickerNeedReport = 0;
+            pnlPickerHost.Height = Math.Clamp(Dpi(36) + Math.Max(3, rows.Count) * Dpi(32) + Dpi(4), Dpi(150), Dpi(420));
+            lblPickerInfo.Text = client.Length == 0
+                ? "Pick the client first: its completed trip reports that have no statement yet are listed here."
+                : rows.Count == 0
+                    ? $"No completed trip reports of {client} are waiting for a statement."
+                    : $"{rows.Count} completed trip report{(rows.Count == 1 ? "" : "s")} of {client}  ·  {rows.Count(r => r.State == PickState.Ready)} not on a statement yet";
             UpdatePickerButtons();
             ScheduleSoaGuide();
         }
@@ -413,6 +459,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     string dateStr = completed.Iso(del.Id, 0, del.DispatchDate.ToString("yyyy-MM-dd")); // date completed (trip report date)
                     var tripInv = MJdatabase.TripInvoiceFor(invoices, del.Id, 0);
                     decimal rate = tripInv?.Freight ?? 0m, fuelAmt = tripInv?.Fuel ?? 0m;
+                    // Nov 9: no invoice yet: the Amount starts at the Rate Matrix tariff (when there is one) and is typed/edited on the line; the fuel surcharge is typed.
+                    if (tripInv == null) { try { rate = MJdatabase.CalculateDeliveryTariff(del, out _); } catch (Exception ex) { ErrLog.Swallowed(ex); rate = 0m; } }
                     if (rate <= 0) unpriced++;
                     string did = del.Id.ToString();
                     string trNo = reports.TryGetValue(del.Id, out var rep0) ? rep0.TripReportNumber : "";
@@ -688,7 +736,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
             // Nov 6: the trip needs its own service invoice (typed SI No. in Billing) before it goes on a statement.
-            var tiWhy = MJdatabase.WhyTripNotReadyForSoa(MJdatabase.TripInvoiceFor(MJdatabase.GetTripInvoices(), del.Id, 0), CurrentSoaId);
+            // Nov 9 (statement first): no invoice is needed. Only a trip whose invoice is paid or on another statement is refused.
+            var tiInv = MJdatabase.TripInvoiceFor(MJdatabase.GetTripInvoices(), del.Id, 0);
+            var tiWhy = tiInv == null ? null : MJdatabase.WhyTripNotReadyForSoa(tiInv, CurrentSoaId);
             if (tiWhy != null) { lblAddDispatchResult.Text = $"{del.DispatchNumber}: {tiWhy}."; lblAddDispatchResult.ForeColor = AppTheme.WarningText; return; }
             var issues = new List<string>();
             string client = cbClient.Text.Trim();
