@@ -53,7 +53,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (fin)
             {
-                Page("Billing invoices", "payments finance billing", () => mf?.NavigateToFinance("Billing"));
+                Page("Service invoices", "payments finance billing", () => mf?.NavigateToFinance("Billing"));
                 Page("Collections & receipts", "payments finance collections or", () => mf?.NavigateToFinance("Collections"));
                 Page("Statements of account", "payments finance soa", () => mf?.NavigateToFinance("StatementOfAccount"));
             }

@@ -26,7 +26,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             new("Resources", "Crew", "Crew management", "Drivers and aides."),
             new("Resources", "CrewHistory", "Crew trip history", "Which trips each crew member made."),
             new("Payments", "StatementOfAccount", "Statements of account", "Monthly statements for clients."),
-            new("Payments", "Billing", "Billing invoices", "Create and manage invoices."),
+            new("Payments", "Billing", "Service invoices", "Create and manage invoices."),
             new("Payments", "Collections", "Collections & receipts", "Record payments received."),
             new("Payments", "History", "Finance history", "Changes made to billing and collections."),
             new("MasterData", "Clients", "Clients", "Client companies, their stores and details."),
