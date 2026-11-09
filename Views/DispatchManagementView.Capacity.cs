@@ -56,7 +56,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
         /// <summary>Nov 6 workflow: there is no cold / dry split on the dispatch any more (Combi is a note in the remarks).</summary>
-        private bool IsCombiCargo => cbTempType != null && cbTempType.SelectedIndex == 2;
+        /// <summary>No typed cold / dry split any more: for a Combi load G crates are dry and E crates are cold (the category sets the limits).</summary>
+        private bool IsCombiCargo => false;
+        private bool IsCombiTemp => cbTempType != null && cbTempType.SelectedIndex == 2;
 
 
 
@@ -66,6 +68,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Cold and dry crates of the load: Dry Goods = all dry, Cold = all cold, Combi = the split typed in.</summary>
         private (int cold, int dry) CurrentCrateSplit(int total)
         {
+            if (IsCombiTemp) return ((int)numECrate.Value, (int)numGCrate.Value); // G crates = dry, E crates = cold
             int c = (int)numCombiCold.Value;
             return CapacityValidator.SplitFor(cbCargoType.Text, total, c, Math.Max(0, total - c));
         }

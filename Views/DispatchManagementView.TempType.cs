@@ -115,6 +115,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (cbTempType == null || cbTempType.SelectedIndex < 0 || string.IsNullOrWhiteSpace(cbCargoType.Text))
                 return CapacityValidator.ValidateTotal(truck, total);
             var (cold, dry) = CurrentCrateSplit(total);
+            // Combi: G = dry, E = cold. A load with only one of them is simply that kind of load (no "needs both parts").
+            if (IsCombiTemp && (cold == 0 || dry == 0))
+                return CapacityValidator.Validate(truck, cold == 0 ? MJdatabase.CargoDry : MJdatabase.CargoCold, cold, dry);
             return CapacityValidator.Validate(truck, cbCargoType.Text, cold, dry);
         }
 
