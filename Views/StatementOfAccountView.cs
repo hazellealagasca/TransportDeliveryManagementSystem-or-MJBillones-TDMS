@@ -1629,6 +1629,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         gridItems.Focus();
                         return;
                     }
+                    // Nov 10: a DR number is 4 to 8 digits.
+                    var badDr = gridItems.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow).SelectMany(r => DrList.Parse(r.Cells["colDr"].Value?.ToString())).Where(d => !System.Text.RegularExpressions.Regex.IsMatch(d, @"^\d{4,8}$")).Distinct().ToList();
+                    if (badDr.Count > 0)
+                    {
+                        MessageBox.Show(FindForm(), "A DR number must be 4 to 8 digits (numbers only). Fix:
+
+• " + string.Join("
+• ", badDr.Take(10)), "DR number", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        gridItems.Focus();
+                        return;
+                    }
                 }
                 if (!CheckLinkedDispatchesBeforeSave()) return;
                 if (!CheckSpecialTripsBeforeSave()) return;
