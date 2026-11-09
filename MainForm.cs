@@ -415,7 +415,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     "💰  PAYMENTS",
                     new (string, Action)[]
                     {
-                        ("🧾  Billing Invoices", () => NavigateToFinance("Billing")),
+                        ("🧾  Service Invoices", () => NavigateToFinance("Billing")),
                         ("📑  Statement of Account", () => NavigateToFinance("StatementOfAccount")),
                         ("💵  Collections & Receipts", () => NavigateToFinance("Collections")),
                         ("📜  Finance History", () => NavigateToFinance("History"))

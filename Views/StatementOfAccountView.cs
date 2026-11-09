@@ -1684,7 +1684,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (IsLegacySoa(savedId))
                 {
                     QuietBox.Show(IsLegacySoa(savedId)
-                            ? (siNo.Length > 0 ? $"Statement of Account #{soa.SoaNumber} is saved.\n\nBilling invoice {siInv} for PHP {soa.TotalAmount:N2} is linked to it (see Billing Invoices)." : $"Statement of Account #{soa.SoaNumber} is saved.")
+                            ? (siNo.Length > 0 ? $"Statement of Account #{soa.SoaNumber} is saved.\n\nService invoice {siInv} for PHP {soa.TotalAmount:N2} is linked to it (see Service Invoices)." : $"Statement of Account #{soa.SoaNumber} is saved.")
                             : $"Statement of Account #{soa.SoaNumber} is saved with its service invoice(s): {soa.SalesInvoiceNo}.\n\nCollect it in Collections with ONE receipt for PHP {soa.TotalAmount:N2}.",
                         "SOA saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     LoadData();
@@ -1994,7 +1994,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         return;
                     }
                 }
-                QuietBox.Show($"This Statement of Account is linked to Billing Invoice #{selectedSoa.SalesInvoiceNo}.\nPlease open the Billing Invoices tab to view it.", "Linked Invoice", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"This Statement of Account is linked to Service Invoice #{selectedSoa.SalesInvoiceNo}.\nPlease open the Service Invoices tab to view it.", "Linked Invoice", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {

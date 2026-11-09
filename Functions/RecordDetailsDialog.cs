@@ -324,7 +324,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (matchInv != null)
                 {
                     historyData.Add(new {
-                        Type = "Billing Invoice",
+                        Type = "Service Invoice",
                         Reference = matchInv.InvoiceNumber,
                         Delivered = matchInv.ClientName,
                         Returned = $"₱{matchInv.NetAmount:N2}",
@@ -387,7 +387,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (record is Invoice inv)
             {
-                title = $"💰 Billing Invoice: {inv.InvoiceNumber}";
+                title = $"💰 Service Invoice: {inv.InvoiceNumber}";
                 subtitle = $"Client Delivery Statement • {inv.ClientName}";
                 statusBadge = inv.Status;
                 if (inv.Status == "Paid") { badgeBg = Pal.C(220, 252, 231); badgeFg = Pal.C(22, 101, 52); }

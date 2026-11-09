@@ -355,7 +355,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         };
                         SaveInvoice(created);
                         if (created.Id > 0) LinkInvoiceToSpecialTrip(created.Id, trip.Id);
-                        notes.Add($"Service invoice {created.InvoiceNumber} created for ₱{trip.TripCharge:N2} (Billing Invoices).");
+                        notes.Add($"Service invoice {created.InvoiceNumber} created for ₱{trip.TripCharge:N2} (Service Invoices).");
                     }
                     else if (collected <= 0 && inv.SoaId == 0 && !string.Equals(inv.Status, "Paid", StringComparison.OrdinalIgnoreCase)) // Nov 6: on a statement it keeps its amount
                     {

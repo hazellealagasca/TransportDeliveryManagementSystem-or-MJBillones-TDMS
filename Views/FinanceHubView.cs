@@ -41,7 +41,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // the statement is collected with one receipt, and the settled order goes to history.
             AddTab("StatementOfAccount", "📑  Statement of Account", () => new StatementOfAccountView());
 
-            AddTab("Billing", "🧾  Billing Invoices", () =>
+            AddTab("Billing", "🧾  Service Invoices", () =>
             {
                 var bv = new BillingView();
                 bv.OnRecordPaymentRequested = (inv) => RecordPaymentFor(inv);

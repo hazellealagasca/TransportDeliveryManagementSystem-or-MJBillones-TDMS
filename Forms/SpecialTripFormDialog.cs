@@ -521,7 +521,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var tips = new ToolTip();
             tips.SetToolTip(chkPaymentWithReport, "Listed in Trip Reports until a trip report is made for this trip.");
             tips.SetToolTip(chkWithSOA, "Offered in the client's Statement of Account so its charge can be billed there.");
-            tips.SetToolTip(chkWithInvoice, "A service invoice for the trip charge is made in Billing Invoices.");
+            tips.SetToolTip(chkWithInvoice, "A service invoice for the trip charge is made in Service Invoices.");
             tips.SetToolTip(chkWithCollection, "Shown as a pending collection until its payment is recorded in Collections & Receipts.");
             pnlPaymentBox.Location = new Point(0, 125);
             pnlPaymentBox.Size = new Size(420, 272);

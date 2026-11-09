@@ -13799,7 +13799,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             {
 
-                                Category = "Billing Invoices",
+                                Category = "Service Invoices",
 
                                 Title = $"Invoice #{r.GetString(1)} - {r.GetString(2)}",
 

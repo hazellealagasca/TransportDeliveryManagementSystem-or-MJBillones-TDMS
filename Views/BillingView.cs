@@ -1066,7 +1066,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.Sub("🖨️  Print",
                     RowMenu.Item("End-to-end delivery dossier", () => PrintHelper.PrintEndToEndDeliveryDossier(inv.DeliveryId, inv.DispatchNumber), "", inv.DeliveryId > 0),
-                    RowMenu.Item("Selected invoices (table)", () => PrintHelper.PrintSelectedOrAllGridReport("Client Billing Invoices", gridInvoices, "Selected service invoices.")),
+                    RowMenu.Item("Selected invoices (table)", () => PrintHelper.PrintSelectedOrAllGridReport("Client Service Invoices", gridInvoices, "Selected service invoices.")),
                     RowMenu.Item("Whole invoice register", () => BtnPrint_Click(this, EventArgs.Empty))));
                 m.Items.Add(RowMenu.CopySub(this, ("Invoice number", inv.InvoiceNumber), ("Dispatch number", inv.DispatchNumber), ("Client", inv.ClientName),
                     ("Amount due", balance.ToString("N2")),
@@ -1085,7 +1085,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             decimal total = invs.Sum(i => i.NetAmount);
             m.Items.AddRange(RowMenu.Header($"🧾  {invs.Count} invoices", $"{RowMenu.Money(total)} in total · {invs.Select(i => i.ClientName).Distinct().Count()} client(s)"));
-            m.Items.Add(RowMenu.Item("Print the selected invoices (table)", () => PrintHelper.PrintSelectedOrAllGridReport("Client Billing Invoices", gridInvoices, "Selected service invoices.")));
+            m.Items.Add(RowMenu.Item("Print the selected invoices (table)", () => PrintHelper.PrintSelectedOrAllGridReport("Client Service Invoices", gridInvoices, "Selected service invoices.")));
             m.Items.Add(RowMenu.Item("Copy invoice numbers", () => RowMenu.Copy(this, string.Join(", ", invs.Select(i => i.InvoiceNumber)), $"{invs.Count} invoice numbers copied")));
             m.Items.Add(RowMenu.Item("Copy as a list with amounts", () => RowMenu.Copy(this, string.Join(Environment.NewLine, invs.Select(i => $"{i.InvoiceNumber}\t{i.ClientName}\t{i.NetAmount:N2}\t{i.Status}")), "List copied")));
             m.Items.Add(RowMenu.Sep());
