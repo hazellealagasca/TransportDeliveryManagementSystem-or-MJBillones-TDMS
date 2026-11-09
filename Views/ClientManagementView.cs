@@ -957,6 +957,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return false;
             }
             string tinDigits = new string(txtClientTin.Text.Where(char.IsDigit).ToArray());
+            if (tinDigits.Length == 0)
+            {
+                txtClientTin.BackColor = AppTheme.DangerSoft;
+                MessageBox.Show("The client's TIN is required (e.g. 006-896-371-000). It is printed on the statement and the invoice.", "Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtClientTin.Focus();
+                return false;
+            }
             if (tinDigits.Length > 0 && tinDigits.Length != 9 && tinDigits.Length != 12)
             {
                 MessageBox.Show("The TIN should have 9 digits (or 12 with the branch code), e.g. 006-896-371-000.", "Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);

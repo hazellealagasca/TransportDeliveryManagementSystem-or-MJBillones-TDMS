@@ -19,6 +19,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (t != null && t.Visible && string.IsNullOrWhiteSpace(t.Text)) list.Add(($"{name} is required.", t));
             }
+            if (gridStores != null)
+            {
+                gridStores.EndEdit();
+                var noDr = gridStores.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow && DrList.Parse(r.Cells["colDr"].Value?.ToString()).Count == 0)
+                    .Select(r => (r.Cells["colStore"]?.Value?.ToString() ?? "").Trim()).ToList();
+                if (noDr.Count > 0) list.Add(($"A DR (delivery receipt) number is required for every store. Missing for: {string.Join(", ", noDr.Select(n => n.Length > 0 ? n : "a store").Take(6))}{(noDr.Count > 6 ? ", …" : "")}.", gridStores));
+            }
             need(txtDtrApprovedBy, "DTR \"Approved by\"");
             need(txtDtrPreparedBy, "DTR \"Prepared by\"");
             need(txtDrPreparedBy, "DR \"Prepared by\"");

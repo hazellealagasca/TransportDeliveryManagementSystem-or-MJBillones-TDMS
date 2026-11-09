@@ -1602,6 +1602,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         "Check amounts", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
+                {
+                    string tin = new string(txtClientTin.Text.Where(char.IsDigit).ToArray());
+                    if (tin.Length != 9 && tin.Length != 12)
+                    {
+                        MessageBox.Show(FindForm(), tin.Length == 0 ? "The client's TIN is required on a statement. Type it in \"Client TIN\" (or add it in Master Data > Clients)." : "The TIN should have 9 digits (or 12 with the branch code), e.g. 006-896-371-000.", "Client TIN required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtClientTin.Focus();
+                        return;
+                    }
+                    var noDr = gridItems.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow && DrList.Parse(r.Cells["colDr"].Value?.ToString()).Count == 0).Select(SoaLineLabel).ToList();
+                    if (noDr.Count > 0)
+                    {
+                        MessageBox.Show(FindForm(), "A Delivery Receipt (DR) number is required on every trip line. Missing on:\n\n• " + string.Join("\n• ", noDr.Take(10)) + (noDr.Count > 10 ? $"\n• … and {noDr.Count - 10} more" : "") + "\n\nFill the DR numbers in the Trip Report (stores table), then Refresh lines from trip reports.", "DR number required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        gridItems.Focus();
+                        return;
+                    }
+                }
                 if (!CheckLinkedDispatchesBeforeSave()) return;
                 if (!CheckSpecialTripsBeforeSave()) return;
                 if (!CheckSalesInvoiceNoBeforeSave()) return;
