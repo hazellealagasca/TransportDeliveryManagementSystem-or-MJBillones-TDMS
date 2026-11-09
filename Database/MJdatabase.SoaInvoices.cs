@@ -67,6 +67,54 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+        /// <summary>
+        /// A trip was taken off a saved statement: its invoice gets back the amounts it had before the statement replaced them (when the statement did),
+        /// and an audit line names the trip's invoice, the statement and the reason. The caller then makes it a lone invoice again.
+        /// </summary>
+        private static void RestoreOneInvoiceAmount(SqliteConnection conn, SqliteTransaction tx, int invoiceId, int soaId, string soaNo, string invoiceNo, string reason)
+        {
+            EnsureInvoiceAmountHistory(conn, tx);
+            string user = SessionContext.ActiveUser?.Username ?? SessionContext.CurrentUsername ?? "";
+            string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            decimal oldT = 0, oldF = 0, nowT = 0, nowF = 0; int hid = 0;
+            using (var c = conn.CreateCommand())
+            {
+                c.Transaction = tx;
+                c.CommandText = "SELECT Id, OldTotal, OldFuel FROM InvoiceAmountHistory WHERE InvoiceId = @i AND SoaId = @s AND RevertedAt IS NULL ORDER BY Id DESC LIMIT 1";
+                c.Parameters.AddWithValue("@i", invoiceId); c.Parameters.AddWithValue("@s", soaId);
+                using var r = c.ExecuteReader();
+                if (r.Read()) { hid = r.GetInt32(0); oldT = Convert.ToDecimal(r.GetValue(1)); oldF = Convert.ToDecimal(r.GetValue(2)); }
+            }
+            using (var c = conn.CreateCommand())
+            {
+                c.Transaction = tx;
+                c.CommandText = "SELECT COALESCE(TotalAmount,0), COALESCE(FuelSurcharge,0) FROM Invoices WHERE Id = @i";
+                c.Parameters.AddWithValue("@i", invoiceId);
+                using var r = c.ExecuteReader();
+                if (r.Read()) { nowT = Convert.ToDecimal(r.GetValue(0)); nowF = Convert.ToDecimal(r.GetValue(1)); }
+            }
+            if (hid > 0)
+            {
+                using var u = conn.CreateCommand();
+                u.Transaction = tx;
+                u.CommandText = "UPDATE Invoices SET TotalAmount = @t, FuelSurcharge = @f WHERE Id = @i AND COALESCE(Status,'') = 'Unpaid' COLLATE NOCASE; UPDATE InvoiceAmountHistory SET RevertedAt = @at WHERE Id = @h";
+                u.Parameters.AddWithValue("@t", oldT); u.Parameters.AddWithValue("@f", oldF); u.Parameters.AddWithValue("@i", invoiceId); u.Parameters.AddWithValue("@at", now); u.Parameters.AddWithValue("@h", hid);
+                u.ExecuteNonQuery();
+            }
+            using (var a = conn.CreateCommand())
+            {
+                a.Transaction = tx;
+                a.CommandText = @"INSERT INTO AuditTrail (Timestamp, Username, UserRole, ActionType, TableName, RecordId, RecordIdentifier, FieldName, OldValue, NewValue, ReasonOrNotes, IpOrMachine)
+                                  VALUES (@ts, @u, @r, 'UPDATE', 'Invoices', @rid, @rident, 'Taken off statement', @old, @new, @rsn, @ip)";
+                a.Parameters.AddWithValue("@ts", now); a.Parameters.AddWithValue("@u", user); a.Parameters.AddWithValue("@r", SessionContext.ActiveUser?.Role ?? "System");
+                a.Parameters.AddWithValue("@rid", invoiceId); a.Parameters.AddWithValue("@rident", invoiceNo ?? "");
+                a.Parameters.AddWithValue("@old", $"on {soaNo}: total {nowT:N2}, fuel {nowF:N2}");
+                a.Parameters.AddWithValue("@new", hid > 0 ? $"lone invoice: total {oldT:N2}, fuel {oldF:N2}" : $"lone invoice: total {nowT:N2}, fuel {nowF:N2}");
+                a.Parameters.AddWithValue("@rsn", $"Trip taken off statement {soaNo}: {reason}"); a.Parameters.AddWithValue("@ip", Environment.MachineName);
+                a.ExecuteNonQuery();
+            }
+        }
+
         /// <summary>Cancelling a statement: invoices whose amounts it replaced get their earlier amounts back (they are unpaid: a live receipt blocks the cancel).</summary>
         private static void RestoreInvoiceAmountsOfSoa(int soaId)
         {
@@ -236,8 +284,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             var paidDrop = drop.Where(d => d.Paid > 0).ToList();
             if (paidDrop.Count > 0) throw new InvalidOperationException($"SI {string.Join(", ", paidDrop.Select(d => d.No))} on this statement already has a collection receipt, so its trip can't be taken off.");
+            if (drop.Count > 0 && (soa.TripRemovalReason ?? "").Trim().Length < MinCancelReasonLength)
+                throw new InvalidOperationException($"Write why trip(s) were taken off this statement (at least {MinCancelReasonLength} characters). Nothing was saved.");
             foreach (var d in drop)
             {
+                RestoreOneInvoiceAmount(conn, tx, d.Id, soaId, soa.SoaNumber, d.No, soa.TripRemovalReason!.Trim());
                 using var u = conn.CreateCommand();
                 u.Transaction = tx;
                 // Back to a lone invoice: no withholding share (the computation belongs to the statement only).

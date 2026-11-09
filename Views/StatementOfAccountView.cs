@@ -1622,6 +1622,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 soa.ReceivedBy1 = txtReceivedBy1.Text.Trim();
                 soa.ReceivedBy2 = txtReceivedBy2.Text.Trim();
                 if (!isEditingExisting) { soa.Status = PayStatus.Unpaid; soa.SoaType = CurrentSoaType; }
+                soa.TripRemovalReason = "";
+                if (isEditingExisting && soa.Id > 0 && !IsLegacySoa(soa.Id) && !AskWhyTripsRemoved(soa, items, out string removalReason)) return;
+                else if (isEditingExisting) soa.TripRemovalReason = removalReasonCache;
 
                 int savedId = MJdatabase.SaveStatementOfAccount(soa, items);
                 soa.Id = savedId;
@@ -1782,6 +1785,58 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// Cancels a statement: asks why, says what happens (its service invoices return to "Ready for a statement"), and keeps the reason.
         /// A paid statement can't be cancelled until its collection receipt is voided (offers to open Collections).
         /// </summary>
+        private string removalReasonCache = "";
+
+        /// <summary>
+        /// Saving a SAVED statement whose lines no longer include a trip that had a service invoice: say what happens, ask why, and refuse to
+        /// leave the statement with no trips (cancel it instead). Returns false = don't save.
+        /// </summary>
+        private bool AskWhyTripsRemoved(StatementOfAccount soa, List<StatementOfAccountItem> items, out string reason)
+        {
+            reason = ""; removalReasonCache = "";
+            try
+            {
+                var keep = new HashSet<(int, int)>(items.Where(i => i.DeliveryId > 0 || i.SpecialTripId > 0).Select(i => (i.DeliveryId > 0 ? i.DeliveryId : 0, i.DeliveryId > 0 ? 0 : i.SpecialTripId)));
+                var onSoa = MJdatabase.GetTripInvoices().Where(i => i.SoaId == soa.Id && (i.DeliveryId > 0 || i.SpecialTripId > 0)).ToList();
+                var dropped = onSoa.Where(i => !keep.Contains((i.DeliveryId > 0 ? i.DeliveryId : 0, i.DeliveryId > 0 ? 0 : i.SpecialTripId))).ToList();
+                if (dropped.Count == 0) return true;
+                if (keep.Count == 0) { QuietBox.Show("A statement needs at least one trip. To drop them all, cancel the statement instead.", "Take trips off", MessageBoxButtons.OK, MessageBoxIcon.Information); return false; }
+                var stay = onSoa.Except(dropped).ToList();
+                string msg = $"You are taking {dropped.Count} trip(s) off {soa.SoaNumber}:\n\n• " + string.Join("\n• ", dropped.Take(10).Select(i => $"SI {i.Number} (PHP {i.Gross:N2})"))
+                    + "\n\nEach goes back to a lone unpaid invoice with the amount it had before the statement, and its trip report returns to the statement queue."
+                    + (stay.Count > 0 ? $"\n\nThe 2% withholding is shared out again, so the net amount of the {stay.Count} invoice(s) that stay changes too. If you already printed or sent them, send the new amounts." : "")
+                    + "\n\nWhy are they taken off?";
+                if (!AskReason("Take trips off the statement", msg, out reason)) return false;
+                removalReasonCache = reason;
+                return true;
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); return true; }
+        }
+
+        private bool AskReason(string title, string message, out string reason)
+        {
+            reason = "";
+            using var f = new Form { Text = title, StartPosition = FormStartPosition.CenterParent, FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false, ShowInTaskbar = false, ClientSize = new Size(Dpi(560), Dpi(380)), BackColor = AppTheme.Surface };
+            var lbl = new Label { Dock = DockStyle.Top, Height = Dpi(250), Padding = new Padding(Dpi(16), Dpi(14), Dpi(16), 0), Text = message, Font = new Font("Segoe UI", 9.5F), ForeColor = AppTheme.TextPrimary };
+            var tb = new TextBox { Dock = DockStyle.Top, Multiline = true, Height = Dpi(56), Font = new Font("Segoe UI", 10F), Margin = new Padding(Dpi(16)) };
+            var host = new Panel { Dock = DockStyle.Top, Height = Dpi(70), Padding = new Padding(Dpi(16), Dpi(6), Dpi(16), Dpi(6)) };
+            host.Controls.Add(tb);
+            var ok = new Button { Text = "Take them off and save", DialogResult = DialogResult.None, Width = Dpi(200), Height = Dpi(36), Dock = DockStyle.Right };
+            var no = new Button { Text = "Keep the trips", DialogResult = DialogResult.Cancel, Width = Dpi(140), Height = Dpi(36), Dock = DockStyle.Right };
+            var bar = new Panel { Dock = DockStyle.Bottom, Height = Dpi(52), Padding = new Padding(Dpi(16), Dpi(8), Dpi(16), Dpi(8)) };
+            bar.Controls.Add(ok); bar.Controls.Add(new Panel { Dock = DockStyle.Right, Width = Dpi(8) }); bar.Controls.Add(no);
+            ok.Click += (s, e) =>
+            {
+                if (tb.Text.Trim().Length < MJdatabase.MinCancelReasonLength) { MessageBox.Show(f, $"Write why (at least {MJdatabase.MinCancelReasonLength} characters).", title, MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+                f.DialogResult = DialogResult.OK;
+            };
+            f.Controls.Add(bar); f.Controls.Add(host); f.Controls.Add(lbl);
+            f.CancelButton = no;
+            if (f.ShowDialog(FindForm()) != DialogResult.OK) return false;
+            reason = tb.Text.Trim();
+            return true;
+        }
+
         private void CancelStatement(StatementOfAccount soa)
         {
             string why = MJdatabase.WhySoaCannotBeCancelled(soa);

@@ -90,4 +90,36 @@ public static partial class Checks
         if (!tiny) return "an amount of 0.01 was accepted";
         return "";
     }
+
+    /// <summary>Taking a trip off a saved statement: reason required, its invoice goes back, the rest re-share the withholding and still add up.</summary>
+    [Check]
+    public static string StatementFirst_TakeATripOffASavedStatement()
+    {
+        Fresh(); RunBackfill();
+        var d = new int[3]; var inv = new Invoice[3];
+        for (int i = 0; i < 3; i++) { d[i] = Seed.Delivery(client: "CLIENT A"); Seed.TripReport(d[i]); }
+        // old unpaid invoices made before the flow
+        for (int i = 0; i < 3; i++) { inv[i] = InvoiceWithNumber(d[i], "SI-97" + i, 4000m); MJdatabase.SaveInvoice(inv[i]); }
+        var t3 = SoaTotals.From(3000m, 0m);
+        var soa = new StatementOfAccount { ClientName = "CLIENT A", PeriodCovered = "x", IssueDate = DateTime.Today, DeliveryType = "REF", TotalSalesVatInc = t3.TotalSales, VatAmount = t3.Vat, NetOfVat = t3.NetOfVat, FuelSurchargeTotal = t3.Fuel, WithholdingTax = t3.Withholding, TotalAmount = t3.Due, SoaType = SoaTypes.Normal };
+        int soaId = MJdatabase.SaveStatementOfAccount(soa, new List<StatementOfAccountItem> { SoaLine(d[0], 1000m, 0m), SoaLine(d[1], 1000m, 0m), SoaLine(d[2], 1000m, 0m) });
+        soa.Id = soaId;
+        var t2 = SoaTotals.From(2000m, 0m);
+        soa.TotalSalesVatInc = t2.TotalSales; soa.VatAmount = t2.Vat; soa.NetOfVat = t2.NetOfVat; soa.FuelSurchargeTotal = t2.Fuel; soa.WithholdingTax = t2.Withholding; soa.TotalAmount = t2.Due;
+        var two = new List<StatementOfAccountItem> { SoaLine(d[0], 1000m, 0m), SoaLine(d[1], 1000m, 0m) };
+        soa.TripRemovalReason = "";
+        if (!Refused(() => MJdatabase.SaveStatementOfAccount(soa, two), out _)) return "a trip was taken off without a reason";
+        soa.TripRemovalReason = "Client asked to bill it later";
+        MJdatabase.SaveStatementOfAccount(soa, two);
+        decimal net = Convert.ToDecimal(Scalar("SELECT SUM(NetAmount) FROM Invoices WHERE SoaId=@s AND Status<>'Cancelled'", ("@s", soaId)) ?? 0);
+        if (net != t2.Due) return $"the remaining invoices add up to {net}, the statement's total due is {t2.Due}";
+        decimal back = Convert.ToDecimal(Scalar("SELECT TotalAmount FROM Invoices WHERE Id=@i", ("@i", inv[2].Id)) ?? 0);
+        long onSoa = Convert.ToInt64(Scalar("SELECT COALESCE(SoaId,0) FROM Invoices WHERE Id=@i", ("@i", inv[2].Id)) ?? 0);
+        decimal backNet = Convert.ToDecimal(Scalar("SELECT NetAmount FROM Invoices WHERE Id=@i", ("@i", inv[2].Id)) ?? 0);
+        if (back != 4000m || onSoa != 0 || backNet != 4000m) return $"the dropped invoice is {back} / net {backNet} / on statement {onSoa} (4000 / 4000 / 0 expected)";
+        if (!MJdatabase.GetTripReportsWaitingForStatement().Any(c => c.DeliveryId == d[2])) return "the dropped trip's report did not return to the queue";
+        long audit = Convert.ToInt64(Scalar("SELECT COUNT(*) FROM AuditTrail WHERE TableName='Invoices' AND RecordId=@i AND FieldName='Taken off statement'", ("@i", inv[2].Id)) ?? 0);
+        if (audit != 1) return $"audit lines for the removal: {audit}";
+        return "";
+    }
 }

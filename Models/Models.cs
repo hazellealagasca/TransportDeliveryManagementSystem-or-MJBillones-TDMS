@@ -582,6 +582,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
     public class StatementOfAccount
     {
+        /// <summary>Why a trip was taken off this saved statement (asked on the screen; needed when a removed trip had a service invoice).</summary>
+        public string TripRemovalReason { get; set; } = string.Empty;
         public int Id { get; set; }
         public string SoaNumber { get; set; } = string.Empty;
         public string ClientName { get; set; } = string.Empty;
