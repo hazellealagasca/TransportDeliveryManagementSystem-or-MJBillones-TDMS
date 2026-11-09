@@ -22,6 +22,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private FlowLayoutPanel? pnlExtraDispatches;
         private Button? btnAddDispatches;
         private Label? lblExtraSummary;
+        private Label? lblExtraWarning;
+
+        // ------------------------------------------------------------------ do these dispatches look like one ride?
+
+        /// <summary>
+        /// How <paramref name="other"/> differs from <paramref name="main"/> in the things that say whether the two really rode together: the date,
+        /// the truck and the driver. Empty when they match. Filing dispatches together copies the same gate times, signatories and remarks to each
+        /// report, so a difference deserves a second look.
+        /// </summary>
+        public static List<string> DifferencesBetween(Delivery main, Delivery other)
+        {
+            var list = new List<string>();
+            if (main.DispatchDate.Date != other.DispatchDate.Date) list.Add($"a different date ({other.DispatchDate:MMM d}, not {main.DispatchDate:MMM d})");
+            bool truck = main.TruckId > 0 && other.TruckId > 0 ? main.TruckId != other.TruckId
+                : !string.Equals(TruckLabelOf(main.TruckInfo), TruckLabelOf(other.TruckInfo), StringComparison.OrdinalIgnoreCase);
+            if (truck) list.Add($"a different truck ({TruckLabelOf(other.TruckInfo)}, not {TruckLabelOf(main.TruckInfo)})");
+            bool driver = main.DriverId > 0 && other.DriverId > 0 ? main.DriverId != other.DriverId
+                : !string.Equals((main.DriverName ?? "").Trim(), (other.DriverName ?? "").Trim(), StringComparison.OrdinalIgnoreCase);
+            if (driver) list.Add($"a different driver ({(other.DriverName ?? "").Trim()}, not {(main.DriverName ?? "").Trim()})");
+            return list;
+        }
+
+        /// <summary>One line per dispatch that differs from the main one ("D-0002 has a different date (…) and a different truck (…)"); empty when none do.</summary>
+        private List<string> RideDifferenceLines(Delivery main, IEnumerable<Delivery> others)
+            => others.Select(d => (D: d, Diff: DifferencesBetween(main, d))).Where(x => x.Diff.Count > 0)
+                     .Select(x => $"{x.D.DispatchNumber} has {string.Join(" and ", x.Diff)}").ToList();
+
+        private const string RideWarningTail = "Filing them together copies the same gate times, signatories and remarks to every report. Make sure they really rode together.";
 
         // ------------------------------------------------------------------ the row under the drop-down
 
@@ -42,7 +70,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UIThemeHelper.SetButtonRole(btnAddDispatches, "secondary");
             btnAddDispatches.Click += (s, e) => AddDispatchesClicked();
             lblExtraSummary = new Label { AutoSize = true, Visible = false, ForeColor = AppTheme.TextMuted, Font = new Font("Segoe UI", 9F), Margin = new Padding(Dpi(6), Dpi(7), 0, 0), UseMnemonic = false };
-            pnlExtraDispatches.Controls.AddRange(new Control[] { btnAddDispatches, lblExtraSummary });
+            lblExtraWarning = new Label { AutoSize = false, Visible = false, ForeColor = AppTheme.WarningText, Font = new Font("Segoe UI Semibold", 9F), Margin = new Padding(0, 0, 0, Dpi(4)), UseMnemonic = false };
+            pnlExtraDispatches.Controls.AddRange(new Control[] { btnAddDispatches, lblExtraSummary, lblExtraWarning });
             cbDelivery.SelectedIndexChanged += (s, e) => RefreshExtraUi();
             return pnlExtraDispatches;
         }
@@ -63,6 +92,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 chip.Click += (s, e) => RemoveExtra(captured);
                 pnlExtraDispatches.Controls.Add(chip);
                 pnlExtraDispatches.Controls.SetChildIndex(chip, at++);
+            }
+            // a standing amber note while the added dispatches differ from the main one in date, truck or driver
+            var diffLines = primary != null && extraDispatches.Count > 0 ? RideDifferenceLines(primary, extraDispatches) : new List<string>();
+            if (lblExtraWarning != null)
+            {
+                if (diffLines.Count > 0)
+                {
+                    lblExtraWarning.Text = "⚠ Check before filing: " + string.Join("; ", diffLines) + ". " + RideWarningTail;
+                    int w = Math.Max(Dpi(320), pnlExtraDispatches.ClientSize.Width - Dpi(8));
+                    lblExtraWarning.Width = w;
+                    lblExtraWarning.Height = TextRenderer.MeasureText(lblExtraWarning.Text, lblExtraWarning.Font, new Size(w, 0), TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix).Height + Dpi(4);
+                    lblExtraWarning.Visible = true;
+                    pnlExtraDispatches.Controls.SetChildIndex(lblExtraWarning, pnlExtraDispatches.Controls.Count - 1);
+                }
+                else lblExtraWarning.Visible = false;
             }
             if (extraDispatches.Count > 0 && gridStores != null)
             {
@@ -140,7 +184,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
             var chosen = ShowPickDispatchesDialog(client, candidates.Select(r => (r.D, r.Text)).ToList());
-            if (chosen.Count > 0) AddExtraDispatches(chosen);
+            if (chosen.Count == 0) return;
+            var differ = RideDifferenceLines(primary, chosen);
+            if (differ.Count > 0)
+            {
+                string text = "These dispatches may not have ridden with " + primary.DispatchNumber + ":" + Environment.NewLine + Environment.NewLine
+                            + string.Join(Environment.NewLine, differ.Select(l => "• " + l)) + Environment.NewLine + Environment.NewLine
+                            + RideWarningTail + Environment.NewLine + Environment.NewLine + "Add them anyway?";
+                if (MessageBox.Show(FindForm(), text, "Check these dispatches", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+            }
+            AddExtraDispatches(chosen);
         }
 
         /// <summary>Adds dispatches to the form; only dispatches of the same client as the picked one are accepted. Returns the ones that were refused.</summary>
@@ -268,6 +321,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
             foreach (var d in group) if (!DispatchGate.RequireCompleted(this, DispatchGate.Fresh(d), "file its trip report")) return;
+            // the last chance before anything is saved: dispatches that differ in date, truck or driver get the same gate times and signatories
+            var differ = RideDifferenceLines(primary, extraDispatches);
+            if (differ.Count > 0)
+            {
+                string text = "Before filing " + group.Count + " trip reports together:" + Environment.NewLine + Environment.NewLine
+                            + string.Join(Environment.NewLine, differ.Select(l => "• " + l)) + Environment.NewLine + Environment.NewLine
+                            + RideWarningTail + Environment.NewLine + Environment.NewLine + "File them together anyway?";
+                if (MessageBox.Show(FindForm(), text, "Check these dispatches", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+            }
             gridStores.EndEdit();
 
             var plans = new List<(Delivery D, List<DispatchStop> Stops, int Dg, int De, int Rg, int Re, string Arr, string Dep, string Mgr)>();

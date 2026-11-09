@@ -67,3 +67,14 @@ As planned (D1 one report per dispatch, D2 shared gate times / signatories / rem
 - **Save (Issue Invoice):** the existing checks run once; DR numbers are checked per dispatch against the other dispatches; one crate-variance question for all; then **one report per dispatch** from its own rows (own crates, first time in, last time out, first "received by"), with gate times, signatories and remarks copied. Billing opens with all of them queued. If a save fails halfway, the saved ones stay saved and the message names the rest.
 - **Save draft** is refused while dispatches are added (message says why). Changing the main dispatch or pressing Clear form removes the added ones.
 - Checks: `Verify/Checks.TripReportSeveral.cs` (2 checks).
+
+---
+
+## 8. Warning when the dispatches may not have ridden together (Nov 9, 2026)
+
+Found in review: the feature only checked the client, so wrong picks would silently copy the same gate times and signatories onto unrelated reports. Now the form compares each added dispatch with the main one on **date, truck and driver**:
+1. **When you add them:** a Yes / No question (default No) lists what differs ("D-0002 has a different date (Nov 8, not Nov 6) and a different driver (…)").
+2. **While they differ:** a standing amber note under the chips.
+3. **Before saving:** the same question once more, because saving is the step that cannot be undone. No saves nothing.
+
+Dispatches of the same day, truck and driver show no warning at all. Checks: `TripReportSeveral_Warning_...` and the end-to-end check `EndToEnd_SeveralTripReports_ToInvoice_AndBack` (filed reports → waiting for invoice → Billing → invoice saved → report Invoiced → cancel → back to waiting).
