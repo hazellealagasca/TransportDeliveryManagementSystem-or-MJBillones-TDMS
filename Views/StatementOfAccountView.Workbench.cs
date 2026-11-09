@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -53,12 +53,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var keep = pnlFormBody.Controls.Cast<Control>().Where(c => c is TextBox).ToList(); // the hidden SOA number box
             foreach (Control c in pnlFormBody.Controls.Cast<Control>().ToList()) pnlFormBody.Controls.Remove(c);
 
-            var left = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = AppTheme.Canvas, Margin = new Padding(0, 0, Dpi(8), 0) };
-            var rightScroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = AppTheme.Canvas };
-            var right = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Canvas, Margin = new Padding(Dpi(8), 0, 0, 0) };
+            // ONE page, ONE scroll bar (Nov 9): the whole form scrolls together. Three rows that grow with their content:
+            //   row 1: client card | live totals     row 2 (full width): the two tabs and the table     row 3: sign-off & notes | what needs attention
+            Panel Grow() => new Panel { Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = AppTheme.Canvas, Margin = new Padding(0) };
             Panel Gap() => new Panel { Dock = DockStyle.Top, Height = Dpi(14), BackColor = AppTheme.Canvas };
 
-            // left (top → bottom): client card, tab strip, the active one of the two grids' cards. Controls added later dock higher.
             var tabs = new Panel { Dock = DockStyle.Top, Height = Dpi(48), BackColor = AppTheme.Canvas, Padding = new Padding(0, Dpi(6), 0, Dpi(6)) };
             btnTabInvoices = MakeFormButton("②  Ready service invoices", "primary", Dpi(250));
             btnTabLines = MakeFormButton("③  Trips and stores on this statement", "secondary", Dpi(310));
@@ -69,34 +68,39 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tabs.Controls.Add(new Panel { Dock = DockStyle.Left, Width = Dpi(8) });
             tabs.Controls.Add(btnTabInvoices);
             soaCardLines.Dock = DockStyle.Top; soaCardPicker.Dock = DockStyle.Top; soaCardClient.Dock = DockStyle.Top;
-            left.Controls.Add(soaCardLines);
-            left.Controls.Add(soaCardPicker);
-            left.Controls.Add(tabs);
-            left.Controls.Add(Gap());
-            left.Controls.Add(soaCardClient);
 
-            // right: tape on top, sign-off, the adjustment-reason box (only shown when needed); problems pinned under everything
-            soaTape = new TapeCard { EmptyText = "Pick the ready service invoices to see the statement add up." };
+            var topLeft = Grow(); topLeft.Margin = new Padding(0, 0, Dpi(8), 0); topLeft.Controls.Add(soaCardClient);
+            soaTape = new TapeCard { EmptyText = "Pick the ready service invoices to see the statement add up.", Dock = DockStyle.Top };
             soaTape.Set("The statement adds up to", Array.Empty<(string, string)>(), "Total amount due", "₱0.00", "");
-            soaCardSign.Dock = DockStyle.Top; pnlSoaAdjust.Dock = DockStyle.Top;
-            rightScroll.Controls.Add(soaCardSign);
-            rightScroll.Controls.Add(Gap());
-            rightScroll.Controls.Add(pnlSoaAdjust);
-            rightScroll.Controls.Add(Gap());
-            BuildSoaHistoryCard(); // shown only when a statement that can't be edited is opened (Nov 8)
-            rightScroll.Controls.Add(soaHistoryCard!);
-            rightScroll.Controls.Add(Gap());
-            rightScroll.Controls.Add(soaTape);
-            right.Controls.Add(rightScroll);
-            soaChecklist.Dock = DockStyle.Bottom;
-            right.Controls.Add(soaChecklist);
+            var topRight = Grow(); topRight.Margin = new Padding(Dpi(8), 0, 0, 0); topRight.Controls.Add(soaTape);
 
-            var split = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, BackColor = AppTheme.Canvas, Padding = new Padding(Dpi(24), Dpi(16), Dpi(24), Dpi(16)) };
+            var middle = Grow();
+            middle.Controls.Add(soaCardLines);
+            middle.Controls.Add(soaCardPicker);
+            middle.Controls.Add(tabs);
+            middle.Controls.Add(Gap());
+
+            soaCardSign.Dock = DockStyle.Top; pnlSoaAdjust.Dock = DockStyle.Top;
+            BuildSoaHistoryCard(); // shown only when a statement that can't be edited is opened (Nov 8)
+            var bottomLeft = Grow(); bottomLeft.Margin = new Padding(0, 0, Dpi(8), 0);
+            bottomLeft.Controls.Add(soaCardSign);
+            bottomLeft.Controls.Add(Gap());
+            bottomLeft.Controls.Add(pnlSoaAdjust);
+            bottomLeft.Controls.Add(Gap());
+            bottomLeft.Controls.Add(soaHistoryCard!);
+            var bottomRight = Grow(); bottomRight.Margin = new Padding(Dpi(8), 0, 0, 0);
+            soaChecklist.Dock = DockStyle.Top;
+            bottomRight.Controls.Add(soaChecklist);
+            var left = topLeft; var right = topRight; var rightScroll = bottomRight;
+
+            var split = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 2, RowCount = 3, BackColor = AppTheme.Canvas, Padding = new Padding(Dpi(24), Dpi(16), Dpi(24), Dpi(16)) };
             split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60f));
             split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40f));
-            split.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-            split.Controls.Add(left, 0, 0); split.Controls.Add(right, 1, 0);
-            pnlFormBody.AutoScroll = false;
+            for (int i = 0; i < 3; i++) split.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            split.Controls.Add(topLeft, 0, 0); split.Controls.Add(topRight, 1, 0);
+            split.Controls.Add(middle, 0, 1); split.SetColumnSpan(middle, 2);
+            split.Controls.Add(bottomLeft, 0, 2); split.Controls.Add(bottomRight, 1, 2);
+            pnlFormBody.AutoScroll = true;
             pnlFormBody.Controls.Add(split);
             // the old totals card keeps its boxes (they are read-only and still feed the tape), but is not shown
             soaCardTotals.Visible = false;

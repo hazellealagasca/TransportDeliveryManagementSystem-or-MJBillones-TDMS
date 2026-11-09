@@ -870,7 +870,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try { gridItems.AutoResizeRows(DataGridViewAutoSizeRowsMode.AllCells); } catch (Exception ex) { ErrLog.Swallowed(ex); }
             int rowsH = gridItems.Rows.Cast<DataGridViewRow>().Sum(r => r.Height);
             int h = Math.Max(gridItems.ColumnHeadersHeight, Dpi(36)) + Math.Max(rowsH, 4 * Dpi(30)) + Dpi(22);
-            pnlItemsGridHost.Height = Math.Clamp(h, Dpi(260), Dpi(720));
+            pnlItemsGridHost.Height = Math.Max(h, Dpi(260)); // no inner scroll bar: the page grows and scrolls as one
         }
         private void UpdateItemsSummary()
         {

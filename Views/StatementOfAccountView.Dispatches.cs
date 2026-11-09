@@ -301,7 +301,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             gridPicker.ResumeLayout();
             pickerNeedReport = 0;
-            pnlPickerHost.Height = Math.Clamp(Dpi(36) + Math.Max(3, rows.Count) * Dpi(32) + Dpi(4), Dpi(150), Dpi(420));
+            pnlPickerHost.Height = Math.Max(Dpi(36) + Math.Max(3, rows.Count) * Dpi(32) + Dpi(4), Dpi(150));
             string kind = special ? "special trip" : "normal dispatch";
             decimal readyTotal = rows.Where(r => r.State == PickState.Ready).Sum(r => r.Invoice?.Net ?? 0m);
             lblPickerInfo.Text = client.Length == 0
@@ -347,7 +347,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             gridPicker.ResumeLayout();
             pickerNeedReport = 0;
-            pnlPickerHost.Height = Math.Clamp(Dpi(36) + Math.Max(3, rows.Count) * Dpi(32) + Dpi(4), Dpi(150), Dpi(420));
+            pnlPickerHost.Height = Math.Max(Dpi(36) + Math.Max(3, rows.Count) * Dpi(32) + Dpi(4), Dpi(150));
             lblPickerInfo.Text = client.Length == 0
                 ? "Pick the client first: its completed trip reports that have no statement yet are listed here."
                 : rows.Count == 0
