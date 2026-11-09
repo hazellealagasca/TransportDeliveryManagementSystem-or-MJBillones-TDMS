@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
@@ -55,6 +55,24 @@ public static partial class Checks
         if (net != t.Due) return $"the invoices' net amounts add up to {net}, the statement's total due is {t.Due}";
         if (MJdatabase.GetSoaTripsWithoutInvoice().ContainsKey(soaId)) return "the statement still shows trips without an invoice";
         if (!MJdatabase.GetPayTargets().Any(p => p.SoaId == soaId && p.Invoices.Count == 2)) return "the fully invoiced statement is not collectable";
+        return "";
+    }
+
+    /// <summary>An unpaid invoice made before the flow (on no statement): the statement line's amounts replace it and it joins the statement.</summary>
+    [Check]
+    public static string StatementFirst_OldUnpaidInvoice_TakesTheStatementLinesAmounts()
+    {
+        Fresh(); RunBackfill();
+        int a = Seed.Delivery(client: "CLIENT A"); Seed.TripReport(a);
+        var inv = InvoiceWithNumber(a, "SI-9201", 5000m); inv.FuelSurcharge = 500m; MJdatabase.SaveInvoice(inv);
+        if (!MJdatabase.IsPreStatementInvoice(a)) return "the old unpaid invoice is not seen as pre-statement";
+        var t = SoaTotals.From(3000m, 200m);
+        var soa = new StatementOfAccount { ClientName = "CLIENT A", PeriodCovered = "x", IssueDate = DateTime.Today, DeliveryType = "REF", TotalSalesVatInc = t.TotalSales, VatAmount = t.Vat, NetOfVat = t.NetOfVat, FuelSurchargeTotal = t.Fuel, WithholdingTax = t.Withholding, TotalAmount = t.Due, SoaType = SoaTypes.Normal };
+        int soaId = MJdatabase.SaveStatementOfAccount(soa, new List<StatementOfAccountItem> { SoaLine(a, 3000m, 200m) });
+        decimal total = Convert.ToDecimal(Scalar("SELECT TotalAmount FROM Invoices WHERE Id=@i", ("@i", inv.Id)) ?? 0);
+        decimal net = Convert.ToDecimal(Scalar("SELECT NetAmount FROM Invoices WHERE Id=@i", ("@i", inv.Id)) ?? 0);
+        long onSoa = Convert.ToInt64(Scalar("SELECT COALESCE(SoaId,0) FROM Invoices WHERE Id=@i", ("@i", inv.Id)) ?? 0);
+        if (total != 3200m || net != t.Due || onSoa != soaId) return $"invoice total {total}, net {net} (due {t.Due}), soa {onSoa} (expected {soaId})";
         return "";
     }
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Data.Sqlite;
@@ -47,6 +47,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             var problems = new List<string>();
             var found = new List<(int Id, string Number, decimal Net, decimal Freight, decimal Fuel)>();
+            var lineDriven = new HashSet<int>(); // unpaid invoices that were on no statement: the statement line's Amount and Fuel become the invoice's
             int unlinked = (items ?? new()).Count(i => i.DeliveryId <= 0 && i.SpecialTripId <= 0);
             if (unlinked > 0) problems.Add($"{unlinked} line(s) are not linked to a trip, so they have no service invoice. Add trips from the list instead of typing lines.");
             var trips = (items ?? new()).Where(i => i.DeliveryId > 0 || i.SpecialTripId > 0)
@@ -99,6 +100,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else if (paid > 0 || st.Equals("Paid", StringComparison.OrdinalIgnoreCase)) problems.Add($"{label}: SI {no} already has a collection receipt, so it can't go on a statement.");
                 else if (st.Equals("Draft", StringComparison.OrdinalIgnoreCase) || net <= 0) problems.Add($"{label}: SI {no} has no amount yet. Finish it in Billing.");
                 else if (!string.Equals(client.Trim(), (soa.ClientName ?? "").Trim(), StringComparison.OrdinalIgnoreCase)) problems.Add($"{label}: SI {no} is for {client}, not {soa.ClientName}.");
+                else if (onSoa == 0 && st.Equals("Unpaid", StringComparison.OrdinalIgnoreCase) && paid <= 0)
+                {
+                    if (g.Sum(x => x.Amount) <= 0) problems.Add($"{label}: type its Amount before saving the statement.");
+                    else { lineDriven.Add(id); found.Add((id, no, net, Centavos(g.Sum(x => x.Amount)), Centavos(g.Sum(x => x.FuelSurcharge)))); }
+                }
                 else found.Add((id, no, net, invTotal - invFuel, invFuel));
             }
             if (found.Count == 0 && problems.Count == 0) problems.Add("Add at least one completed trip report to the statement.");
@@ -142,7 +148,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (f.Id <= 0) continue; // no invoice yet: it takes its share of the withholding when it is made (ApplyStatementToNewInvoice)
                 using var u = conn.CreateCommand();
                 u.Transaction = tx;
-                u.CommandText = "UPDATE Invoices SET SoaId = @sid, Deductions = @w, NetAmount = TotalAmount - @w WHERE Id = @id";
+                u.CommandText = lineDriven.Contains(f.Id)
+                    ? "UPDATE Invoices SET SoaId = @sid, TotalAmount = @gross, FuelSurcharge = @fuel, Deductions = @w, NetAmount = @gross - @w WHERE Id = @id"
+                    : "UPDATE Invoices SET SoaId = @sid, Deductions = @w, NetAmount = TotalAmount - @w WHERE Id = @id";
+                if (lineDriven.Contains(f.Id)) { u.Parameters.AddWithValue("@gross", f.Freight + f.Fuel); u.Parameters.AddWithValue("@fuel", f.Fuel); }
                 u.Parameters.AddWithValue("@sid", soaId);
                 u.Parameters.AddWithValue("@w", shares[k]);
                 u.Parameters.AddWithValue("@id", f.Id);

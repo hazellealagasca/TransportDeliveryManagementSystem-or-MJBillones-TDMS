@@ -703,7 +703,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     try
                     {
                         int d0 = RowDeliveryId(row), s0 = RowSpecialTripId(row);
-                        if (!IsLegacySoa() && MJdatabase.GetLiveInvoiceForTrip(d0 > 0 ? d0 : 0, d0 > 0 ? 0 : s0) == null) return; // editable
+                        if (!IsLegacySoa() && (MJdatabase.GetLiveInvoiceForTrip(d0 > 0 ? d0 : 0, d0 > 0 ? 0 : s0) == null || MJdatabase.IsPreStatementInvoice(d0 > 0 ? d0 : 0, d0 > 0 ? 0 : s0))) return; // editable
                     }
                     catch (Exception ex) { ErrLog.Swallowed(ex); }
                 }

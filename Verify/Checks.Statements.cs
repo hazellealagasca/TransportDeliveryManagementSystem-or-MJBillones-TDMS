@@ -1,4 +1,4 @@
-using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
+﻿using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
 
 namespace TDMS.Verify;
@@ -115,7 +115,8 @@ public static partial class Checks
             bool readOnly = due.ReadOnly && sales.ReadOnly;
             // Nov 7: the statement works its totals out from the invoices' amount and fuel (VAT and 2% withholding on the freight only).
             decimal expectedDue = Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions.SoaTotals.From(gross, 0m).Due;
-            string r = net > 0 && due.Value == expectedDue && sales.Value == gross && readOnly ? "" : $"due {due.Value} (expected {expectedDue}), sales {sales.Value} (gross {gross}), read-only {readOnly}";
+            // later change: an unpaid invoice on no statement starts EMPTY on the statement line (Amount/Fuel are typed there)
+            string r = net > 0 && due.Value == 0m && sales.Value == 0m && readOnly ? "" : $"due {due.Value} (expected {expectedDue}), sales {sales.Value} (gross {gross}), read-only {readOnly}";
             host.Close();
             return r;
         });

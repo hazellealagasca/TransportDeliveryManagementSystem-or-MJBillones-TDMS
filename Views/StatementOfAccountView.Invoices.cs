@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
@@ -46,7 +46,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var ti = MJdatabase.TripInvoiceFor(all, d, d > 0 ? 0 : s);
                 string label = d > 0 ? (guideDeliveries.TryGetValue(d, out var del) ? del.DispatchNumber : $"dispatch #{d}")
                                      : (guideSpecials.TryGetValue(s, out var sp) ? sp.OrderReference : $"special trip #{s}");
-                if (ti == null) continue; // Nov 9 (statement first): no invoice yet is fine; the line's own Amount and Fuel are used
+                if (ti == null || MJdatabase.IsPreStatementInvoice(d, d > 0 ? 0 : s)) continue; // Nov 9 (statement first): no invoice yet is fine; the line's own Amount and Fuel are used
                 var why = MJdatabase.WhyTripNotReadyForSoa(ti, CurrentSoaId);
                 if (why != null) missing.Add($"{label}: {why}");
                 else if (!invs.Any(i => i.Id == ti!.Id)) invs.Add(ti!);

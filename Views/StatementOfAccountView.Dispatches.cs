@@ -481,6 +481,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     var lines = BuildTripLines(del, out int dropCount);
                     string dateStr = completed.Iso(del.Id, 0, del.DispatchDate.ToString("yyyy-MM-dd")); // date completed (trip report date)
                     var tripInv = MJdatabase.TripInvoiceFor(invoices, del.Id, 0);
+                    if (tripInv != null && MJdatabase.IsPreStatementInvoice(del.Id)) tripInv = null; // an unpaid invoice on no statement: its amounts are typed on the statement line
                     decimal rate = tripInv?.Freight ?? 0m, fuelAmt = tripInv?.Fuel ?? 0m;
                     // Nov 9: no invoice yet: the Amount starts at the Rate Matrix tariff (when there is one) and is typed/edited on the line; the fuel surcharge is typed.
                     // (Nov 9, later: the Amount is left EMPTY on purpose; the user types it, nothing is guessed.)

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Data.Sqlite;
@@ -75,6 +75,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (clients.Count == 0) return "The ticked trip reports have no client. Fix the dispatch's client first.";
             if (clients.Count > 1) return "Select one client at a time. You ticked trip reports of: " + string.Join(", ", clients) + ".";
             return null;
+        }
+
+        /// <summary>
+        /// True when the trip has an UNPAID service invoice of its own that is on no statement (made before the statement-first flow). For the
+        /// statement such a trip counts as "not billed yet": its Amount and Fuel surcharge are typed on the statement line, and saving the
+        /// statement puts those amounts on that invoice.
+        /// </summary>
+        public static bool IsPreStatementInvoice(int deliveryId, int specialTripId = 0)
+        {
+            var li = GetLiveInvoiceForTrip(deliveryId, specialTripId);
+            return li != null && !li.OnOldStatement && li.SoaId <= 0 && string.Equals(li.Status, PayStatus.Unpaid, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>The live statement that holds this trip and the amounts typed on its line(s), or null when the trip is on no live statement.</summary>
