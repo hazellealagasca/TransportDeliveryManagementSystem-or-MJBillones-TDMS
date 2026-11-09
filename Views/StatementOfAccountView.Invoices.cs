@@ -107,6 +107,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show(FindForm(), "This statement can't be saved yet:\n\n• " + string.Join("\n• ", missing), "Check the trips", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
+            // An unpaid invoice that is on no statement takes this statement's line amounts: say so first, with old and new.
+            var changes = new List<string>();
+            var allInv = MJdatabase.GetTripInvoices();
+            foreach (var (d, s) in rows.Select(r => (Del: RowDeliveryId(r), Sp: RowSpecialTripId(r))).Where(k => k.Del > 0 || k.Sp > 0).Distinct())
+            {
+                if (!MJdatabase.IsPreStatementInvoice(d, d > 0 ? 0 : s)) continue;
+                var ti = MJdatabase.TripInvoiceFor(allInv, d, d > 0 ? 0 : s);
+                if (ti == null) continue;
+                decimal nf = 0, nu = 0;
+                foreach (var r in rows.Where(r => RowDeliveryId(r) == d && RowSpecialTripId(r) == s))
+                {
+                    decimal.TryParse((r.Cells["colAmount"].Value?.ToString() ?? "").Replace(",", ""), out var a1); decimal.TryParse((r.Cells["colFuel"].Value?.ToString() ?? "").Replace(",", ""), out var f1);
+                    nf += a1; nu += f1;
+                }
+                if (nf != ti.Freight || nu != ti.Fuel) changes.Add($"SI {ti.Number}: PHP {ti.Freight + ti.Fuel:N2} becomes PHP {nf + nu:N2}");
+            }
+            if (changes.Count > 0 && MessageBox.Show(FindForm(), "Saving this statement changes service invoices that were already made:\n\n• " + string.Join("\n• ", changes.Take(12))
+                + "\n\nThe old amounts are kept in the audit log, and cancelling the statement puts them back. Continue?", "Invoice amounts will change", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return false;
             // Nov 9 (statement first): trips without an invoice use their own lines' Amount and Fuel; the totals on screen are already worked out from the lines.
             if (invs.Count == 0 || TripCountOf(rows) != invs.Count) return true;
             var t = SoaTotals.From(invs.Sum(i => i.Freight), invs.Sum(i => i.Fuel));

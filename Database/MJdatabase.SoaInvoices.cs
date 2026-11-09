@@ -13,6 +13,112 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     /// </summary>
     public static partial class MJdatabase
     {
+        /// <summary>Smallest freight Amount a statement line may carry (stops a typo like 0.01 from becoming the invoice amount).</summary>
+        public const decimal MinStatementAmount = 1m;
+
+        private static void EnsureInvoiceAmountHistory(SqliteConnection conn, SqliteTransaction? tx)
+        {
+            using var c = conn.CreateCommand();
+            c.Transaction = tx;
+            c.CommandText = @"CREATE TABLE IF NOT EXISTS InvoiceAmountHistory (Id INTEGER PRIMARY KEY AUTOINCREMENT, InvoiceId INTEGER NOT NULL, InvoiceNumber TEXT, SoaId INTEGER NOT NULL,
+                              OldTotal REAL NOT NULL, OldFuel REAL NOT NULL, NewTotal REAL NOT NULL, NewFuel REAL NOT NULL, ChangedAt TEXT, ChangedBy TEXT, RevertedAt TEXT)";
+            c.ExecuteNonQuery();
+        }
+
+        /// <summary>
+        /// An unpaid invoice's amounts are about to be replaced by the statement line's: keep the old amounts (so cancelling the statement can put them back)
+        /// and write an audit line with old and new. Does nothing when the amounts are the same.
+        /// </summary>
+        private static void RecordInvoiceAmountChange(SqliteConnection conn, SqliteTransaction tx, int invoiceId, string invoiceNo, int soaId, string soaNo, decimal newTotal, decimal newFuel)
+        {
+            EnsureInvoiceAmountHistory(conn, tx);
+            decimal oldTotal, oldFuel;
+            using (var c = conn.CreateCommand())
+            {
+                c.Transaction = tx;
+                c.CommandText = "SELECT COALESCE(TotalAmount,0), COALESCE(FuelSurcharge,0) FROM Invoices WHERE Id = @i";
+                c.Parameters.AddWithValue("@i", invoiceId);
+                using var r = c.ExecuteReader();
+                if (!r.Read()) return;
+                oldTotal = Centavos(Convert.ToDecimal(r.GetValue(0))); oldFuel = Centavos(Convert.ToDecimal(r.GetValue(1)));
+            }
+            if (oldTotal == newTotal && oldFuel == newFuel) return;
+            string user = SessionContext.ActiveUser?.Username ?? SessionContext.CurrentUsername ?? "";
+            string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            using (var h = conn.CreateCommand())
+            {
+                h.Transaction = tx;
+                h.CommandText = "INSERT INTO InvoiceAmountHistory (InvoiceId, InvoiceNumber, SoaId, OldTotal, OldFuel, NewTotal, NewFuel, ChangedAt, ChangedBy) VALUES (@i,@n,@s,@ot,@of,@nt,@nf,@at,@by)";
+                h.Parameters.AddWithValue("@i", invoiceId); h.Parameters.AddWithValue("@n", invoiceNo ?? ""); h.Parameters.AddWithValue("@s", soaId);
+                h.Parameters.AddWithValue("@ot", oldTotal); h.Parameters.AddWithValue("@of", oldFuel); h.Parameters.AddWithValue("@nt", newTotal); h.Parameters.AddWithValue("@nf", newFuel);
+                h.Parameters.AddWithValue("@at", now); h.Parameters.AddWithValue("@by", user);
+                h.ExecuteNonQuery();
+            }
+            using (var a = conn.CreateCommand())
+            {
+                a.Transaction = tx;
+                a.CommandText = @"INSERT INTO AuditTrail (Timestamp, Username, UserRole, ActionType, TableName, RecordId, RecordIdentifier, FieldName, OldValue, NewValue, ReasonOrNotes, IpOrMachine)
+                                  VALUES (@ts, @u, @r, 'UPDATE', 'Invoices', @rid, @rident, 'TotalAmount / FuelSurcharge', @old, @new, @rsn, @ip)";
+                a.Parameters.AddWithValue("@ts", now); a.Parameters.AddWithValue("@u", user); a.Parameters.AddWithValue("@r", SessionContext.ActiveUser?.Role ?? "System");
+                a.Parameters.AddWithValue("@rid", invoiceId); a.Parameters.AddWithValue("@rident", invoiceNo ?? "");
+                a.Parameters.AddWithValue("@old", $"total {oldTotal:N2}, fuel {oldFuel:N2}"); a.Parameters.AddWithValue("@new", $"total {newTotal:N2}, fuel {newFuel:N2}");
+                a.Parameters.AddWithValue("@rsn", $"Amounts replaced by the lines of statement {soaNo}"); a.Parameters.AddWithValue("@ip", Environment.MachineName);
+                a.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>Cancelling a statement: invoices whose amounts it replaced get their earlier amounts back (they are unpaid: a live receipt blocks the cancel).</summary>
+        private static void RestoreInvoiceAmountsOfSoa(int soaId)
+        {
+            using var conn = new SqliteConnection(connectionString);
+            conn.Open();
+            using var tx = conn.BeginTransaction();
+            try
+            {
+                EnsureInvoiceAmountHistory(conn, tx);
+                var rows = new List<(int Hid, int Inv, string No, decimal OldT, decimal OldF, decimal NewT, decimal NewF)>();
+                using (var c = conn.CreateCommand())
+                {
+                    c.Transaction = tx;
+                    c.CommandText = "SELECT Id, InvoiceId, COALESCE(InvoiceNumber,''), OldTotal, OldFuel, NewTotal, NewFuel FROM InvoiceAmountHistory WHERE SoaId = @s AND RevertedAt IS NULL";
+                    c.Parameters.AddWithValue("@s", soaId);
+                    using var r = c.ExecuteReader();
+                    while (r.Read()) rows.Add((r.GetInt32(0), r.GetInt32(1), r.GetString(2), Convert.ToDecimal(r.GetValue(3)), Convert.ToDecimal(r.GetValue(4)), Convert.ToDecimal(r.GetValue(5)), Convert.ToDecimal(r.GetValue(6))));
+                }
+                string user = SessionContext.ActiveUser?.Username ?? SessionContext.CurrentUsername ?? "";
+                string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                foreach (var h in rows)
+                {
+                    using (var u = conn.CreateCommand())
+                    {
+                        u.Transaction = tx;
+                        u.CommandText = "UPDATE Invoices SET TotalAmount = @t, FuelSurcharge = @f, NetAmount = @t - COALESCE(Deductions,0) WHERE Id = @i AND COALESCE(Status,'') = 'Unpaid' COLLATE NOCASE";
+                        u.Parameters.AddWithValue("@t", h.OldT); u.Parameters.AddWithValue("@f", h.OldF); u.Parameters.AddWithValue("@i", h.Inv);
+                        u.ExecuteNonQuery();
+                    }
+                    using (var u = conn.CreateCommand())
+                    {
+                        u.Transaction = tx;
+                        u.CommandText = "UPDATE InvoiceAmountHistory SET RevertedAt = @at WHERE Id = @h";
+                        u.Parameters.AddWithValue("@at", now); u.Parameters.AddWithValue("@h", h.Hid);
+                        u.ExecuteNonQuery();
+                    }
+                    using (var a = conn.CreateCommand())
+                    {
+                        a.Transaction = tx;
+                        a.CommandText = @"INSERT INTO AuditTrail (Timestamp, Username, UserRole, ActionType, TableName, RecordId, RecordIdentifier, FieldName, OldValue, NewValue, ReasonOrNotes, IpOrMachine)
+                                          VALUES (@ts, @u, @r, 'UPDATE', 'Invoices', @rid, @rident, 'TotalAmount / FuelSurcharge', @old, @new, 'Statement cancelled: the invoice got its earlier amounts back', @ip)";
+                        a.Parameters.AddWithValue("@ts", now); a.Parameters.AddWithValue("@u", user); a.Parameters.AddWithValue("@r", SessionContext.ActiveUser?.Role ?? "System");
+                        a.Parameters.AddWithValue("@rid", h.Inv); a.Parameters.AddWithValue("@rident", h.No);
+                        a.Parameters.AddWithValue("@old", $"total {h.NewT:N2}, fuel {h.NewF:N2}"); a.Parameters.AddWithValue("@new", $"total {h.OldT:N2}, fuel {h.OldF:N2}"); a.Parameters.AddWithValue("@ip", Environment.MachineName);
+                        a.ExecuteNonQuery();
+                    }
+                }
+                tx.Commit();
+            }
+            catch { tx.Rollback(); throw; }
+        }
+
         /// <summary>The trip's service invoice (newest that is not cancelled), from a list made by <see cref="GetTripInvoices"/>.</summary>
         public static TripInvoice? TripInvoiceFor(IEnumerable<TripInvoice> all, int deliveryId, int specialTripId)
         {
@@ -84,7 +190,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                     if (!string.Equals(tripClient.Trim(), (soa.ClientName ?? "").Trim(), StringComparison.OrdinalIgnoreCase))
                         problems.Add($"{label}: it is for {tripClient}, not {soa.ClientName}. One statement is for one client only.");
-                    else if (g.Sum(x => x.Amount) <= 0) problems.Add($"{label}: type its Amount before saving the statement.");
+                    else if (g.Sum(x => x.Amount) < MinStatementAmount) problems.Add($"{label}: type its Amount (at least PHP {MinStatementAmount:N2}) before saving the statement.");
                     else found.Add((0, "", 0m, Centavos(g.Sum(x => x.Amount)), Centavos(g.Sum(x => x.FuelSurcharge))));
                     continue;
                 }
@@ -102,7 +208,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else if (!string.Equals(client.Trim(), (soa.ClientName ?? "").Trim(), StringComparison.OrdinalIgnoreCase)) problems.Add($"{label}: SI {no} is for {client}, not {soa.ClientName}.");
                 else if (onSoa == 0 && st.Equals("Unpaid", StringComparison.OrdinalIgnoreCase) && paid <= 0)
                 {
-                    if (g.Sum(x => x.Amount) <= 0) problems.Add($"{label}: type its Amount before saving the statement.");
+                    if (g.Sum(x => x.Amount) < MinStatementAmount) problems.Add($"{label}: type its Amount (at least PHP {MinStatementAmount:N2}) before saving the statement.");
                     else { lineDriven.Add(id); found.Add((id, no, net, Centavos(g.Sum(x => x.Amount)), Centavos(g.Sum(x => x.FuelSurcharge)))); }
                 }
                 else found.Add((id, no, net, invTotal - invFuel, invFuel));
@@ -151,7 +257,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 u.CommandText = lineDriven.Contains(f.Id)
                     ? "UPDATE Invoices SET SoaId = @sid, TotalAmount = @gross, FuelSurcharge = @fuel, Deductions = @w, NetAmount = @gross - @w WHERE Id = @id"
                     : "UPDATE Invoices SET SoaId = @sid, Deductions = @w, NetAmount = TotalAmount - @w WHERE Id = @id";
-                if (lineDriven.Contains(f.Id)) { u.Parameters.AddWithValue("@gross", f.Freight + f.Fuel); u.Parameters.AddWithValue("@fuel", f.Fuel); }
+                if (lineDriven.Contains(f.Id))
+                {
+                    u.Parameters.AddWithValue("@gross", f.Freight + f.Fuel); u.Parameters.AddWithValue("@fuel", f.Fuel);
+                    RecordInvoiceAmountChange(conn, tx, f.Id, f.Number, soaId, soa.SoaNumber, f.Freight + f.Fuel, f.Fuel);
+                }
                 u.Parameters.AddWithValue("@sid", soaId);
                 u.Parameters.AddWithValue("@w", shares[k]);
                 u.Parameters.AddWithValue("@id", f.Id);

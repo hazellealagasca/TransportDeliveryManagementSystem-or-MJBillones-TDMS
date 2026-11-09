@@ -120,6 +120,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string why = WhySoaCannotBeCancelled(soa);
             if (why.Length > 0) throw new InvalidOperationException(why);
             EnsureSoaCancelColumns();
+            RestoreInvoiceAmountsOfSoa(id); // invoices whose amounts this statement replaced get their earlier amounts back
             DeleteStatementOfAccount(id); // soft delete: status Cancelled, invoices freed, trip reports resynced, one audit entry
             string user = SessionContext.ActiveUser?.Username ?? SessionContext.CurrentUsername;
             using (var conn = new SqliteConnection(connectionString))

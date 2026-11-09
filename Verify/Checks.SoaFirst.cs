@@ -73,6 +73,21 @@ public static partial class Checks
         decimal net = Convert.ToDecimal(Scalar("SELECT NetAmount FROM Invoices WHERE Id=@i", ("@i", inv.Id)) ?? 0);
         long onSoa = Convert.ToInt64(Scalar("SELECT COALESCE(SoaId,0) FROM Invoices WHERE Id=@i", ("@i", inv.Id)) ?? 0);
         if (total != 3200m || net != t.Due || onSoa != soaId) return $"invoice total {total}, net {net} (due {t.Due}), soa {onSoa} (expected {soaId})";
+        // the old amounts are kept and audited
+        long hist = Convert.ToInt64(Scalar("SELECT COUNT(*) FROM InvoiceAmountHistory WHERE InvoiceId=@i AND OldTotal=5000 AND OldFuel=500 AND RevertedAt IS NULL", ("@i", inv.Id)) ?? 0);
+        long audit = Convert.ToInt64(Scalar("SELECT COUNT(*) FROM AuditTrail WHERE TableName='Invoices' AND RecordId=@i", ("@i", inv.Id)) ?? 0);
+        if (hist != 1 || audit < 1) return $"history rows {hist}, audit lines {audit} (1 and 1+ expected)";
+        // cancelling the statement puts the old amounts back
+        MJdatabase.CancelStatementOfAccount(soaId, "Client did not agree the amounts");
+        decimal back = Convert.ToDecimal(Scalar("SELECT TotalAmount FROM Invoices WHERE Id=@i", ("@i", inv.Id)) ?? 0);
+        decimal backFuel = Convert.ToDecimal(Scalar("SELECT FuelSurcharge FROM Invoices WHERE Id=@i", ("@i", inv.Id)) ?? 0);
+        decimal backNet = Convert.ToDecimal(Scalar("SELECT NetAmount FROM Invoices WHERE Id=@i", ("@i", inv.Id)) ?? 0);
+        if (back != 5000m || backFuel != 500m || backNet != 5000m) return $"after cancel the invoice is {back} / fuel {backFuel} / net {backNet} (5000 / 500 / 5000 expected)";
+        // a typo amount is refused
+        int b2 = Seed.Delivery(client: "CLIENT A"); Seed.TripReport(b2);
+        bool tiny = Refused(() => MJdatabase.SaveStatementOfAccount(new StatementOfAccount { ClientName = "CLIENT A", PeriodCovered = "x", IssueDate = DateTime.Today, DeliveryType = "REF", TotalSalesVatInc = 0.01m, TotalAmount = 0.01m, SoaType = SoaTypes.Normal },
+            new List<StatementOfAccountItem> { SoaLine(b2, 0.01m, 0m) }), out _);
+        if (!tiny) return "an amount of 0.01 was accepted";
         return "";
     }
 }
