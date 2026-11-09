@@ -166,7 +166,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             drRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             drRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             drRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            Field(txtDrNew); txtDrNew.PlaceholderText = "Type one or more DR numbers and press Enter"; txtDrNew.MaxLength = 2000;
+            Field(txtDrNew); txtDrNew.PlaceholderText = "Type one or more DR numbers and press Enter"; txtDrNew.MaxLength = 2000; DrList.GuardLength(txtDrNew);
             var btnAddDr = Btn("Add", "secondary");
             var btnRemoveDr = Btn("Remove", "secondary");
             btnAddDr.Click += (s, e) => AddDr();

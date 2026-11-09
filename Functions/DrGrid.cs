@@ -149,6 +149,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (!HookedBoxes.Contains(tb))
                     {
                         HookedBoxes.Add(tb);
+                        DrList.GuardLength(tb);   // Nov 10: a DR number can't pass 8 digits
                         tb.TextChanged += (s2, e2) =>
                         {
                             try

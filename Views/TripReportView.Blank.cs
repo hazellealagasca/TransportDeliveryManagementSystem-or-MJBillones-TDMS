@@ -28,10 +28,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (gridStores != null)
             {
-                // Nov 10: a DR number is exactly 8 digits.
+                // Nov 10: a DR number is 4 to 8 digits.
                 var badDr = gridStores.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow)
-                    .SelectMany(r => DrList.Parse(r.Cells["colDr"].Value?.ToString())).Where(d => !System.Text.RegularExpressions.Regex.IsMatch(d, @"^\d{8}$")).Distinct().ToList();
-                if (badDr.Count > 0) list.Add(($"A DR number must be exactly 8 digits (numbers only). Fix: {string.Join(", ", badDr.Take(6))}{(badDr.Count > 6 ? ", …" : "")}.", gridStores));
+                    .SelectMany(r => DrList.Parse(r.Cells["colDr"].Value?.ToString())).Where(d => !System.Text.RegularExpressions.Regex.IsMatch(d, @"^\d{4,8}$")).Distinct().ToList();
+                if (badDr.Count > 0) list.Add(($"A DR number must be 4 to 8 digits (numbers only). Fix: {string.Join(", ", badDr.Take(6))}{(badDr.Count > 6 ? ", …" : "")}.", gridStores));
                 // Nov 10: every store needs its time in and time out.
                 var noIn = gridStores.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow && string.IsNullOrWhiteSpace(r.Cells["colIn"].Value?.ToString())).Select(r => (r.Cells["colStore"]?.Value?.ToString() ?? "").Trim()).ToList();
                 var noOut = gridStores.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow && string.IsNullOrWhiteSpace(r.Cells["colOut"].Value?.ToString())).Select(r => (r.Cells["colStore"]?.Value?.ToString() ?? "").Trim()).ToList();

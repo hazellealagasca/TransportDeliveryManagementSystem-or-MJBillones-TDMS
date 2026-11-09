@@ -59,6 +59,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             txtNew.Dock = DockStyle.Fill;
             txtNew.Font = new Font("Segoe UI", 10.5F);
+            DrList.GuardLength(txtNew);   // Nov 10: a DR number can't pass 8 digits
             txtNew.BackColor = AppTheme.InputBack;
             txtNew.ForeColor = AppTheme.TextPrimary;
             txtNew.PlaceholderText = "e.g. DR-1001";
