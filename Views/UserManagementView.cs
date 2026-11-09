@@ -376,6 +376,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string lastName = txtLastName.Text.Trim();
                 string firstName = txtFirstName.Text.Trim();
                 string middleName = txtMiddleName.Text.Trim();
+                var nameProblem = NameHelper.CheckStandard(lastName, firstName, middleName);
+                if (nameProblem != null)
+                {
+                    MessageBox.Show(nameProblem.Value.Message, "Name standard", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    (nameProblem.Value.Field == "last" ? txtLastName : nameProblem.Value.Field == "first" ? txtFirstName : txtMiddleName).Focus();
+                    return;
+                }
 
                 if (string.IsNullOrWhiteSpace(lastName) || !SecurityHelper.IsValidName(lastName))
                 {
@@ -384,7 +391,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
-                if (string.IsNullOrWhiteSpace(firstName) || !SecurityHelper.IsValidName(firstName))
+                if (string.IsNullOrWhiteSpace(firstName) || !NameHelper.FirstNameOk(firstName))
                 {
                     MessageBox.Show("Please enter a valid first name containing only letters, spaces, hyphens, and apostrophes (2 to 60 characters).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtFirstName.Focus();
@@ -498,6 +505,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string lastName = txtLastName.Text.Trim();
                 string firstName = txtFirstName.Text.Trim();
                 string middleName = txtMiddleName.Text.Trim();
+                var nameProblem = NameHelper.CheckStandard(lastName, firstName, middleName);
+                if (nameProblem != null)
+                {
+                    MessageBox.Show(nameProblem.Value.Message, "Name standard", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    (nameProblem.Value.Field == "last" ? txtLastName : nameProblem.Value.Field == "first" ? txtFirstName : txtMiddleName).Focus();
+                    return;
+                }
 
                 if (string.IsNullOrWhiteSpace(lastName) || !SecurityHelper.IsValidName(lastName))
                 {
@@ -506,7 +520,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
-                if (string.IsNullOrWhiteSpace(firstName) || !SecurityHelper.IsValidName(firstName))
+                if (string.IsNullOrWhiteSpace(firstName) || !NameHelper.FirstNameOk(firstName))
                 {
                     MessageBox.Show("Please enter a valid first name containing only letters, spaces, hyphens, and apostrophes (2 to 60 characters).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtFirstName.Focus();

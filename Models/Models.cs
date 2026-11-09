@@ -11,6 +11,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
     public static class NameHelper
     {
+        private static bool IsInitial(string part)
+        {
+            var tokens = (part ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            return tokens.Length > 0 && tokens.All(t => t.Trim('.').Length <= 1);
+        }
+
+        /// <summary>A first name is the normal name check, or a single period "." for a person with one legal name only (typed in Last Name).</summary>
+        public static bool FirstNameOk(string? first) => (first ?? "").Trim() == "." || Functions.SecurityHelper.IsValidName(first);
+
+        /// <summary>
+        /// Name standard for crew and users: separate Last / First / Middle fields. First name = the given name(s), no initials. Middle name = the full
+        /// middle name (no initial), or blank. Last name = the family name; a person with ONE legal name puts it in Last Name and "." in First Name.
+        /// Returns the problem and the field it is about ("last", "first", "middle"), or null when the names follow the standard.
+        /// </summary>
+        public static (string Message, string Field)? CheckStandard(string? last, string? first, string? middle)
+        {
+            string l = (last ?? "").Trim(), f = (first ?? "").Trim(), m = (middle ?? "").Trim();
+            if (l.Length == 0) return ("Last Name is required: enter the family name. A person with only one legal name types it in Last Name and a period (.) in First Name.", "last");
+            if (IsInitial(l)) return ("Last Name must be the full family name, not an initial.", "last");
+            if (f.Length == 0) return ("First Name is required: enter the given name(s). With only one legal name, type a period (.) here and the name in Last Name.", "first");
+            if (f != "." && IsInitial(f)) return ("First Name must be the full given name, not an initial (e.g. Juan, not J.). Only a person with one legal name uses a period (.).", "first");
+            if (m.Length > 0 && IsInitial(m)) return ("Middle Name must be written in full, not as an initial (e.g. Santos, not S.). Leave it blank if there is none.", "middle");
+            return null;
+        }
+
         public static string FormatFullName(string? lastName, string? firstName, string? middleName)
         {
             string l = (lastName ?? "").Trim();
