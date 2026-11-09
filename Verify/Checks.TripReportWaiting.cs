@@ -30,6 +30,20 @@ public static partial class Checks
         });
     }
 
+    /// <summary>
+    /// Closes the pop-ups (modal windows) that belong to THIS thread and records their titles. Application.OpenForms is shared by every thread,
+    /// so a window left over from an earlier check on another thread must be skipped: touching it throws "Cross-thread operation not valid".
+    /// </summary>
+    private static void CloseOpenPopups(Form host, List<string> seen)
+    {
+        foreach (Form f in Application.OpenForms.Cast<Form>().Where(f => f != host && f.Modal).ToList())
+        {
+            if (f.IsHandleCreated && f.InvokeRequired) continue; // another thread's window
+            seen.Add(f.Text);
+            f.Close();
+        }
+    }
+
     private static void PressCreate(TripReportView view, int deliveryId)
     {
         var row = MJdatabase.GetDispatchesAwaitingReport().First(r => r.DeliveryId == deliveryId);

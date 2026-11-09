@@ -485,7 +485,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 keyValues.Add(("Damaged Crates Quantity", $"{inc.DamagedQuantity:N0} Crates"));
                 keyValues.Add(("Estimated Damage Cost", $"₱{inc.EstimatedCost:N2}"));
                 keyValues.Add(("Root Cause / Category", inc.Cause));
-                keyValues.Add(("Chargeable to Crew", inc.ChargeableToCrew ? "Yes (Deducted from driver/aide)" : "No (Company Liability / Client Damage)"));
+                keyValues.Add(("Chargeable to Crew", inc.ChargeableToCrew ? "Yes (record only: any deduction is written as a note in the crew's trip pay, never in billing)" : "No (Company Liability / Client Damage)"));
                 keyValues.Add(("Investigation Status", inc.Status));
                 keyValues.Add(("Photo Evidence Attached", !string.IsNullOrEmpty(inc.PhotoPath) ? $"Attached ✓ ({System.IO.Path.GetFileName(inc.PhotoPath)})" : "None"));
                 keyValues.Add(("Incident Narrative", inc.Description));

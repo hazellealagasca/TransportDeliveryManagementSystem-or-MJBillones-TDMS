@@ -1432,6 +1432,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                // A report whose trip is billed is not changed (checked before anything is written: the store lines are saved ahead of the report).
+                string billedWhy = MJdatabase.WhyTripReportIsLocked(selectedTripReport);
+                if (billedWhy.Length > 0)
+                {
+                    QuietBox.Show(billedWhy, "Trip report is billed", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
                 if (!PassBlankFormChecks()) return; // Nov 6
                 var selDel = allDeliveries.FirstOrDefault(d => d.Id == selectedTripReport.DeliveryId || d.DispatchNumber == selectedTripReport.DispatchNumber);
                 if (!ConfirmDrNumbers(selDel)) return;
@@ -1597,6 +1604,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (selectedTripReport == null)
                 {
                     MessageBox.Show("Please select a trip report to delete.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                string? deleteBlock = MJdatabase.ValidateRecordDeletion("TripReports", selectedTripReport.Id);
+                if (!string.IsNullOrEmpty(deleteBlock))
+                {
+                    MessageBox.Show(deleteBlock, "Deletion Blocked", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 

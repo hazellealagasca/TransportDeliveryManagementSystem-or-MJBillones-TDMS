@@ -155,7 +155,7 @@ public static partial class Checks
             // 3. Billing accepts the two filed trips and refuses the draft one (a themed pop-up would wait for a click: close it and record its title)
             var seen = new List<string>();
             using var guard = new System.Windows.Forms.Timer { Interval = 300 };
-            guard.Tick += (s, e) => { foreach (Form f in Application.OpenForms.Cast<Form>().Where(f => f != host && f.Modal).ToList()) { seen.Add(f.Text); f.Close(); } };
+            guard.Tick += (s, e) => CloseOpenPopups(host, seen);
             guard.Start();
             using var host2 = new Form { ShowInTaskbar = false, StartPosition = FormStartPosition.Manual, Location = new Point(-4000, -4000), ClientSize = new Size(1500, 900), Opacity = 0 };
             var billing = new BillingView { Dock = DockStyle.Fill };
@@ -230,7 +230,7 @@ public static partial class Checks
             // saving asks first; closing the question (= No) must save nothing
             var seen = new List<string>();
             using var guard = new System.Windows.Forms.Timer { Interval = 300 };
-            guard.Tick += (s, e) => { foreach (Form f in Application.OpenForms.Cast<Form>().Where(f => f != host && f.Modal).ToList()) { seen.Add(f.Text); f.Close(); } };
+            guard.Tick += (s, e) => CloseOpenPopups(host, seen);
             guard.Start();
             foreach (DataGridViewRow r in FieldOf<DataGridView>(view, "gridStores")!.Rows) { r.Cells["colIn"].Value = "08:00"; r.Cells["colOut"].Value = "09:00"; r.Cells["colRep"].Value = "Maria Santos"; r.Cells["colDr"].Value = (7000 + r.Index).ToString(); }
             typeof(TripReportView).GetMethod("SaveSeveralDispatches", NonPub)!.Invoke(view, new object[] { DeliveryNo(view, n1) });

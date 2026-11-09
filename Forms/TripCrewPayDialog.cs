@@ -54,7 +54,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             grid.Columns.Add(Money("colBase", "Daily wage"));
             grid.Columns.Add(Money("colAllow", "Meal allowance"));
             grid.Columns.Add(Money("colNet", "Total", ro: true));
-            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "colNotes", HeaderText = "Notes", FillWeight = 110 });
+            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "colNotes", HeaderText = "Deduction / notes (text only, never billed)", FillWeight = 110 });
             grid.CellValidating += (s, e) =>
             {
                 string col = grid.Columns[e.ColumnIndex].Name;

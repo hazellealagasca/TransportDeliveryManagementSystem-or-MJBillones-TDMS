@@ -68,7 +68,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnSaveDraft.Visible = !isEditingExistingReport;
             btnIssueExisting.Visible = isEditingExistingReport && selectedTripReport != null && !RowMenu.Is(selectedTripReport.Status, TripReportStatus.Invoiced);
             if (isEditingExistingReport && selectedTripReport != null)
+            {
                 lblFormHeader.Text = $"Trip Report  ·  {selectedTripReport.TripReportNumber}  ·  {selectedTripReport.Status}";
+                // Tell the person up front that a billed report can't be changed (Update says why).
+                try { if (MJdatabase.WhyTripReportIsLocked(selectedTripReport).Length > 0) lblFormHeader.Text += "  ·  billed, locked"; } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            }
             UpdateTripStepper();
         }
 

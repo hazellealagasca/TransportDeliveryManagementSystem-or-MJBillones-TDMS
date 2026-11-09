@@ -692,23 +692,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        var cmd = conn.CreateCommand();
+                        // The trip's own live invoice (a dispatch or a special trip), or an old statement's invoice that bills it. One rule for all paths: see MJdatabase.BilledGuards.cs.
+                        var billedBy = LiveInvoiceOfTripReport(id, out string billedReportNo);
 
-                        cmd.CommandText = "SELECT i.InvoiceNumber FROM Invoices i JOIN TripReports tr ON tr.DeliveryId = i.DeliveryId WHERE tr.Id = @id AND i.Status <> 'Cancelled'";
-
-                        cmd.Parameters.AddWithValue("@id", id);
-
-                        using (var r = cmd.ExecuteReader())
+                        if (billedBy != null)
 
                         {
 
-                            if (r.Read())
-
-                            {
-
-                                return $"CANNOT DELETE TRIP REPORT:\nThis completed trip is already billed on Invoice #{r.GetString(0)}. Please void or delete the invoice first.";
-
-                            }
+                            return "CANNOT DELETE TRIP REPORT:\n" + BilledReportMessage(billedReportNo, billedBy, "removed");
 
                         }
 
@@ -10357,6 +10348,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (tr.SpecialTripId > 0) EnsureSpecialTripColumns();
             EnsureWorkflowColumns();
+            // A finished report whose trip is billed on a live invoice is not changed (the screen asks first; this is the net under it).
+            if (!wasNew)
+            {
+                string billedWhy = WhyTripReportIsLocked(tr);
+                if (billedWhy.Length > 0) throw new InvalidOperationException(billedWhy + " Nothing was saved.");
+            }
 
             using (var conn = new SqliteConnection(connectionString))
 

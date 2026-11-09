@@ -92,7 +92,7 @@ public static partial class Checks
         });
         t.SetApartmentState(ApartmentState.STA);
         t.Start();
-        if (!t.Join(TimeSpan.FromMinutes(8))) return "timed out (a window is waiting for input)";
+        if (!t.Join(TimeSpan.FromMinutes(8))) return "timed out (a window is waiting for input): " + string.Join(" / ", Application.OpenForms.Cast<Form>().Select(f => $"'{f.Text}' modal={f.Modal} {f.GetType().Name}"));
         if (err != null) throw err;
         return result;
     }
