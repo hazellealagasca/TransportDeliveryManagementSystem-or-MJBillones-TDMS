@@ -224,7 +224,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numCombiCold.SetSafe(Math.Min(numCombiCold.Maximum, m?.CombiColdMax ?? 0));
             numCombiDry.SetSafe(Math.Min(numCombiDry.Maximum, m?.CombiDryMax ?? 0));
             lblEditTitle.Text = name == null ? "New truck category" : $"Edit {name}";
-            btnRemove.Visible = name != null;
+            bool isDefault = name != null && MJdatabase.IsDefaultTruckCategory(name), canEdit = SessionContext.IsAdmin;
+            btnRemove.Visible = name != null && !isDefault && canEdit; // a default category can't be removed
+            txtName.ReadOnly = isDefault || !canEdit;                   // ...or renamed: only its crates change
+            foreach (var n in new[] { numDry, numCold, numCombiCold, numCombiDry }) n.Enabled = canEdit;
+            btnSave.Enabled = canEdit; btnNew.Visible = canEdit;
+            if (isDefault) lblEditTitle.Text = $"Edit {name} (default category: crates only)";
+            else if (!canEdit && name != null) lblEditTitle.Text = $"{name} (only the administrator can change crate capacities)";
             if (name == null) { grid.ClearSelection(); txtName.Focus(); }
             ShowRules();
         }

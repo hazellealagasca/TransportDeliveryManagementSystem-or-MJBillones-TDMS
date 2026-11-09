@@ -1247,7 +1247,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             int cap = (int)numCatCapacity.Value;
-            bool success = MJdatabase.SaveTruckCategory(name, cap);
+            bool success;
+            try { success = MJdatabase.SaveTruckCategory(name, cap); }
+            catch (InvalidOperationException ex) { MessageBox.Show(FindForm(), ex.Message, "Truck category", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
             if (success)
             {
                 MJdatabase.NotifyCategoriesChanged();
@@ -1279,7 +1281,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             int cap = (int)numCatCapacity.Value;
             string oldName = selectedTruckCategory.CategoryName;
-            bool success = MJdatabase.SaveTruckCategory(name, cap, oldName);
+            bool success;
+            try { success = MJdatabase.SaveTruckCategory(name, cap, oldName); }
+            catch (InvalidOperationException ex) { MessageBox.Show(FindForm(), ex.Message, "Truck category", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
             if (success)
             {
                 MJdatabase.NotifyCategoriesChanged();
@@ -1302,6 +1306,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             string name = selectedTruckCategory.CategoryName;
+            if (MJdatabase.IsDefaultTruckCategory(name)) { MessageBox.Show(FindForm(), $"{name} is a default truck category and can't be deleted.", "Truck category", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
             var confirm = MessageBox.Show($"Are you sure you want to delete category '{name}'?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (confirm == DialogResult.Yes)
             {

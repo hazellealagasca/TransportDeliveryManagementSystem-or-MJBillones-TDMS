@@ -107,8 +107,40 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+        /// <summary>The standard truck categories of the load-planning matrix (crates only; weights are not kept): name, Dry, Cold, Combi cold part, Combi dry part.</summary>
+        public static readonly (string Name, int Dry, int Cold, int CombiCold, int CombiDry)[] DefaultTruckCategories =
+        {
+            ("4T", 280, 120, 75, 72),
+            ("FWD/6T", 300, 200, 150, 100),
+            ("8T", 500, 280, 250, 140)
+        };
+
+        /// <summary>A default (standard) truck category: it can't be deleted or renamed, and only the administrator can change its crate capacity.</summary>
+        public static bool IsDefaultTruckCategory(string? name) => !string.IsNullOrWhiteSpace(name) && DefaultMatrixFor(name).HasValue;
+
+        /// <summary>A signed-in person who is not the administrator can't change crate capacities (no signed-in person = the system itself, e.g. start-up).</summary>
+        private static void RequireAdminForCapacity()
+        {
+            if (SessionContext.ActiveUser != null && !SessionContext.IsAdmin)
+                throw new InvalidOperationException("Only the administrator can change a truck category's crate capacity.");
+        }
+
         private static void SeedCapacityMatrix()
         {
+            // The three standard categories are always there (4T, FWD/6T, 8T). A database that already has a category of that size
+            // (for example "FORWARD 4 TONS") keeps it and its numbers.
+            try
+            {
+                var have = new HashSet<(int, int, int, int)>();
+                foreach (var c in GetTruckCategories()) { var d0 = DefaultMatrixFor(c.CategoryName); if (d0.HasValue) have.Add((d0.Value.dry, d0.Value.cold, d0.Value.cc, d0.Value.cd)); }
+                foreach (var d in DefaultTruckCategories)
+                {
+                    if (have.Contains((d.Dry, d.Cold, d.CombiCold, d.CombiDry))) continue;
+                    SaveLookupItemWithExtra("Truck Type / Category", d.Name, d.Dry.ToString());
+                    WriteCapacityRow(new TruckCapacity { CategoryName = d.Name, DryMax = d.Dry, ColdMax = d.Cold, CombiColdMax = d.CombiCold, CombiDryMax = d.CombiDry });
+                }
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
             // One-time fix: the first seeding gave "FORWARD 4 TONS"-style names the 6-ton numbers.
             if (!string.Equals(GetSystemSetting("Fix.MatrixSeed.v2", ""), "done", StringComparison.OrdinalIgnoreCase))
             {
@@ -207,6 +239,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static int SaveCapacityMatrix(TruckCapacity m, string? oldName = null)
         {
             EnsureCapacitySchema();
+            RequireAdminForCapacity();
+            if (!string.IsNullOrWhiteSpace(oldName) && IsDefaultTruckCategory(oldName) && !string.Equals(oldName.Trim(), m.CategoryName.Trim(), StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"{oldName.Trim()} is a default truck category, so its name can't be changed. Only its crate capacity can be changed.");
             var errors = CapacityRuleErrors(m);
             if (errors.Count > 0) throw new InvalidOperationException(string.Join("\n", errors));
             var before = GetCapacityFor(oldName ?? m.CategoryName);

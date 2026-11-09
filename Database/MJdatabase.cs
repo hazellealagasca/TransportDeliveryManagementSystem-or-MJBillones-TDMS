@@ -14576,6 +14576,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (string.IsNullOrWhiteSpace(categoryName)) return false;
 
+            // Nov 10: a default category keeps its name, and only the administrator changes a category's crate capacity.
+            if (IsDefaultTruckCategory(oldCategoryName ?? categoryName)) RequireAdminForCapacity();
+            if (!string.IsNullOrWhiteSpace(oldCategoryName) && IsDefaultTruckCategory(oldCategoryName) && !oldCategoryName.Trim().Equals(categoryName.Trim(), StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"{oldCategoryName.Trim()} is a default truck category, so its name can't be changed. Only its crate capacity can be changed.");
+
             using (var conn = new SqliteConnection(connectionString))
 
             {
@@ -14629,6 +14634,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
 
             if (string.IsNullOrWhiteSpace(categoryName)) return false;
+
+            if (IsDefaultTruckCategory(categoryName))
+                throw new InvalidOperationException($"{categoryName.Trim()} is a default truck category and can't be deleted.");
 
             bool r1 = DeleteLookupItem("Truck Type / Category", categoryName.Trim());
 
