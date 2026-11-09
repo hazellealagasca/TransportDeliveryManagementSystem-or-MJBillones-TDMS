@@ -109,13 +109,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private FullPageFormKit? formKit;
         private void InitFullPageForm()
         {
-            formKit = new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to receipts");
+            BuildVerifyBox();
+            formKit =new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to receipts");
             formKit.Build(new[]
             {
-                new FullPageFormKit.Section("Statement or invoice being paid", "Pick the statement (all its service invoices) or the service invoice this receipt pays in full.", lblInv, cbInvoice, pnlLinkedInvoice),
+                new FullPageFormKit.Section("Statement or invoice being paid", "Pick the statement (all its service invoices) or the service invoice this receipt pays in full.", lblInv, cbInvoice, pnlLinkedInvoice, chkVerifyAmount),
                 new FullPageFormKit.Section("Payment", "Receipt no., the full amount due, method and reference.", BuildReceiptNoField()[0], txtReceiptNo, receiptNumberGuard.Message, receiptNumberGuard.Tick, tblPaymentRow, BuildCollCapLabel(), BuildPaymentDateField()[0], dtpPaymentDate, lblRef, txtRefNo, lblNotes, txtNotes)
             });
             InitCollGuide();
+            btnSave.Text = "✔ Complete / Issue Receipt"; // Nov 10: enabled only after the overall amount is ticked as checked
             if (btnToggleForm != null)
             {
                 btnToggleForm.Text = "＋ New receipt";
@@ -415,6 +417,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             selectedCollection = null;
             lblFormHeader.Text = "Record Payment Receipt";
             lblLinkedInvoiceInfo.Text = "📄 Linked invoice: (none selected)";
+            ShowVerifyFor(null);
             cbPaymentMethod.SelectedIndex = -1; cbPaymentMethod.Text = ""; // Nov 6: blank until picked
             editTargetInvoice = null;
             if (txtReceiptNo != null) txtReceiptNo.Text = "";

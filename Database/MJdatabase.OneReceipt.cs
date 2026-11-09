@@ -137,9 +137,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// Records ONE collection receipt for the full amount of the statement (every open invoice on it) or of the lone invoice.
         /// Each invoice turns Paid. Returns the rows written.
         /// </summary>
-        public static List<CollectionReceipt> SaveOneReceipt(string receiptNumber, PayTarget target, string method, string reference, string notes, DateTime? paymentDate = null, bool crossTypeConfirmed = false)
+        public static List<CollectionReceipt> SaveOneReceipt(string receiptNumber, PayTarget target, string method, string reference, string notes, DateTime? paymentDate = null, bool crossTypeConfirmed = false, decimal? verifiedAmount = null)
         {
             string no = (receiptNumber ?? "").Trim();
+            // Nov 10: the person ticked "I checked the overall amount": the receipt is issued only for exactly that amount.
+            if (verifiedAmount.HasValue && target != null && Centavos(verifiedAmount.Value) != Centavos(target.Net))
+                throw new InvalidOperationException($"The amount you checked (PHP {verifiedAmount.Value:N2}) is not the amount due (PHP {target.Net:N2}). Reload the list and check it again. Nothing was saved.");
             EnsureNumberSchema(); // before the write transaction: it may write
             if (target == null || target.Invoices.Count == 0) throw new InvalidOperationException("Pick the statement or the invoice being paid.");
             // The day the money was received: today or earlier (a check collected on Friday is entered on Friday's date), never before the invoice.
@@ -226,6 +229,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         rows.Add(cr);
                     }
                     if (target.IsSoa) SyncSoaStatus(conn, tx, target.SoaId); // every invoice is Paid now, so the statement is Paid
+                    // Nov 10: finalize the billing: the trip reports of everything paid stay billed (Invoiced) in the same transaction.
+                    if (target.IsSoa) ResyncTripReportsOfSoa(conn, tx, target.SoaId);
+                    foreach (var ti in target.Invoices) SyncTripReportStatus(conn, tx, ti.DeliveryId, ti.SpecialTripId);
                     tx.Commit();
                 }
                 catch

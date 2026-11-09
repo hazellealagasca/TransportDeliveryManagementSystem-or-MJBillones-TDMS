@@ -58,6 +58,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return null;
         }
 
+        /// <summary>Re-checks the trip reports of every trip on a statement: Invoiced while the statement is billed (by its own invoice or its trips' invoices), back to Completed otherwise.</summary>
+        private static void ResyncTripReportsOfSoa(SqliteConnection conn, SqliteTransaction tx, int soaId)
+        {
+            var keys = new List<(int D, int S)>();
+            using (var c = conn.CreateCommand())
+            {
+                c.Transaction = tx;
+                c.CommandText = "SELECT DISTINCT COALESCE(DeliveryId,0), COALESCE(SpecialTripId,0) FROM StatementOfAccountItems WHERE SoaId = @s AND (COALESCE(DeliveryId,0) > 0 OR COALESCE(SpecialTripId,0) > 0)";
+                c.Parameters.AddWithValue("@s", soaId);
+                using var r = c.ExecuteReader();
+                while (r.Read()) keys.Add((r.GetInt32(0), r.GetInt32(1)));
+            }
+            foreach (var (d, s) in keys) SyncTripReportStatus(conn, tx, d, s);
+        }
+
         /// <summary>Statements that can be billed with one invoice now, newest first (the list behind New invoice → Statement of Account).</summary>
         public static List<SoaToInvoice> GetSoasWaitingForOwnInvoice()
         {
@@ -116,6 +131,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 u.Parameters.AddWithValue("@s", soaId);
                 u.ExecuteNonQuery();
             }
+            ResyncTripReportsOfSoa(conn, tx, soaId); // the statement's trip reports turn Invoiced with its invoice
             tx.Commit();
             inv.Deductions = t.Withholding; inv.NetAmount = inv.TotalAmount - t.Withholding;
             return inv;

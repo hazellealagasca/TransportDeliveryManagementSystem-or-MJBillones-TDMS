@@ -176,9 +176,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void ShowTargetInfo(PayTarget t)
         {
             string lines = string.Join("; ", t.Invoices.Select(i => $"SI {i.Number} PHP {i.Net:N2}"));
-            lblLinkedInvoiceInfo.Text = t.IsSoa
-                ? $"Statement {t.SoaNumber} | {t.Client} | {t.Invoices.Count} invoice(s): {lines} | Total due: PHP {t.Net:N2}"
-                : $"Invoice SI {t.Invoices[0].Number} | {t.Client} | Amount due: PHP {t.Net:N2}";
+            string trs = TripReportsOf(t);
+            string trPart = trs.Length > 0 ? $"{Environment.NewLine}Trip reports: {trs}" : "";
+            lblLinkedInvoiceInfo.Text = (t.IsSoa
+                ? $"Statement {t.SoaNumber} | {t.Client} | {t.Invoices.Count} invoice(s): {lines}{trPart}{Environment.NewLine}Freight PHP {(t.Gross - t.Fuel):N2} + fuel PHP {t.Fuel:N2} − withholding PHP {t.Deductions:N2} = OVERALL AMOUNT DUE PHP {t.Net:N2}"
+                : $"Invoice SI {t.Invoices[0].Number} | {t.Client}{trPart}{Environment.NewLine}Freight PHP {(t.Gross - t.Fuel):N2} + fuel PHP {t.Fuel:N2} − withholding PHP {t.Deductions:N2} = OVERALL AMOUNT DUE PHP {t.Net:N2}");
+            ShowVerifyFor(t); // Nov 10: the overall amount must be ticked as checked before the receipt can be issued
             if (t.Net > numAmountPaid.Maximum) numAmountPaid.Maximum = t.Net * 2;
             numAmountPaid.SetSafe(Math.Max(numAmountPaid.Minimum, Math.Min(numAmountPaid.Maximum, t.Net)));
         }
@@ -227,14 +230,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string method = cbPaymentMethod.Text.Trim();
             MJdatabase.SaveLookupItem("Payment Method", method);
             string rno = txtReceiptNo.Text.Trim();
-            var rows = MJdatabase.SaveOneReceipt(rno, target, method, txtRefNo.Text.Trim(), txtNotes.Text.Trim(), dtpPaymentDate.Value.Date, receiptNumberGuard.CrossTypeConfirmed);
+            if (chkVerifyAmount != null && !chkVerifyAmount.Checked) { MessageBox.Show(FindForm(), "Tick \"I checked the overall amount\" first. The receipt is issued only for the amount you checked.", "Verify the overall amount", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            var rows = MJdatabase.SaveOneReceipt(rno, target, method, txtRefNo.Text.Trim(), txtNotes.Text.Trim(), dtpPaymentDate.Value.Date, receiptNumberGuard.CrossTypeConfirmed, verifiedAmount: verifyAmount);
             ClearFields();
             LoadData();
             SetFormVisibility(false);
             // Nov 6 workflow: the statement (or invoice) and its invoices are Paid now and move to Finance History.
             string what = target.IsSoa
-                ? $"Collection Receipt {rno}: PHP {target.Net:N2} for statement {target.SoaNumber}. The statement and its {rows.Count} service invoice(s) are now PAID ({string.Join(", ", target.Invoices.Select(i => i.Number))})."
-                : $"Collection Receipt {rno}: PHP {target.Net:N2} for service invoice {target.Invoices[0].Number}, which is now PAID.";
+                ? $"Collection Receipt {rno}: PHP {target.Net:N2} for statement {target.SoaNumber}. The statement, its {rows.Count} service invoice(s) ({string.Join(", ", target.Invoices.Select(i => i.Number))}) and its trip reports are now billed and PAID. The billing process is complete."
+                : $"Collection Receipt {rno}: PHP {target.Net:N2} for service invoice {target.Invoices[0].Number}. The invoice and its trip report are now billed and PAID. The billing process is complete.";
             var print = MessageBox.Show(FindForm(), what + "\n\nPayment recorded in full. Do you want to print the Official Collection Receipt now?", "Payment Completed", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
             if (print == DialogResult.Yes && rows.Count > 0) PrintHelper.PrintOfficialCollectionReceipt(rows[0]); // the slip (normal or special trip) is chosen from what was paid
         }

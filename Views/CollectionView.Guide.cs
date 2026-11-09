@@ -182,6 +182,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string rnText = (txtReceiptNo?.Text ?? "").Trim();
             checks.Add(new PaymentCheck(rnWhy ?? (rnTick ? "Tick the confirmation under the Collection Receipt No. (same digits as another document)" : editing ? $"Collection Receipt No. {rnText} (this receipt)" : $"Collection Receipt No. {rnText} is free"), rnWhy == null && !rnTick));
             decimal amt = numAmountPaid.Value;
+            if (!editing && inv != null && chkVerifyAmount != null)
+                checks.Add(new PaymentCheck(chkVerifyAmount.Checked ? $"Overall amount PHP {verifyAmount:N2} checked" : $"Tick \"I checked the overall amount\" (PHP {verifyAmount:N2}) under the linked invoice", chkVerifyAmount.Checked));
             if (inv != null)
             {
                 bool issued = !RowMenu.Is(inv.Status, "Draft") && inv.NetAmount > 0;

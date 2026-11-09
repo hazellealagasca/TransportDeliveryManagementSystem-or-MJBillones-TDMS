@@ -1,0 +1,270 @@
+commit f734655387f0478f764c8de59428a2007c8f4801
+Author: hazellealagasca <lagascahazellea@gmail.com>
+Date:   Tue Nov 10 01:20:23 2026 +0800
+
+    Collection receipt: verify the overall amount, then Complete / Issue Receipt
+    
+    The receipt form shows what billing carried over (statement or invoice,
+    client, invoices, trip reports, freight + fuel - withholding = overall
+    amount due). The person must tick "I checked the overall amount" before
+    Complete / Issue Receipt is allowed, and the checked amount is sent with the
+    save: a receipt is issued only for exactly that amount.
+    
+    Issuing the receipt marks the invoice and statement Paid and keeps the trip
+    reports billed, in one transaction. A statement's own invoice now also turns
+    its trip reports Invoiced when it is issued.
+    
+    Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+diff --git a/Database/MJdatabase.OneReceipt.cs b/Database/MJdatabase.OneReceipt.cs
+index c3d4748..284337a 100644
+--- a/Database/MJdatabase.OneReceipt.cs
++++ b/Database/MJdatabase.OneReceipt.cs
+@@ -137,9 +137,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+         /// Records ONE collection receipt for the full amount of the statement (every open invoice on it) or of the lone invoice.
+         /// Each invoice turns Paid. Returns the rows written.
+         /// </summary>
+-        public static List<CollectionReceipt> SaveOneReceipt(string receiptNumber, PayTarget target, string method, string reference, string notes, DateTime? paymentDate = null, bool crossTypeConfirmed = false)
++        public static List<CollectionReceipt> SaveOneReceipt(string receiptNumber, PayTarget target, string method, string reference, string notes, DateTime? paymentDate = null, bool crossTypeConfirmed = false, decimal? verifiedAmount = null)
+         {
+             string no = (receiptNumber ?? "").Trim();
++            // Nov 10: the person ticked "I checked the overall amount": the receipt is issued only for exactly that amount.
++            if (verifiedAmount.HasValue && target != null && Centavos(verifiedAmount.Value) != Centavos(target.Net))
++                throw new InvalidOperationException($"The amount you checked (PHP {verifiedAmount.Value:N2}) is not the amount due (PHP {target.Net:N2}). Reload the list and check it again. Nothing was saved.");
+             EnsureNumberSchema(); // before the write transaction: it may write
+             if (target == null || target.Invoices.Count == 0) throw new InvalidOperationException("Pick the statement or the invoice being paid.");
+             // The day the money was received: today or earlier (a check collected on Friday is entered on Friday's date), never before the invoice.
+@@ -226,6 +229,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+                         rows.Add(cr);
+                     }
+                     if (target.IsSoa) SyncSoaStatus(conn, tx, target.SoaId); // every invoice is Paid now, so the statement is Paid
++                    // Nov 10: finalize the billing: the trip reports of everything paid stay billed (Invoiced) in the same transaction.
++                    if (target.IsSoa) ResyncTripReportsOfSoa(conn, tx, target.SoaId);
++                    foreach (var ti in target.Invoices) SyncTripReportStatus(conn, tx, ti.DeliveryId, ti.SpecialTripId);
+                     tx.Commit();
+                 }
+                 catch
+diff --git a/Database/MJdatabase.SoaInvoice.cs b/Database/MJdatabase.SoaInvoice.cs
+index a8779e5..9f0b62b 100644
+--- a/Database/MJdatabase.SoaInvoice.cs
++++ b/Database/MJdatabase.SoaInvoice.cs
+@@ -58,6 +58,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+             return null;
+         }
+ 
++        /// <summary>Re-checks the trip reports of every trip on a statement: Invoiced while the statement is billed (by its own invoice or its trips' invoices), back to Completed otherwise.</summary>
++        private static void ResyncTripReportsOfSoa(SqliteConnection conn, SqliteTransaction tx, int soaId)
++        {
++            var keys = new List<(int D, int S)>();
++            using (var c = conn.CreateCommand())
++            {
++                c.Transaction = tx;
++                c.CommandText = "SELECT DISTINCT COALESCE(DeliveryId,0), COALESCE(SpecialTripId,0) FROM StatementOfAccountItems WHERE SoaId = @s AND (COALESCE(DeliveryId,0) > 0 OR COALESCE(SpecialTripId,0) > 0)";
++                c.Parameters.AddWithValue("@s", soaId);
++                using var r = c.ExecuteReader();
++                while (r.Read()) keys.Add((r.GetInt32(0), r.GetInt32(1)));
++            }
++            foreach (var (d, s) in keys) SyncTripReportStatus(conn, tx, d, s);
++        }
++
+         /// <summary>Statements that can be billed with one invoice now, newest first (the list behind New invoice → Statement of Account).</summary>
+         public static List<SoaToInvoice> GetSoasWaitingForOwnInvoice()
+         {
+@@ -116,6 +131,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+                 u.Parameters.AddWithValue("@s", soaId);
+                 u.ExecuteNonQuery();
+             }
++            ResyncTripReportsOfSoa(conn, tx, soaId); // the statement's trip reports turn Invoiced with its invoice
+             tx.Commit();
+             inv.Deductions = t.Withholding; inv.NetAmount = inv.TotalAmount - t.Withholding;
+             return inv;
+diff --git a/Verify/Checks.ReceiptComplete.cs b/Verify/Checks.ReceiptComplete.cs
+new file mode 100644
+index 0000000..e994be4
+--- /dev/null
++++ b/Verify/Checks.ReceiptComplete.cs
+@@ -0,0 +1,41 @@
++using System;
++using System.Collections.Generic;
++using System.Linq;
++using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
++using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
++using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
++
++namespace TDMS.Verify;
++
++public static partial class Checks
++{
++    /// <summary>Nov 10: the receipt is issued only for the amount the person checked; it then marks the invoice, the statement and the trip reports as billed and paid.</summary>
++    [Check]
++    public static string ReceiptComplete_VerifiedAmount_FinalizesInvoiceStatementAndReports()
++    {
++        Fresh(); RunBackfill();
++        int a = Seed.Delivery(client: "CLIENT A"); Seed.TripReport(a);
++        int b = Seed.Delivery(client: "CLIENT A"); Seed.TripReport(b);
++        int soaId = SaveSoaFor("CLIENT A", (a, 6000m, 300m), (b, 4000m, 200m));
++        var inv = MJdatabase.SaveInvoiceForSoa(soaId, "SI-9301");
++        foreach (var d in new[] { a, b })
++            if (Str("SELECT Status FROM TripReports WHERE DeliveryId = @d AND COALESCE(IsVoid,0) = 0", ("@d", d)) != "Invoiced") return $"the trip report of dispatch {d} did not turn Invoiced with the statement's invoice";
++
++        var target = MJdatabase.GetPayTargets().FirstOrDefault(p => p.SoaId == soaId);
++        if (target == null) return "the invoiced statement is not collectable";
++        if (target.Net != 10321.43m) return $"overall amount due {target.Net}, expected 10321.43";
++
++        // an amount that was not the one checked is refused and nothing is saved
++        if (!Refused(() => MJdatabase.SaveOneReceipt("4417", target, "Cash", "", "", DateTime.Today, false, verifiedAmount: 10000m), out _)) return "a receipt was issued for an amount that was not the one checked";
++        if (Convert.ToInt64(Scalar("SELECT COUNT(*) FROM CollectionReceipts WHERE COALESCE(IsVoid,0) = 0") ?? 0) != 0) return "a refused receipt left a row behind";
++
++        var rows = MJdatabase.SaveOneReceipt("4417", target, "Cash", "", "", DateTime.Today, false, verifiedAmount: target.Net);
++        if (rows.Count != 1 || rows[0].AmountPaid != 10321.43m) return $"receipt rows {rows.Count}, amount {(rows.Count > 0 ? rows[0].AmountPaid : 0)}";
++        if (Str("SELECT Status FROM Invoices WHERE Id = @i", ("@i", inv.Id)) != "Paid") return "the invoice is not Paid after the receipt";
++        if (Str("SELECT Status FROM StatementsOfAccount WHERE Id = @s", ("@s", soaId)) != "Paid") return "the statement is not Paid after the receipt";
++        foreach (var d in new[] { a, b })
++            if (Str("SELECT Status FROM TripReports WHERE DeliveryId = @d AND COALESCE(IsVoid,0) = 0", ("@d", d)) != "Invoiced") return $"the trip report of dispatch {d} is not billed after the receipt";
++        if (MJdatabase.GetPayTargets().Any(p => p.SoaId == soaId)) return "a paid statement is still collectable";
++        return "";
++    }
++}
+diff --git a/Views/CollectionView.Guide.cs b/Views/CollectionView.Guide.cs
+index 0687ec3..834c152 100644
+--- a/Views/CollectionView.Guide.cs
++++ b/Views/CollectionView.Guide.cs
+@@ -182,6 +182,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+             string rnText = (txtReceiptNo?.Text ?? "").Trim();
+             checks.Add(new PaymentCheck(rnWhy ?? (rnTick ? "Tick the confirmation under the Collection Receipt No. (same digits as another document)" : editing ? $"Collection Receipt No. {rnText} (this receipt)" : $"Collection Receipt No. {rnText} is free"), rnWhy == null && !rnTick));
+             decimal amt = numAmountPaid.Value;
++            if (!editing && inv != null && chkVerifyAmount != null)
++                checks.Add(new PaymentCheck(chkVerifyAmount.Checked ? $"Overall amount PHP {verifyAmount:N2} checked" : $"Tick \"I checked the overall amount\" (PHP {verifyAmount:N2}) under the linked invoice", chkVerifyAmount.Checked));
+             if (inv != null)
+             {
+                 bool issued = !RowMenu.Is(inv.Status, "Draft") && inv.NetAmount > 0;
+diff --git a/Views/CollectionView.OneReceipt.cs b/Views/CollectionView.OneReceipt.cs
+index 71a6b14..1d682f7 100644
+--- a/Views/CollectionView.OneReceipt.cs
++++ b/Views/CollectionView.OneReceipt.cs
+@@ -176,9 +176,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+         private void ShowTargetInfo(PayTarget t)
+         {
+             string lines = string.Join("; ", t.Invoices.Select(i => $"SI {i.Number} PHP {i.Net:N2}"));
+-            lblLinkedInvoiceInfo.Text = t.IsSoa
+-                ? $"Statement {t.SoaNumber} | {t.Client} | {t.Invoices.Count} invoice(s): {lines} | Total due: PHP {t.Net:N2}"
+-                : $"Invoice SI {t.Invoices[0].Number} | {t.Client} | Amount due: PHP {t.Net:N2}";
++            string trs = TripReportsOf(t);
++            string trPart = trs.Length > 0 ? $"{Environment.NewLine}Trip reports: {trs}" : "";
++            lblLinkedInvoiceInfo.Text = (t.IsSoa
++                ? $"Statement {t.SoaNumber} | {t.Client} | {t.Invoices.Count} invoice(s): {lines}{trPart}{Environment.NewLine}Freight PHP {(t.Gross - t.Fuel):N2} + fuel PHP {t.Fuel:N2} − withholding PHP {t.Deductions:N2} = OVERALL AMOUNT DUE PHP {t.Net:N2}"
++                : $"Invoice SI {t.Invoices[0].Number} | {t.Client}{trPart}{Environment.NewLine}Freight PHP {(t.Gross - t.Fuel):N2} + fuel PHP {t.Fuel:N2} − withholding PHP {t.Deductions:N2} = OVERALL AMOUNT DUE PHP {t.Net:N2}");
++            ShowVerifyFor(t); // Nov 10: the overall amount must be ticked as checked before the receipt can be issued
+             if (t.Net > numAmountPaid.Maximum) numAmountPaid.Maximum = t.Net * 2;
+             numAmountPaid.SetSafe(Math.Max(numAmountPaid.Minimum, Math.Min(numAmountPaid.Maximum, t.Net)));
+         }
+@@ -227,14 +230,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+             string method = cbPaymentMethod.Text.Trim();
+             MJdatabase.SaveLookupItem("Payment Method", method);
+             string rno = txtReceiptNo.Text.Trim();
+-            var rows = MJdatabase.SaveOneReceipt(rno, target, method, txtRefNo.Text.Trim(), txtNotes.Text.Trim(), dtpPaymentDate.Value.Date, receiptNumberGuard.CrossTypeConfirmed);
++            if (chkVerifyAmount != null && !chkVerifyAmount.Checked) { MessageBox.Show(FindForm(), "Tick \"I checked the overall amount\" first. The receipt is issued only for the amount you checked.", "Verify the overall amount", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
++            var rows = MJdatabase.SaveOneReceipt(rno, target, method, txtRefNo.Text.Trim(), txtNotes.Text.Trim(), dtpPaymentDate.Value.Date, receiptNumberGuard.CrossTypeConfirmed, verifiedAmount: verifyAmount);
+             ClearFields();
+             LoadData();
+             SetFormVisibility(false);
+             // Nov 6 workflow: the statement (or invoice) and its invoices are Paid now and move to Finance History.
+             string what = target.IsSoa
+-                ? $"Collection Receipt {rno}: PHP {target.Net:N2} for statement {target.SoaNumber}. The statement and its {rows.Count} service invoice(s) are now PAID ({string.Join(", ", target.Invoices.Select(i => i.Number))})."
+-                : $"Collection Receipt {rno}: PHP {target.Net:N2} for service invoice {target.Invoices[0].Number}, which is now PAID.";
++                ? $"Collection Receipt {rno}: PHP {target.Net:N2} for statement {target.SoaNumber}. The statement, its {rows.Count} service invoice(s) ({string.Join(", ", target.Invoices.Select(i => i.Number))}) and its trip reports are now billed and PAID. The billing process is complete."
++                : $"Collection Receipt {rno}: PHP {target.Net:N2} for service invoice {target.Invoices[0].Number}. The invoice and its trip report are now billed and PAID. The billing process is complete.";
+             var print = MessageBox.Show(FindForm(), what + "\n\nPayment recorded in full. Do you want to print the Official Collection Receipt now?", "Payment Completed", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
+             if (print == DialogResult.Yes && rows.Count > 0) PrintHelper.PrintOfficialCollectionReceipt(rows[0]); // the slip (normal or special trip) is chosen from what was paid
+         }
+diff --git a/Views/CollectionView.Verify.cs b/Views/CollectionView.Verify.cs
+new file mode 100644
+index 0000000..a2df72a
+--- /dev/null
++++ b/Views/CollectionView.Verify.cs
+@@ -0,0 +1,55 @@
++using System;
++using System.Drawing;
++using System.Linq;
++using System.Windows.Forms;
++using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
++using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
++
++namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
++{
++    /// <summary>
++    /// Nov 10: the receipt form shows what the billing carried over (statement / invoice, client, invoices, trip reports) and the person must
++    /// tick that the overall amount was checked before "Complete / Issue Receipt" is allowed. The checked amount is sent with the save, so the
++    /// receipt is only issued for exactly the amount that was verified.
++    /// </summary>
++    public partial class CollectionView
++    {
++        private CheckBox chkVerifyAmount = null!;
++        /// <summary>The overall amount the person is asked to verify (the picked statement's or invoice's total due); 0 when none is picked.</summary>
++        private decimal verifyAmount;
++
++        private void BuildVerifyBox()
++        {
++            chkVerifyAmount = new CheckBox { AutoSize = false, Dock = DockStyle.Top, Height = 44, Font = new Font("Segoe UI Semibold", 9.5F), ForeColor = lblLinkedInvoiceInfo.ForeColor, Padding = new Padding(6, 4, 0, 4), Text = "I checked the overall amount of the linked invoice (pick the statement or invoice first)", Enabled = false, UseVisualStyleBackColor = true, UseMnemonic = false };
++            chkVerifyAmount.CheckedChanged += (s, e) => ScheduleCollGuide();
++            pnlFormBody.Controls.Add(chkVerifyAmount);
++            pnlLinkedInvoice.Height = 74; // the carried-over billing details are longer than one line
++        }
++
++        /// <summary>The overall amount of the picked statement / invoice is shown and must be ticked as checked.</summary>
++        private void ShowVerifyFor(PayTarget? t)
++        {
++            if (chkVerifyAmount == null) return;
++            chkVerifyAmount.Checked = false;
++            verifyAmount = t?.Net ?? 0m;
++            chkVerifyAmount.Enabled = t != null;
++            chkVerifyAmount.Text = t == null ? "I checked the overall amount of the linked invoice (pick the statement or invoice first)"
++                : $"I checked the overall amount: PHP {t.Net:N2} for {(t.IsSoa ? "statement " + t.SoaNumber : "invoice SI " + t.Invoices[0].Number)} is correct";
++        }
++
++        /// <summary>The trip report numbers behind a statement / invoice (for the carried-over details).</summary>
++        private static string TripReportsOf(PayTarget t)
++        {
++            try
++            {
++                var reports = t.IsSoa ? null : MJdatabase.GetTripReportsByDelivery();
++                var nos = t.IsSoa
++                    ? MJdatabase.GetStatementOfAccountItems(t.SoaId).Select(i => i.TripReportNumber)
++                    : t.Invoices.Select(i => reports != null && reports.TryGetValue(i.DeliveryId, out var tr) ? tr.TripReportNumber : "");
++                var list = nos.Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().ToList();
++                return list.Count == 0 ? "" : string.Join(", ", list.Take(6)) + (list.Count > 6 ? ", …" : "");
++            }
++            catch (Exception ex) { ErrLog.Swallowed(ex); return ""; }
++        }
++    }
++}
+diff --git a/Views/CollectionView.cs b/Views/CollectionView.cs
+index 0d88ecf..eca8a63 100644
+--- a/Views/CollectionView.cs
++++ b/Views/CollectionView.cs
+@@ -109,13 +109,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+         private FullPageFormKit? formKit;
+         private void InitFullPageForm()
+         {
+-            formKit = new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to receipts");
++            BuildVerifyBox();
++            formKit =new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to receipts");
+             formKit.Build(new[]
+             {
+-                new FullPageFormKit.Section("Statement or invoice being paid", "Pick the statement (all its service invoices) or the service invoice this receipt pays in full.", lblInv, cbInvoice, pnlLinkedInvoice),
++                new FullPageFormKit.Section("Statement or invoice being paid", "Pick the statement (all its service invoices) or the service invoice this receipt pays in full.", lblInv, cbInvoice, pnlLinkedInvoice, chkVerifyAmount),
+                 new FullPageFormKit.Section("Payment", "Receipt no., the full amount due, method and reference.", BuildReceiptNoField()[0], txtReceiptNo, receiptNumberGuard.Message, receiptNumberGuard.Tick, tblPaymentRow, BuildCollCapLabel(), BuildPaymentDateField()[0], dtpPaymentDate, lblRef, txtRefNo, lblNotes, txtNotes)
+             });
+             InitCollGuide();
++            btnSave.Text = "✔ Complete / Issue Receipt"; // Nov 10: enabled only after the overall amount is ticked as checked
+             if (btnToggleForm != null)
+             {
+                 btnToggleForm.Text = "＋ New receipt";
+@@ -415,6 +417,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+             selectedCollection = null;
+             lblFormHeader.Text = "Record Payment Receipt";
+             lblLinkedInvoiceInfo.Text = "📄 Linked invoice: (none selected)";
++            ShowVerifyFor(null);
+             cbPaymentMethod.SelectedIndex = -1; cbPaymentMethod.Text = ""; // Nov 6: blank until picked
+             editTargetInvoice = null;
+             if (txtReceiptNo != null) txtReceiptNo.Text = "";
