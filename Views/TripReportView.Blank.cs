@@ -26,6 +26,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     .Select(r => (r.Cells["colStore"]?.Value?.ToString() ?? "").Trim()).ToList();
                 if (noDr.Count > 0) list.Add(($"A DR (delivery receipt) number is required for every store. Missing for: {string.Join(", ", noDr.Select(n => n.Length > 0 ? n : "a store").Take(6))}{(noDr.Count > 6 ? ", …" : "")}.", gridStores));
             }
+            if (gridStores != null)
+            {
+                // Nov 10: a DR number is exactly 8 digits.
+                var badDr = gridStores.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow)
+                    .SelectMany(r => DrList.Parse(r.Cells["colDr"].Value?.ToString())).Where(d => !System.Text.RegularExpressions.Regex.IsMatch(d, @"^\d{8}$")).Distinct().ToList();
+                if (badDr.Count > 0) list.Add(($"A DR number must be exactly 8 digits (numbers only). Fix: {string.Join(", ", badDr.Take(6))}{(badDr.Count > 6 ? ", …" : "")}.", gridStores));
+                // Nov 10: every store needs its time in and time out.
+                var noIn = gridStores.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow && string.IsNullOrWhiteSpace(r.Cells["colIn"].Value?.ToString())).Select(r => (r.Cells["colStore"]?.Value?.ToString() ?? "").Trim()).ToList();
+                var noOut = gridStores.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow && string.IsNullOrWhiteSpace(r.Cells["colOut"].Value?.ToString())).Select(r => (r.Cells["colStore"]?.Value?.ToString() ?? "").Trim()).ToList();
+                if (noIn.Count > 0) list.Add(($"Time in is required for every store. Missing for: {string.Join(", ", noIn.Select(n => n.Length > 0 ? n : "a store").Take(6))}{(noIn.Count > 6 ? ", …" : "")}.", gridStores));
+                if (noOut.Count > 0) list.Add(($"Time out is required for every store. Missing for: {string.Join(", ", noOut.Select(n => n.Length > 0 ? n : "a store").Take(6))}{(noOut.Count > 6 ? ", …" : "")}.", gridStores));
+            }
+            if (txtTruckTimeIn != null && string.IsNullOrWhiteSpace(txtTruckTimeIn.Text)) list.Add(("Truck time in (plant gate) is required.", txtTruckTimeIn));
+            if (txtTruckTimeOut != null && string.IsNullOrWhiteSpace(txtTruckTimeOut.Text)) list.Add(("Truck time out (plant gate) is required.", txtTruckTimeOut));
             need(txtDtrApprovedBy, "DTR \"Approved by\"");
             need(txtDtrPreparedBy, "DTR \"Prepared by\"");
             need(txtDrPreparedBy, "DR \"Prepared by\"");

@@ -755,6 +755,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 elsewhere = elsewhere.Distinct().ToList();
             }
+            if (!isEditingExistingReport)   // Nov 10: a new report's DR numbers can't be on any statement either (its own trip isn't billed yet)
+            {
+                try
+                {
+                    var allMine = allRows.SelectMany(r => DrList.Parse(r.Cells["colDr"].Value?.ToString())).Distinct().ToList();
+                    foreach (var kv in MJdatabase.FindDrOwnersOnOtherStatements(0, allMine)) elsewhere.Add($"{kv.Key} is on statement {kv.Value}");
+                }
+                catch (Exception ex) { ErrLog.Swallowed(ex); }
+            }
             if (inTrip.Count == 0 && elsewhere.Count == 0) return true;
             string L(List<string> l) => string.Join("\n", l.Take(8).Select(x => "• " + x)) + (l.Count > 8 ? $"\n• … and {l.Count - 8} more" : "");
             string text = (inTrip.Count > 0 ? $"The same DR number is on two stores of this trip:\n{L(inTrip)}\n\n" : "")
