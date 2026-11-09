@@ -80,7 +80,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void RefreshExtraUi()
         {
-            UpdateStoreCrateTotals();
+            UpdateDeliveredCrateTotals();
             if (pnlExtraDispatches == null || btnAddDispatches == null || lblExtraSummary == null) return;
             var primary = GetSelectedDelivery();
             btnAddDispatches.Visible = AllowSeveralDispatches && !isEditingExistingReport;
