@@ -82,7 +82,7 @@ public static partial class Checks
             if (grid == null) return "invoice list not created";
             var heads = grid.Columns.Cast<DataGridViewColumn>().Select(c => c.HeaderText).ToList();
             var bad = new List<string>();
-            if (heads.Count < 3 || heads[0] != "Invoice #" || heads[1] != "Trip report #" || heads[2] != "Dispatch #") bad.Add("first columns are " + string.Join(" | ", heads.Take(3)));
+            if (heads.Count < 3 || heads[0] != "Invoice #" || heads[1] != "SOA #" || heads[2] != "Dispatch #") bad.Add("first columns are " + string.Join(" | ", heads.Take(3)));
             if (heads.Any(h => h.Contains("Schedule", StringComparison.OrdinalIgnoreCase) || h.Contains("Deduction", StringComparison.OrdinalIgnoreCase))) bad.Add("schedule/deduction column still there");
             // No control on the invoice form may talk about deductions.
             var texts = new List<string>();
