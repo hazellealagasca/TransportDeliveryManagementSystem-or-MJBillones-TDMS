@@ -758,8 +758,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 items.Add(DocRow("💰", "Invoice", IsCompleted ? "Not billed yet." : "Created once the order is delivered.",
                     IsCompleted ? ("Create invoice", trip != null ? "primary" : "secondary", CreateInvoice) : default));
             }
-            // Incidents
-            if (incidents.Count == 0)
+            // Incidents (hidden: Nov 10)
+            if (!Features.On(Features.Incidents)) { }
+            else if (incidents.Count == 0)
             {
                 items.Add(DocRow("⚠️", "Incidents & damage", "None reported for this order.",
                     IsCancelled ? default : ("Log incident", "secondary", LogIncident)));
@@ -1009,7 +1010,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (!IsCancelled)
             {
                 m.Items.Add(trip == null ? "File trip report" : "Open trip report", null, (s, e) => OpenTripReport());
-                m.Items.Add("Log incident / damage", null, (s, e) => LogIncident());
+                if (Features.On(Features.Incidents)) m.Items.Add("Log incident / damage", null, (s, e) => LogIncident());
             }
             if (IsCompleted && invoice == null) m.Items.Add("Create invoice", null, (s, e) => CreateInvoice());
             m.Items.Add("Show all trip reports for this order", null, (s, e) => { MainForm.Instance?.ShowTripReportsForDispatch(del.DispatchNumber); Close(); });

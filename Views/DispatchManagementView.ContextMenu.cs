@@ -130,7 +130,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         ? Item("💰  Create invoice", () => OnCreateInvoiceRequested?.Invoke(d))
                         : Item($"💰  Open invoice ({invoice.InvoiceNumber} · {invoice.Status})", () => MainForm.Instance?.NavigateToFinance("Billing")));
                 }
-                m.Items.Add(incidents > 0
+                if (Features.On(Features.Incidents)) m.Items.Add(incidents > 0
                     ? Sub($"⚠  Incidents ({incidents})",
                         Item("View incidents for this order", () => MainForm.Instance?.ShowIncidentsForDispatch(d.DispatchNumber)),
                         Item("Log another incident", () => MainForm.Instance?.LogIncidentForDispatch(d)))

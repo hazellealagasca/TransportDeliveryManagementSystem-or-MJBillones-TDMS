@@ -10766,6 +10766,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static List<IncidentReport> GetIncidentReports()
 
         {
+            if (!Features.On(Features.Incidents)) return new List<IncidentReport>();   // Nov 10: incident and damage logs are hidden everywhere
 
             var list = new List<IncidentReport>();
 
