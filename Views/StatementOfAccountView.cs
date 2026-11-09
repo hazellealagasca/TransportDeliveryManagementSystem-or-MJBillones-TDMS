@@ -969,6 +969,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     $"{RowMenu.Short(soa.ClientName, 28)} · {RowMenu.Money(soa.TotalAmount)} · {soa.PeriodCovered} · {soa.Status}"));
                 m.Items.Add(RowMenu.Item("Edit statement", () => OpenEditStatement(soa), "Enter"));
                 m.Items.Add(RowMenu.Good("Print official statement", () => PrintOfficialSoa(soa)));
+                m.Items.Add(RowMenu.Item("Mark as sent to client", () =>
+                {
+                    MJdatabase.LogStatementIssued(soa.Id, soa.SoaNumber, soa.TotalAmount, "Sent");
+                    ToastHelper.ShowToast(this, $"{soa.SoaNumber} marked as sent (PHP {soa.TotalAmount:N2}). If it changes later you will be told to resend it.", ToastType.Success);
+                }, "", !string.Equals(soa.Status, "Cancelled", StringComparison.OrdinalIgnoreCase)));
+                var stale = MJdatabase.NeedsReissue(MJdatabase.DocSoa, soa.Id, soa.TotalAmount);
+                if (stale != null) m.Items.Add(RowMenu.Item($"⚠ Changed since it was {stale.Kind.ToLowerInvariant()} ({stale.At:MMM d}, PHP {stale.Amount:N2}): reprint and resend", () => PrintOfficialSoa(soa)));
                 m.Items.Add(RowMenu.Item(string.IsNullOrWhiteSpace(soa.SalesInvoiceNo) ? "No sales invoice linked" : $"Show sales invoice {soa.SalesInvoiceNo}", () => OpenLinkedInvoice(), "", !string.IsNullOrWhiteSpace(soa.SalesInvoiceNo)));
                 m.Items.Add(RowMenu.Item("Open client profile", () => MainForm.Instance?.OpenClientProfile(soa.ClientName), "", !string.IsNullOrWhiteSpace(soa.ClientName)));
                 m.Items.Add(RowMenu.Sep());
@@ -1802,9 +1809,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (dropped.Count == 0) return true;
                 if (keep.Count == 0) { QuietBox.Show("A statement needs at least one trip. To drop them all, cancel the statement instead.", "Take trips off", MessageBoxButtons.OK, MessageBoxIcon.Information); return false; }
                 var stay = onSoa.Except(dropped).ToList();
+                // Which of the invoices that stay were already printed or sent (the statement's own print counts for all of its invoices), with their new net.
+                var issuedLines = new List<string>();
+                if (stay.Count > 0)
+                {
+                    var tt = SoaTotals.From(stay.Sum(i => i.Freight), stay.Sum(i => i.Fuel));
+                    var sh = SoaTotals.Share(tt.Withholding, stay.Select(i => i.Freight).ToArray());
+                    for (int k = 0; k < stay.Count; k++)
+                    {
+                        var inv = stay[k];
+                        var was = MJdatabase.GetIssuedInfo(MJdatabase.DocInvoice, inv.Id);
+                        decimal newNet = inv.Gross - sh[k];
+                        if (was != null && Math.Abs(was.Amount - newNet) > 0.004m)
+                            issuedLines.Add($"SI {inv.Number} was {was.Kind.ToLowerInvariant()} on {was.At:MMM d} at PHP {was.Amount:N2}; its new net is PHP {newNet:N2}");
+                    }
+                }
                 string msg = $"You are taking {dropped.Count} trip(s) off {soa.SoaNumber}:\n\n• " + string.Join("\n• ", dropped.Take(10).Select(i => $"SI {i.Number} (PHP {i.Gross:N2})"))
                     + "\n\nEach goes back to a lone unpaid invoice with the amount it had before the statement, and its trip report returns to the statement queue."
-                    + (stay.Count > 0 ? $"\n\nThe 2% withholding is shared out again, so the net amount of the {stay.Count} invoice(s) that stay changes too. If you already printed or sent them, send the new amounts." : "")
+                    + (stay.Count > 0 ? $"\n\nThe 2% withholding is shared out again, so the net amount of the {stay.Count} invoice(s) that stay changes too." : "")
+                    + (issuedLines.Count > 0 ? "\n\nAlready printed or sent, so reprint and resend:\n• " + string.Join("\n• ", issuedLines.Take(8)) : "")
                     + "\n\nWhy are they taken off?";
                 if (!AskReason("Take trips off the statement", msg, out reason)) return false;
                 removalReasonCache = reason;
@@ -1915,6 +1938,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             var items = MJdatabase.GetStatementOfAccountItems(soa.Id);
             PrintHelper.PrintOfficialStatementOfAccount(soa, items);
+            MJdatabase.LogStatementIssued(soa.Id, soa.SoaNumber, soa.TotalAmount, "Printed"); // so a later change can warn that the client's copy is out of date
         }
 
         private void OpenLinkedInvoice()

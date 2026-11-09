@@ -1009,6 +1009,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.Add(RowMenu.Item(isDraft ? "Complete this draft invoice" : "Edit invoice", () => { SetFormVisibility(true); cbDelivery.Focus(); }));
                 if (!isPaid && !isDraft) m.Items.Add(RowMenu.Good($"Collect payment in full ({RowMenu.Money(inv.NetAmount)})", () => OnRecordPaymentRequested?.Invoke(inv)));
                 if (paid > 0) m.Items.Add(RowMenu.Item($"Show payments ({RowMenu.Money(paid)} received)", () => FinanceHubView.Of(this)?.ShowCollections(inv.InvoiceNumber)));
+                m.Items.Add(RowMenu.Item("Mark as sent to client", () =>
+                {
+                    MJdatabase.LogDocumentIssue(MJdatabase.DocInvoice, inv.Id, inv.InvoiceNumber, inv.NetAmount, "Sent");
+                    ToastHelper.ShowToast(this, $"Invoice {inv.InvoiceNumber} marked as sent (PHP {inv.NetAmount:N2}). If its amount changes later you will be told to resend it.", ToastType.Success);
+                }, "", !isDraft));
+                var staleInv = MJdatabase.NeedsReissue(MJdatabase.DocInvoice, inv.Id, inv.NetAmount);
+                if (staleInv != null) m.Items.Add(RowMenu.Item($"⚠ Amount changed since it was {staleInv.Kind.ToLowerInvariant()} ({staleInv.At:MMM d}, PHP {staleInv.Amount:N2}): resend", () => { }));
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.Item($"Open dispatch {inv.DispatchNumber}", () => RowMenu.OpenDispatch(this, inv.DeliveryId, inv.DispatchNumber), "", inv.DeliveryId > 0 || !string.IsNullOrWhiteSpace(inv.DispatchNumber)));
                 m.Items.Add(RowMenu.Item("Open client profile", () => MainForm.Instance?.OpenClientProfile(inv.ClientName), "", !string.IsNullOrWhiteSpace(inv.ClientName)));

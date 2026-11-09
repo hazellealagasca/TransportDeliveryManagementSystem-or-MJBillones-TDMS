@@ -122,4 +122,24 @@ public static partial class Checks
         if (audit != 1) return $"audit lines for the removal: {audit}";
         return "";
     }
+
+    /// <summary>Printing / sending a statement is recorded (with its invoices); a later change shows the client's copy is out of date.</summary>
+    [Check]
+    public static string StatementFirst_PrintedCopyIsKnownToBeOutOfDate()
+    {
+        Fresh(); RunBackfill();
+        int a = Seed.Delivery(client: "CLIENT A"); Seed.TripReport(a);
+        var inv = InvoiceWithNumber(a, "SI-9801", 2000m); MJdatabase.SaveInvoice(inv);
+        var t = SoaTotals.From(2000m, 0m);
+        var soa = new StatementOfAccount { ClientName = "CLIENT A", PeriodCovered = "x", IssueDate = DateTime.Today, DeliveryType = "REF", TotalSalesVatInc = t.TotalSales, VatAmount = t.Vat, NetOfVat = t.NetOfVat, FuelSurchargeTotal = t.Fuel, WithholdingTax = t.Withholding, TotalAmount = t.Due, SoaType = SoaTypes.Normal };
+        int soaId = MJdatabase.SaveStatementOfAccount(soa, new List<StatementOfAccountItem> { SoaLine(a, 2000m, 0m) });
+        if (MJdatabase.GetIssuedInfo(MJdatabase.DocSoa, soaId) != null) return "a statement never printed shows as issued";
+        MJdatabase.LogStatementIssued(soaId, soa.SoaNumber, t.Due, "Printed");
+        var invNet = Convert.ToDecimal(Scalar("SELECT NetAmount FROM Invoices WHERE Id=@i", ("@i", inv.Id)) ?? 0);
+        var info = MJdatabase.GetIssuedInfo(MJdatabase.DocInvoice, inv.Id);
+        if (info == null || info.Kind != "Printed" || info.Amount != invNet) return "the statement's invoice was not recorded as printed with its net";
+        if (MJdatabase.NeedsReissue(MJdatabase.DocSoa, soaId, t.Due) != null) return "an unchanged statement is flagged as out of date";
+        if (MJdatabase.NeedsReissue(MJdatabase.DocSoa, soaId, t.Due + 100m) == null) return "a changed statement is not flagged as out of date";
+        return "";
+    }
 }
