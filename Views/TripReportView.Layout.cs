@@ -92,8 +92,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var card1 = CreateSectionCard(1, "Dispatch order", "Pick the delivery this report closes out. Its route, truck and crew load automatically.",
                 lblDel, BuildPickFilterRow(), cbDelivery, BuildExtraDispatchesRow(), BuildTripOverview());
             tripCrateSummary = new TripCrateSummaryPanel();
+            lblDeliveredCrateTotals = new Label
+            {
+                AutoSize = false, Height = Dpi(34), Font = new Font("Segoe UI Semibold", 10F), ForeColor = AppTheme.TextPrimary,
+                BackColor = AppTheme.Surface, TextAlign = ContentAlignment.MiddleRight, UseMnemonic = false
+            };
+            UpdateDeliveredCrateTotals();
             var card2 = CreateSectionCard(2, "Stores, times & signatures", "Each store's arrival and departure time, who received it, its DR numbers and the empties that came back.",
-                pnlMultiDropInfo, CreateGap(Dpi(8)), btnLogIncident, tblTimes, tblManagerNames);
+                pnlMultiDropInfo, lblDeliveredCrateTotals, CreateGap(Dpi(8)), btnLogIncident, tblTimes, tblManagerNames);
             _ = tblCrateTotals; // Nov 6 workflow: no delivered-crate totals or crate cards on the form (the values are still worked out)
             // Nov 6 workflow: crew pay is internal and is recorded in Resources → Crew Trip History, not on the trip report.
             var card4 = CreateSectionCard(4, "Plant gate & sign-off", "Truck times at the plant, the people who signed, and any remarks.",
@@ -364,6 +370,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private AttachmentPanel? tripAttachments;
         private TripCrateSummaryPanel? tripCrateSummary;
+        private Label? lblDeliveredCrateTotals;
+        /// <summary>"Delivered crates: G crates x + E crates y = z total crates", summed from the (read-only) Delivered G / Delivered E columns of the store table.</summary>
+        private void UpdateDeliveredCrateTotals()
+        {
+            if (lblDeliveredCrateTotals == null) return;
+            int dg = 0, de = 0;
+            if (gridStores != null && gridStores.Columns.Contains("colLoadG") && gridStores.Columns.Contains("colLoadE"))
+                foreach (DataGridViewRow r in gridStores.Rows)
+                {
+                    if (r.IsNewRow) continue;
+                    if (int.TryParse(r.Cells["colLoadG"].Value?.ToString(), out int a)) dg += Math.Max(0, a);
+                    if (int.TryParse(r.Cells["colLoadE"].Value?.ToString(), out int b)) de += Math.Max(0, b);
+                }
+            lblDeliveredCrateTotals.Text = $"Delivered crates:  G crates {dg:N0}  +  E crates {de:N0}  =  {dg + de:N0} total crates";
+        }
         private int tripIncidentDeliveryId = -1, tripIncidentDamaged;
         private string tripIncidentNote = "";
         private List<ClientStore> tripRouteStores = new List<ClientStore>();
@@ -383,6 +404,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// </summary>
         private void UpdateTripCrateSummary()
         {
+            UpdateDeliveredCrateTotals();
             if (tripCrateSummary == null || gridStores == null) return;
             try
             {

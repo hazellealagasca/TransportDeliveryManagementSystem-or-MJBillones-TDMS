@@ -326,8 +326,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridStores.Columns.Add(Locked("colLoadG", "Delivered G", 80, roNumStyle, 92));
             // Nov 6 workflow: the trip report is proof of delivery (times, receiver, DRs). The delivered crates are the dispatched
             // crates and stay in the table (hidden) for the totals; they are not shown or typed here.
-            gridStores.Columns["colLoadE"]!.Visible = false;
-            gridStores.Columns["colLoadG"]!.Visible = false;
+            // Nov 9: shown again, read-only, so the delivered crates (E and G) are listed per store.
             gridStores.Columns.Add(Locked("colRetE", "Returned E", 80, roNumStyle, 92));
             gridStores.Columns.Add(Locked("colRetG", "Returned G", 80, roNumStyle, 92));
             gridStores.Columns.Add(Col("colRem", "No. Drops", 66, editNumStyle, 80));
@@ -518,6 +517,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SizeStoreTable(gridStores.Rows.Count);
                 MarkDuplicateDrs(showToast: false);
                 RefreshExtraUi();
+                UpdateDeliveredCrateTotals();
                 pnlMultiDropInfo.Visible = true;
                 if (tripCrateSummary != null) tripCrateSummary.Visible = true;
             }
