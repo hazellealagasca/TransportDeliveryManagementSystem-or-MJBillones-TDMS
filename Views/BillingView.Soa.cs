@@ -33,7 +33,35 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlFormBody.Controls.Add(cbSoa);
             pnlFormBody.Controls.Add(lblSoa);
             cbSoa.SelectedIndexChanged += (s, e) => OnSoaPicked();
-            chkDirectTrip.CheckedChanged += (s, e) => { ApplyInvoiceSource(); ScheduleBillGuide(); };
+            chkDirectTrip.CheckedChanged += (s, e) => { SwitchInvoiceSource(); ScheduleBillGuide(); };
+        }
+
+        /// <summary>
+        /// The "Bill one trip directly" box was ticked or unticked: drop everything the other route filled in (client, trips text, amounts,
+        /// header) so nothing stale stays editable, then show the right picker. Layout is suspended so the swap doesn't flicker.
+        /// </summary>
+        private void SwitchInvoiceSource()
+        {
+            if (cbSoa == null) return;
+            if (isBindingForm) { ApplyInvoiceSource(); return; } // Clear form / programmatic reset does its own clearing
+            pnlFormBody.SuspendLayout();
+            bool was = isBindingForm; isBindingForm = true;
+            try
+            {
+                if (selectedInvoice == null)
+                {
+                    cbSoa.SelectedIndex = -1;
+                    cbDelivery.SelectedIndex = -1; cbDelivery.Enabled = true;
+                    cbClient.SelectedIndex = -1; cbClient.Text = "";
+                    txtLoadingSchedule.Text = "";
+                    numTotalAmount.SetSafe(0); numFuel.SetSafe(0);
+                    lblTariffMatch.Visible = false;
+                    lblFormHeader.Text = "Generate Service Invoice";
+                    RecalculateNet(this, EventArgs.Empty);
+                }
+                ApplyInvoiceSource();
+            }
+            finally { isBindingForm = was; pnlFormBody.ResumeLayout(true); }
         }
 
         /// <summary>Statements that can be billed with one invoice now (re-read from the database).</summary>
@@ -73,7 +101,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try { cbDelivery.SelectedIndex = -1; } finally { isBindingForm = was; }
                 if (SelectedSoa() == null) { numTotalAmount.Enabled = false; numFuel.Enabled = false; }
             }
-            else if (selectedInvoice == null && cbDelivery.SelectedIndex < 0) { numTotalAmount.Enabled = true; numFuel.Enabled = true; lblTariffMatch.Visible = false; }
+            else if (selectedInvoice == null && cbDelivery.SelectedIndex < 0) { numTotalAmount.Enabled = false; numFuel.Enabled = false; lblTariffMatch.Visible = false; } // no trip picked yet: nothing to bill, amounts stay locked until one is
         }
 
         /// <summary>A statement was picked: client, trips and every amount are filled from it and locked.</summary>

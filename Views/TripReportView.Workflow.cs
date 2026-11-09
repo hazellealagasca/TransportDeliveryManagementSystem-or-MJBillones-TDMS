@@ -210,6 +210,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Startup: open on the awaiting list once the screen exists.
             // (The handle may already exist when this is built, in which case HandleCreated would never fire.)
             if (IsHandleCreated) SetAwaitingMode(); else HandleCreated += (s, e) => SetAwaitingMode();
+            // Nov 10: no Awaiting / Active / History / Proceed-to-SOA buttons here: the page is the waiting list, and a completed report goes to Statement of Account by itself.
+            btnViewAwaiting.Visible = btnViewActive.Visible = btnViewHistory.Visible = btnIssueSelected.Visible = false;
             gridTripReports.MultiSelect = true;
             gridTripReports.SelectionChanged += (s, e) => UpdateIssueSelectedButton();
             if (!gridTripReports.Columns.Contains("colStatus"))
@@ -318,6 +320,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// </summary>
         private void CreateReportFor(AwaitingReportRow row)
         {
+            if (string.IsNullOrWhiteSpace(row.DispatchNumber))
+            {
+                MessageBox.Show(FindForm(), "A trip report can't be created without a dispatch number.", "Dispatch number required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             try
             {
                 var empties = MJdatabase.GetEmptyDraftReports().Where(d => d.DeliveryId == row.DeliveryId).Select(d => d.Id).ToList();
@@ -402,7 +409,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             showHistory = history;
             if (btnViewActive != null) UIThemeHelper.SetButtonRole(btnViewActive, history ? "secondary" : "primary");
             if (btnViewHistory != null) UIThemeHelper.SetButtonRole(btnViewHistory, history ? "primary" : "secondary");
-            if (btnIssueSelected != null) btnIssueSelected.Visible = !history;
+            if (btnIssueSelected != null) btnIssueSelected.Visible = false;
             FilterGridData();
         }
 
@@ -452,7 +459,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     /// <summary>The 4-step progress bar across the top of the trip report form.</summary>
     internal sealed class TripStepper : Control
     {
-        private static readonly string[] Titles = { "Store timestamps & signatures", "Gate times (time in / out)", "Verification & signatory check", "Issue invoice" };
+        private static readonly string[] Titles = { "Store timestamps & signatures", "Gate times (time in / out)", "Verification & signatory check", "Goes to Statement of Account" };
         private readonly bool[] done = new bool[4];
 
         public TripStepper()

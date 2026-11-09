@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -90,7 +90,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnLogIncident.Height = Dpi(40);
             btnLogIncident.Font = new Font("Segoe UI Semibold", 9.5F);
             var card1 = CreateSectionCard(1, "Dispatch order", "Pick the delivery this report closes out. Its route, truck and crew load automatically.",
-                lblDel, BuildPickFilterRow(), cbDelivery, BuildExtraDispatchesRow(), BuildTripOverview());
+                lblDel, BuildPickFilterRow(), cbDelivery, BuildExtraDispatchesRow(), BuildTripOverview(), BuildTripTypeRow());
             tripCrateSummary = new TripCrateSummaryPanel();
             lblDeliveredCrateTotals = new Label
             {

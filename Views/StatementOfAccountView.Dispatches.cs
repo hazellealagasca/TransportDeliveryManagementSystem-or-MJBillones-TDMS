@@ -450,6 +450,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ToastHelper.ShowToast(this, $"Added {specials.Count} special trip{(specials.Count == 1 ? "" : "s")} to the statement", ToastType.Success);
             }
             btnPickAllReady.Text = "Tick all ready";
+            OfferTripPayments();   // Nov 10: the picked trip reports get their drops, Amount and Fuel surcharge in the Trip payments window
         }
         // ------------------------------------------------------------------ Adding to the statement
         private int NextTripNumber()
@@ -466,6 +467,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var trucks = MJdatabase.GetTrucks();
             var reports = MJdatabase.GetTripReportsByDelivery();
             var completed = MJdatabase.GetTripCompletedDates();
+            var tripTypes = MJdatabase.GetTripReportDeliveryTypes(); // Nov 10: REF / DRY is chosen on each trip report
             var invoices = MJdatabase.GetTripInvoices(); // Nov 7: the line's amount and fuel surcharge are the trip's service invoice, never worked out again here
             int trip = NextTripNumber();
             bool was = isBindingForm;
@@ -487,13 +489,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     // (Nov 9, later: the Amount is left EMPTY on purpose; the user types it, nothing is guessed.)
                     if (rate <= 0) unpriced++;
                     string did = del.Id.ToString();
+                    string tripType = tripTypes.TryGetValue(del.Id, out var tt) && tt.Length > 0 ? tt : (cbDeliveryType.SelectedIndex >= 0 ? cbDeliveryType.Text : "REF");
                     string trNo = reports.TryGetValue(del.Id, out var rep0) ? rep0.TripReportNumber : "";
                     if (lines.Count > 0)
                     {
                         bool first = true;
                         foreach (var ln in lines)
                         {
-                            int r = gridItems.Rows.Add(trip, dateStr, "", DrList.Join(ln.Drs), ln.Name, cbDeliveryType.Text, plate, tonnage, dropCount, first && rate > 0 ? rate : "", first && fuelAmt > 0 ? fuelAmt : "", driverHelper, did);
+                            int r = gridItems.Rows.Add(trip, dateStr, "", DrList.Join(ln.Drs), ln.Name, tripType, plate, tonnage, dropCount, first && rate > 0 ? rate : "", first && fuelAmt > 0 ? fuelAmt : "", driverHelper, did);
                             gridItems.Rows[r].Cells["colStoreCode"].Value = ln.Code;
                             gridItems.Rows[r].Cells["colTripReport"].Value = trNo;
                             gridItems.Rows[r].Cells["colCrates"].Value = ln.Crates;
@@ -502,7 +505,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                     else
                     {
-                        int r = gridItems.Rows.Add(trip, dateStr, "", "", del.Destination, cbDeliveryType.Text, plate, tonnage, dropCount, rate > 0 ? rate : "", fuelAmt > 0 ? fuelAmt : "", driverHelper, did);
+                        int r = gridItems.Rows.Add(trip, dateStr, "", "", del.Destination, tripType, plate, tonnage, dropCount, rate > 0 ? rate : "", fuelAmt > 0 ? fuelAmt : "", driverHelper, did);
                         gridItems.Rows[r].Cells["colTripReport"].Value = trNo;
                         gridItems.Rows[r].Cells["colCrates"].Value = rep0 != null ? (rep0.DeliveredCrates > 0 ? rep0.DeliveredCrates : rep0.DeliveredGCrates + rep0.DeliveredECrates) : (del.TotalCrates > 0 ? del.TotalCrates : del.GCrate + del.ECrate);
                     }
@@ -820,7 +823,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 QuietBox.Show("Select the rows to change first: click a cell, then Shift/Ctrl-click to add more rows.", "Edit selected rows", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-            var editable = gridItems.Columns.Cast<DataGridViewColumn>().Where(c => c is DataGridViewTextBoxColumn && c.Visible && !c.ReadOnly && c.Name != "colTripNo").OrderBy(c => c.DisplayIndex).ToList();
+            bool anyTripLine = rows.Any(i => RowDeliveryId(gridItems.Rows[i]) > 0 || RowSpecialTripId(gridItems.Rows[i]) > 0);   // Nov 10: lines from trip reports only change drops, Amount, Fuel surcharge
+            var editable = gridItems.Columns.Cast<DataGridViewColumn>().Where(c => c is DataGridViewTextBoxColumn && c.Visible && !c.ReadOnly && c.Name != "colTripNo" && (!anyTripLine || TripFigureCols.Contains(c.Name))).OrderBy(c => c.DisplayIndex).ToList();
             int startCol = gridItems.CurrentCell != null && editable.Contains(gridItems.Columns[gridItems.CurrentCell.ColumnIndex]) ? editable.IndexOf(gridItems.Columns[gridItems.CurrentCell.ColumnIndex]) : 0;
             using var f = new Form
             {

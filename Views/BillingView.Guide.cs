@@ -242,10 +242,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (billExpected.TryGetValue(d.Id, out var v)) return v;
             if (d.Id < 0) return billExpected[d.Id] = SpecialCharge(d); // Nov 6: special trip charge
             if (IsChargeableCancelled(d)) return billExpected[d.Id] = chargeFees[d.Id]; // agreed cancellation fee
-            decimal gross = 0;
-            try { gross = MJdatabase.CalculateDeliveryTariff(d, out _); }
-            catch (Exception ex) { ErrLog.Swallowed(ex); }
-            return billExpected[d.Id] = gross;
+            return billExpected[d.Id] = 0m; // Nov 10: no Rate Matrix amounts, the Amount is always typed
         }
         /// <summary>The amount differs from the trip's rate (so a reason is needed). Nov 7: no deductions; the fuel surcharge is always typed, so it is not compared.</summary>
         private bool BillAdjusted(out decimal expectedNet, out decimal enteredNet, out string what)
@@ -332,8 +329,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 bool hasReason = txtBillAdjustReason.Text.Trim().Length >= StatementOfAccountView.MinAdjustReasonLength;
                 checks.Add(new PaymentCheck(hasReason ? "Adjustment reason given" : "Amount changed from the trip's figures — write the adjustment reason", hasReason));
             }
-            else if (!editing && Functions.Features.On(Functions.Features.RateMatrix) && SelectedBillDelivery() is Delivery dd && ExpectedFor(dd) <= 0)
-                checks.Add(new PaymentCheck("No rate found in the Rate Matrix for this trip — check the amount", true, Warning: true));
             return checks;
         }
 

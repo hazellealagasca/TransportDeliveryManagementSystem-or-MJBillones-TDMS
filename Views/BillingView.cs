@@ -410,7 +410,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     RecalculateNet(sender, e);
                     return;
                 }
-                calculatedAmount = MJdatabase.CalculateDeliveryTariff(del, out tariffDesc);
+                calculatedAmount = 0m; tariffDesc = "Type the Amount for this trip."; // Nov 10: no Rate Matrix amounts, the Amount is always typed
                 lblTariffMatch.Text = calculatedAmount > 0 ? $"✓ {tariffDesc} -> PHP {calculatedAmount:N2}" : tariffDesc;
                 lblTariffMatch.Visible = true;
 

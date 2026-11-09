@@ -98,6 +98,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             PageKit.InsertBelow(trTiles, tilesGap);
             PageKit.InsertBelow(tilesGap, filterBar);
             if (pnlSummary != null) pnlSummary.Visible = false;
+            // Nov 10: Trip Reports opens on the completed dispatches waiting for a report, with no tile strip (Awaiting, Missing POD, Ready to invoice).
+            trTiles.Visible = false; tilesGap.Visible = false;
             // Extra columns joined from the dispatch, filled while painting.
             void Extra(string name, string header, float w, bool right = false)
             {

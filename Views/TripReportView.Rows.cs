@@ -195,7 +195,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (no.Length > 0) return $"Invoice {no} ✓";
             if (RowMenu.Is(t.Status, TripReportStatus.Draft)) return "Finish report";
             if (RowMenu.Is(t.Status, TripReportStatus.Invoiced)) return "Invoiced ✓";
-            return "🧾 Create invoice";
+            return "➡ Proceed to SOA";
         }
 
         private void RefreshInvoiceNumbers()

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -150,6 +150,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UIThemeHelper.SetButtonRole(btnToggleForm, "primary");
             pnlGridActionsFlow.Controls.Add(btnToggleForm);
             pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
+            btnToggleForm.Visible = false; // Nov 10: a trip report is only started from a dispatch in the waiting list (Create trip report), never blank
 
             btnCloseForm = new Button
             {
@@ -1050,6 +1051,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 int dIdx = FindDeliveryItemIndex(selectedTripReport.DispatchNumber ?? ""); // also adds the trip when its report is already finished
                 if (dIdx >= 0) cbDelivery.SelectedIndex = dIdx;
+                ShowTripType(selectedTripReport);
 
                 txtArrivalTime.Text = selectedTripReport.ArrivalTime ?? "";
                 txtDepartureTime.Text = selectedTripReport.DepartureTime ?? "";
@@ -1216,6 +1218,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 string selText = cbDelivery.SelectedItem?.ToString() ?? "";
                 var selDel = allDeliveries.FirstOrDefault(del => selText.StartsWith(del.DispatchNumber + " - "));
+                if (selDel != null && string.IsNullOrWhiteSpace(selDel.DispatchNumber))
+                {
+                    MessageBox.Show(FindForm(), "A trip report can't be created without a dispatch number.", "Dispatch number required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
                 if (selDel != null && !DispatchGate.RequireCompleted(this, DispatchGate.Fresh(selDel), "file its trip report")) return;
                 if (selDel == null)
                 {
@@ -1389,6 +1396,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     MJdatabase.SaveDispatchStops(selDel.Id, stopsToSave);
                 }
                 MJdatabase.SaveTripReport(tr);
+                SaveTripType(tr.DeliveryId, tr.SpecialTripId);   // Nov 10: REF / DRY chosen on this trip report
                 MJdatabase.ClearFormDraft("TripReport", SessionContext.CurrentUsername);
                 if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
                 if (asDraft)
@@ -1584,6 +1592,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 if (issueAfterUpdate) selectedTripReport.Status = TripReportStatus.Completed; // a Draft is finished here
                 MJdatabase.SaveTripReport(selectedTripReport);
+                SaveTripType(selectedTripReport.DeliveryId, selectedTripReport.SpecialTripId);
                 var issueFor = issueAfterUpdate ? selDel : null;
                 if (issueFor == null) QuietBox.Show("Trip Report updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
@@ -1822,6 +1831,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void ClearFields()
         {
             selectedTripReport = null;
+            ResetTripType();
             txtArrivalTime.Text = "";
             txtDepartureTime.Text = "";
             numDeliveredGCrates.SetSafe(0);

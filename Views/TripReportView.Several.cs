@@ -16,6 +16,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     /// </summary>
     public partial class TripReportView
     {
+        /// <summary>Nov 10 rule: one trip report is for ONE dispatch. The "add dispatches of this client" route is switched off; the code stays so it can be turned back on here.</summary>
+        private static bool AllowSeveralDispatches => false;
         private readonly List<Delivery> extraDispatches = new List<Delivery>();
         private int extrasOwnerId;
         private string storesTitleSingle = "";
@@ -78,9 +80,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void RefreshExtraUi()
         {
+            UpdateStoreCrateTotals();
             if (pnlExtraDispatches == null || btnAddDispatches == null || lblExtraSummary == null) return;
             var primary = GetSelectedDelivery();
-            btnAddDispatches.Visible = !isEditingExistingReport;
+            btnAddDispatches.Visible = AllowSeveralDispatches && !isEditingExistingReport;
             btnAddDispatches.Enabled = primary != null && primary.Id > 0 && !string.IsNullOrWhiteSpace(primary.ClientName);
             foreach (var c in pnlExtraDispatches.Controls.OfType<Button>().Where(b => b.Name == "chipDispatch").ToList()) { pnlExtraDispatches.Controls.Remove(c); c.Dispose(); }
             int at = 1;
@@ -200,6 +203,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private List<Delivery> AddExtraDispatches(IEnumerable<Delivery> dispatches)
         {
             var refused = new List<Delivery>();
+            if (!AllowSeveralDispatches) return dispatches.ToList();
             var primary = GetSelectedDelivery();
             if (primary == null || primary.Id <= 0) return dispatches.ToList();
             string client = (primary.ClientName ?? "").Trim();
@@ -397,6 +401,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     };
                     if (p.Stops.Count > 0) MJdatabase.SaveDispatchStops(p.D.Id, p.Stops);
                     MJdatabase.SaveTripReport(tr);
+                    SaveTripType(tr.DeliveryId, tr.SpecialTripId);
                     saved.Add(p.D);
                 }
             }

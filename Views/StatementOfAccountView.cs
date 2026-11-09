@@ -563,9 +563,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ("Delivery type", cbDeliveryType), ("Statement date", dtpIssueDate),
                 ("Period covered (from the invoices)", pnlDates), null);
             // ---------------- Trips & stores grid
-            var bar = new TableLayoutPanel { Height = Dpi(46), ColumnCount = 7, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
+            var bar = new TableLayoutPanel { Height = Dpi(46), ColumnCount = 8, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            for (int i = 0; i < 6; i++) bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            for (int i = 0; i < 7; i++) bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             lblItemsTitle = new Label { Dock = DockStyle.Fill, Text = "🧾 Trips & stores on this statement", Font = new Font("Segoe UI Semibold", 10.5F), ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
             btnAddRow = MakeFormButton("➕ Add row", "secondary");
             btnAddRow.Click += (s, e) => AddBlankGridRow();
@@ -584,6 +584,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bar.Controls.Add(btnBulkEdit, 2, 0);
             bar.Controls.Add(btnDeleteRow, 3, 0);
             bar.Controls.Add(btnEditSoaTable, 4, 0);
+            var btnTripPay = MakeFormButton("₱ Trip payments", "primary");
+            btnTripPay.Click += (s, e) => ShowTripPayments(auto: false);
+            bar.Controls.Add(btnTripPay, 7, 0);
             bar.Controls.Add(btnRecalc, 6, 0);
             // Go back to the dispatch behind the selected line (to check a forgotten store or a wrong amount).
             var btnOpenDispatch = MakeFormButton("🔗 Open dispatch", "secondary");
@@ -598,7 +601,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var lblItemsHint = new Label
             {
                 Height = Dpi(24),
-                Text = "Type only the Amount and the Fuel surcharge (yellow cells) for each trip. Everything else comes from the trip report. The totals on the right follow as you type.",
+                Text = "Type only the number of drops, the Amount and the Fuel surcharge for each trip (or use Trip payments). Everything else comes from the trip report. The totals on the right follow as you type.",
                 Font = new Font("Segoe UI", 8.75F),
                 ForeColor = AppTheme.TextMuted,
                 TextAlign = ContentAlignment.TopLeft,
@@ -693,11 +696,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (e.RowIndex < 0 || e.RowIndex >= gridItems.Rows.Count) return;
                 var row = gridItems.Rows[e.RowIndex];
                 if (row.IsNewRow) return;
+                // Nov 10: drops, Amount and Fuel surcharge are typed once per trip, on the trip's first row.
+                if (TripFigureCols.Contains(gridItems.Columns[e.ColumnIndex].Name) && !IsFirstRowOfTrip(e.RowIndex)) { e.Cancel = true; return; }
                 bool linked = int.TryParse(row.Cells["colDeliveryId"].Value?.ToString(), out int did) && did > 0
                               || int.TryParse(row.Cells["colSpecialTrip"].Value?.ToString(), out int sid) && sid > 0;
                 if (!linked) return;
                 // Nov 9 (statement first): on a trip that has no service invoice yet, ONLY Amount and Fuel surcharge can be typed (everything else comes from the trip report).
                 string colName = gridItems.Columns[e.ColumnIndex].Name;
+                if (colName == "colDrops") return;   // Nov 10: the number of drops can be changed on the statement
                 if (colName is "colAmount" or "colFuel")
                 {
                     try
@@ -734,6 +740,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             gridItems.RowsAdded += (s, e) => UpdateItemsSummary();
             gridItems.RowsRemoved += (s, e) => UpdateItemsSummary();
+            SetupTripMerge();   // Nov 10: a trip's cells are one tall cell, like the printed statement
             pnlItemsGridHost.Controls.Add(gridItems);
             lblItemsTotals = new Label
             {
@@ -1598,7 +1605,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     MessageBox.Show(numTotalSales.Value < 0
                         ? $"Total sales is negative (PHP {numTotalSales.Value:N2}). Check the amounts and deductions on the trip lines."
-                        : "The total amount due is PHP 0.00. Enter the amount for each trip line (or check the Rate Matrix) before saving.\n\nSaving creates an invoice for the client, so it must be more than PHP 0.00.",
+                        : "The total amount due is PHP 0.00. Enter the amount for each trip line before saving.\n\nSaving creates an invoice for the client, so it must be more than PHP 0.00.",
                         "Check amounts", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
