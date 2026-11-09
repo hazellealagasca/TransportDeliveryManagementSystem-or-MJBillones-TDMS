@@ -2727,7 +2727,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var card2 = CreateSectionCard(2, "Truck & crew", "Assign the truck, the driver and the helpers for this trip.",
 
-                BuildAddResourceLinks(), pnlRowTruckDriver, pnlAidesSection);
+                BuildAddResourceLinks(), BuildTempTypeRow(), pnlRowTruckDriver, pnlAidesSection);
+            BuildCrateFooter();
 
             var card3 = CreateSectionCard(3, "Schedule & status", "When the truck leaves and where the order stands.",
 
@@ -5053,6 +5054,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     valErrors.Add("Assigned Driver is required.");
                     firstInvalid ??= cbDriver;
                 }
+                if (cbTempType != null && cbTempType.SelectedIndex < 0)
+                {
+                    ValidationHelper.ApplyValidationState(cbTempType, false, "Temp Type is required.");
+                    valErrors.Add("Temp Type is required (Dry, Cold or Combi).");
+                    firstInvalid ??= cbTempType;
+                }
                 int plannedCrates = (int)numGCrate.Value + (int)numECrate.Value;
                 if (CargoRouting.IsSpecial(cbCargoType.Text))
 
@@ -5435,7 +5442,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     ClientName = clientName,
                     Destination = destination,
                     IsPeak = chkIsPeak.Checked,
-                    CargoType = selTr!.CargoType, // Nov 6 workflow: the truck's own type (no cargo dropdown)
+                    CargoType = string.IsNullOrWhiteSpace(cbCargoType.Text) ? selTr!.CargoType : cbCargoType.Text, // the Temp Type picked on the form
                     LoadingScheduleId = 0,
                     LoadingScheduleInfo = lsInfo,
                     TruckId = selTr!.Id,
