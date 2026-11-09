@@ -19,6 +19,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static readonly HashSet<string> MergedCols = new HashSet<string> { "colTripNo", "colDate", "colZone", "colType", "colPlate", "colTons", "colDrops", "colAmount", "colFuel", "colDriver" };
         private static readonly HashSet<string> TripFigureCols = new HashSet<string> { "colDrops", "colAmount", "colFuel" };
         private bool propagatingTripFigure, tripPaymentsOpen;
+        private SoaSheetTotalsPanel? sheetTotals;
 
         private string TripKeyAt(int i)
         {

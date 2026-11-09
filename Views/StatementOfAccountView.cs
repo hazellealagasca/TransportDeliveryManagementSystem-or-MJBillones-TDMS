@@ -742,6 +742,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridItems.RowsRemoved += (s, e) => UpdateItemsSummary();
             SetupTripMerge();   // Nov 10: a trip's cells are one tall cell, like the printed statement
             pnlItemsGridHost.Controls.Add(gridItems);
+            // Nov 10: the statement sheet's totals block sits right under the trips table, like the print.
+            sheetTotals = new SoaSheetTotalsPanel(gridItems, () => new[] { numTotalSales.Value, numVat.Value, numNetOfVat.Value, numFuelSurchargeTotal.Value, numVat.Value, numWithholdingTax.Value, numTotalAmountDue.Value });
+            pnlItemsGridHost.Controls.Add(sheetTotals);
+            gridItems.BringToFront();
             lblItemsTotals = new Label
             {
                 Height = Dpi(40),
@@ -777,6 +781,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numFuelSurchargeTotal = MakeNum();
             numWithholdingTax = MakeNum();
             numTotalAmountDue = MakeNum();
+            foreach (var tn in new[] { numTotalSales, numVat, numNetOfVat, numFuelSurchargeTotal, numWithholdingTax, numTotalAmountDue }) tn.ValueChanged += (s2, e2) => sheetTotals?.Invalidate();
             numTotalAmountDue.Font = new Font("Segoe UI Semibold", 18F);
             numTotalAmountDue.BorderStyle = BorderStyle.None;
             numTotalAmountDue.BackColor = AppTheme.AccentSoft;
@@ -876,7 +881,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Rows grow with their DR lists, so the table is sized from the real row heights.
             try { gridItems.AutoResizeRows(DataGridViewAutoSizeRowsMode.AllCells); } catch (Exception ex) { ErrLog.Swallowed(ex); }
             int rowsH = gridItems.Rows.Cast<DataGridViewRow>().Sum(r => r.Height);
-            int h = Math.Max(gridItems.ColumnHeadersHeight, Dpi(36)) + Math.Max(rowsH, 4 * Dpi(30)) + Dpi(22);
+            int h = Math.Max(gridItems.ColumnHeadersHeight, Dpi(36)) + Math.Max(rowsH, 4 * Dpi(30)) + Dpi(22) + (sheetTotals?.TotalHeight ?? 0);
             pnlItemsGridHost.Height = Math.Max(h, Dpi(260)); // no inner scroll bar: the page grows and scrolls as one
         }
         private void UpdateItemsSummary()
