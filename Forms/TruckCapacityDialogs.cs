@@ -149,8 +149,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numDry = Num(); numCold = Num(); numCombiCold = Num(); numCombiDry = Num();
             editor.Controls.Add(Cap("Dry crates *"), 0, 3); editor.Controls.Add(Cap("Cold crates *"), 1, 3);
             editor.Controls.Add(numDry, 0, 4); editor.Controls.Add(numCold, 1, 4);
-            editor.Controls.Add(Cap("Combi — cold part"), 0, 5); editor.Controls.Add(Cap("Combi — dry part"), 1, 5);
-            editor.Controls.Add(numCombiCold, 0, 6); editor.Controls.Add(numCombiDry, 1, 6);
+            editor.Controls.Add(Cap("Combi — dry part"), 0, 5); editor.Controls.Add(Cap("Combi — cold part"), 1, 5);
+            editor.Controls.Add(numCombiDry, 0, 6); editor.Controls.Add(numCombiCold, 1, 6);
             lblRule = new Label { AutoSize = true, MaximumSize = new Size(D(320), 0), Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, Margin = new Padding(0, D(10), 0, D(6)), UseMnemonic = false };
             editor.Controls.Add(lblRule, 0, 7); editor.SetColumnSpan(lblRule, 2);
             var btns = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight, BackColor = AppTheme.Surface, Margin = new Padding(0, D(8), 0, 0) };
