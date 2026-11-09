@@ -31,11 +31,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public const string AllInOneSummary = "Feature.AllInOneSummary";
         /// <summary>The two-pane "Ledger Desk" layout of the Payments editors (one header, sheet left, tape right). Off = the previous single-column layout.</summary>
         public const string PaymentsWorkbench = "Feature.PaymentsWorkbench";
+        /// <summary>New invoice picks a Statement of Account and bills it with ONE invoice (amounts from the statement). Off = the old form that picks one trip.</summary>
+        public const string InvoiceFromSoa = "Feature.InvoiceFromSoa";
         private static readonly Dictionary<string, bool> Defaults = new()
         {
             [RateMatrix] = true, [AutoDispatchNumber] = true, [SpecialTrips] = true, [Incidents] = true, [CrewPay] = true,
             [BackupReminder] = true, [ConfirmSaves] = true, [QuietNotices] = true, [Toasts] = true,
-            [TruckSuggestion] = true, [EmptyCrateCheck] = true, [StoreTableEditHeader] = true, [AllInOneSummary] = false, [PaymentsWorkbench] = true
+            [TruckSuggestion] = true, [EmptyCrateCheck] = true, [StoreTableEditHeader] = true, [AllInOneSummary] = false, [PaymentsWorkbench] = true, [InvoiceFromSoa] = true
         };
         private static readonly Dictionary<string, bool> cache = new();
         private static readonly object gate = new();

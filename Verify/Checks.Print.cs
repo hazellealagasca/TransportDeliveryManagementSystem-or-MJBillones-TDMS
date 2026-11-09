@@ -169,6 +169,7 @@ public static partial class Checks
         if (invs.Sum(i => i.NetAmount) != all.Due) bad.Add($"invoices' net {invs.Sum(i => i.NetAmount)} != statement due {all.Due}");
         // Taking a trip off releases its invoice back to no share.
         soa.Id = id;
+        soa.TripRemovalReason = "Client asked to bill it later"; // taking a trip off a saved statement needs a written reason (Nov 9)
         var two = trips.Take(2).ToList();
         var t2 = SoaTotals.From(two.Sum(x => x.Inv.Freight), two.Sum(x => x.Inv.FuelSurcharge));
         soa.TotalSalesVatInc = t2.TotalSales; soa.VatAmount = t2.Vat; soa.NetOfVat = t2.NetOfVat; soa.FuelSurchargeTotal = t2.Fuel; soa.WithholdingTax = t2.Withholding; soa.TotalAmount = t2.Due;

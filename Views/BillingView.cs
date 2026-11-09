@@ -38,6 +38,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetFormVisibility(true);
             // Always a NEW invoice for this trip: nothing carried over from the invoice that was selected in the list.
             ClearFields();
+            if (cbSoa != null) chkDirectTrip.Checked = true; // Nov 10: opened for one trip (Trip reports / special trip): the trip form
             int idx = completedDeliveries.FindIndex(d => d.Id == del.Id);
             if (idx >= 0 && idx < cbDelivery.Items.Count)
             {
@@ -79,6 +80,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// </summary>
         public void StartForStatement(int soaId)
         {
+            if (OpenInvoiceForSoa(soaId)) { batchBackLabel = null; return; } // Nov 10: a statement is billed with one invoice
             var trips = new List<Delivery>();
             foreach (int id in MJdatabase.GetSoaDeliveryIdsWithoutInvoice(soaId)) { var d = MJdatabase.GetDeliveryById(id); if (d != null) trips.Add(d); }
             if (trips.Count == 0) { QuietBox.Show("Every trip of this statement already has its service invoice.", "Issue invoice", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
@@ -220,10 +222,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             billNumberGuard = new NumberFieldGuard(txtInvoiceNumber, NumberKind.SI, () => selectedInvoice?.Id ?? 0);
             billNumberGuard.Changed += () => ScheduleBillGuide();
-            formKit = new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to invoices");
+            BuildSoaPicker();
+            formKit =new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to invoices");
             formKit.Build(new[]
             {
-                new FullPageFormKit.Section("Invoice & order", "Which dispatch this invoice bills and who it is for.", lblInvoiceNumber, txtInvoiceNumber, billNumberGuard.Message, billNumberGuard.Tick, lblDel, cbDelivery, lblLoadingSchedule, txtLoadingSchedule, lblClient, cbClient),
+                new FullPageFormKit.Section("Invoice & order", "Which statement of account (or trip) this invoice bills and who it is for.",lblInvoiceNumber, txtInvoiceNumber, billNumberGuard.Message, billNumberGuard.Tick, lblSoa, cbSoa, chkDirectTrip, lblDel, cbDelivery, lblLoadingSchedule, txtLoadingSchedule, lblClient, cbClient),
                 new FullPageFormKit.Section("Amounts", "Gross amount, deductions and the net amount due.", pnlClientSpacer, tblAmounts, pnlAmountsSpacer, pnlNetDue, pnlNetDueSpacer, lblTariffMatch, BuildBillAdjustPanel())
             });
             InitBillGuide();
@@ -240,12 +243,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 gridInvoices.Rows[e.RowIndex].Selected = true;
                 SetFormVisibility(true);
             };
+            ApplyInvoiceSource();
             SetFormVisibility(false);
         }
         private void OpenNewRecordForm()
         {
             if (keep.Kept) { keep.Resume(this, SetFormVisibility); return; } // a kept draft comes back as it was left, never blank
             ClearFields();
+            ReloadSoaChoices(); // Nov 10: the statements that can be billed now
             lblFormHeader.Text = "New invoice";
             SetFormVisibility(true);
         }
@@ -546,6 +551,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         : (!string.IsNullOrWhiteSpace(selectedInvoice.TripReportNumber) ? selectedInvoice.TripReportNumber : "(Trip report recorded on the invoice)");
                 }
 
+                if (selectedInvoice.SoaId > 0 && selectedInvoice.DeliveryId <= 0 && string.IsNullOrWhiteSpace(selectedInvoice.DispatchNumber))
+                {
+                    // Nov 10: an invoice that bills a whole statement shows that statement's number and trips.
+                    try
+                    {
+                        var own = MJdatabase.GetStatementOfAccountById(selectedInvoice.SoaId);
+                        if (own != null)
+                        {
+                            int n = MJdatabase.GetStatementOfAccountItems(own.Id).Where(i => i.DeliveryId > 0 || i.SpecialTripId > 0).Select(i => (i.DeliveryId, i.SpecialTripId)).Distinct().Count();
+                            txtLoadingSchedule.Text = $"{own.SoaNumber} · {n} trip{(n == 1 ? "" : "s")} · {own.PeriodCovered}";
+                        }
+                    }
+                    catch (Exception ex) { ErrLog.Swallowed(ex); }
+                }
                 txtInvoiceNumber.Text = selectedInvoice.InvoiceNumber;
                 cbClient.Text = selectedInvoice.ClientName;
                 numTotalAmount.SetSafe(Math.Min(numTotalAmount.Maximum, selectedInvoice.Freight)); // Amount (freight tariff); the fuel surcharge is on top
@@ -554,6 +573,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblDueDate.Text = $"Payment Due Date (15 Days): {selectedInvoice.DueDate:MM/dd/yyyy}";
                 lblFormHeader.Text = $"Invoice #{selectedInvoice.InvoiceNumber}";
                 ApplyTripLock(); // a saved invoice keeps its trip
+                ApplyInvoiceSource(); // a saved invoice shows the trip box, never the statement picker
             }
             finally
             {
@@ -613,7 +633,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 FilterGridData();
 
-                if (!pnlForm.Visible) RefreshBillReady();
+                if (!pnlForm.Visible) { RefreshBillReady(); ReloadSoaChoices(); }
                 int unpaid = allInvoices.Count(i => i.Status == "Unpaid");
                 int drafts = allInvoices.Count(i => i.Status == "Draft");
                 int overdue = allInvoices.Count(i => i.Status == "Unpaid" && i.DueDate.Date < DateTime.Today);
@@ -634,6 +654,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void BtnSave_Click(object? sender, EventArgs e)
         {
             if (!BillGateBeforeSave()) return;
+            if (SoaModeOn) { SaveInvoiceForSelectedSoa(); return; } // Nov 10: one invoice for the whole statement
             try
             {
                 var valErrors = new List<string>();
@@ -964,6 +985,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numTotalAmount.SetSafe(0); // filled from the trip's rate when a dispatch is picked
             numFuel.SetSafe(0);
             lblTariffMatch.Visible = false;
+            if (cbSoa != null) { bool was = isBindingForm; isBindingForm = true; try { cbSoa.SelectedIndex = -1; chkDirectTrip.Checked = false; } finally { isBindingForm = was; } ApplyInvoiceSource(); } // Nov 10: a blank form bills a statement
             lblDueDate.Text = $"Payment Due Date (15 Days): {DateTime.Today.AddDays(15):MM/dd/yyyy}";
             RecalculateNet(this, EventArgs.Empty);
             if (cbDelivery.SelectedIndex >= 0 && cbDelivery.SelectedIndex < completedDeliveries.Count)

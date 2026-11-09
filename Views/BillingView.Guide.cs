@@ -60,6 +60,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit.AddStrip(billStrip);
             billStepper = new WorkflowStepper("Dispatch created", "Trip report completed", "Invoice filled from trip", "Review", "Validated & ready");
             billHelp = new HelpDrawer("How this works",
+                "0. New invoice bills a Statement of Account: pick the statement and its client, trips and amounts (freight, fuel, withholding, total due) fill in and are locked. Type only the Service Invoice No. One invoice bills the whole statement. Tick \"Bill one trip directly\" to use the trip form below instead.\n" +
                 "1. Only completed dispatches with a saved trip report appear in the list — the invoice is filled from the trip (client, trip report, amount from the Rate Matrix). Once the trip is picked it is fixed; Clear form frees it.\n" +
                 "2. A trip is billed once: either on a statement of account or on a direct invoice here. Trips already on a statement don't appear.\n" +
                 "3. The client is always the trip's client. The statement of account reads this invoice's amount and fuel surcharge, so type them here, once.\n" +
@@ -108,6 +109,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string t = c.Text;
                 if (t.Contains("adjustment reason", StringComparison.OrdinalIgnoreCase)) return txtBillAdjustReason;
                 if (t.Contains("Service Invoice No", StringComparison.OrdinalIgnoreCase) || t.StartsWith("Invoice #", StringComparison.OrdinalIgnoreCase)) return txtInvoiceNumber;
+                if (cbSoa.Visible && t.Contains("statement", StringComparison.OrdinalIgnoreCase) && !t.StartsWith("Client", StringComparison.OrdinalIgnoreCase)) return cbSoa;
                 if (t.Contains("trip", StringComparison.OrdinalIgnoreCase) || t.Contains("dispatch", StringComparison.OrdinalIgnoreCase)) return cbDelivery;
                 if (t.Contains("client", StringComparison.OrdinalIgnoreCase)) return cbClient;
                 if (t.Contains("fuel", StringComparison.OrdinalIgnoreCase)) return numFuel;
@@ -199,6 +201,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void StartInvoiceFor(Delivery d)
         {
             OpenNewRecordForm();
+            if (cbSoa != null) chkDirectTrip.Checked = true; // a waiting trip is billed on its own
             int idx = completedDeliveries.FindIndex(x => x.Id == d.Id);
             if (idx >= 0 && idx < cbDelivery.Items.Count) cbDelivery.SelectedIndex = idx;
             UpdateBillGuide();
@@ -208,6 +211,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private string BillLockedClient()
         {
             if (selectedInvoice != null) return selectedInvoice.DeliveryId > 0 || selectedInvoice.SoaId > 0 ? (selectedInvoice.ClientName ?? "").Trim() : "";
+            if (SoaModeOn) return SelectedSoa()?.ClientName ?? "";
             var d = SelectedBillDelivery();
             return d == null ? "" : (d.ClientName ?? "").Trim();
         }
@@ -265,7 +269,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var checks = new List<PaymentCheck>();
             bool editing = selectedInvoice != null;
             string client = cbClient.Text.Trim();
-            if (!editing)
+            if (!editing && SoaModeOn) AddSoaChecks(checks, client); // Nov 10: one invoice bills the whole statement
+            else if (!editing)
             {
                 var d = SelectedBillDelivery();
                 bool chargeable = d != null && IsChargeableCancelled(d);
@@ -351,9 +356,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             billStrip.SetTotals(numTotalAmount.Value, numFuel.Value, billPaid, Math.Max(0, net - billPaid), fails, warns);
             bool editing = selectedInvoice != null;
             var d = SelectedBillDelivery();
-            UpdateBillTrip(d);
-            UpdateBillNet(net);
-            if (editing) billStepper.SetProgress(fails > 0 ? 3 : 4, fails > 0 ? $"Editing invoice {selectedInvoice!.InvoiceNumber}: {fails} to fix — see the checklist." : $"Invoice {selectedInvoice!.InvoiceNumber} is valid — Update invoice saves the changes.");
+            bool soaMode = SoaModeOn;
+            if (soaMode) UpdateBillSoa(); else { UpdateBillTrip(d); UpdateBillNet(net); }
+            if (soaMode)
+            {
+                var soaSel = SelectedSoa();
+                billStepper.SetProgress(soaSel == null ? 1 : fails > 0 ? 2 : 4, soaSel == null
+                    ? (soaChoices.Count > 0 ? $"{soaChoices.Count} statement{(soaChoices.Count == 1 ? " is" : "s are")} ready to invoice — pick one under Invoice & order." : "No Statement of Account is waiting for an invoice.")
+                    : fails > 0 ? $"Review: {fails} item{(fails == 1 ? "" : "s")} to fix — see the checklist at the bottom." : "✓ Validated — Issue invoice bills the whole statement with 15-day terms.");
+            }
+            else if (editing) billStepper.SetProgress(fails > 0 ? 3 : 4, fails > 0 ? $"Editing invoice {selectedInvoice!.InvoiceNumber}: {fails} to fix — see the checklist." : $"Invoice {selectedInvoice!.InvoiceNumber} is valid — Update invoice saves the changes.");
             else if (d == null) billStepper.SetProgress(completedDeliveries.Count > 0 ? 1 : 0, completedDeliveries.Count > 0
                 ? $"{completedDeliveries.Count} completed trip{(completedDeliveries.Count == 1 ? " is" : "s are")} ready — pick one under Invoice & order."
                 : "No completed trips with a trip report are waiting for a direct invoice.");

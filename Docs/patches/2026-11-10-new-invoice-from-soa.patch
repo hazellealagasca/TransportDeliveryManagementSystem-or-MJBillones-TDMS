@@ -1,0 +1,807 @@
+commit 08a0a7a9eb12cf8224be59c06eb6ac765d757725
+Author: hazellealagasca <lagascahazellea@gmail.com>
+Date:   Tue Nov 10 00:53:18 2026 +0800
+
+    New invoice bills a Statement of Account with one invoice
+    
+    New invoice now starts from a Statement of Account: picking one fills the
+    client, trips and amounts (freight, fuel, withholding, total due, from the
+    one SoaTotals formula) and locks them; only the Service Invoice No. is typed.
+    One invoice bills the whole statement and shows its SOA number. A tick box
+    keeps the old one-trip form. Switch: Settings > Features.
+    
+    - A statement is billed once; its trips can't be invoiced one by one after
+    - Withholding goes on the invoice as the statement's single figure
+    - Verify: 4 new checks; Soa_Save_SharesWithholding now gives the removal reason
+    - Docs: SOA formula explained, plan for this change
+    
+    Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+diff --git a/Database/MJdatabase.SoaInvoice.cs b/Database/MJdatabase.SoaInvoice.cs
+new file mode 100644
+index 0000000..a8779e5
+--- /dev/null
++++ b/Database/MJdatabase.SoaInvoice.cs
+@@ -0,0 +1,124 @@
++using System;
++using System.Collections.Generic;
++using System.Linq;
++using Microsoft.Data.Sqlite;
++using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
++using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
++
++namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database
++{
++    /// <summary>A saved statement of account that can be billed with ONE service invoice, with the figures the statement works out.</summary>
++    public sealed class SoaToInvoice
++    {
++        public int SoaId;
++        public string SoaNumber = "";
++        public string ClientName = "";
++        public int Trips;
++        public string TripReports = "";
++        public SoaTotalsResult Totals;
++        public string Label => $"{SoaNumber} · {ClientName} · ₱{Totals.Due:N2} · {Trips} trip{(Trips == 1 ? "" : "s")}";
++    }
++
++    public static partial class MJdatabase
++    {
++        /// <summary>The figures of a statement, worked out from its lines by the one formula (SoaTotals): freight, fuel, VAT, withholding and total due.</summary>
++        public static SoaTotalsResult GetSoaTotalsFor(int soaId)
++        {
++            var items = GetStatementOfAccountItems(soaId);
++            return SoaTotals.From(items.Sum(i => i.Amount), items.Sum(i => i.FuelSurcharge));
++        }
++
++        /// <summary>
++        /// Why this statement can't get its own whole-statement invoice (null = it can): it must be saved, live, unpaid, have trips and a
++        /// positive amount, and neither it nor any of its trips may already have a live invoice (a trip is billed once).
++        /// </summary>
++        public static string? WhySoaCannotBeInvoiced(int soaId, Dictionary<int, LiveTripInvoice>? liveByDelivery = null, StatementOfAccount? known = null)
++        {
++            var soa = known ?? GetStatementOfAccountById(soaId);
++            if (soa == null) return "That statement was not found.";
++            string st = (soa.Status ?? "").Trim();
++            if (st.Equals("Cancelled", StringComparison.OrdinalIgnoreCase) || st.Equals("Void", StringComparison.OrdinalIgnoreCase)) return $"{soa.SoaNumber} is {st.ToLowerInvariant()}.";
++            if (st.Equals(PayStatus.Paid, StringComparison.OrdinalIgnoreCase)) return $"{soa.SoaNumber} is already paid in full.";
++            var items = GetStatementOfAccountItems(soaId);
++            var tripItems = items.Where(i => i.DeliveryId > 0 || i.SpecialTripId > 0).ToList();
++            if (tripItems.Count == 0) return $"{soa.SoaNumber} has no trips on it.";
++            var t = SoaTotals.From(items.Sum(i => i.Amount), items.Sum(i => i.FuelSurcharge));
++            if (t.TotalSales <= 0m) return $"{soa.SoaNumber} has no amount yet. Type the amount of its trips on the statement first.";
++            using var conn = new SqliteConnection(connectionString);
++            conn.Open();
++            using var c = conn.CreateCommand();
++            c.CommandText = "SELECT InvoiceNumber FROM Invoices WHERE COALESCE(SoaId,0) = @s AND LOWER(COALESCE(Status,'')) NOT IN ('cancelled','void','voided') LIMIT 1";
++            c.Parameters.AddWithValue("@s", soaId);
++            if (c.ExecuteScalar() is string no && no.Length > 0) return $"{soa.SoaNumber} already has invoice {no}. A statement is billed once.";
++            var live = liveByDelivery ?? GetLiveInvoicesByDelivery();
++            foreach (var i in tripItems.Where(x => x.DeliveryId > 0).Select(x => x.DeliveryId).Distinct())
++                if (live.TryGetValue(i, out var li)) return $"A trip on {soa.SoaNumber} is already invoiced one by one ({li.Describe()}). A trip is billed once.";
++            foreach (var sp in tripItems.Where(x => x.SpecialTripId > 0).Select(x => x.SpecialTripId).Distinct())
++                if (SpecialTripHasActiveInvoice(sp)) return $"A special trip on {soa.SoaNumber} is already invoiced. A trip is billed once.";
++            return null;
++        }
++
++        /// <summary>Statements that can be billed with one invoice now, newest first (the list behind New invoice → Statement of Account).</summary>
++        public static List<SoaToInvoice> GetSoasWaitingForOwnInvoice()
++        {
++            var list = new List<SoaToInvoice>();
++            var liveNow = GetLiveInvoicesByDelivery();
++            foreach (var s in GetStatementsOfAccount().OrderByDescending(x => x.Id))
++            {
++                if (WhySoaCannotBeInvoiced(s.Id, liveNow, s) != null) continue;
++                var items = GetStatementOfAccountItems(s.Id);
++                int trips = items.Where(i => i.DeliveryId > 0 || i.SpecialTripId > 0).Select(i => (i.DeliveryId, i.SpecialTripId)).Distinct().Count();
++                var nos = items.Select(i => i.TripReportNumber).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().Take(6).ToList();
++                list.Add(new SoaToInvoice
++                {
++                    SoaId = s.Id, SoaNumber = s.SoaNumber, ClientName = (s.ClientName ?? "").Trim(), Trips = trips,
++                    TripReports = string.Join(", ", nos), Totals = SoaTotals.From(items.Sum(i => i.Amount), items.Sum(i => i.FuelSurcharge))
++                });
++            }
++            return list;
++        }
++
++        /// <summary>
++        /// Issues ONE service invoice for the whole statement. The amounts are the statement's, worked out here from its lines (never typed):
++        /// total = freight + fuel, deductions = the statement's withholding, net = its Total Amount Due. The typed SI No. is the only input.
++        /// </summary>
++        public static Invoice SaveInvoiceForSoa(int soaId, string invoiceNumber, bool crossTypeConfirmed = false)
++        {
++            var why = WhySoaCannotBeInvoiced(soaId);
++            if (why != null) throw new InvalidOperationException(why + " Nothing was saved.");
++            var soa = GetStatementOfAccountById(soaId)!;
++            var items = GetStatementOfAccountItems(soaId);
++            var t = SoaTotals.From(items.Sum(i => i.Amount), items.Sum(i => i.FuelSurcharge));
++            var inv = new Invoice
++            {
++                InvoiceNumber = (invoiceNumber ?? "").Trim(), SoaId = soaId, DeliveryId = 0, ClientName = (soa.ClientName ?? "").Trim(),
++                IssueDate = DateTime.Now, DueDate = DateTime.Now.AddDays(15),
++                TotalAmount = t.TotalSales + t.Fuel, FuelSurcharge = t.Fuel, Deductions = 0, NetAmount = t.TotalSales + t.Fuel, Status = PayStatus.Unpaid
++            };
++            SaveInvoice(inv, crossTypeConfirmed: crossTypeConfirmed);
++            using var conn = new SqliteConnection(connectionString);
++            conn.Open();
++            using var tx = conn.BeginTransaction();
++            using (var u = conn.CreateCommand())
++            {
++                u.Transaction = tx;
++                // The statement's single withholding figure goes on the invoice: its net is exactly the statement's Total Amount Due.
++                u.CommandText = "UPDATE Invoices SET Deductions = @w, NetAmount = TotalAmount - @w WHERE Id = @id";
++                u.Parameters.AddWithValue("@w", t.Withholding);
++                u.Parameters.AddWithValue("@id", inv.Id);
++                u.ExecuteNonQuery();
++            }
++            using (var u = conn.CreateCommand())
++            {
++                u.Transaction = tx;
++                u.CommandText = "UPDATE StatementsOfAccount SET SalesInvoiceNo = @n WHERE Id = @s";
++                u.Parameters.AddWithValue("@n", inv.InvoiceNumber);
++                u.Parameters.AddWithValue("@s", soaId);
++                u.ExecuteNonQuery();
++            }
++            tx.Commit();
++            inv.Deductions = t.Withholding; inv.NetAmount = inv.TotalAmount - t.Withholding;
++            return inv;
++        }
++    }
++}
+diff --git a/Docs/SOA-formula-explained.md b/Docs/SOA-formula-explained.md
+new file mode 100644
+index 0000000..5ac1dc9
+--- /dev/null
++++ b/Docs/SOA-formula-explained.md
+@@ -0,0 +1,53 @@
++# How the Statement of Account (SOA) Amount Is Computed
++
++This is the one formula the system uses. The screen, the saved statement, the printout, the invoices and the receipt all use it, so they always show the same numbers.
++(Source: `Functions/SoaTotals.cs`, from the company's statement sheet.)
++
++## The idea in one line
++
++> **VAT and withholding tax apply only to the freight. The fuel surcharge is added as it is.**
++
++## Step by step
++
++| # | Line on the statement | Formula | Meaning |
++|---|---|---|---|
++| 1 | **Total Sales (VAT inclusive)** | Sum of the **Amount** of every trip on the statement | The freight total. It already has 12% VAT inside it. |
++| 2 | **Less: VAT** | `Total Sales ÷ 1.12 × 0.12` | Takes the 12% VAT out of the VAT-inclusive total. |
++| 3 | **Net of VAT** | `Total Sales − VAT` | The freight before VAT. |
++| 4 | **Fuel Surcharge** | Sum of the trips' fuel charge | Added as is. No VAT and no withholding on it. |
++| 5 | **Withholding Tax** | `Net of VAT × 2%` | The tax the client deducts from payment (EWT, 2%). |
++| 6 | **TOTAL AMOUNT DUE** | `Net of VAT + Fuel + VAT − Withholding` | What the client actually pays. |
++
++Every peso figure is rounded to 2 decimals (0.005 rounds up).
++
++## The short version
++
++Steps 3 and 6 simplify to:
++
++```
++Total Amount Due = Total Sales + Fuel Surcharge − Withholding Tax
++```
++
++Net of VAT plus VAT is just Total Sales again. So the client pays the freight (VAT already included), plus fuel, minus the 2% withholding.
++
++## Worked example
++
++Statement with freight of **₱10,000.00** (VAT inclusive) and fuel surcharge of **₱500.00**:
++
++| Line | Computation | Amount |
++|---|---|---|
++| Total Sales (VAT inclusive) | given | ₱10,000.00 |
++| Less: VAT | 10,000 ÷ 1.12 × 0.12 | ₱1,071.43 |
++| Net of VAT | 10,000.00 − 1,071.43 | ₱8,928.57 |
++| Fuel Surcharge | given | ₱500.00 |
++| Withholding Tax (2%) | 8,928.57 × 0.02 | ₱178.57 |
++| **Total Amount Due** | 8,928.57 + 500.00 + 1,071.43 − 178.57 | **₱10,321.43** |
++
++Check with the short version: 10,000.00 + 500.00 − 178.57 = **₱10,321.43**. ✔
++
++## Things to remember
++
++- **The fuel surcharge is never taxed.** It is not part of the VAT base and not part of the withholding base.
++- **Withholding is taken from Net of VAT, not from Total Sales.** That is why it is 2% of ₱8,928.57 and not 2% of ₱10,000.
++- **The withholding rate defaults to 2%.** It is the `DefaultWithholdingRate` constant in `SoaTotals.cs`.
++- **When a statement is split into several invoices**, the withholding is shared out in proportion to each invoice's freight. The last invoice takes any leftover centavos, so the shares add up exactly to the statement's withholding.
+diff --git a/Docs/plans/2026-11-10-new-invoice-from-soa.md b/Docs/plans/2026-11-10-new-invoice-from-soa.md
+new file mode 100644
+index 0000000..37c7eee
+--- /dev/null
++++ b/Docs/plans/2026-11-10-new-invoice-from-soa.md
+@@ -0,0 +1,105 @@
++# New Invoice picks a Statement of Account (SOA) — plan (Nov 10, 2026)
++
++> **Status: PLAN ONLY. No code has been written.** Section 5 has five decisions, each with a recommendation. Answer "use recommended" and I will build in the order of section 6.
++
++## 1. What you asked for
++
++In **Billing Invoices → New invoice**, replace the **Completed Delivery Trip** box with a **Statement of Account** box. After you pick the SOA, the form fills in by itself: client, the trips, and the **amounts as the SOA computed them**. You confirmed: **one invoice for the whole SOA** (not one per trip).
++
++What the form would show after picking an SOA (example: freight ₱10,000, fuel ₱500):
++
++| Field | Filled from the SOA | Example |
++|---|---|---|
++| Billed client | SOA client | BUTTERWORLD |
++| Trips being billed | The SOA's trip lines (read only) | 5 trips |
++| Amount / freight tariff | SOA Total Sales (VAT inclusive) | ₱10,000.00 |
++| Fuel surcharge | SOA fuel total | ₱500.00 |
++| Withholding tax (2%) | SOA withholding (see `SoaTotals`) | ₱178.57 |
++| **Net amount due** | SOA **Total Amount Due** | **₱10,321.43** |
++| Service Invoice No. | **Typed** from the printed booklet (the only thing typed) | 2451 |
++
++The numbers come from the one existing formula (`Functions/SoaTotals.cs`), so the invoice, the SOA, the print and the receipt cannot disagree.
++
++## 2. What I found in the code (this is why it is a plan, not a quick edit)
++
++1. **The database already allows it.** An invoice with `SoaId` set and `DeliveryId = 0` and `SpecialTripId = 0` is "a statement's own invoice". The code calls it a **legacy statement** (`MJdatabase.SoaInvoices.cs:179-194` `SoaHasOwnInvoice`; `StatementOfAccountView.Invoices.cs:18-33` `IsLegacySoa`). So **no new table or column is needed**.
++2. **But that is the model the company moved away from on Nov 6.** Since then the rule everywhere is *"a statement groups the service invoices of its trips, one per trip"* (`StatementOfAccountView.Invoices.cs:10-12`). What you ask for is, in effect, **bringing the old model back as the main one**. That is allowed, but it reverses a decision, so it must be a conscious one (D1).
++3. **Most of the billing code assumes one invoice = one trip.** Roughly 141 database statements across 30 files touch `Invoices`. These pieces would need to learn "an invoice may belong to a whole SOA":
++
++| Piece | Today | Where |
++|---|---|---|
++| New invoice form | Needs a picked trip, and takes Amount/Fuel from that trip's SOA line, locked | `Views/BillingView.cs:27-54`, `BillingView.Guide.cs:272` |
++| Issue Invoice from a SOA | Opens one form per trip that has no invoice | `BillingView.cs:80-87`, `StatementDesk.cs:58` |
++| Withholding | Split over the trips' invoices in proportion (`SoaTotals.Share`), centavo-exact | `SoaFirst.cs:118-178`, `SoaInvoices.cs:299-320` |
++| "Trips still without an invoice" guard | Blocks collecting a SOA | `SoaFirst.cs:181` `GetSoaTripsWithoutInvoice` |
++| Waiting-for-invoice list | Lists trips, not statements | `MJdatabase.Waiting.cs`, `Functions/WaitingListPanel.cs` |
++| Double-billing finder | Flags "an own invoice + an old statement" as a problem | `MJdatabase.OrderChain.cs:132` `GetTripsBilledMoreThanOnce` |
++| Cancel, receipts, prints, Finance History, search | Keyed on the invoice's trip | `NumberCancel.cs`, `OneReceipt.cs`, `Printer.cs`, `FinanceStatementHistoryView.cs` |
++
++Good news: collections already pay **a whole SOA with one receipt**, so a SOA-level invoice fits the receipt better than per-trip invoices do.
++
++## 3. Target design (recommended)
++
++```
++STATEMENT ROUTE (new):  Trip reports ─▶ SOA ─▶ ONE INVOICE for the SOA ─▶ COLLECTION RECEIPT
++DIRECT ROUTE (as today): Trip report ─▶ invoice per trip ─────────────────▶ COLLECTION RECEIPT
++```
++
++### 3.1 New invoice form
++- The first box becomes **"Statement of Account *"**. It lists only SOAs that are **saved, not cancelled, and have no live invoice yet**, newest first, each shown as `SOA-0012 · BUTTERWORLD · ₱10,321.43 · 5 trips`.
++- Picking one fills section 2 (Amounts) and the "trip being billed" card with the SOA's trips, **all locked**. You type only the **SI No.** and (as today) the issue date.
++- Amount = SOA Total Sales + fuel. Withholding = SOA withholding. Net = SOA Total Amount Due. Nothing is typed, nothing can disagree.
++- The **Completed Delivery Trip** box stays for the **direct route**, as a switch at the top of the form: **"Bill a Statement of Account"** (default) or **"Bill one trip directly"**. The direct route is untouched, so Trip reports → "Issue Invoice (n selected)" keeps working.
++
++### 3.2 Rules
++- **One live invoice per SOA.** A second one is refused ("SOA-0012 already has SI 2451").
++- **A SOA that has its invoice is locked for trips and amounts.** To change an amount: cancel the invoice, fix the SOA, issue again (the existing "typing mistake" / "void" cancel rules and the SI-number rules stay).
++- **A trip on a SOA cannot also get its own invoice** (and the reverse): one trip is billed once. The "billed more than once" finder keeps checking.
++- **Collecting** is the SOA's receipt as today. The "trips still need an invoice" guard becomes "this SOA has no invoice yet".
++- **SOA print and invoice print** show the same figures; the invoice shows "per SOA-0012" and its SI No. on the SOA.
++
++### 3.3 Old data
++- Statements already saved **with per-trip invoices** keep working exactly as now (open, print, collect). Nothing is converted.
++- The old "legacy" statements with their own invoice are the same shape as the new ones, so they are simply treated as **normal** from now on instead of "old rules".
++
++## 4. Risks
++- **Money and tax.** A single invoice for many trips changes what the BIR invoice shows. **Ask your accountant first:** "May one service invoice cover several trips on a statement of account, and may it be issued after the statement?" If no, the main route must stay per trip, and only the *picker* can be changed (see D1, option B).
++- **Billing code is touched** in about 10 places (table in section 2). Mitigation: a feature switch, no deleted columns, and a full check run on a **copy** of the live database before anything is committed.
++- **The invoice's "Trip Report #" column** (one trip today) must show "5 trips" or the SOA number.
++
++## 5. Decisions needed
++
++**D1 — Replace per-trip invoices on the statement route, or add the SOA option next to them?**
++- **A (recommended): add.** New invoice offers "Bill a Statement of Account" first and "one trip directly" second. Per-trip invoices from a SOA ("Issue Invoice" opening one form per trip) are kept for SOAs that already use them, but new SOAs get one invoice. Safest.
++- B: **Only the picker changes**: you pick the SOA, then pick one of its trips, and the trip's amounts fill in. Still one invoice per trip. Much smaller, but it is not "one invoice for the whole SOA".
++
++**D2 — Which SOAs appear in the picker?** Recommended: saved, same-client, not cancelled, no live invoice, and **no trip already invoiced one by one**. Others are shown greyed with the reason.
++
++**D3 — If the SOA's amount changes after the invoice is issued.** Recommended: **blocked**; cancel the invoice first. (The system already warns which printed/sent documents are out of date when an amount changes; that warning stays.)
++
++**D4 — Safety switch.** Recommended: **Settings → Features → "Invoice from a Statement of Account"**, shipped **on** after testing, so the old form can come back instantly.
++
++**D5 — Withholding on the invoice.** Recommended: the invoice carries the SOA's **single withholding figure** in the existing Deductions column, so Net = SOA Total Amount Due to the centavo. The per-trip split (`SoaTotals.Share`) is used only for the direct route and old statements.
++
++## 6. Build order (each step checked before the next)
++
++1. **Query and rules:** `GetSoasWaitingForInvoice`, "SOA already invoiced" rule, SOA-level invoice save with locked amounts (database only, no screen).
++2. **New invoice form:** the SOA box, auto-fill, the "SOA / one trip" switch, the trip card, the checks list ("Pick a SOA", "Enter the SI No."), Issue invoice.
++3. **Guards:** collect only an invoiced SOA, cancel flow, "billed more than once" finder, the invoice's Trip Report # display.
++4. **Prints and lists:** invoice print and Billing list show "SOA-xxxx · n trips"; SOA shows its SI No.
++5. **Switch, manual, and `Verify` checks**, then the whole check run on a copy of the live database.
++
++## 7. Checks to add (`Verify`)
++
++- Picking a SOA fills client, freight, fuel, withholding and Net; Net equals the SOA's Total Amount Due (₱10,000 + ₱500 → ₱10,321.43).
++- Only the SI No. can be typed; any other amount edit is refused at save, not only on the screen.
++- A SOA cannot get two live invoices; a cancelled invoice frees it again.
++- A trip on an invoiced SOA cannot be invoiced one by one; a directly invoiced trip cannot be put on a SOA.
++- Collecting the SOA pays the invoice in full and marks the SOA and invoice Paid.
++- Existing statements with per-trip invoices still open, print and collect unchanged.
++- The direct route (trip report → invoice → receipt) is unchanged.
++- No error popups on these screens (project rule).
++
++## 8. What I need from you
++
++Reply **"use recommended"** to take D1A, D2, D3 blocked, D4 switch on after testing, D5 single withholding figure. The answer that changes the size of the work is **D1** (A = full one-invoice-per-SOA, B = only a SOA picker with one invoice per trip). Please also ask your accountant the question in section 4 before we build.
+diff --git a/Functions/Features.cs b/Functions/Features.cs
+index 9c96964..81ff2ab 100644
+--- a/Functions/Features.cs
++++ b/Functions/Features.cs
+@@ -31,11 +31,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+         public const string AllInOneSummary = "Feature.AllInOneSummary";
+         /// <summary>The two-pane "Ledger Desk" layout of the Payments editors (one header, sheet left, tape right). Off = the previous single-column layout.</summary>
+         public const string PaymentsWorkbench = "Feature.PaymentsWorkbench";
++        /// <summary>New invoice picks a Statement of Account and bills it with ONE invoice (amounts from the statement). Off = the old form that picks one trip.</summary>
++        public const string InvoiceFromSoa = "Feature.InvoiceFromSoa";
+         private static readonly Dictionary<string, bool> Defaults = new()
+         {
+             [RateMatrix] = true, [AutoDispatchNumber] = true, [SpecialTrips] = true, [Incidents] = true, [CrewPay] = true,
+             [BackupReminder] = true, [ConfirmSaves] = true, [QuietNotices] = true, [Toasts] = true,
+-            [TruckSuggestion] = true, [EmptyCrateCheck] = true, [StoreTableEditHeader] = true, [AllInOneSummary] = false, [PaymentsWorkbench] = true
++            [TruckSuggestion] = true, [EmptyCrateCheck] = true, [StoreTableEditHeader] = true, [AllInOneSummary] = false, [PaymentsWorkbench] = true, [InvoiceFromSoa] = true
+         };
+         private static readonly Dictionary<string, bool> cache = new();
+         private static readonly object gate = new();
+diff --git a/Verify/Checks.Print.cs b/Verify/Checks.Print.cs
+index 2423eaa..13f1386 100644
+--- a/Verify/Checks.Print.cs
++++ b/Verify/Checks.Print.cs
+@@ -169,6 +169,7 @@ public static partial class Checks
+         if (invs.Sum(i => i.NetAmount) != all.Due) bad.Add($"invoices' net {invs.Sum(i => i.NetAmount)} != statement due {all.Due}");
+         // Taking a trip off releases its invoice back to no share.
+         soa.Id = id;
++        soa.TripRemovalReason = "Client asked to bill it later"; // taking a trip off a saved statement needs a written reason (Nov 9)
+         var two = trips.Take(2).ToList();
+         var t2 = SoaTotals.From(two.Sum(x => x.Inv.Freight), two.Sum(x => x.Inv.FuelSurcharge));
+         soa.TotalSalesVatInc = t2.TotalSales; soa.VatAmount = t2.Vat; soa.NetOfVat = t2.NetOfVat; soa.FuelSurchargeTotal = t2.Fuel; soa.WithholdingTax = t2.Withholding; soa.TotalAmount = t2.Due;
+diff --git a/Verify/Checks.SoaInvoice.cs b/Verify/Checks.SoaInvoice.cs
+new file mode 100644
+index 0000000..c2e53df
+--- /dev/null
++++ b/Verify/Checks.SoaInvoice.cs
+@@ -0,0 +1,86 @@
++using System;
++using System.Collections.Generic;
++using System.Linq;
++using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
++using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
++using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
++
++namespace TDMS.Verify;
++
++public static partial class Checks
++{
++    private static int SaveSoaFor(string client, params (int Del, decimal Amount, decimal Fuel)[] lines)
++    {
++        var t = SoaTotals.From(lines.Sum(l => l.Amount), lines.Sum(l => l.Fuel));
++        var soa = new StatementOfAccount { ClientName = client, PeriodCovered = "2026-11-01 to 2026-11-09", IssueDate = DateTime.Today, DeliveryType = "REF", TotalSalesVatInc = t.TotalSales, VatAmount = t.Vat, NetOfVat = t.NetOfVat, FuelSurchargeTotal = t.Fuel, WithholdingTax = t.Withholding, TotalAmount = t.Due, SoaType = SoaTypes.Normal };
++        return MJdatabase.SaveStatementOfAccount(soa, lines.Select(l => SoaLine(l.Del, l.Amount, l.Fuel)).ToList());
++    }
++
++    /// <summary>Nov 10: New invoice bills a whole statement: 10,000 freight + 500 fuel gives 10,321.43 due, one invoice, collectable, billed once.</summary>
++    [Check]
++    public static string SoaInvoice_OneInvoiceBillsTheWholeStatement()
++    {
++        Fresh(); RunBackfill();
++        int a = Seed.Delivery(client: "CLIENT A"); Seed.TripReport(a);
++        int b = Seed.Delivery(client: "CLIENT A"); Seed.TripReport(b);
++        int soaId = SaveSoaFor("CLIENT A", (a, 6000m, 300m), (b, 4000m, 200m));
++        var waiting = MJdatabase.GetSoasWaitingForOwnInvoice();
++        var pick = waiting.FirstOrDefault(s => s.SoaId == soaId);
++        if (pick == null) return "a saved statement is not offered for invoicing";
++        if (pick.Totals.TotalSales != 10000m || pick.Totals.Fuel != 500m || pick.Totals.Due != 10321.43m) return $"statement figures: sales {pick.Totals.TotalSales}, fuel {pick.Totals.Fuel}, due {pick.Totals.Due} (expected 10000 / 500 / 10321.43)";
++        if (pick.Trips != 2) return $"trips on the statement: {pick.Trips}";
++
++        var inv = MJdatabase.SaveInvoiceForSoa(soaId, "SI-9201");
++        if (inv.SoaId != soaId || inv.DeliveryId != 0) return "the invoice is not the statement's own invoice";
++        if (inv.TotalAmount != 10500m || inv.FuelSurcharge != 500m) return $"invoice total {inv.TotalAmount} / fuel {inv.FuelSurcharge}";
++        if (inv.NetAmount != 10321.43m) return $"invoice net {inv.NetAmount}, the statement's total due is 10321.43";
++        decimal stored = Convert.ToDecimal(Scalar("SELECT NetAmount FROM Invoices WHERE Id=@i", ("@i", inv.Id)) ?? 0);
++        if (stored != 10321.43m) return $"stored net {stored}";
++        if (!string.Equals(Convert.ToString(Scalar("SELECT SalesInvoiceNo FROM StatementsOfAccount WHERE Id=@s", ("@s", soaId))), "SI-9201", StringComparison.Ordinal)) return "the statement does not show its SI No.";
++        if (MJdatabase.GetSoasWaitingForOwnInvoice().Any(s => s.SoaId == soaId)) return "an invoiced statement is still offered";
++        if (MJdatabase.GetSoaTripsWithoutInvoice().ContainsKey(soaId)) return "an invoiced statement still shows trips without an invoice";
++        if (!MJdatabase.GetPayTargets().Any(p => p.SoaId == soaId)) return "the invoiced statement is not collectable";
++        return "";
++    }
++
++    /// <summary>A statement is billed once, and its trips can't be billed again one by one.</summary>
++    [Check]
++    public static string SoaInvoice_BilledOnce_AndItsTripsAreBilled()
++    {
++        Fresh(); RunBackfill();
++        int a = Seed.Delivery(client: "CLIENT A"); Seed.TripReport(a);
++        int soaId = SaveSoaFor("CLIENT A", (a, 2000m, 0m));
++        MJdatabase.SaveInvoiceForSoa(soaId, "SI-9211");
++        if (!Refused(() => MJdatabase.SaveInvoiceForSoa(soaId, "SI-9212"), out _)) return "a statement got a second invoice";
++        if (!Refused(() => MJdatabase.SaveInvoice(InvoiceWithNumber(a, "SI-9213", 2000m)), out _)) return "a trip on an invoiced statement was invoiced again one by one";
++        if (!Refused(() => MJdatabase.SaveInvoiceForSoa(soaId, "SI-9211"), out _)) return "a repeated SI No. was accepted";
++        return "";
++    }
++
++    /// <summary>A trip already invoiced one by one keeps its statement from being billed whole; a cancelled invoice frees the statement.</summary>
++    [Check]
++    public static string SoaInvoice_NotOfferedWhenTripInvoiced_AndFreedWhenCancelled()
++    {
++        Fresh(); RunBackfill();
++        int a = Seed.Delivery(client: "CLIENT A"); Seed.TripReport(a);
++        int soaId = SaveSoaFor("CLIENT A", (a, 2000m, 0m));
++        var perTrip = InvoiceWithNumber(a, "SI-9221", 2000m); MJdatabase.SaveInvoice(perTrip); MJdatabase.ApplyStatementToNewInvoice(perTrip.Id, a);
++        if (MJdatabase.WhySoaCannotBeInvoiced(soaId) == null) return "a statement whose trip has its own invoice can still be invoiced whole";
++        if (MJdatabase.GetSoasWaitingForOwnInvoice().Any(s => s.SoaId == soaId)) return "it is still offered";
++        return "";
++    }
++
++    /// <summary>A statement with no amount, a cancelled statement and a paid one are not offered.</summary>
++    [Check]
++    public static string SoaInvoice_CancelledOrEmptyStatementIsRefused()
++    {
++        Fresh(); RunBackfill();
++        int a = Seed.Delivery(client: "CLIENT A"); Seed.TripReport(a);
++        int soaId = SaveSoaFor("CLIENT A", (a, 2000m, 0m));
++        Scalar("UPDATE StatementsOfAccount SET Status='Cancelled' WHERE Id=@s", ("@s", soaId));
++        if (MJdatabase.WhySoaCannotBeInvoiced(soaId) == null) return "a cancelled statement can be invoiced";
++        if (!Refused(() => MJdatabase.SaveInvoiceForSoa(soaId, "SI-9231"), out _)) return "a cancelled statement was invoiced";
++        if (MJdatabase.GetSoasWaitingForOwnInvoice().Any(s => s.SoaId == soaId)) return "a cancelled statement is offered";
++        return "";
++    }
++}
+diff --git a/Views/BillingView.Guide.cs b/Views/BillingView.Guide.cs
+index 4382773..a833efa 100644
+--- a/Views/BillingView.Guide.cs
++++ b/Views/BillingView.Guide.cs
+@@ -60,6 +60,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+             formKit.AddStrip(billStrip);
+             billStepper = new WorkflowStepper("Dispatch created", "Trip report completed", "Invoice filled from trip", "Review", "Validated & ready");
+             billHelp = new HelpDrawer("How this works",
++                "0. New invoice bills a Statement of Account: pick the statement and its client, trips and amounts (freight, fuel, withholding, total due) fill in and are locked. Type only the Service Invoice No. One invoice bills the whole statement. Tick \"Bill one trip directly\" to use the trip form below instead.\n" +
+                 "1. Only completed dispatches with a saved trip report appear in the list — the invoice is filled from the trip (client, trip report, amount from the Rate Matrix). Once the trip is picked it is fixed; Clear form frees it.\n" +
+                 "2. A trip is billed once: either on a statement of account or on a direct invoice here. Trips already on a statement don't appear.\n" +
+                 "3. The client is always the trip's client. The statement of account reads this invoice's amount and fuel surcharge, so type them here, once.\n" +
+@@ -108,6 +109,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+                 string t = c.Text;
+                 if (t.Contains("adjustment reason", StringComparison.OrdinalIgnoreCase)) return txtBillAdjustReason;
+                 if (t.Contains("Service Invoice No", StringComparison.OrdinalIgnoreCase) || t.StartsWith("Invoice #", StringComparison.OrdinalIgnoreCase)) return txtInvoiceNumber;
++                if (cbSoa.Visible && t.Contains("statement", StringComparison.OrdinalIgnoreCase) && !t.StartsWith("Client", StringComparison.OrdinalIgnoreCase)) return cbSoa;
+                 if (t.Contains("trip", StringComparison.OrdinalIgnoreCase) || t.Contains("dispatch", StringComparison.OrdinalIgnoreCase)) return cbDelivery;
+                 if (t.Contains("client", StringComparison.OrdinalIgnoreCase)) return cbClient;
+                 if (t.Contains("fuel", StringComparison.OrdinalIgnoreCase)) return numFuel;
+@@ -199,6 +201,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+         private void StartInvoiceFor(Delivery d)
+         {
+             OpenNewRecordForm();
++            if (cbSoa != null) chkDirectTrip.Checked = true; // a waiting trip is billed on its own
+             int idx = completedDeliveries.FindIndex(x => x.Id == d.Id);
+             if (idx >= 0 && idx < cbDelivery.Items.Count) cbDelivery.SelectedIndex = idx;
+             UpdateBillGuide();
+@@ -208,6 +211,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+         private string BillLockedClient()
+         {
+             if (selectedInvoice != null) return selectedInvoice.DeliveryId > 0 || selectedInvoice.SoaId > 0 ? (selectedInvoice.ClientName ?? "").Trim() : "";
++            if (SoaModeOn) return SelectedSoa()?.ClientName ?? "";
+             var d = SelectedBillDelivery();
+             return d == null ? "" : (d.ClientName ?? "").Trim();
+         }
+@@ -265,7 +269,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+             var checks = new List<PaymentCheck>();
+             bool editing = selectedInvoice != null;
+             string client = cbClient.Text.Trim();
+-            if (!editing)
++            if (!editing && SoaModeOn) AddSoaChecks(checks, client); // Nov 10: one invoice bills the whole statement
++            else if (!editing)
+             {
+                 var d = SelectedBillDelivery();
+                 bool chargeable = d != null && IsChargeableCancelled(d);
+@@ -351,9 +356,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+             billStrip.SetTotals(numTotalAmount.Value, numFuel.Value, billPaid, Math.Max(0, net - billPaid), fails, warns);
+             bool editing = selectedInvoice != null;
+             var d = SelectedBillDelivery();
+-            UpdateBillTrip(d);
+-            UpdateBillNet(net);
+-            if (editing) billStepper.SetProgress(fails > 0 ? 3 : 4, fails > 0 ? $"Editing invoice {selectedInvoice!.InvoiceNumber}: {fails} to fix — see the checklist." : $"Invoice {selectedInvoice!.InvoiceNumber} is valid — Update invoice saves the changes.");
++            bool soaMode = SoaModeOn;
++            if (soaMode) UpdateBillSoa(); else { UpdateBillTrip(d); UpdateBillNet(net); }
++            if (soaMode)
++            {
++                var soaSel = SelectedSoa();
++                billStepper.SetProgress(soaSel == null ? 1 : fails > 0 ? 2 : 4, soaSel == null
++                    ? (soaChoices.Count > 0 ? $"{soaChoices.Count} statement{(soaChoices.Count == 1 ? " is" : "s are")} ready to invoice — pick one under Invoice & order." : "No Statement of Account is waiting for an invoice.")
++                    : fails > 0 ? $"Review: {fails} item{(fails == 1 ? "" : "s")} to fix — see the checklist at the bottom." : "✓ Validated — Issue invoice bills the whole statement with 15-day terms.");
++            }
++            else if (editing) billStepper.SetProgress(fails > 0 ? 3 : 4, fails > 0 ? $"Editing invoice {selectedInvoice!.InvoiceNumber}: {fails} to fix — see the checklist." : $"Invoice {selectedInvoice!.InvoiceNumber} is valid — Update invoice saves the changes.");
+             else if (d == null) billStepper.SetProgress(completedDeliveries.Count > 0 ? 1 : 0, completedDeliveries.Count > 0
+                 ? $"{completedDeliveries.Count} completed trip{(completedDeliveries.Count == 1 ? " is" : "s are")} ready — pick one under Invoice & order."
+                 : "No completed trips with a trip report are waiting for a direct invoice.");
+diff --git a/Views/BillingView.Soa.cs b/Views/BillingView.Soa.cs
+new file mode 100644
+index 0000000..6da2815
+--- /dev/null
++++ b/Views/BillingView.Soa.cs
+@@ -0,0 +1,176 @@
++using System;
++using System.Collections.Generic;
++using System.Drawing;
++using System.Linq;
++using System.Windows.Forms;
++using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
++using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
++
++namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
++{
++    /// <summary>
++    /// Nov 10: New invoice starts from a Statement of Account. Pick the statement and the client, trips and every amount come from it
++    /// (freight, fuel, withholding, total due, by the one formula in SoaTotals); only the Service Invoice No. is typed. One invoice bills
++    /// the whole statement. "Bill one trip directly" keeps the old trip form. Settings → Features → "New invoice bills a Statement of Account".
++    /// </summary>
++    public partial class BillingView
++    {
++        private Label lblSoa = null!;
++        private ComboBox cbSoa = null!;
++        private CheckBox chkDirectTrip = null!;
++        private List<SoaToInvoice> soaChoices = new List<SoaToInvoice>();
++
++        private bool SoaFeatureOn => Features.On(Features.InvoiceFromSoa);
++        /// <summary>True while the New invoice form is billing a statement (not a saved invoice, not "one trip directly").</summary>
++        private bool SoaModeOn => cbSoa != null && SoaFeatureOn && selectedInvoice == null && !chkDirectTrip.Checked;
++
++        private void BuildSoaPicker()
++        {
++            lblSoa = new Label { AutoSize = true, Dock = DockStyle.Top, Font = lblDel.Font, ForeColor = lblDel.ForeColor, Padding = lblDel.Padding, Text = "Statement of Account *:", UseMnemonic = false };
++            cbSoa = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, Font = cbDelivery.Font, Margin = cbDelivery.Margin, FormattingEnabled = true };
++            chkDirectTrip = new CheckBox { AutoSize = true, Dock = DockStyle.Top, Font = new Font("Segoe UI", 9F), ForeColor = lblDel.ForeColor, Text = "Bill one trip directly instead (no Statement of Account)", Padding = new Padding(0, 4, 0, 4), UseVisualStyleBackColor = true };
++            pnlFormBody.Controls.Add(chkDirectTrip);
++            pnlFormBody.Controls.Add(cbSoa);
++            pnlFormBody.Controls.Add(lblSoa);
++            cbSoa.SelectedIndexChanged += (s, e) => OnSoaPicked();
++            chkDirectTrip.CheckedChanged += (s, e) => { ApplyInvoiceSource(); ScheduleBillGuide(); };
++        }
++
++        /// <summary>Statements that can be billed with one invoice now (re-read from the database).</summary>
++        private void ReloadSoaChoices()
++        {
++            if (cbSoa == null) return;
++            try { soaChoices = SoaFeatureOn ? MJdatabase.GetSoasWaitingForOwnInvoice() : new List<SoaToInvoice>(); }
++            catch (Exception ex) { ErrLog.Swallowed(ex); soaChoices = new List<SoaToInvoice>(); }
++            bool was = isBindingForm; isBindingForm = true;
++            try
++            {
++                cbSoa.Items.Clear();
++                foreach (var s in soaChoices) cbSoa.Items.Add(s.Label);
++                cbSoa.SelectedIndex = -1;
++            }
++            finally { isBindingForm = was; }
++        }
++
++        private SoaToInvoice? SelectedSoa() => cbSoa != null && cbSoa.SelectedIndex >= 0 && cbSoa.SelectedIndex < soaChoices.Count ? soaChoices[cbSoa.SelectedIndex] : null;
++
++        /// <summary>Shows the Statement of Account box (default) or the Completed Delivery Trip box (direct route / saved invoice).</summary>
++        private void ApplyInvoiceSource()
++        {
++            if (cbSoa == null) return;
++            bool newForm = SoaFeatureOn && selectedInvoice == null;
++            bool soa = SoaModeOn;
++            chkDirectTrip.Visible = newForm;
++            lblSoa.Visible = cbSoa.Visible = soa;
++            lblDel.Visible = cbDelivery.Visible = !soa;
++            bool ownSoa = selectedInvoice != null && selectedInvoice.SoaId > 0 && selectedInvoice.DeliveryId <= 0 && string.IsNullOrWhiteSpace(selectedInvoice.DispatchNumber);
++            lblLoadingSchedule.Text = soa ? "Trips on the statement:" : ownSoa ? "Statement of Account:" : "Completed trip report:";
++            txtLoadingSchedule.PlaceholderText = soa ? "The trips of the picked statement..." : "The completed trip report of the picked trip...";
++            if (soa)
++            {
++                // The trip box has no say while a statement is being billed.
++                bool was = isBindingForm; isBindingForm = true;
++                try { cbDelivery.SelectedIndex = -1; } finally { isBindingForm = was; }
++                if (SelectedSoa() == null) { numTotalAmount.Enabled = false; numFuel.Enabled = false; }
++            }
++            else if (selectedInvoice == null && cbDelivery.SelectedIndex < 0) { numTotalAmount.Enabled = true; numFuel.Enabled = true; lblTariffMatch.Visible = false; }
++        }
++
++        /// <summary>A statement was picked: client, trips and every amount are filled from it and locked.</summary>
++        private void OnSoaPicked()
++        {
++            if (isBindingForm) return;
++            var s = SelectedSoa();
++            if (s == null) { ScheduleBillGuide(); return; }
++            var t = s.Totals;
++            lblFormHeader.Text = $"New invoice · {s.SoaNumber}";
++            if (!cbClient.Items.Contains(s.ClientName)) cbClient.Items.Add(s.ClientName);
++            cbClient.SelectedItem = s.ClientName; cbClient.Text = s.ClientName;
++            txtLoadingSchedule.Text = $"{s.Trips} trip{(s.Trips == 1 ? "" : "s")}" + (s.TripReports.Length > 0 ? " · " + s.TripReports : "");
++            if (t.TotalSales > numTotalAmount.Maximum) numTotalAmount.Maximum = t.TotalSales * 2;
++            if (t.Fuel > numFuel.Maximum) numFuel.Maximum = t.Fuel * 2;
++            numTotalAmount.SetSafe(t.TotalSales);
++            numFuel.SetSafe(t.Fuel);
++            numTotalAmount.Enabled = false; numFuel.Enabled = false;
++            lblTariffMatch.Text = $"🔒 From {s.SoaNumber}: freight PHP {t.TotalSales:N2} + fuel surcharge PHP {t.Fuel:N2} − withholding tax PHP {t.Withholding:N2} = total amount due PHP {t.Due:N2}. Nothing is typed here except the Service Invoice No.";
++            lblTariffMatch.Visible = true;
++            RecalculateNet(this, EventArgs.Empty);
++            ScheduleBillGuide();
++        }
++
++        /// <summary>"Issue Invoice" on a statement: opens New invoice on that statement when it can be billed whole; false when it can't (the caller uses the per-trip form).</summary>
++        private bool OpenInvoiceForSoa(int soaId)
++        {
++            if (!SoaFeatureOn || MJdatabase.WhySoaCannotBeInvoiced(soaId) != null) return false;
++            OpenNewRecordForm();
++            chkDirectTrip.Checked = false;
++            ReloadSoaChoices();
++            int idx = soaChoices.FindIndex(x => x.SoaId == soaId);
++            if (idx < 0) return false;
++            cbSoa.SelectedIndex = idx;
++            UpdateBillGuide();
++            return true;
++        }
++
++        /// <summary>The checklist lines of a statement invoice.</summary>
++        private void AddSoaChecks(List<PaymentCheck> checks, string client)
++        {
++            var s = SelectedSoa();
++            if (s == null)
++            {
++                checks.Add(new PaymentCheck(soaChoices.Count == 0 ? "No Statement of Account is waiting for an invoice (save a statement first)" : "Pick a Statement of Account to invoice (Statement of Account is required)", false));
++                return;
++            }
++            string? why = null;
++            try { why = MJdatabase.WhySoaCannotBeInvoiced(s.SoaId); } catch (Exception ex) { ErrLog.Swallowed(ex); }
++            checks.Add(new PaymentCheck(why ?? $"{s.SoaNumber} is saved and not billed yet: one invoice bills its {s.Trips} trip{(s.Trips == 1 ? "" : "s")}", why == null));
++            bool clientOk = string.Equals(s.ClientName, client, StringComparison.OrdinalIgnoreCase);
++            checks.Add(new PaymentCheck(clientOk ? $"Client is the statement's client ({s.ClientName})" : $"Client must be {s.ClientName} (the statement's client)", clientOk));
++            checks.Add(new PaymentCheck($"Amounts come from the statement: total amount due PHP {s.Totals.Due:N2}", true));
++        }
++
++        /// <summary>The statement card on the left and its computation on the right.</summary>
++        private void UpdateBillSoa()
++        {
++            if (billTape == null || billNetTape == null) return;
++            var s = SelectedSoa();
++            if (s == null) { billTape.Set("The statement being billed", Array.Empty<(string, string)>(), "", "", ""); return; }
++            billTape.Set("The statement being billed", new List<(string, string)> { ("Statement", s.SoaNumber), ("Client", s.ClientName), ("Trips", s.Trips.ToString("N0")), ("Trip reports", s.TripReports.Length > 0 ? s.TripReports : "—") },
++                "Total amount due", "₱" + s.Totals.Due.ToString("N2"), "worked out on the statement");
++            var t = s.Totals;
++            billNetTape.Set("What this invoice bills", new (string, string)[] { ("Total sales (VAT inclusive)", "₱" + t.TotalSales.ToString("N2")), ("Less VAT", "₱" + t.Vat.ToString("N2")), ("Net of VAT", "₱" + t.NetOfVat.ToString("N2")),
++                ("Fuel surcharge", "₱" + t.Fuel.ToString("N2")), ("Withholding tax (2%)", "₱" + t.Withholding.ToString("N2")), ("Payment due", $"{DateTime.Today.AddDays(15):MMM d, yyyy} · 15 days") },
++                "Total amount due", "₱" + t.Due.ToString("N2"), "");
++        }
++
++        /// <summary>Issue invoice for the picked statement: one invoice, the statement's figures, the typed SI No.</summary>
++        private void SaveInvoiceForSelectedSoa()
++        {
++            try
++            {
++                var s = SelectedSoa();
++                if (s == null) { MessageBox.Show(FindForm(), "Pick a Statement of Account to invoice.", "Statement of Account", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
++                string invNum = txtInvoiceNumber.Text.Trim();
++                var siWhy = MJdatabase.CheckSiNumber(invNum, 0);
++                if (siWhy != null) { MessageBox.Show(FindForm(), siWhy, "Service Invoice No.", MessageBoxButtons.OK, MessageBoxIcon.Warning); txtInvoiceNumber.Focus(); return; }
++                var inv = MJdatabase.SaveInvoiceForSoa(s.SoaId, invNum, billNumberGuard.CrossTypeConfirmed);
++                BillAfterSave(inv.Id, inv.InvoiceNumber);
++                QuietBox.Show($"Service Invoice {inv.InvoiceNumber} was issued for statement {s.SoaNumber}: total amount due PHP {inv.NetAmount:N2}, 15-day credit terms.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
++                ClearFields();
++                LoadData();
++                SetFormVisibility(false);
++            }
++            catch (InvalidOperationException ex)
++            {
++                MessageBox.Show(FindForm(), ex.Message, "Can't issue this invoice", MessageBoxButtons.OK, MessageBoxIcon.Warning);
++                ReloadSoaChoices();
++            }
++            catch (Exception ex)
++            {
++                ErrLog.Error("BillingView.SoaInvoice", ex);
++                MessageBox.Show(FindForm(), $"Failed to save invoice: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
++            }
++            finally { BillSaveFinished(); }
++        }
++    }
++}
+diff --git a/Views/BillingView.cs b/Views/BillingView.cs
+index 0ba7469..e56d95a 100644
+--- a/Views/BillingView.cs
++++ b/Views/BillingView.cs
+@@ -38,6 +38,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+             SetFormVisibility(true);
+             // Always a NEW invoice for this trip: nothing carried over from the invoice that was selected in the list.
+             ClearFields();
++            if (cbSoa != null) chkDirectTrip.Checked = true; // Nov 10: opened for one trip (Trip reports / special trip): the trip form
+             int idx = completedDeliveries.FindIndex(d => d.Id == del.Id);
+             if (idx >= 0 && idx < cbDelivery.Items.Count)
+             {
+@@ -79,6 +80,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+         /// </summary>
+         public void StartForStatement(int soaId)
+         {
++            if (OpenInvoiceForSoa(soaId)) { batchBackLabel = null; return; } // Nov 10: a statement is billed with one invoice
+             var trips = new List<Delivery>();
+             foreach (int id in MJdatabase.GetSoaDeliveryIdsWithoutInvoice(soaId)) { var d = MJdatabase.GetDeliveryById(id); if (d != null) trips.Add(d); }
+             if (trips.Count == 0) { QuietBox.Show("Every trip of this statement already has its service invoice.", "Issue invoice", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+@@ -220,10 +222,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+         {
+             billNumberGuard = new NumberFieldGuard(txtInvoiceNumber, NumberKind.SI, () => selectedInvoice?.Id ?? 0);
+             billNumberGuard.Changed += () => ScheduleBillGuide();
+-            formKit = new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to invoices");
++            BuildSoaPicker();
++            formKit =new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to invoices");
+             formKit.Build(new[]
+             {
+-                new FullPageFormKit.Section("Invoice & order", "Which dispatch this invoice bills and who it is for.", lblInvoiceNumber, txtInvoiceNumber, billNumberGuard.Message, billNumberGuard.Tick, lblDel, cbDelivery, lblLoadingSchedule, txtLoadingSchedule, lblClient, cbClient),
++                new FullPageFormKit.Section("Invoice & order", "Which statement of account (or trip) this invoice bills and who it is for.",lblInvoiceNumber, txtInvoiceNumber, billNumberGuard.Message, billNumberGuard.Tick, lblSoa, cbSoa, chkDirectTrip, lblDel, cbDelivery, lblLoadingSchedule, txtLoadingSchedule, lblClient, cbClient),
+                 new FullPageFormKit.Section("Amounts", "Gross amount, deductions and the net amount due.", pnlClientSpacer, tblAmounts, pnlAmountsSpacer, pnlNetDue, pnlNetDueSpacer, lblTariffMatch, BuildBillAdjustPanel())
+             });
+             InitBillGuide();
+@@ -240,12 +243,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+                 gridInvoices.Rows[e.RowIndex].Selected = true;
+                 SetFormVisibility(true);
+             };
++            ApplyInvoiceSource();
+             SetFormVisibility(false);
+         }
+         private void OpenNewRecordForm()
+         {
+             if (keep.Kept) { keep.Resume(this, SetFormVisibility); return; } // a kept draft comes back as it was left, never blank
+             ClearFields();
++            ReloadSoaChoices(); // Nov 10: the statements that can be billed now
+             lblFormHeader.Text = "New invoice";
+             SetFormVisibility(true);
+         }
+@@ -546,6 +551,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+                         : (!string.IsNullOrWhiteSpace(selectedInvoice.TripReportNumber) ? selectedInvoice.TripReportNumber : "(Trip report recorded on the invoice)");
+                 }
+ 
++                if (selectedInvoice.SoaId > 0 && selectedInvoice.DeliveryId <= 0 && string.IsNullOrWhiteSpace(selectedInvoice.DispatchNumber))
++                {
++                    // Nov 10: an invoice that bills a whole statement shows that statement's number and trips.
++                    try
++                    {
++                        var own = MJdatabase.GetStatementOfAccountById(selectedInvoice.SoaId);
++                        if (own != null)
++                        {
++                            int n = MJdatabase.GetStatementOfAccountItems(own.Id).Where(i => i.DeliveryId > 0 || i.SpecialTripId > 0).Select(i => (i.DeliveryId, i.SpecialTripId)).Distinct().Count();
++                            txtLoadingSchedule.Text = $"{own.SoaNumber} · {n} trip{(n == 1 ? "" : "s")} · {own.PeriodCovered}";
++                        }
++                    }
++                    catch (Exception ex) { ErrLog.Swallowed(ex); }
++                }
+                 txtInvoiceNumber.Text = selectedInvoice.InvoiceNumber;
+                 cbClient.Text = selectedInvoice.ClientName;
+                 numTotalAmount.SetSafe(Math.Min(numTotalAmount.Maximum, selectedInvoice.Freight)); // Amount (freight tariff); the fuel surcharge is on top
+@@ -554,6 +573,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+                 lblDueDate.Text = $"Payment Due Date (15 Days): {selectedInvoice.DueDate:MM/dd/yyyy}";
+                 lblFormHeader.Text = $"Invoice #{selectedInvoice.InvoiceNumber}";
+                 ApplyTripLock(); // a saved invoice keeps its trip
++                ApplyInvoiceSource(); // a saved invoice shows the trip box, never the statement picker
+             }
+             finally
+             {
+@@ -613,7 +633,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+ 
+                 FilterGridData();
+ 
+-                if (!pnlForm.Visible) RefreshBillReady();
++                if (!pnlForm.Visible) { RefreshBillReady(); ReloadSoaChoices(); }
+                 int unpaid = allInvoices.Count(i => i.Status == "Unpaid");
+                 int drafts = allInvoices.Count(i => i.Status == "Draft");
+                 int overdue = allInvoices.Count(i => i.Status == "Unpaid" && i.DueDate.Date < DateTime.Today);
+@@ -634,6 +654,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+         private void BtnSave_Click(object? sender, EventArgs e)
+         {
+             if (!BillGateBeforeSave()) return;
++            if (SoaModeOn) { SaveInvoiceForSelectedSoa(); return; } // Nov 10: one invoice for the whole statement
+             try
+             {
+                 var valErrors = new List<string>();
+@@ -964,6 +985,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+             numTotalAmount.SetSafe(0); // filled from the trip's rate when a dispatch is picked
+             numFuel.SetSafe(0);
+             lblTariffMatch.Visible = false;
++            if (cbSoa != null) { bool was = isBindingForm; isBindingForm = true; try { cbSoa.SelectedIndex = -1; chkDirectTrip.Checked = false; } finally { isBindingForm = was; } ApplyInvoiceSource(); } // Nov 10: a blank form bills a statement
+             lblDueDate.Text = $"Payment Due Date (15 Days): {DateTime.Today.AddDays(15):MM/dd/yyyy}";
+             RecalculateNet(this, EventArgs.Empty);
+             if (cbDelivery.SelectedIndex >= 0 && cbDelivery.SelectedIndex < completedDeliveries.Count)
+diff --git a/Views/FeaturesSettingsView.cs b/Views/FeaturesSettingsView.cs
+index 8892413..63dba5a 100644
+--- a/Views/FeaturesSettingsView.cs
++++ b/Views/FeaturesSettingsView.cs
+@@ -26,7 +26,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
+         {
+             new(Features.StoreTableEditHeader, "Show Column Edit Header in Edit Store Table", "The “✎ Edit” / “Customize table” controls that change a store table's columns, on New Dispatch Order and every other store table (Special Trip, Statement of Account lines, client stores), with the ✎ marks in the headers. When off, they are hidden on all of them and the column headers stay as they are; no saved data changes."),
+             new(Features.PaymentsWorkbench, "Two-pane Payments editors (Ledger Desk)", "The new layout of the Payments editors: one slim header with the live figures, the fields on the left and the running totals and problems on the right, no page scrolling. Only the layout changes: every rule, calculation and printout is the same. Off = the previous single-column layout. Takes effect the next time the screen is opened (restart the app to be sure)."),
+-            new(Features.AllInOneSummary, "Show All-in-One Summary", "The “▼ Show All-in-One Summary Overview” bar at the end of the Dispatch, Special Trip, Incident, Trip Reports, Order History, Statement of Account, Billing, Collections and Payments tables, with big colour-coded totals for what is shown and the order you click. Off by default: when off, the bar is not shown at all."),
++            new(Features.InvoiceFromSoa, "New invoice bills a Statement of Account", "On: New invoice (Billing) starts by picking a Statement of Account and bills the whole statement with one invoice; the client, trips and amounts (freight, fuel, withholding, total due) come from the statement and only the Service Invoice No. is typed. A switch on the form still lets you bill one trip directly. Off = the previous form that always picks one trip. Saved invoices are not changed either way."),
++            new(Features.AllInOneSummary,"Show All-in-One Summary", "The “▼ Show All-in-One Summary Overview” bar at the end of the Dispatch, Special Trip, Incident, Trip Reports, Order History, Statement of Account, Billing, Collections and Payments tables, with big colour-coded totals for what is shown and the order you click. Off by default: when off, the bar is not shown at all."),
+         };
+         private static readonly Option[] Popups =
+         {
