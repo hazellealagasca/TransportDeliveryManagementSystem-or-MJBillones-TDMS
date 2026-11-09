@@ -328,17 +328,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
-                if (selectedCollection == null)
+                var sel = selectedCollection;
+            if (sel == null)
                 {
                     MessageBox.Show("Please select a collection receipt to delete.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
-                var res = MessageBox.Show($"Are you sure you want to delete Collection Receipt {selectedCollection.ReceiptNumber}?\n\n" + MJdatabase.DeletePolicyNote("CollectionReceipts"), "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+                var res = MessageBox.Show($"Are you sure you want to delete Collection Receipt {sel.ReceiptNumber}?\n\n" + MJdatabase.DeletePolicyNote("CollectionReceipts"), "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
                 if (res == DialogResult.Yes)
                 {
-                    var grp = MJdatabase.GetReceiptRows(selectedCollection.ReceiptNumber); // a statement's receipt has one row per invoice
-                    if (grp.Count == 0) grp.Add(selectedCollection);
+                    var grp = MJdatabase.GetReceiptRows(sel.ReceiptNumber); // a statement's receipt has one row per invoice
+                    if (grp.Count == 0) grp.Add(sel);
                     bool deleted = true;
                     foreach (var row in grp) deleted &= MJdatabase.DeleteRecord("CollectionReceipts", row.Id);
                     if (deleted)

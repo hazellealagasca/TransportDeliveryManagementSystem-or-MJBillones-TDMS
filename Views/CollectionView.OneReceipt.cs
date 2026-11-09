@@ -245,7 +245,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void UpdateSelectedReceipt()
         {
-            if (selectedCollection == null)
+            var sel = selectedCollection;
+            if (sel == null)
             {
                 MessageBox.Show("Please select a collection receipt to update.", "Selection Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
@@ -253,7 +254,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (!CheckReceiptForm(editing: true)) return;
             string method = cbPaymentMethod.Text.Trim();
             MJdatabase.SaveLookupItem("Payment Method", method);
-            MJdatabase.UpdateReceiptDetails(selectedCollection.ReceiptNumber, txtReceiptNo.Text.Trim(), method, txtRefNo.Text.Trim(), txtNotes.Text.Trim(), dtpPaymentDate.Value.Date, receiptNumberGuard.CrossTypeConfirmed);
+            MJdatabase.UpdateReceiptDetails(sel.ReceiptNumber, txtReceiptNo.Text.Trim(), method, txtRefNo.Text.Trim(), txtNotes.Text.Trim(), dtpPaymentDate.Value.Date, receiptNumberGuard.CrossTypeConfirmed);
             QuietBox.Show($"Collection Receipt {txtReceiptNo.Text.Trim()} is updated. (The amount is the full amount paid and does not change.)", "Receipt updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
             ClearFields();
             LoadData();

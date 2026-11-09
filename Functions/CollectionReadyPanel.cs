@@ -137,7 +137,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 grid.ResumeLayout();
                 int overdue = all.Count(t => t.DueDate.Date < DateTime.Today);
                 lblHeader.Text = $"{all.Count} statement{(all.Count == 1 ? "" : "s")} / invoice{(all.Count == 1 ? "" : "s")} waiting for payment" + (all.Count > 0 ? $" · ₱{all.Sum(t => t.Net):N2}" + (overdue > 0 ? $" · {overdue} overdue" : "") : "");
-                lblEmpty.Text = all.Count == 0 ? "Nothing is waiting for payment. Statements of account (and invoices on no statement) with nothing paid yet are listed here." : "No statement matches your search.";
+                lblEmpty.Text = all.Count == 0 ? "Nothing is waiting for payment. Statements of account with their service invoices and nothing paid yet are listed here." : "No statement matches your search.";
                 lblEmpty.Visible = rows.Count == 0; lblEmpty.BringToFront(); grid.Visible = rows.Count > 0;
             }
             finally { rendering = false; }
