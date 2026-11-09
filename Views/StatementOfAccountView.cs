@@ -513,7 +513,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbDeliveryType.Items.AddRange(new object[] { "REF", "DRY" });
             cbDeliveryType.SelectedIndex = -1;
             cbSoaType = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI Semibold", 10F) };
-            cbSoaType.Items.AddRange(new object[] { "Normal Operations SOA", "Special Trips SOA" });
+            cbSoaType.Items.AddRange(Features.On(Features.SpecialTrips) ? new object[] { "Normal Operations SOA", "Special Trips SOA" } : new object[] { "Normal Operations SOA" });
             cbSoaType.SelectedIndex = 0;
             cbSoaType.SelectedIndexChanged += (s, e) => { if (!isBindingForm) SchedulePickerRefresh(); };
             dtpIssueDate = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Font = new Font("Segoe UI", 10F) };

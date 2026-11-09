@@ -1096,7 +1096,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 allTripReports = await MJdatabase.GetTripReportsAsync();
                 var reported = new HashSet<string>(allTripReports.Select(t => t.DispatchNumber ?? ""), StringComparer.OrdinalIgnoreCase);
                 // Special trips ticked "With Trip Report" are listed too (as "Special trip · destination"; Id = −trip Id).
-                try { allDeliveries.AddRange(MJdatabase.GetSpecialTripsForTripReports(reported)); }
+                try { if (Features.On(Features.SpecialTrips)) allDeliveries.AddRange(MJdatabase.GetSpecialTripsForTripReports(reported)); }
                 catch (Exception sx) { ErrLog.Swallowed(sx); }
                 // Nov 9: the drop-down lists only the trips that still WAIT for a report: completed dispatches (and completed special trips)
                 // with no report yet, or with a draft (tagged). A trip whose report is already finished is not listed: it cannot get a second

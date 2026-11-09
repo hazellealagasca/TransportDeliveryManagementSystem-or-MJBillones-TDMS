@@ -45,6 +45,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static event Action<string>? Changed;
         public static bool On(string key)
         {
+            if (key == SpecialTrips) return false;   // Nov 10: special trips are hidden everywhere (tab, buttons, lists, search)
             lock (gate)
             {
                 if (cache.TryGetValue(key, out bool v)) return v;

@@ -85,6 +85,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Completed special trips that still need a report, shown as waiting rows too (Id = −special trip id), so this list matches the drop-down.</summary>
         private List<AwaitingReportRow> SpecialAwaitingRows()
         {
+            if (!Features.On(Features.SpecialTrips)) return new List<AwaitingReportRow>();   // Nov 10: special trips are hidden
             var finished = new HashSet<string>(allTripReports.Where(t => !string.Equals(t.Status, TripReportStatus.Draft, StringComparison.OrdinalIgnoreCase)).Select(t => t.DispatchNumber ?? ""), StringComparer.OrdinalIgnoreCase);
             return allDeliveries.Where(d => d.Id < 0 && DispatchGate.IsCompleted(d.Status) && !finished.Contains(d.DispatchNumber ?? ""))
                 .Select(d => new AwaitingReportRow
