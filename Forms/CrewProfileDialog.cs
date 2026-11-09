@@ -17,7 +17,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly Crew crew;
         private readonly Action<Crew>? onEdit;
         private readonly ProfileHeader header = new ProfileHeader();
-        private readonly SegmentTabs tabs = new SegmentTabs("Profile", "Dispatch logs", "Trip performance", "Vehicle history", "Incidents & violations");
+        private readonly SegmentTabs tabs = Features.On(Features.Incidents) ? new SegmentTabs("Profile", "Dispatch logs", "Trip performance", "Vehicle history", "Incidents & violations") : new SegmentTabs("Profile", "Dispatch logs", "Trip performance", "Vehicle history");
         private readonly Panel body = new Panel { Dock = DockStyle.Fill };
         private readonly Panel[] pages = new Panel[5];
         private List<Delivery> trips = new List<Delivery>();
@@ -73,7 +73,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UpdateBadges();
             tabs.SelectedChanged += (s, e) => ShowPage(tabs.Selected);
             ShowPage(0);
-            KeyDown += (s, e) => { if (e.Control && e.KeyCode == Keys.Tab) { tabs.Selected = (tabs.Selected + (e.Shift ? 4 : 1)) % 5; e.Handled = true; } };
+            KeyDown += (s, e) => { if (e.Control && e.KeyCode == Keys.Tab) { { int n = Features.On(Features.Incidents) ? 5 : 4; tabs.Selected = (tabs.Selected + (e.Shift ? n - 1 : 1)) % n; } e.Handled = true; } };
             try { ThemeManager.StyleWindowChrome(this); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }
         private bool OnTrip(Delivery d) => d.DriverId == crew.Id || d.AideId == crew.Id || (d.AideIds ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Any(x => x.Trim() == crew.Id.ToString());

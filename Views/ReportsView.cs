@@ -26,6 +26,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 cbReportType.Items.Remove("System Activity & Audit Trail (Admin)");
             }
+            if (!Features.On(Features.Incidents)) cbReportType.Items.Remove("Incident & Damage Reports");   // Nov 10: incident logs are hidden
             cbReportType.SelectedIndex = 0;
             cbStatusFilter.SelectedIndex = 0;
             cbReportType.SelectedIndexChanged += CbReportType_SelectedIndexChanged;
@@ -56,6 +57,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridReport.ShowCellToolTips = false;
         }
 
+        /// <summary>The report's number in the full list (the incident report, number 7, is not in the box when incident logs are hidden).</summary>
+        private int ReportKind() => cbReportType.SelectedIndex >= 7 && !Features.On(Features.Incidents) ? cbReportType.SelectedIndex + 1 : cbReportType.SelectedIndex;
+
         private void CbReportType_SelectedIndexChanged(object? sender, EventArgs e)
         {
             if (cbStatusFilter.SelectedIndex != 0)
@@ -84,7 +88,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string search = txtSearch.Text.Trim().ToLowerInvariant();
                 string statusFilter = cbStatusFilter.SelectedItem?.ToString() ?? "All Statuses";
 
-                switch (cbReportType.SelectedIndex)
+                switch (ReportKind())
             {
                 case 0:
                     var deliveries = await MJdatabase.GetDeliveriesAsync();

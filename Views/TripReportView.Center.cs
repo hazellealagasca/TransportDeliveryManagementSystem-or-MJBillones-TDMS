@@ -44,7 +44,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (key == "awaiting") { trTiles.ClearSelection(); ShowAwaitingMenu(); return; }
                 if (applyingView) return;
                 applyingView = true;
-                try { cbShowF.SelectedIndex = key == "toinvoice" ? 6 : key == "nopod" ? 4 : 0; }
+                try { cbShowF.SelectedIndex = key == "toinvoice" ? 5 : key == "nopod" ? 3 : 0; }
                 finally { applyingView = false; }
                 if (showAwaiting) SetHistoryMode(false);   // these tiles are about finished reports: show the Active list
                 FilterGridData();
@@ -66,7 +66,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbClientF = Combo(170, "All clients");
             cbDriverF = Combo(150, "All drivers");
             cbTruckF = Combo(120, "All trucks");
-            cbShowF = Combo(180, "All reports", "Drafts", "With returned crates", "With incidents", "Missing POD file", "No issues", "Ready to invoice");
+            cbShowF = Combo(180, "All reports", "Drafts", "With returned crates", "Missing POD file", "No issues", "Ready to invoice");
             cbSortF = Combo(170, "Newest first", "Oldest first", "Most crates returned", "Drafts first", "Client A–Z", "Report number");
             cbSortF.SelectedIndexChanged += (s, e) => { if (!applyingView && currentSortColumn.Length > 0) { currentSortColumn = ""; FilterGridData(); } };
             var btnReset = new Button { Text = "Reset filters", AutoSize = true, MinimumSize = new Size(0, Dc(28)), Cursor = Cursors.Hand, Margin = new Padding(0, 0, Dc(8), 0) };
@@ -212,10 +212,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 1 => periodSet.Where(t => RowMenu.Is(t.Status, TripReportStatus.Draft)),
                 2 => periodSet.Where(t => Returned(t) > 0),
-                3 => periodSet.Where(HasIncident),
-                4 => periodSet.Where(t => !HasPod(t)),
-                5 => periodSet.Where(t => !HasIncident(t) && HasPod(t) && Returned(t) == 0),
-                6 => periodSet.Where(t => RowMenu.Is(t.Status, TripReportStatus.Completed) && InvoiceNumberFor(t).Length == 0),
+                3 => periodSet.Where(t => !HasPod(t)),
+                4 => periodSet.Where(t => !HasIncident(t) && HasPod(t) && Returned(t) == 0),
+                5 => periodSet.Where(t => RowMenu.Is(t.Status, TripReportStatus.Completed) && InvoiceNumberFor(t).Length == 0),
                 _ => periodSet
             };
             q = cbSortF.SelectedIndex switch
