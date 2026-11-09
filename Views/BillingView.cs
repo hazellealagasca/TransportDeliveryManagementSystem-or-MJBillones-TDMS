@@ -542,21 +542,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 selectedInvoice = inv;
 
-                int dIdx = completedDeliveries.FindIndex(d => d.Id == selectedInvoice.DeliveryId);
+                int dIdx = completedDeliveries.FindIndex(d => d.Id == inv.DeliveryId);
                 if (dIdx >= 0 && dIdx < cbDelivery.Items.Count) cbDelivery.SelectedIndex = dIdx;
 
                 {
-                    var invDel = selectedInvoice.DeliveryId > 0 ? MJdatabase.GetDeliveryById(selectedInvoice.DeliveryId) : null;
+                    var invDel = inv.DeliveryId > 0 ? MJdatabase.GetDeliveryById(inv.DeliveryId) : null;
                     txtLoadingSchedule.Text = invDel != null ? TripReportSummary(invDel)
-                        : (!string.IsNullOrWhiteSpace(selectedInvoice.TripReportNumber) ? selectedInvoice.TripReportNumber : "(Trip report recorded on the invoice)");
+                        : (!string.IsNullOrWhiteSpace(inv.TripReportNumber) ? inv.TripReportNumber : "(Trip report recorded on the invoice)");
                 }
 
-                if (selectedInvoice.SoaId > 0 && selectedInvoice.DeliveryId <= 0 && string.IsNullOrWhiteSpace(selectedInvoice.DispatchNumber))
+                if (inv.SoaId > 0 && inv.DeliveryId <= 0 && string.IsNullOrWhiteSpace(inv.DispatchNumber))
                 {
                     // Nov 10: an invoice that bills a whole statement shows that statement's number and trips.
                     try
                     {
-                        var own = MJdatabase.GetStatementOfAccountById(selectedInvoice.SoaId);
+                        var own = MJdatabase.GetStatementOfAccountById(inv.SoaId);
                         if (own != null)
                         {
                             int n = MJdatabase.GetStatementOfAccountItems(own.Id).Where(i => i.DeliveryId > 0 || i.SpecialTripId > 0).Select(i => (i.DeliveryId, i.SpecialTripId)).Distinct().Count();
@@ -565,13 +565,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                     catch (Exception ex) { ErrLog.Swallowed(ex); }
                 }
-                txtInvoiceNumber.Text = selectedInvoice.InvoiceNumber;
-                cbClient.Text = selectedInvoice.ClientName;
-                numTotalAmount.SetSafe(Math.Min(numTotalAmount.Maximum, selectedInvoice.Freight)); // Amount (freight tariff); the fuel surcharge is on top
-                numFuel.SetSafe(Math.Min(numFuel.Maximum, selectedInvoice.FuelSurcharge));
+                txtInvoiceNumber.Text = inv.InvoiceNumber;
+                cbClient.Text = inv.ClientName;
+                numTotalAmount.SetSafe(Math.Min(numTotalAmount.Maximum, inv.Freight)); // Amount (freight tariff); the fuel surcharge is on top
+                numFuel.SetSafe(Math.Min(numFuel.Maximum, inv.FuelSurcharge));
                 RecalculateNet(this, EventArgs.Empty);
-                lblDueDate.Text = $"Payment Due Date (15 Days): {selectedInvoice.DueDate:MM/dd/yyyy}";
-                lblFormHeader.Text = $"Invoice #{selectedInvoice.InvoiceNumber}";
+                lblDueDate.Text = $"Payment Due Date (15 Days): {inv.DueDate:MM/dd/yyyy}";
+                lblFormHeader.Text = $"Invoice #{inv.InvoiceNumber}";
                 ApplyTripLock(); // a saved invoice keeps its trip
                 ApplyInvoiceSource(); // a saved invoice shows the trip box, never the statement picker
             }
