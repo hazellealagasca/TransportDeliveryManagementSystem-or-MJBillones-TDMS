@@ -35,7 +35,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Nov 6 workflow: no "Crates delivered" or "Return rate" tiles; the list is about proof of delivery (kept off the strip).
             tDelivered = new StatTile("Crates delivered", AppTheme.Success, "");
             tReturnRate = new StatTile("Return rate", AppTheme.Info, "returned ÷ delivered");
-            tShort = trTiles.Add(new StatTile("Drafts", AppTheme.Warning, "saved, not yet completed") { Clickable = true, Key = "short" }); // Nov 6: no delivered-crate metrics
+            tShort = trTiles.Add(new StatTile("Ready to invoice", AppTheme.Accent, "completed, no invoice yet") { Clickable = true, Key = "toinvoice" }); // Nov 9: drafts are not a list state any more
             tNoPod = trTiles.Add(new StatTile("Missing POD", AppTheme.Warning, "no proof-of-delivery file") { Clickable = true, Key = "nopod" });
             tAwaiting = trTiles.Add(new StatTile("Awaiting a report", AppTheme.Warning, "completed, no report yet") { Clickable = true, Key = "awaiting" });
             trTiles.FilterChanged += t =>
@@ -44,8 +44,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (key == "awaiting") { trTiles.ClearSelection(); ShowAwaitingMenu(); return; }
                 if (applyingView) return;
                 applyingView = true;
-                try { cbShowF.SelectedIndex = key == "short" ? 1 : key == "nopod" ? 4 : 0; }
+                try { cbShowF.SelectedIndex = key == "toinvoice" ? 6 : key == "nopod" ? 4 : 0; }
                 finally { applyingView = false; }
+                if (showAwaiting) SetHistoryMode(false);   // these tiles are about finished reports: show the Active list
                 FilterGridData();
             };
             filterBar = new FlowLayoutPanel { Dock = DockStyle.Top, Height = Dc(44), WrapContents = false, AutoScroll = false, BackColor = pnlGridCard.BackColor, Padding = new Padding(0, Dc(6), 0, 0) };
@@ -65,7 +66,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbClientF = Combo(170, "All clients");
             cbDriverF = Combo(150, "All drivers");
             cbTruckF = Combo(120, "All trucks");
-            cbShowF = Combo(180, "All reports", "Drafts", "With returned crates", "With incidents", "Missing POD file", "No issues");
+            cbShowF = Combo(180, "All reports", "Drafts", "With returned crates", "With incidents", "Missing POD file", "No issues", "Ready to invoice");
             cbSortF = Combo(170, "Newest first", "Oldest first", "Most crates returned", "Drafts first", "Client A–Z", "Report number");
             cbSortF.SelectedIndexChanged += (s, e) => { if (!applyingView && currentSortColumn.Length > 0) { currentSortColumn = ""; FilterGridData(); } };
             var btnReset = new Button { Text = "Reset filters", AutoSize = true, MinimumSize = new Size(0, Dc(28)), Cursor = Cursors.Hand, Margin = new Padding(0, 0, Dc(8), 0) };
@@ -146,6 +147,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (!centerReady) return;
             deliveryByNumber = allDeliveries.GroupBy(d => d.DispatchNumber ?? "").ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
             fileCounts = MJdatabase.GetAttachmentCounts("Dispatch");
+            RefreshInvoiceNumbers();
             try { incidentCounts = MJdatabase.GetIncidentReports().GroupBy(i => i.DeliveryId).ToDictionary(g => g.Key, g => g.Count()); } catch { incidentCounts = new Dictionary<int, int>(); }
             // The same list as Billing and the Dashboard (plan section 4): completed trips with no finished trip report.
             var waitingIds = new HashSet<int>();
@@ -211,6 +213,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 3 => periodSet.Where(HasIncident),
                 4 => periodSet.Where(t => !HasPod(t)),
                 5 => periodSet.Where(t => !HasIncident(t) && HasPod(t) && Returned(t) == 0),
+                6 => periodSet.Where(t => RowMenu.Is(t.Status, TripReportStatus.Completed) && InvoiceNumberFor(t).Length == 0),
                 _ => periodSet
             };
             q = cbSortF.SelectedIndex switch
@@ -233,8 +236,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tDelivered.Note = $"{set.Sum(t => Planned(DeliveryOf(t))):N0} planned";
             tReturnRate!.Value = del == 0 ? "—" : $"{ret * 100.0 / del:0.#}%";
             tReturnRate.Note = $"{ret:N0} crate(s) returned";
-            int shortCount = set.Count(t => RowMenu.Is(t.Status, TripReportStatus.Draft));
+            int shortCount = set.Count(t => RowMenu.Is(t.Status, TripReportStatus.Completed) && InvoiceNumberFor(t).Length == 0);   // Nov 9: ready to invoice
             tShort!.Value = shortCount.ToString("N0");
+            tShort.Note = shortCount == 0 ? "everything completed is invoiced" : "click to see them";
             tShort.ValueColor = null;
             int noPod = set.Count(t => !HasPod(t));
             tNoPod!.Value = noPod.ToString("N0");

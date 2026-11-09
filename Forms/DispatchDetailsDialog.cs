@@ -50,8 +50,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (c is DataGridView g && g.Visible)
                 {
                     var list = new List<Delivery>();
+                    Dictionary<int, Delivery>? all = null;
                     foreach (DataGridViewRow r in g.Rows)
-                        if (r.DataBoundItem is Delivery d) list.Add(d);
+                    {
+                        if (r.DataBoundItem is Delivery d) { list.Add(d); continue; }
+                        // Nov 9: the Trip reports lists (waiting and finished) hold rows that point at an order; Previous / Next follow them too.
+                        int id = r.DataBoundItem is AwaitingReportRow a ? a.DeliveryId : r.DataBoundItem is TripReport t ? t.DeliveryId : 0;
+                        if (id <= 0) continue;
+                        all ??= SafeGet(() => MJdatabase.GetDeliveries(), new List<Delivery>()).GroupBy(x => x.Id).ToDictionary(x => x.Key, x => x.First());
+                        if (all.TryGetValue(id, out var found)) list.Add(found);
+                    }
                     if (list.Count > 0) return list;
                 }
                 foreach (Control child in c.Controls) queue.Enqueue(child);

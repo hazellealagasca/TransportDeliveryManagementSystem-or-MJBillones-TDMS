@@ -254,14 +254,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridAwaiting.CellFormatting += (s, e) =>
             {
                 if (e.RowIndex < 0 || gridAwaiting.Rows[e.RowIndex].DataBoundItem is not AwaitingReportRow row) return;
-                bool none = true;   // Nov 9: every row is simply "waiting": one look, one button
-                string col = gridAwaiting.Columns[e.ColumnIndex].Name;
+                string col = gridAwaiting.Columns[e.ColumnIndex].Name;   // Nov 9: every row is simply "waiting": one look, one button
                 if (col == "colCreate") { e.Value = "Create trip report"; e.FormattingApplied = true; }
-                if (e.ColumnIndex == gridAwaiting.Columns.Count - 3 && e.CellStyle != null)
-                {
-                    e.CellStyle.ForeColor = none ? AppTheme.DangerText : AppTheme.WarningText;
-                    e.CellStyle.Font = new Font(gridAwaiting.Font, FontStyle.Bold);
-                }
             };
             gridAwaiting.CellContentClick += (s, e) =>
             {
@@ -273,6 +267,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (e.RowIndex >= 0 && gridAwaiting.Columns[e.ColumnIndex].Name != "colCreate"
                     && gridAwaiting.Rows[e.RowIndex].DataBoundItem is AwaitingReportRow row) CreateReportFor(row);
             };
+            ArrangeAwaitingGrid();   // Nov 9: ▾, button beside dispatch # / date, crates, waiting, frozen left columns
             gridTripReports.Parent!.Controls.Add(gridAwaiting);
             gridAwaiting.BringToFront();
         }
@@ -348,7 +343,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 var rows = await System.Threading.Tasks.Task.Run(MJdatabase.GetDispatchesAwaitingReport);
                 if (my != awaitingLoadId || IsDisposed || !showAwaiting) return;
-                gridAwaiting.DataSource = rows;
+                awaitingAll = rows.Concat(SpecialAwaitingRows()).ToList();
+                ApplyAwaitingView();
                 OfferEmptyDraftCleanup();
             }
             catch (Exception ex)

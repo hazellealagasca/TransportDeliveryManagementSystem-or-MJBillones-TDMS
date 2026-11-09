@@ -1,5 +1,6 @@
 using System.Reflection;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
+using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views;
 
 namespace TDMS.Verify;
@@ -118,6 +119,91 @@ public static partial class Checks
             if (grid == null) return "the awaiting list was not found";
             foreach (DataGridViewColumn c in grid.Columns)
                 if ((c.DataPropertyName == "ReportState" || c.DataPropertyName == "ReportNumber") && c.Visible) problems.Add($"column '{c.HeaderText}' is still shown");
+            return "";
+        });
+    }
+
+    private static List<string> VisibleColumnOrder(DataGridView g)
+        => g.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible).OrderBy(c => c.DisplayIndex).Select(c => c.Name.Length > 0 && c.Name.StartsWith("col") || c.Name.StartsWith("x") ? c.Name : c.DataPropertyName).ToList();
+
+    [Check]
+    public static string TripReportWaiting_AwaitingList_Layout_Filters_Header_Details()
+    {
+        Fresh();
+        int aOld = Seed.Delivery("CLIENT A"), aNew = Seed.Delivery("CLIENT A"), b = Seed.Delivery("CLIENT B", g: 20, e: 10);
+        int sp = Seed.SpecialTrip("CLIENT A");
+        SetDate("Deliveries", aOld, 4); SetDate("Deliveries", b, 2); SetDate("Deliveries", aNew, 1); SetDate("SpecialTrips", sp, 3);
+        Exec("UPDATE SpecialTrips SET ModeOfPaymentWithReport = 1");
+        string nOld = NumberOf(aOld), nNew = NumberOf(aNew), nB = NumberOf(b);
+        string nSp = MJdatabase.GetSpecialTrips().First(t => t.Id == sp).OrderReference;
+        return WithTripReportView((view, host, problems) =>
+        {
+            var grid = FieldOf<DataGridView>(view, "gridAwaiting");
+            var header = FieldOf<Label>(view, "lblGridHeader");
+            var search = FieldOf<TextBox>(view, "txtGridSearch");
+            if (grid == null || header == null || search == null) return "a control was not found";
+            Pump(1500);
+            var order = VisibleColumnOrder(grid);
+            var expected = new[] { "colDetails", "DispatchNumber", "DispatchDate", "ClientName", "colCreate" };
+            if (!order.Take(5).SequenceEqual(expected)) problems.Add("column order starts: " + string.Join(", ", order.Take(5)));
+            if (grid.Columns["colCreate"]?.Frozen != true) problems.Add("the left columns are not frozen");
+            var numbers = grid.Rows.Cast<DataGridViewRow>().Select(r => ((AwaitingReportRow)r.DataBoundItem!).DispatchNumber).ToList();
+            if (!numbers.SequenceEqual(new[] { nOld, nSp, nB, nNew })) problems.Add("rows (oldest first, special trip included): " + string.Join(", ", numbers));
+            if (header.Text != "Awaiting report: 4 dispatches") problems.Add($"header '{header.Text}'");
+            var rowB = grid.Rows.Cast<DataGridViewRow>().Select(r => (AwaitingReportRow)r.DataBoundItem!).First(r => r.DispatchNumber == nB);
+            if (rowB.TotalCrates != 30) problems.Add($"crates {rowB.TotalCrates}, expected 30");
+            if (rowB.WaitingDays != 2 || rowB.Waiting != "2 days") problems.Add($"waiting '{rowB.Waiting}'");
+            if (grid.Rows.Cast<DataGridViewRow>().Any(r => ((AwaitingReportRow)r.DataBoundItem!).DeliveryId < 0 && ((AwaitingReportRow)r.DataBoundItem!).DispatchNumber != nSp)) problems.Add("unexpected special trip row");
+
+            search.Text = "client b";
+            Pump(300);
+            if (grid.Rows.Count != 1 || ((AwaitingReportRow)grid.Rows[0].DataBoundItem!).DispatchNumber != nB) problems.Add($"search 'client b' gave {grid.Rows.Count} row(s)");
+            if (header.Text != "Awaiting report: 1 of 4") problems.Add($"header with a search '{header.Text}'");
+            search.Text = "";
+            Pump(300);
+            if (grid.Rows.Count != 4) problems.Add($"clearing the search left {grid.Rows.Count} rows");
+
+            // the drop button opens the order summary window
+            typeof(TripReportView).GetMethod("ShowDetailsFor", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(view, new object[] { b, 0 });
+            Pump(800);
+            var dlg = Application.OpenForms.Cast<Form>().FirstOrDefault(f => f.GetType().Name == "DispatchDetailsDialog");
+            if (dlg == null) problems.Add("the details window did not open");
+            else dlg.Close();
+            return "";
+        });
+    }
+
+    [Check]
+    public static string TripReportWaiting_ReportsList_InvoiceButton_Layout_ReadyToInvoiceTile()
+    {
+        Fresh();
+        int ready = Seed.Delivery(), billed = Seed.Delivery(), draft = Seed.Delivery();
+        AddReport(NumberOf(ready), ready, "Completed");
+        AddReport(NumberOf(billed), billed, "Completed");
+        AddReport(NumberOf(draft), draft, "Draft"); Exec("UPDATE TripReports SET Remarks = 'typed' WHERE DeliveryId = @d", ("@d", draft));
+        Seed.Invoice(billed, 5000m);
+        string invNo = Str("SELECT InvoiceNumber FROM Invoices WHERE DeliveryId = @d", ("@d", billed));
+        return WithTripReportView((view, host, problems) =>
+        {
+            var grid = FieldOf<DataGridView>(view, "gridTripReports");
+            if (grid == null) return "the reports list was not found";
+            typeof(TripReportView).GetMethod("SetHistoryMode", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(view, new object[] { false });
+            Pump(1200);
+            var order = VisibleColumnOrder(grid);
+            if (!order.Take(5).SequenceEqual(new[] { "colDetails", "DispatchNumber", "ReportDate", "xClient", "colInvoice" })) problems.Add("column order starts: " + string.Join(", ", order.Take(5)));
+            if (grid.Columns["colInvoice"]?.Frozen != true) problems.Add("the left columns are not frozen");
+            var text = typeof(TripReportView).GetMethod("ReportActionText", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            string Say(int deliveryId)
+            {
+                var all = (List<TripReport>)typeof(TripReportView).GetField("allTripReports", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(view)!;
+                return (string)text.Invoke(view, new object[] { all.First(t => t.DeliveryId == deliveryId) })!;
+            }
+            if (Say(ready) != "🧾 Create invoice") problems.Add($"completed, not invoiced says '{Say(ready)}'");
+            if (!Say(billed).StartsWith("Invoice " + invNo)) problems.Add($"invoiced says '{Say(billed)}' (expected the invoice number {invNo})");
+            if (Say(draft) != "Finish report") problems.Add($"draft says '{Say(draft)}'");
+            var tile = typeof(TripReportView).GetField("tShort", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(view);
+            string tileText = tile?.GetType().GetProperty("Value")?.GetValue(tile)?.ToString() ?? "?";
+            if (tileText != "1") problems.Add($"Ready to invoice tile shows '{tileText}', expected 1");
             return "";
         });
     }

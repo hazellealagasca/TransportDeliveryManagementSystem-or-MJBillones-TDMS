@@ -157,3 +157,22 @@ Two things found while building, which change the plan's wording:
 Also fixed: **Open draft failed silently** when the list's date or client filter hid that report (nothing happened). The form now opens the report whether or not the list shows it.
 
 Not done yet (S2 to S4): column order and frozen columns, the filters applying to the waiting list, header and tiles agreeing, the ▾ details button, the Create invoice button beside Dispatch # and Date, and the Client column.
+
+---
+
+## 10. S2 to S4 built (Nov 9, 2026)
+
+**Awaiting report list:** ▾ · Dispatch # · Date · Client · **Create trip report** · Destination · Truck · Driver · Crates · Waiting. The first five columns are frozen. Oldest first. Search, client, driver and truck filters apply; the header counts what is shown ("Awaiting report: 1 of 4"). Completed special trips that need a report are rows too. "Waiting" turns amber after 2 days and red after 3.
+
+**Trip reports list:** ▾ · Dispatch # · Date · Client · **Invoice button** · Status · Report # · … (frozen through the Invoice column). The button says **Create invoice** (completed, not invoiced; same checks as Issue Invoice (Selected)), **Finish report** (draft), or **Invoice 90006 ✓** (opens that invoice in Billing).
+
+**▾** opens the dispatch details window on both lists (special trips open their own details). Previous / Next inside the window now follow these lists too.
+
+**Tiles:** "Drafts" became **Ready to invoice** (completed reports with no invoice; click shows them). New "Ready to invoice" choice in the Show filter.
+
+Differences from the plan above:
+- The **date period does not apply to the waiting list** (it is the reports' period and defaults to a saved day, so it would hide waiting trips).
+- The reports list **already had a Client column** (`xClient`); it was moved, not added.
+- **Not done:** the manual page (the user manual is a Word/PDF pair; edit separately).
+
+Checks: `Verify/Checks.TripReportWaiting.cs` (6 checks: Create button, empty/real drafts, clean-up, hidden columns, waiting-list layout/filters/header/▾ window, reports list buttons/layout/tile). All pass, plus the drop-down, Keep-for-later, unsaved-tracker and screen checks on a copy of the real data.

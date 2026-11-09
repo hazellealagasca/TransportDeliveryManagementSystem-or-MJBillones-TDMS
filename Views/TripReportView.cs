@@ -93,6 +93,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             StyleFullPageForm();
             InitReportCenter();
             InitActiveHistoryBar(); // Nov 6 workflow: Active / History (invoiced) and Issue Invoice (Selected)
+            ArrangeReportGrid();    // Nov 9: ▾ and the Invoice button beside the dispatch # and date, frozen left columns (last, after every column is in)
             FitStoreGridHeaders();
             ThemeManager.ThemeChanged += (s, e) => { try { if (!IsDisposed) BeginInvoke(new Action(FitStoreGridHeaders)); } catch (Exception ex) { ErrLog.Swallowed(ex); } };
         }
@@ -1628,6 +1629,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblGridHeader.Text = filtered.Count == allTripReports.Count
                 ? $"Trip reports ({allTripReports.Count})"
                 : $"Trip reports — showing {filtered.Count} of {allTripReports.Count}";
+            if (showAwaiting) ApplyAwaitingView();   // Nov 9: search / client / driver / truck narrow the waiting list too, and its header counts what is shown
             if (filtered.Count > 0)
             {
                 gridTripReports.ClearSelection();

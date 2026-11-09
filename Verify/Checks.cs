@@ -72,7 +72,7 @@ public static partial class Checks
                 object? r = m.Invoke(null, null);
                 result = r is bool b ? (b ? "PASS" : "FAIL") : r is string s ? (s.Length == 0 ? "PASS" : "FAIL (" + s + ")") : "PASS";
             }
-            catch (TargetInvocationException ex) { result = "FAIL (" + ex.InnerException?.GetType().Name + ": " + ex.InnerException?.Message + ")"; }
+            catch (TargetInvocationException ex) { result = "FAIL (" + ex.InnerException?.GetType().Name + ": " + ex.InnerException?.Message + ")"; if (Environment.GetEnvironmentVariable("TDMS_VERIFY_STACKS") == "1") Console.WriteLine(ex.InnerException?.StackTrace); }
             if (result.StartsWith("FAIL")) failed++;
             Console.WriteLine($"{result.Split(' ')[0]} {m.Name}{(result.Length > 4 ? " " + result.Substring(5) : "")}");
         }

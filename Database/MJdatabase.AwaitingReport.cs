@@ -17,6 +17,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string DriverName { get; set; } = "";
         public string ReportState { get; set; } = "";   // "No trip report yet" or "Draft saved"
         public string ReportNumber { get; set; } = ""; // empty until the trip report is created
+        public int TotalCrates { get; set; }
+        /// <summary>Whole days since the dispatch date (0 when the date is unknown).</summary>
+        public int WaitingDays => DispatchDate <= DateTime.MinValue ? 0 : Math.Max(0, (int)(DateTime.Today - DispatchDate.Date).TotalDays);
+        public string Waiting => WaitingDays == 0 ? "today" : WaitingDays == 1 ? "1 day" : $"{WaitingDays} days";
     }
 
 
@@ -43,7 +47,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                      WHERE t.DeliveryId = d.Id AND COALESCE(t.IsVoid,0) = 0)
                         THEN 'Draft saved' ELSE 'No trip report yet' END,
                    COALESCE((SELECT t.TripReportNumber FROM TripReports t
-                             WHERE t.DeliveryId = d.Id AND COALESCE(t.IsVoid,0) = 0 ORDER BY t.Id DESC LIMIT 1), '')
+                             WHERE t.DeliveryId = d.Id AND COALESCE(t.IsVoid,0) = 0 ORDER BY t.Id DESC LIMIT 1), ''),
+                   COALESCE(d.TotalCrates,0)
             FROM Deliveries d
             WHERE d.Status = 'Completed' COLLATE NOCASE
               AND NOT EXISTS (SELECT 1 FROM TripReports t
@@ -74,6 +79,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     DriverName = r.GetString(6),
                     ReportState = r.GetString(7),
                     ReportNumber = r.GetString(8),
+                    TotalCrates = r.IsDBNull(9) ? 0 : Convert.ToInt32(r.GetValue(9)),
                 });
             }
             return list;
