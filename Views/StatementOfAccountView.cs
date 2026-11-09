@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -598,7 +598,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var lblItemsHint = new Label
             {
                 Height = Dpi(24),
-                Text = "Yellow cells can be edited. DR numbers: Enter or a comma between them, or click … beside the cell. Shift/Ctrl-click rows, then \"Edit selected rows\" to change them together.",
+                Text = "Type only the Amount and the Fuel surcharge (yellow cells) for each trip. Everything else comes from the trip report. The totals on the right follow as you type.",
                 Font = new Font("Segoe UI", 8.75F),
                 ForeColor = AppTheme.TextMuted,
                 TextAlign = ContentAlignment.TopLeft,
@@ -677,6 +677,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridItems.Columns["colAmount"]!.HeaderText = "Amount";
             gridItems.Columns["colFuel"]!.HeaderText = "Fuel surcharge";
             gridItems.Columns["colDriver"]!.HeaderText = "Driver / Aide";
+            // Only Amount and Fuel surcharge look editable; the other columns are grey (they are read-only on trip lines).
+            foreach (var nm in new[] { "colDate", "colZone", "colDr", "colDest", "colType", "colPlate", "colTons", "colDrops", "colDriver" }) gridItems.Columns[nm]!.DefaultCellStyle.BackColor = Pal.C(248, 250, 252);
+            // Live totals: every keystroke in Amount / Fuel surcharge is committed so the statement's computation updates while typing.
+            gridItems.EditingControlShowing += (s, e) =>
+            {
+                if (e.Control is TextBox tb && gridItems.CurrentCell?.OwningColumn?.Name is "colAmount" or "colFuel")
+                {
+                    tb.TextChanged -= LiveCommitAmount; tb.TextChanged += LiveCommitAmount;
+                }
+            };
             // A line that bills a trip is read-only: the trip report and the service invoice give every figure (fix them there).
             gridItems.CellBeginEdit += (s, e) =>
             {
@@ -1410,6 +1420,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static void SetNum(NumericUpDown n, decimal v)
         {
             n.SetSafe(Math.Round(v, 2));
+        }
+
+        private void LiveCommitAmount(object? sender, EventArgs e)
+        {
+            try { if (!isBindingForm && gridItems.IsCurrentCellInEditMode && gridItems.IsCurrentCellDirty) gridItems.CommitEdit(DataGridViewDataErrorContexts.Commit); }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
         }
 
         private void RecalculateTaxes(bool manualOverride)

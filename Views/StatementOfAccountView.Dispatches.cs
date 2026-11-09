@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -483,7 +483,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     var tripInv = MJdatabase.TripInvoiceFor(invoices, del.Id, 0);
                     decimal rate = tripInv?.Freight ?? 0m, fuelAmt = tripInv?.Fuel ?? 0m;
                     // Nov 9: no invoice yet: the Amount starts at the Rate Matrix tariff (when there is one) and is typed/edited on the line; the fuel surcharge is typed.
-                    if (tripInv == null) { try { rate = MJdatabase.CalculateDeliveryTariff(del, out _); } catch (Exception ex) { ErrLog.Swallowed(ex); rate = 0m; } }
+                    // (Nov 9, later: the Amount is left EMPTY on purpose; the user types it, nothing is guessed.)
                     if (rate <= 0) unpriced++;
                     string did = del.Id.ToString();
                     string trNo = reports.TryGetValue(del.Id, out var rep0) ? rep0.TripReportNumber : "";
@@ -492,7 +492,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         bool first = true;
                         foreach (var ln in lines)
                         {
-                            int r = gridItems.Rows.Add(trip, dateStr, "", DrList.Join(ln.Drs), ln.Name, cbDeliveryType.Text, plate, tonnage, dropCount, first ? rate : 0m, first ? fuelAmt : 0m, driverHelper, did);
+                            int r = gridItems.Rows.Add(trip, dateStr, "", DrList.Join(ln.Drs), ln.Name, cbDeliveryType.Text, plate, tonnage, dropCount, first && rate > 0 ? rate : "", first && fuelAmt > 0 ? fuelAmt : "", driverHelper, did);
                             gridItems.Rows[r].Cells["colStoreCode"].Value = ln.Code;
                             gridItems.Rows[r].Cells["colTripReport"].Value = trNo;
                             gridItems.Rows[r].Cells["colCrates"].Value = ln.Crates;
@@ -501,7 +501,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                     else
                     {
-                        int r = gridItems.Rows.Add(trip, dateStr, "", "", del.Destination, cbDeliveryType.Text, plate, tonnage, dropCount, rate, fuelAmt, driverHelper, did);
+                        int r = gridItems.Rows.Add(trip, dateStr, "", "", del.Destination, cbDeliveryType.Text, plate, tonnage, dropCount, rate > 0 ? rate : "", fuelAmt > 0 ? fuelAmt : "", driverHelper, did);
                         gridItems.Rows[r].Cells["colTripReport"].Value = trNo;
                         gridItems.Rows[r].Cells["colCrates"].Value = rep0 != null ? (rep0.DeliveredCrates > 0 ? rep0.DeliveredCrates : rep0.DeliveredGCrates + rep0.DeliveredECrates) : (del.TotalCrates > 0 ? del.TotalCrates : del.GCrate + del.ECrate);
                     }
