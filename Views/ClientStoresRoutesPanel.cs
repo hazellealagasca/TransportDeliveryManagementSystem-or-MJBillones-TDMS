@@ -324,7 +324,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (code.Length == 0) return txtNewCode;
             if (name.Length == 0) return txtNewName;
-            return problem.Contains("route named") ? txtNewName : txtNewCode;
+            return problem.Contains("route named") || problem.Contains("Use a different route name") ? txtNewName : txtNewCode;
         }
 
         /// <summary>As the store code or name is typed: the "Will save as" preview, a red outline when it is already taken, and the client's matching stores.</summary>
@@ -353,10 +353,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
-                string c = isPending() ? "" : client();
+                string c = client();
                 string code = MJdatabase.CleanStoreCode(txtNewCode.Text), name = MJdatabase.CleanStoreText(txtNewName.Text);
                 string? problem = null;
-                if (c.Length > 0 && (code.Length > 0 || name.Length > 0)) problem = MJdatabase.CheckRouteCode(c, txtNewCode.Text, txtNewName.Text, partial: true);
+                if (isPending()) { if (code.Length > 0 || name.Length > 0) problem = MJdatabase.CheckPendingRoute(c, txtNewCode.Text, txtNewName.Text, PendingRouteList(), partial: true); } // Nov 10: the same checks before the client is saved
+                else if (c.Length > 0 && (code.Length > 0 || name.Length > 0)) problem = MJdatabase.CheckRouteCode(c, txtNewCode.Text, txtNewName.Text, partial: true);
                 ShowLive(problem, problem == null ? null : RouteProblemBox(code, name, problem));
             }
             catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.LiveCheckRoute", ex); ShowLive("Couldn't check the route: " + ex.Message, null); }

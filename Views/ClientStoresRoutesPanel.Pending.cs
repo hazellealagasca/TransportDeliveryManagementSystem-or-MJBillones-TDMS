@@ -109,13 +109,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             string code = MJdatabase.CleanStoreCode(txtNewCode.Text), name = MJdatabase.CleanStoreText(txtNewName.Text);
             if (code.Length == 0 || name.Length == 0) { Say("✕ Enter the route code and the route name.", true); return; }
-            if (pendingRoutes.Any(r => string.Equals(r.Code, code, StringComparison.OrdinalIgnoreCase))) { Say($"✕ Route {code} is already in this list.", true); return; }
+            string? problem = MJdatabase.CheckPendingRoute(client(), code, name, pendingRoutes.Select(r => (r.Code, r.Name)));
+            if (problem != null) { Say("✕ " + problem, true); Outline(RouteProblemBox(code, name, problem)); return; }
+            Outline(null);
             pendingRoutes.Add(new PendingRoute { Code = code, Name = name });
             Say($"✔ Route {code} – {name} added (saved with the client). Now tick its stores on the right.", false);
             txtNewCode.Clear(); txtNewName.Clear();
             PendingChanged?.Invoke();
             LoadRoutes(code);
         }
+
+        private IEnumerable<(string Code, string Name)> PendingRouteList() => pendingRoutes.Select(r => (r.Code, r.Name));
 
         private PendingRoute? SelectedPendingRoute()
         {
@@ -200,7 +204,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     // each typed store once, in the order typed, through the one writer
                     PendingRouteModel.SaveRouteStores(fresh, saved, PendingRouteModel.StoresToWrite(pr.Stores, pendingStores), errors);
                 }
-                catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.SavePending.Route", ex); errors.Add($"Route {pr.Code}: {ex.Message}"); }
+                catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.SavePending.Route", ex); errors.Add($"Route {pr.Code} – {pr.Name}: {MJdatabase.PlainDbError(ex)}"); }
             }
             pendingStores.Clear();
             pendingRoutes.Clear();
