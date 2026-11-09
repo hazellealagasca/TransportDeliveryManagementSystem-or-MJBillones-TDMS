@@ -1665,11 +1665,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     int next = needInvoices
                         ? ChoiceDialog.Show(FindForm(), "SOA saved", $"Statement of Account {soa.SoaNumber} is saved",
                             $"{(soa.SoaType == SoaTypes.Special ? "Special Trips SOA" : "Normal Operations SOA")} for {soa.ClientName}.\n\nTotal amount due: PHP {soa.TotalAmount:N2}.\n\nNext: Service Invoice. Type each trip's invoice number; the amount is taken from this statement and can't be changed.",
-                            "➜  Proceed to Service Invoice", "🖨  Print SOA", "Close")
+                            "➜  Issue Invoice", "🖨  Print SOA", "Close")
                         : ChoiceDialog.Show(FindForm(), "SOA saved", $"Statement of Account {soa.SoaNumber} is saved",
                             $"{(soa.SoaType == SoaTypes.Special ? "Special Trips SOA" : "Normal Operations SOA")} for {soa.ClientName} with service invoice(s) {soa.SalesInvoiceNo}.\n\nTotal amount due: PHP {soa.TotalAmount:N2}. It is collected with ONE receipt for the full amount.",
                             "➜  Proceed to Collection Receipt", "🖨  Print SOA", "Close");
-                    if (next == 0) { if (needInvoices) FinanceHubView.Of(this)?.ShowInvoices(""); else FinanceHubView.Of(this)?.ProceedToCollection(savedId); }
+                    if (next == 0) { if (needInvoices) FinanceHubView.Of(this)?.InvoiceStatement(savedId); else FinanceHubView.Of(this)?.ProceedToCollection(savedId); }
                     else if (next == 1) PrintOfficialSoa(soa);
                 }
             }

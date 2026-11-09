@@ -17,7 +17,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     public sealed class FinanceHistoryView : UserControl, IRefreshable
     {
         private readonly Panel host;
-        private readonly Button btnSettled, btnLog;
+        private readonly Button btnSettled, btnLog, btnStatements;
+        private FinanceStatementHistoryView? statements;
         private FinanceSettledView? settled;
         private ModuleHistoryView? log;
 
@@ -29,19 +30,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Button Tab(string text) => new Button { Text = text, AutoSize = true, MinimumSize = new Size(D(130), D(30)), Margin = new Padding(0, 0, D(6), 0), Cursor = Cursors.Hand };
             btnSettled = Tab("✅  Settled records");
             btnLog = Tab("📜  Change log");
+            btnStatements = Tab("📑  Statement history");
             btnSettled.Click += (s, e) => Show(true);
             btnLog.Click += (s, e) => Show(false);
-            bar.Controls.Add(btnSettled); bar.Controls.Add(btnLog);
+            btnStatements.Click += (s, e) => Show(false, true);
+            bar.Controls.Add(btnStatements); bar.Controls.Add(btnSettled); bar.Controls.Add(btnLog);
             host = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Canvas };
             Controls.Add(host); Controls.Add(bar);
             Show(true);
         }
 
-        private void Show(bool showSettled)
+        private void Show(bool showSettled, bool showStatements = false)
         {
             UIThemeHelper.SetButtonRole(btnSettled, showSettled ? "primary" : "secondary");
-            UIThemeHelper.SetButtonRole(btnLog, showSettled ? "secondary" : "primary");
-            Control view = showSettled
+            UIThemeHelper.SetButtonRole(btnLog, !showSettled && !showStatements ? "primary" : "secondary");
+            UIThemeHelper.SetButtonRole(btnStatements, showStatements ? "primary" : "secondary");
+            statements?.RefreshData();
+            Control view = showStatements
+                ? statements ??= new FinanceStatementHistoryView { Dock = DockStyle.Fill }
+                : showSettled
                 ? settled ??= new FinanceSettledView { Dock = DockStyle.Fill }
                 : log ??= new ModuleHistoryView("Billing & collections history", new[] { "Invoices", "CollectionReceipts", "StatementsOfAccount" }, isAdminOnly: true, paymentsSummary: true) { Dock = DockStyle.Fill };
             if (host.Controls.Count == 1 && host.Controls[0] == view) return;
@@ -52,6 +59,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public void RefreshData()
         {
             settled?.RefreshData();
+            statements?.RefreshData();
             log?.RefreshData();
         }
     }

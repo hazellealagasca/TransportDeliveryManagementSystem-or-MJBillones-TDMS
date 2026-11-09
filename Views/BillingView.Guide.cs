@@ -89,6 +89,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Ready line above the invoice list.
             billWaiting = new WaitingListPanel();
             billWaiting.InvoiceRequested += StartInvoiceForWaiting;
+            billWaiting.InvoiceStatementRequested += row => StartForStatement(row.SoaId);
             billWaiting.CountChanged += n => FinanceHubView.Of(this)?.SetTabBadge("Billing", n);
             pnlGridCard.Controls.Add(billWaiting);
             pnlGridCard.Controls.SetChildIndex(billWaiting, pnlGridCard.Controls.GetChildIndex(pnlGridHeaderBar));

@@ -638,6 +638,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
     public class Invoice
     {
+        /// <summary>The statement of account this invoice is on (filled for display in Billing; blank when it is on none).</summary>
+        public string SoaNumber { get; set; } = string.Empty;
         public int Id { get; set; }
         public string InvoiceNumber { get; set; } = string.Empty;
         public int SoaId { get; set; }

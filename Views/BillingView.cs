@@ -71,6 +71,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             OpenBatchItem();
         }
 
+        private string? batchBackLabel;
+
+        /// <summary>
+        /// "Issue Invoice" from a statement: opens the service invoice form for each of its trips that has no invoice yet, in turn. The Amount and
+        /// Fuel surcharge come from the statement and are locked; only the invoice number is typed. Nothing is made until each invoice is saved.
+        /// </summary>
+        public void StartForStatement(int soaId)
+        {
+            var trips = new List<Delivery>();
+            foreach (int id in MJdatabase.GetSoaDeliveryIdsWithoutInvoice(soaId)) { var d = MJdatabase.GetDeliveryById(id); if (d != null) trips.Add(d); }
+            if (trips.Count == 0) { QuietBox.Show("Every trip of this statement already has its service invoice.", "Issue invoice", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            batchBackLabel = "←  Back to invoices";
+            StartBatch(trips, () => { batchBackLabel = null; LoadData(); });
+        }
+
         private void OpenBatchItem()
         {
             while (batchIndex < batchQueue.Count)
@@ -100,7 +115,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void SetBackLabel(bool fromTripReports)
         {
             if (btnCloseForm == null) return;
-            btnCloseForm.Text = fromTripReports ? "←  Back to Trip Reports" : "←  Back to invoices";
+            btnCloseForm.Text = fromTripReports ? (batchBackLabel ?? "←  Back to Trip Reports") : "←  Back to invoices";
             btnCloseForm.Width = Math.Max(btnCloseForm.Width, TextRenderer.MeasureText(btnCloseForm.Text, btnCloseForm.Font).Width + 36);
         }
 
@@ -275,7 +290,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridInvoices.ShowCellToolTips = false;
             gridInvoices.Columns.Clear();
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "InvoiceNumber", HeaderText = "Invoice #", FillWeight = 12F, MinimumWidth = 100, ReadOnly = true });
-            gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TripReportNumber", HeaderText = "Trip report #", FillWeight = 14F, MinimumWidth = 110, ReadOnly = true });
+            gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "SoaNumber", HeaderText = "SOA #", FillWeight = 14F, MinimumWidth = 110, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DispatchNumber", HeaderText = "Dispatch #", FillWeight = 12F, MinimumWidth = 100, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ClientName", HeaderText = "Client", FillWeight = 18F, MinimumWidth = 120, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "IssueDate", HeaderText = "Date", DefaultCellStyle = { Format = "MM/dd/yyyy" }, FillWeight = 10F, MinimumWidth = 85, ReadOnly = true });
@@ -868,6 +883,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ).ToList();
 
             filtered = ApplyListChips(filtered, searching: !string.IsNullOrEmpty(q));
+            try
+            {
+                var soaNo = MJdatabase.GetStatementsOfAccount().ToDictionary(x => x.Id, x => x.SoaNumber);
+                foreach (var inv in allInvoices) inv.SoaNumber = inv.SoaId > 0 && soaNo.TryGetValue(inv.SoaId, out var sn) ? sn : "";
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
             gridInvoices.DataSource = null;
             gridInvoices.DataSource = filtered;
             UpdateBillingSummary(filtered.ToList(), reloadPayments: false);

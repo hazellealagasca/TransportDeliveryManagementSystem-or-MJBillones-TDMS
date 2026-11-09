@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -20,10 +20,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly DataGridView grid = new();
         private readonly Label lblEmpty = new() { AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Fill, ForeColor = AppTheme.TextMuted, Font = new Font("Segoe UI", 10F), UseMnemonic = false };
         private readonly System.Windows.Forms.Timer searchTimer = new() { Interval = 200 };
-        private List<WaitingTripRow> invoiceRows = new();
+        private List<WaitingSoaRow> invoiceRows = new();
 
         /// <summary>The person chose a trip to invoice (double-click, Enter or the Invoice button).</summary>
         public event Action<WaitingTripRow>? InvoiceRequested;
+        /// <summary>The person chose a statement to invoice (its trips get their service invoices, amounts locked to the statement).</summary>
+        public event Action<WaitingSoaRow>? InvoiceStatementRequested;
         /// <summary>Raised after a refresh with the number of trips waiting for an invoice.</summary>
         public event Action<int>? CountChanged;
 
@@ -36,7 +38,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Padding = new Padding(0, 0, 0, 10);
             var top = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true, Padding = new Padding(0, 0, 0, 6) };
             btnAction.Click += (s, e) => RequestSelected();
-            PageKit.StyleSearch(txtSearch, "Search dispatch, client, route, trip report…");
+            PageKit.StyleSearch(txtSearch, "Search statement, client, period…");
             txtSearch.TextChanged += (s, e) => { searchTimer.Stop(); searchTimer.Start(); };
             txtSearch.KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) { txtSearch.Clear(); e.SuppressKeyPress = true; } };
             searchTimer.Tick += (s, e) => { searchTimer.Stop(); Render(); };
@@ -81,7 +83,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Reads the list again from the database and redraws.</summary>
         public void RefreshData()
         {
-            try { invoiceRows = MJdatabase.GetTripsWaitingForInvoice(); }
+            try { invoiceRows = MJdatabase.GetStatementsWaitingForInvoice(); }
             catch (Exception ex) { ErrLog.Swallowed(ex); invoiceRows = new(); }
             Render();
             CountChanged?.Invoke(invoiceRows.Count);
@@ -94,16 +96,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string q = txtSearch.Text.Trim();
             grid.SuspendLayout();
             grid.Columns.Clear(); grid.Rows.Clear();
-            var rows = invoiceRows.Where(r => q.Length == 0 || Hit(q, r.Number, r.ClientName, r.Route, r.TripReportNumber, r.Kind, r.Date.ToString("MMM d yyyy"))).ToList();
-            decimal expected = rows.Sum(r => r.Expected);
-            lblHeader.Text = $"{invoiceRows.Count} trip{(invoiceRows.Count == 1 ? "" : "s")} waiting for their service invoice" + (expected > 0 ? $" · ₱{expected:N2} known so far" : "");
-            AddCol("Trip", 11); AddCol("Client", 22); AddCol("Date", 10); AddCol("Route", 22); AddCol("Trip report", 17); AddCol("Crates", 7); AddCol("Expected", 11); AddCol("Waiting", 10);
+            var rows = invoiceRows.Where(r => q.Length == 0 || Hit(q, r.SoaNumber, r.ClientName, r.Period, r.IssueDate.ToString("MMM d yyyy"))).ToList();
+            decimal expected = rows.Sum(r => r.Total);
+            lblHeader.Text = $"{invoiceRows.Count} Statement{(invoiceRows.Count == 1 ? "" : "s")} of Account waiting for their service invoice" + (expected > 0 ? $" · ₱{expected:N2} total due" : "");
+            AddCol("SOA #", 14); AddCol("Client", 24); AddCol("Statement date", 12); AddCol("Period covered", 22); AddCol("Trips to invoice", 10); AddCol("Total due", 12); AddCol("Waiting", 10);
             foreach (var r in rows)
             {
-                int i = grid.Rows.Add(r.Number, r.ClientName, r.Date.ToString("MMM d"), r.Route, r.TripReportNumber, r.Crates > 0 ? r.Crates.ToString() : "", r.Expected > 0 ? $"₱{r.Expected:N2}" : "", r.DaysWaiting == 0 ? "today" : $"{r.DaysWaiting} d");
+                int i = grid.Rows.Add(r.SoaNumber, r.ClientName, r.IssueDate.ToString("MMM d"), r.Period, r.TripsToInvoice, r.Total > 0 ? $"₱{r.Total:N2}" : "", r.DaysWaiting == 0 ? "today" : r.DaysWaiting == 1 ? "1 day" : $"{r.DaysWaiting} days");
                 grid.Rows[i].Tag = r;
             }
-            lblEmpty.Text = invoiceRows.Count == 0 ? "All caught up — no completed trips are waiting for their service invoice." : "No trip matches your search.";
+            lblEmpty.Text = invoiceRows.Count == 0 ? "All caught up — no Statement of Account is waiting for its service invoice." : "No statement matches your search.";
             grid.ResumeLayout();
             lblEmpty.Visible = rows.Count == 0;
             lblEmpty.BringToFront();
@@ -117,7 +119,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void Grid_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
             if (e.RowIndex < 0 || e.ColumnIndex < 0 || grid.Columns[e.ColumnIndex].HeaderText != "Waiting") return;
-            int days = grid.Rows[e.RowIndex].Tag is WaitingTripRow t ? t.DaysWaiting : 0;
+            int days = grid.Rows[e.RowIndex].Tag is WaitingSoaRow t ? t.DaysWaiting : 0;
             string age = MJdatabase.WaitingAge(days);
             e.CellStyle.Font = new Font("Segoe UI Semibold", 9F);
             if (age == "Red") e.CellStyle.ForeColor = AppTheme.DangerText;
@@ -128,8 +130,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void RequestSelected()
         {
-            if (grid.CurrentRow?.Tag is not WaitingTripRow row) return;
-            InvoiceRequested?.Invoke(row);
+            if (grid.CurrentRow?.Tag is not WaitingSoaRow row) return;
+            if (row.Special != null) InvoiceRequested?.Invoke(row.Special); else InvoiceStatementRequested?.Invoke(row);
         }
     }
 }
