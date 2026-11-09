@@ -335,6 +335,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // "…" beside the DR cell opens the DR list. Added last so the other columns keep their positions.
             gridStores.Columns.Add(DrCellSupport.MakeButtonColumn("colDrBtn", Dpi(34)));
             gridStores.Columns["colDrBtn"]!.DisplayIndex = gridStores.Columns["colDr"]!.DisplayIndex + 1;
+            AddDispatchColumns();   // Nov 9: a "Dispatch" column (shown when several dispatches share the table) and the hidden owner id
             DrCellSupport.Attach((MultiValueGrid)gridStores, "colDr", "colDrBtn",
                 row => (row.Cells["colStore"].Value?.ToString() ?? "").Trim(),
                 row => { RejectDuplicateDrs(row); MarkDuplicateDrs(showToast: false); SizeStoreTable(gridStores.Rows.Count); });
@@ -444,6 +445,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 gridStores.Rows.Clear();
+                if (extraDispatches.Count > 0 && extrasOwnerId != d.Id) { extraDispatches.Clear(); extrasOwnerId = 0; }   // another main dispatch: the added ones no longer apply
                 var stops = MJdatabase.GetOrBuildTripStopsForDelivery(d);
                 var route = MJdatabase.FindRouteByNameOrCode(d.Destination) ?? MJdatabase.FindRouteByNameOrCode(d.LoadingScheduleInfo);
                 string routeTitle = route != null ? $"{route.RouteCode} - {route.RouteName}" : d.CleanRouteDisplay;
@@ -487,6 +489,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 ShowTripOverview(d, refNum, routeTitle, stops.Count, incidents.Count > 0 ? string.Join(" | ", incidents.Select(i => $"{i.Cause}: {i.DamagedQuantity} damaged crates")) : "");
                 lblMultiDropDetails.Text = $"🏪 Stores for this trip  ·  {routeTitle} ({stops.Count} stores)";
+                storesTitleSingle = lblMultiDropDetails.Text;
                 foreach (var s in stops)
                 {
                     int loadE = (s.DeliveredECrates > 0 || s.DeliveredGCrates > 0) ? s.DeliveredECrates : s.ECrate;
@@ -509,8 +512,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     );
                     gridStores.Rows[rIdx].Tag = s;
                 }
-                SizeStoreTable(stops.Count);
+                StampPrimaryRows(d);
+                foreach (var extra in extraDispatches.ToList()) AppendRowsFor(extra);   // Nov 9: dispatches added to this form keep their stores in the table
+                SetDispatchColumnVisible(extraDispatches.Count > 0);
+                SizeStoreTable(gridStores.Rows.Count);
                 MarkDuplicateDrs(showToast: false);
+                RefreshExtraUi();
                 pnlMultiDropInfo.Visible = true;
                 if (tripCrateSummary != null) tripCrateSummary.Visible = true;
             }
@@ -733,8 +740,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (gridStores == null) return true;
             gridStores.EndEdit();
             var inTrip = MarkDuplicateDrs(showToast: false);
-            var all = gridStores.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow).SelectMany(r => DrList.Parse(r.Cells["colDr"].Value?.ToString())).ToList();
-            var elsewhere = del != null ? MJdatabase.FindDrNumbersOnOtherTrips(del.Id, all) : new List<string>();
+            var allRows = gridStores.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow).ToList();
+            var elsewhere = new List<string>();
+            if (del != null)
+            {
+                var owners = new List<Delivery> { del };
+                if (extrasOwnerId == del.Id) owners.AddRange(extraDispatches);
+                foreach (var o in owners)   // each dispatch's own DR numbers are checked against every OTHER dispatch
+                {
+                    var mine = allRows.Where(r => { int rid = RowDispatchId(r); return rid == 0 || rid == o.Id; })
+                                      .SelectMany(r => DrList.Parse(r.Cells["colDr"].Value?.ToString())).ToList();
+                    elsewhere.AddRange(MJdatabase.FindDrNumbersOnOtherTrips(o.Id, mine));
+                }
+                elsewhere = elsewhere.Distinct().ToList();
+            }
             if (inTrip.Count == 0 && elsewhere.Count == 0) return true;
             string L(List<string> l) => string.Join("\n", l.Take(8).Select(x => "• " + x)) + (l.Count > 8 ? $"\n• … and {l.Count - 8} more" : "");
             string text = (inTrip.Count > 0 ? $"The same DR number is on two stores of this trip:\n{L(inTrip)}\n\n" : "")
@@ -845,6 +864,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (DataGridViewRow row in gridStores.Rows)
             {
                 if (row.IsNewRow) continue;
+                int ownerId = RowDispatchId(row);
+                if (ownerId != 0 && ownerId != del.Id) continue;   // Nov 9: a row of another dispatch on the same form
                 var orig = row.Tag as DispatchStop;
                 int le = int.TryParse(row.Cells["colLoadE"].Value?.ToString(), out int ple) ? Math.Max(0, ple) : 0;
                 int lg = int.TryParse(row.Cells["colLoadG"].Value?.ToString(), out int plg) ? Math.Max(0, plg) : 0;
@@ -1150,6 +1171,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
+                if (asDraft && ExtraDraftBlockReason() is string draftWhy)
+                {
+                    MessageBox.Show(FindForm(), draftWhy, "Save draft", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
                 var valErrors = new List<string>();
                 Control? firstInvalid = null;
                 ValidationHelper.ClearErrors(pnlFormBody);
@@ -1199,6 +1225,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (!asDraft && !ConfirmDrNumbers(selDel)) return;
                 if (!asDraft && !ConfirmIncompleteStoresTwice()) return;
+                if (extraDispatches.Count > 0) { SaveSeveralDispatches(selDel); return; }   // Nov 9: one report per dispatch from this one form
                 var stopsToSave = CollectStopsFromGrid(selDel);
                 string smLastName = txtStoreManagerLastName.Text.Trim();
                 string smFirstName = txtStoreManagerFirstName.Text.Trim();
@@ -1801,6 +1828,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (txtGuardName != null) txtGuardName.Text = "";
             cbDelivery.SelectedIndex = -1; // Nov 6: no trip picked until the person picks one
             DropAddedPickItems();          // Nov 9: and the list is back to only the trips that still wait for a report
+            ClearExtras();                 // Nov 9: and no added dispatches are left over
             ResetPickFilter();             // Nov 9: search / client / show / sort back to their defaults
             ResetTripOverview();
             if (pnlMultiDropInfo != null) pnlMultiDropInfo.Visible = false;
