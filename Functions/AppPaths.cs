@@ -16,6 +16,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     {
         public const string DatabaseFileName = "mj_billones.db";
         public static string ProgramFolder => AppDomain.CurrentDomain.BaseDirectory;
+        /// <summary>A file named clean_install.flag next to the program marks a clean hand-over build: a new database starts with only the default admin and staff logins (generic names, no phone numbers) and none of the sample client, stores or routes.</summary>
+        public static bool CleanInstall => File.Exists(Path.Combine(ProgramFolder, "clean_install.flag"));
         private static string? dataRoot;
         public static string DataRoot => dataRoot ??= ChooseDataRoot();
         public static string DatabaseFile => Path.Combine(DataRoot, DatabaseFileName);

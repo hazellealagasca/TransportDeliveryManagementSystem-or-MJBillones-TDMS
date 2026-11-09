@@ -2730,7 +2730,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 insertAdmin.CommandText = @"INSERT INTO Users (Username, Password, Role, FullName, ContactNumber, IsActive, CreatedAt)
 
-                                            VALUES ('admin', @p1, 'Admin', 'Marie Ann J. Billones', '0917-123-4567', 1, @now)";
+                                            VALUES ('admin', @p1, 'Admin', @n1, @c1, 1, @now)";
+
+                insertAdmin.Parameters.AddWithValue("@n1", Functions.AppPaths.CleanInstall ? "System Administrator" : "Marie Ann J. Billones");
+                insertAdmin.Parameters.AddWithValue("@c1", Functions.AppPaths.CleanInstall ? "" : "0917-123-4567");
 
                 insertAdmin.Parameters.AddWithValue("@p1", HashPassword("admin123"));
 
@@ -2742,7 +2745,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 insertStaff.CommandText = @"INSERT INTO Users (Username, Password, Role, FullName, ContactNumber, IsActive, CreatedAt)
 
-                                            VALUES ('staff', @p2, 'Office Staff', 'Juan Dela Cruz', '0918-765-4321', 1, @now)";
+                                            VALUES ('staff', @p2, 'Office Staff', @n2, @c2, 1, @now)";
+
+                insertStaff.Parameters.AddWithValue("@n2", Functions.AppPaths.CleanInstall ? "Office Staff" : "Juan Dela Cruz");
+                insertStaff.Parameters.AddWithValue("@c2", Functions.AppPaths.CleanInstall ? "" : "0918-765-4321");
 
                 insertStaff.Parameters.AddWithValue("@p2", HashPassword("staff123"));
 
@@ -6114,7 +6120,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 long count = Convert.ToInt64(checkCmd.ExecuteScalar() ?? 0);
 
-                if (count > 0) return;
+                if (count > 0 || Functions.AppPaths.CleanInstall) return; // a clean hand-over build starts with no sample client, stores or routes
 
                 var initialRoutes = new (string Code, string Name, string Description, string Places)[]
 
