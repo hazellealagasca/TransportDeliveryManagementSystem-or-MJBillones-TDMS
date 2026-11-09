@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -1228,10 +1228,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// </summary>
         public void OpenBillingFromTripReports(IReadOnlyList<Delivery> trips)
         {
+            // Nov 9 (statement first): a completed trip report goes to the Statements of Account queue, not to Billing.
             if (trips == null || trips.Count == 0) return;
-            NavigateToFinance("Billing");
-            if (viewCache.TryGetValue("FinanceHubView", out var fv) && fv is FinanceHubView fhv)
-                fhv.OpenTab<BillingView>("Billing")?.StartBatch(trips, () => NavigateToOperations("TripReports"));
+            NavigateToFinance("StatementOfAccount");
         }
         public void CreateInvoiceForDelivery(Delivery delivery)
         {

@@ -234,7 +234,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblUpdateDelete.Visible = false;
             btnPrintFromForm = new Button { Text = "🖨  Print trip report", FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
             btnPrintFromForm.Click += (s, e) => PrintSelectedTripReport();
-            btnSave.Text = "🧾  Issue Invoice";
+            btnSave.Text = "➡  Proceed to SOA";
             btnUpdate.Text = "💾  Save changes";
             btnClear.Text = "Clear form";
             foreach (var b in new[] { btnSave, btnUpdate, btnPrintFromForm, btnClear })

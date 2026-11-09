@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -39,7 +39,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             btnSaveDraft = new Button { Text = "💾  Save draft", FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
             btnSaveDraft.Click += (s, e) => SaveNewReport(asDraft: true);
-            btnIssueExisting = new Button { Text = "🧾  Issue Invoice", FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Visible = false };
+            btnIssueExisting = new Button { Text = "➡  Proceed to SOA", FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Visible = false };
             btnIssueExisting.Click += (s, e) =>
             {
                 issueAfterUpdate = true;
@@ -195,7 +195,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnViewAwaiting.Click += (s, e) => SetAwaitingMode();
             btnViewActive.Click += (s, e) => SetHistoryMode(false);
             btnViewHistory.Click += (s, e) => SetHistoryMode(true);
-            btnIssueSelected = new Button { Text = "🧾 Issue Invoice (Selected)", AutoSize = true, MinimumSize = new Size(Dpi(150), Dpi(30)), FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Margin = new Padding(Dpi(8), Dpi(4), Dpi(4), Dpi(4)) };
+            btnIssueSelected = new Button { Text = "➡ Proceed to SOA (Selected)", AutoSize = true, MinimumSize = new Size(Dpi(150), Dpi(30)), FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Margin = new Padding(Dpi(8), Dpi(4), Dpi(4), Dpi(4)) };
             UIThemeHelper.SetButtonRole(btnIssueSelected, "primary");
             btnIssueSelected.Click += (s, e) => IssueInvoiceForSelected();
             pnlGridActionsFlow.Controls.Add(btnViewActive);
@@ -413,7 +413,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (btnIssueSelected == null) return;
             var sel = SelectedReports();
-            btnIssueSelected.Text = sel.Count > 1 ? $"🧾 Issue Invoice ({sel.Count} selected)" : "🧾 Issue Invoice (Selected)";
+            btnIssueSelected.Text = sel.Count > 1 ? $"➡ Proceed to SOA ({sel.Count} selected)" : "➡ Proceed to SOA (Selected)";
             btnIssueSelected.Enabled = sel.Count > 0;
         }
 

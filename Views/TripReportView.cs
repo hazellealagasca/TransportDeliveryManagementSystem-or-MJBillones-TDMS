@@ -1393,7 +1393,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
                 if (asDraft)
                 {
-                    ToastHelper.ShowToast(this, $"Trip report for {selDel.DispatchNumber} saved as a draft. Finish it, then Issue Invoice.", ToastType.Info);
+                    ToastHelper.ShowToast(this, $"Trip report for {selDel.DispatchNumber} saved as a draft. Finish it, then Proceed to SOA.", ToastType.Info);
                     ClearFields();
                     LoadData();
                     SetFormVisibility(false);
@@ -1870,7 +1870,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.Add(RowMenu.Item("Edit trip report", () => OpenEditTripReport(tr), "Enter"));
                 m.Items.Add(RowMenu.Item($"Open dispatch {tr.DispatchNumber}", () => RowMenu.OpenDispatch(this, tr.DeliveryId, tr.DispatchNumber)));
                 m.Items.Add(RowMenu.Sep());
-                if (!invoiced) m.Items.Add(RowMenu.Good("Issue billing invoice for this trip", () => { if (del != null) MainForm.Instance?.CreateInvoiceForDelivery(del); }, del != null));
+                if (!invoiced) m.Items.Add(RowMenu.Good("Proceed to SOA for this trip", () => { if (del != null) MainForm.Instance?.NavigateToFinance("StatementOfAccount"); }, del != null));
                 else m.Items.Add(RowMenu.Item($"Show invoice {invoice!.InvoiceNumber}", () => MainForm.Instance?.ShowFinanceRecords("Billing", invoice.InvoiceNumber)));
                 if (Features.On(Features.Incidents))
                 {
