@@ -40,12 +40,52 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (txtTruckTimeIn != null && string.IsNullOrWhiteSpace(txtTruckTimeIn.Text)) list.Add(("Truck time in (plant gate) is required.", txtTruckTimeIn));
             if (txtTruckTimeOut != null && string.IsNullOrWhiteSpace(txtTruckTimeOut.Text)) list.Add(("Truck time out (plant gate) is required.", txtTruckTimeOut));
+            // Nov 10: plant gate times are 24-hour HHMM (e.g. 2042); the sign-off names are real names.
+            foreach (var (tb, nm) in new[] { (txtTruckTimeIn, "Truck time in"), (txtTruckTimeOut, "Truck time out") })
+                if (tb != null && !string.IsNullOrWhiteSpace(tb.Text) && !GateTimeOk(tb.Text)) list.Add(($"{nm} must be a 24-hour time of 4 digits, like 2042 or 0139.", tb));
+            foreach (var (tb, nm) in SignOffBoxes())
+                if (tb != null && !string.IsNullOrWhiteSpace(tb.Text) && !SecurityHelper.IsValidName(tb.Text.Trim())) list.Add(($"{nm} must be a name (letters only).", tb));
+            need(txtGuardName, "Guard name & sign");
             need(txtDtrApprovedBy, "DTR \"Approved by\"");
             need(txtDtrPreparedBy, "DTR \"Prepared by\"");
             need(txtDrPreparedBy, "DR \"Prepared by\"");
             need(txtDrCheckedBy, "DR \"Checked by\"");
             foreach (var (_, field) in list) ValidationHelper.ApplyValidationState(field, false, "Required.");
             return list;
+        }
+
+        private static bool GateTimeOk(string t) => System.Text.RegularExpressions.Regex.IsMatch((t ?? "").Trim(), @"^([01]\d|2[0-3])[0-5]\d$");
+
+        private IEnumerable<(TextBox? Box, string Name)> SignOffBoxes() => new (TextBox?, string)[]
+        {
+            (txtDtrApprovedBy, "DTR \"Approved by\""), (txtReturnCheckedBy, "Return checked by"), (txtDtrPreparedBy, "DTR \"Prepared by\""),
+            (txtDrPreparedBy, "DR \"Prepared by\""), (txtDrCheckedBy, "DR \"Checked by\""), (txtGuardName, "Guard name & sign")
+        };
+
+        /// <summary>Plant gate &amp; sign-off boxes check themselves when you leave them; the times take digits only.</summary>
+        private void WirePlantGateValidation()
+        {
+            foreach (var tb in new[] { txtTruckTimeIn, txtTruckTimeOut })
+            {
+                if (tb == null) continue;
+                tb.MaxLength = 4;
+                tb.KeyPress += (s, e) => { if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar)) e.Handled = true; };
+                tb.Leave += (s, e) =>
+                {
+                    if (string.IsNullOrWhiteSpace(tb.Text)) { ValidationHelper.ClearErrors(tb); return; }
+                    ValidationHelper.ApplyValidationState(tb, GateTimeOk(tb.Text), "Type 4 digits in 24-hour time, like 2042 or 0139.");
+                };
+            }
+            foreach (var (tb, _) in SignOffBoxes())
+            {
+                if (tb == null) continue;
+                var box = tb;
+                box.Leave += (s, e) =>
+                {
+                    if (string.IsNullOrWhiteSpace(box.Text)) { ValidationHelper.ClearErrors(box); return; }
+                    ValidationHelper.ApplyValidationState(box, SecurityHelper.IsValidName(box.Text.Trim()), "Type a name (letters only).");
+                };
+            }
         }
 
         /// <summary>Shows the missing fields (if any). True when the form may be saved.</summary>

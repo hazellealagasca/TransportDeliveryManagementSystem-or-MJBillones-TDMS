@@ -165,6 +165,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Re-draws the step bar while the person types (times, names, store cells).</summary>
         private void WireStepperRefresh()
         {
+            WirePlantGateValidation();
             foreach (var t in new[] { txtTruckTimeIn, txtTruckTimeOut, txtDtrApprovedBy, txtDtrPreparedBy, txtDrPreparedBy, txtDrCheckedBy, txtGuardName, txtReturnCheckedBy })
                 if (t != null) t.TextChanged += (s, e) => UpdateTripStepper();
             if (gridStores != null)
