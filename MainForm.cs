@@ -1162,6 +1162,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void btnNavFinance_Click(object? sender, EventArgs e)
         {
             NavigateToView("FinanceHubView", btnNavFinance, () => new FinanceHubView());
+            // Nov 10: clicking Payments goes straight to the Statement of Account (callers that want another tab select it right after).
+            if (viewCache.TryGetValue("FinanceHubView", out var fv) && fv is FinanceHubView fhv) fhv.SelectTab("StatementOfAccount");
         }
 
         private void btnNavMasterData_Click(object? sender, EventArgs e)
@@ -1314,7 +1316,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             NavigateToFinance("Collections");
             if (viewCache.TryGetValue("FinanceHubView", out var fv) && fv is FinanceHubView fhv) fhv.RecordSpecialTripCollection(trip);
         }
-        public void NavigateToFinance(string tab = "Billing")
+        public void NavigateToFinance(string tab = "StatementOfAccount")
         {
             skipNextViewRefresh = true; // the tab selection below refreshes the visible page once
                 btnNavFinance_Click(this, EventArgs.Empty);

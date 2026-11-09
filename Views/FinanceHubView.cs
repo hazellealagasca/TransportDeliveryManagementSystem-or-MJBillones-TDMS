@@ -16,7 +16,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly Dictionary<string, UserControl> cachedViews = new Dictionary<string, UserControl>();
         private readonly Models.Delivery? prefillDelivery;
 
-        public FinanceHubView(string defaultTab = "Billing", Models.Delivery? prefillDelivery = null)
+        public FinanceHubView(string defaultTab = "StatementOfAccount", Models.Delivery? prefillDelivery = null)
         {
             this.prefillDelivery = prefillDelivery;
             InitializeComponent();
