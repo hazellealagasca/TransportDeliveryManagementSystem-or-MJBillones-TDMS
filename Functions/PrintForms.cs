@@ -744,6 +744,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     sb.Append(Table(opt, new[] { ("no", "No", "center"), ("code", "Store code", "center"), ("store", "Store name & DR / invoice #", ""), ("in", "Store in", "center"), ("out", "Store out", "center"), ("rep", "Store representative (sign over printed name)", ""),
                         ("le", "Loaded E", "center"), ("lg", "Loaded G", "center"), ("re", "Returned E", "center"), ("rg", "Returned G", "center"), ("remarks", "No. Drops", "center") },
                         rows, totals, Math.Max(0, opt.BlankRows - stops.Count)));
+                    if (opt.On("totals"))
+                    {
+                        // Nov 10: the crate totals at the bottom of the stores table: total loaded, total returned and the total crates.
+                        int tle = stops.Sum(Le), tlg = stops.Sum(Lg), tre = stops.Sum(s => s.ReturnedECrates), trg = stops.Sum(s => s.ReturnedGCrates);
+                        string Cr(string label, int e, int g, bool strong = false) => $"<tr><td class='lbl{(strong ? " strong" : "")}' style='text-align:right'>{label}</td><td class='center'>{e:N0}</td><td class='center'>{g:N0}</td><td class='center'><b>{e + g:N0}</b></td></tr>";
+                        sb.Append("<table class='grid sheet' style='width:55%;margin:6px 0 0 auto'><thead><tr><th></th><th class='center'>E crates</th><th class='center'>G crates</th><th class='center'>Total</th></tr></thead><tbody>"
+                            + Cr("TOTAL LOADED", tle, tlg) + Cr("TOTAL RETURNED", tre, trg) + Cr("TOTAL CRATES (loaded + returned)", tle + tre, tlg + trg, true) + "</tbody></table>");
+                    }
                 }
                 if (opt.On("remarks_box") && !string.IsNullOrWhiteSpace(opt.F("remarks"))) sb.Append(FieldGrid(opt, 1, "remarks"));
                 if (opt.On("signoff")) { sb.Append(SectionTitle("Plant gate & sign-off")); sb.Append(FieldGrid(opt, 4, "time_in", "time_out", "dtr_approved", "return_checked", "dtr_prepared", "dr_prepared", "dr_checked", "guard")); }
