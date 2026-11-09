@@ -6418,6 +6418,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
 
+                // Nov 10: a repeated route code or name is refused here, in the one writer, in plain words (the database index would otherwise
+                // fail with a raw SQLite error on every screen that saves a route).
+                {
+                    string dupName = (r.RouteName ?? "").Trim(), dupCode = (r.RouteCode ?? "").Trim();
+                    if (dupCode.Length > 0)
+                    {
+                        using var dc = conn.CreateCommand();
+                        dc.CommandText = "SELECT COALESCE(ClientCompanyName,''), COALESCE(RouteName,'') FROM DeliveryRoutes WHERE LOWER(TRIM(RouteCode)) = LOWER(@c) AND Id <> @id LIMIT 1";
+                        dc.Parameters.AddWithValue("@c", dupCode); dc.Parameters.AddWithValue("@id", r.Id);
+                        using var dr = dc.ExecuteReader();
+                        if (dr.Read()) { string o = dr.GetString(0).Trim(); throw new InvalidOperationException($"Route code '{dupCode}' is already used by '{dr.GetString(1)}'{(o.Length > 0 ? $" ({o})" : "")}. Please use a different route code."); }
+                    }
+                    if (dupName.Length > 0)
+                    {
+                        using var dn = conn.CreateCommand();
+                        dn.CommandText = "SELECT COALESCE(RouteCode,''), COALESCE(RouteName,'') FROM DeliveryRoutes WHERE LOWER(TRIM(COALESCE(ClientCompanyName,''))) = LOWER(@cl) AND LOWER(TRIM(RouteName)) = LOWER(@n) AND Id <> @id LIMIT 1";
+                        dn.Parameters.AddWithValue("@cl", (r.ClientCompanyName ?? "").Trim()); dn.Parameters.AddWithValue("@n", dupName); dn.Parameters.AddWithValue("@id", r.Id);
+                        using var dr2 = dn.ExecuteReader();
+                        if (dr2.Read()) throw new InvalidOperationException($"{(string.IsNullOrWhiteSpace(r.ClientCompanyName) ? "This client" : r.ClientCompanyName.Trim())} already has a route named '{dr2.GetString(1)}' (code {dr2.GetString(0)}). Use a different route name.");
+                    }
+                }
+
                 if (r.Id == 0)
 
                 {

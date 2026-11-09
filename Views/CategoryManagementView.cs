@@ -1220,7 +1220,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             MJdatabase.SetRoutePlaces(routeToSave, placesList);
             routeToSave.IsActive = chkRouteActive.Checked;
 
-            bool success = MJdatabase.SaveDeliveryRoute(routeToSave);
+            bool success;
+            try { success = MJdatabase.SaveDeliveryRoute(routeToSave); }
+            catch (InvalidOperationException ex) { MessageBox.Show(FindForm(), ex.Message, "Can't save this route", MessageBoxButtons.OK, MessageBoxIcon.Information); return; } // Nov 10: a repeated route code or name, in plain words
             if (success)
             {
                 MJdatabase.NotifyCategoriesChanged();
