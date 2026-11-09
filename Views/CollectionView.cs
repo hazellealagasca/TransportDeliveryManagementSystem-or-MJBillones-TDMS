@@ -215,6 +215,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void HandleRefNoInput()
         {
+            if (bindingReceipt) return;
             string refNum = txtRefNo.Text.Trim();
             if (string.IsNullOrWhiteSpace(refNum))
             {
@@ -247,23 +248,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+        private bool bindingReceipt;
         private void BindCollectionToForm(CollectionReceipt cr)
         {
+            // Setting the boxes below fires their change events (the reference box clears selectedCollection when it is blank), so the
+            // receipt is held in cr and selectedCollection is set again at the end. This was the "selectedCollection was null" crash.
+            bindingReceipt = true;
+            try
+            {
+                selectedCollection = cr;
+                editTargetInvoice = EditInvoiceFor(cr);
+                if (txtReceiptNo != null) txtReceiptNo.Text = cr.ReceiptNumber;
+                SetPaymentDate(cr.PaymentDate);
+                lblFormHeader.Text = $"Receipt #{cr.ReceiptNumber}";
+                lblLinkedInvoiceInfo.Text = !string.IsNullOrEmpty(cr.InvoiceNumber)
+                    ? $"📄 Linked invoice: {cr.InvoiceNumber}"
+                    : "📄 Linked invoice: (none)";
+                cbInvoice.Enabled = false; // a saved receipt keeps its statement
+                var _amt = cr.AmountPaid;
+                if (_amt > numAmountPaid.Maximum) numAmountPaid.Maximum = _amt * 2;
+                numAmountPaid.SetSafe(Math.Max(numAmountPaid.Minimum, Math.Min(numAmountPaid.Maximum, _amt)));
+                cbPaymentMethod.Text = cr.PaymentMethod;
+                txtRefNo.Text = cr.ReferenceNumber;
+                txtNotes.Text = cr.Notes;
+            }
+            finally { bindingReceipt = false; }
             selectedCollection = cr;
-            editTargetInvoice = EditInvoiceFor(cr);
-            if (txtReceiptNo != null) txtReceiptNo.Text = cr.ReceiptNumber;
-            SetPaymentDate(cr.PaymentDate);
-            lblFormHeader.Text = $"Receipt #{selectedCollection.ReceiptNumber}";
-            lblLinkedInvoiceInfo.Text = !string.IsNullOrEmpty(selectedCollection.InvoiceNumber)
-                ? $"📄 Linked invoice: {selectedCollection.InvoiceNumber}"
-                : "📄 Linked invoice: (none)";
-            cbInvoice.Enabled = false; // a saved receipt keeps its statement
-            var _amt = selectedCollection.AmountPaid;
-            if (_amt > numAmountPaid.Maximum) numAmountPaid.Maximum = _amt * 2;
-            numAmountPaid.SetSafe(Math.Max(numAmountPaid.Minimum, Math.Min(numAmountPaid.Maximum, _amt)));
-            cbPaymentMethod.Text = selectedCollection.PaymentMethod;
-            txtRefNo.Text = selectedCollection.ReferenceNumber;
-            txtNotes.Text = selectedCollection.Notes;
             SetButtonStates(true);
         }
 
