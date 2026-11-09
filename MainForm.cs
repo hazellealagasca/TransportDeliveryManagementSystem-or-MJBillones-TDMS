@@ -1238,7 +1238,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             delivery = DispatchGate.Fresh(delivery);
             if (!DispatchGate.RequireCompleted(this, delivery, "bill it")) return;
-            NavigateToView("FinanceHubView", btnNavFinance, () => new FinanceHubView("Billing", delivery));
+            // Nov 10: an order can't be billed directly: it goes Statement of Account, then Service invoice, then Collection receipt.
+            QuietBox.Show("An order is billed through its Statement of Account first: Statement of Account, then Service invoice, then Collection receipt.", "Statement of Account first", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            NavigateToFinance("StatementOfAccount");
         }
         /// <summary>Opens a client's profile in Master Data → Clients.</summary>
         public void OpenClientProfile(string companyName) => OpenClientProfile(companyName, null, null);

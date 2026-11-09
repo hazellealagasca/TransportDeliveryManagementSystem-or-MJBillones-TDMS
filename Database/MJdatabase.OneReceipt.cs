@@ -116,8 +116,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var notInvoiced = GetSoaTripsWithoutInvoice(); // Nov 9: a statement is collected only when every trip on it has its invoice
             foreach (var g in open.Where(i => i.SoaId > 0 && !notInvoiced.ContainsKey(i.SoaId)).GroupBy(i => i.SoaId))
                 list.Add(new PayTarget { SoaId = g.Key, SoaNumber = g.First().SoaNumber, Client = g.First().Client, Invoices = g.OrderBy(i => i.Number).ToList() });
-            foreach (var i in open.Where(i => i.SoaId == 0))
-                list.Add(new PayTarget { Client = i.Client, Invoices = new List<TripInvoice> { i } });
+            // Nov 10: an order is collected only through Statement of Account > Service invoice > Collection receipt, so an invoice on no statement is not offered.
             return list.OrderBy(t => t.DueDate).ThenBy(t => t.Title).ToList();
         }
 
@@ -145,6 +144,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 throw new InvalidOperationException($"The amount you checked (PHP {verifiedAmount.Value:N2}) is not the amount due (PHP {target.Net:N2}). Reload the list and check it again. Nothing was saved.");
             EnsureNumberSchema(); // before the write transaction: it may write
             if (target == null || target.Invoices.Count == 0) throw new InvalidOperationException("Pick the statement or the invoice being paid.");
+            if (!target.IsSoa) throw new InvalidOperationException("An order can only be collected through its Statement of Account: Statement of Account, then Service invoice, then Collection receipt. This invoice is on no statement. Nothing was saved.");
             // The day the money was received: today or earlier (a check collected on Friday is entered on Friday's date), never before the invoice.
             DateTime payDate = (paymentDate ?? DateTime.Today).Date;
             var dateWhy = CheckPaymentDate(payDate, target.Invoices.Max(i => i.IssueDate));

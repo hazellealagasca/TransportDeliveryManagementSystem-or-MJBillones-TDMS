@@ -88,7 +88,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (cbSoa == null) return;
             bool newForm = SoaFeatureOn && selectedInvoice == null;
             bool soa = SoaModeOn;
-            chkDirectTrip.Visible = newForm;
+            chkDirectTrip.Visible = false;   // Nov 10: an order is billed only through its Statement of Account (no direct trip invoice)
             lblSoa.Visible = cbSoa.Visible = soa;
             lblDel.Visible = cbDelivery.Visible = !soa;
             bool ownSoa = selectedInvoice != null && selectedInvoice.SoaId > 0 && selectedInvoice.DeliveryId <= 0 && string.IsNullOrWhiteSpace(selectedInvoice.DispatchNumber);
