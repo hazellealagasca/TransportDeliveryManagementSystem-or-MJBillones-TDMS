@@ -505,7 +505,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             // ---------------- Inputs
             cbClient = new ComboBox { DropDownStyle = ComboBoxStyle.DropDown, Font = new Font("Segoe UI", 10F) };
-            cbClient.SelectedIndexChanged += (s, e) => { if (!isBindingForm) AutoFillClientDetails(); SchedulePickerRefresh(); };
+            cbClient.SelectedIndexChanged += (s, e) => { if (!isBindingForm) { AutoFillClientDetails(); AutoFillClientTrips(); } SchedulePickerRefresh(); };
             cbClient.TextChanged += (s, e) => SchedulePickerRefresh();
             txtClientAddress = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };
             txtClientTin = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };

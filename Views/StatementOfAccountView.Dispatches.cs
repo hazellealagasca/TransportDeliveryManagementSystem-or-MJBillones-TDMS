@@ -357,6 +357,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ScheduleSoaGuide();
         }
 
+        /// <summary>
+        /// Nov 9: picking the client on a NEW normal statement fills the table with every completed trip report of that client that has no
+        /// statement yet (Amount and Fuel surcharge are then typed on each line), and shows the table. Untick/delete a line to leave a trip out.
+        /// </summary>
+        private void AutoFillClientTrips()
+        {
+            try
+            {
+                string client = cbClient.Text.Trim();
+                if (client.Length == 0 || isEditingExisting || CurrentSoaId > 0 || CurrentSoaType == SoaTypes.Special) return;
+                if (gridItems.Rows.Cast<DataGridViewRow>().Any(r => !r.IsNewRow)) return;      // never replace lines the user already has
+                var ids = MJdatabase.GetTripReportsWaitingForStatement()
+                    .Where(c => string.Equals(c.ClientName, client, StringComparison.OrdinalIgnoreCase)).Select(c => c.DeliveryId).ToHashSet();
+                if (ids.Count == 0) return;
+                try { deliveryCache = MJdatabase.GetDeliveries(); } catch { deliveryCache = new List<Delivery>(); }
+                var list = deliveryCache.Where(d => ids.Contains(d.Id)).ToList();
+                if (list.Count == 0) return;
+                AddDeliveriesToStatement(list);
+                if (gridItems.Rows.Cast<DataGridViewRow>().Any(r => !r.IsNewRow)) SoaShowTab(false);
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+        }
+
         /// <summary>The SOA type can't change once the statement has trip lines (or is saved), so normal and special trips never mix.</summary>
         private void UpdateSoaTypeLock()
         {
