@@ -393,8 +393,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     new (string, Action)[]
                     {
                         ("🚚  Loading Schedule & Dispatch", () => NavigateToOperations("Dispatch")),
-                        ("🌟  Special Trip", () => NavigateToOperations("SpecialTrips")),
-                        ("⚠️  Incident & Damage Logs", () => NavigateToOperations("Incidents")),
                         ("📝  Trip Reports", () => NavigateToOperations("TripReports")),
                         ("📜  Order History", () => NavigateToOperations("History")),
                         ("✅  Completed trips (in Order History)", () => NavigateToOperations("Completed"))
