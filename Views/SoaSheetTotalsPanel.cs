@@ -32,6 +32,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             grid.ColumnDisplayIndexChanged += (s, e) => Invalidate();
         }
 
+        public Action? AfterResize { get; set; }
+        protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Height = TotalHeight; AfterResize?.Invoke(); }
+        protected override void OnDpiChangedAfterParent(EventArgs e) { base.OnDpiChangedAfterParent(e); Height = TotalHeight; AfterResize?.Invoke(); }
+
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
@@ -44,7 +48,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             using var line = new Pen(grid.GridColor);
             using var normal = new Font("Segoe UI", 8.75F);
             using var strong = new Font("Segoe UI Semibold", 8.75F);
-            int h = LineHeight;
+            int h = Math.Max(Math.Min(LineHeight, (Height - 2) / Labels.Length), 16);   // the lines always fit the panel (it may have been sized before the screen scaling was known)
             for (int i = 0; i < Labels.Length; i++)
             {
                 bool last = i == Labels.Length - 1;

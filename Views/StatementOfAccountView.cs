@@ -744,6 +744,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlItemsGridHost.Controls.Add(gridItems);
             // Nov 10: the statement sheet's totals block sits right under the trips table, like the print.
             sheetTotals = new SoaSheetTotalsPanel(gridItems, () => new[] { numTotalSales.Value, numVat.Value, numNetOfVat.Value, numFuelSurchargeTotal.Value, numVat.Value, numWithholdingTax.Value, numTotalAmountDue.Value });
+            sheetTotals.AfterResize = SizeItemsGrid;
             pnlItemsGridHost.Controls.Add(sheetTotals);
             gridItems.BringToFront();
             lblItemsTotals = new Label
