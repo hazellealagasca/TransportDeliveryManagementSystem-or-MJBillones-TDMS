@@ -916,7 +916,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (e.KeyCode == Keys.F3)
             {
-                btnNavIncidents_Click(this, EventArgs.Empty);
+                // Nov 10: Incident & Damage Logs are hidden, so F3 does nothing.
                 e.Handled = true;
             }
             else if (e.KeyCode == Keys.F4)
@@ -982,7 +982,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 "⚡ Operational Quick Navigation Keys:\n" +
                 "   • F1  → Focus Global Search Bar\n" +
                 "   • F2  → Jump to Delivery & Dispatch\n" +
-                "   • F3  → Jump to Incident & Damage Logs\n" +
                 "   • F4  → Jump to Trip Reports & Variance\n" +
                 "   • F5  → Instant Refresh Active Data & KPI Badges\n" +
                 "   • F6  → Jump to Billing & Invoices\n" +
