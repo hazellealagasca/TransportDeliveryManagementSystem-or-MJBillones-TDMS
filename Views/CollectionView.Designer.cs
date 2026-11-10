@@ -238,7 +238,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblMethod.Text = "Payment Method:";
 
             this.cbPaymentMethod.Dock = System.Windows.Forms.DockStyle.Top;
-            this.cbPaymentMethod.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDown;
+            this.cbPaymentMethod.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cbPaymentMethod.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.cbPaymentMethod.FormattingEnabled = true;
             this.cbPaymentMethod.Items.AddRange(new object[] {

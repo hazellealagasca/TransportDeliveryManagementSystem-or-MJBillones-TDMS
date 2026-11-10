@@ -268,6 +268,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var _amt = cr.AmountPaid;
                 if (_amt > numAmountPaid.Maximum) numAmountPaid.Maximum = _amt * 2;
                 numAmountPaid.SetSafe(Math.Max(numAmountPaid.Minimum, Math.Min(numAmountPaid.Maximum, _amt)));
+                if (!string.IsNullOrWhiteSpace(cr.PaymentMethod) && !cbPaymentMethod.Items.Contains(cr.PaymentMethod)) cbPaymentMethod.Items.Add(cr.PaymentMethod);   // an older receipt keeps the method it was saved with
                 cbPaymentMethod.Text = cr.PaymentMethod;
                 txtRefNo.Text = cr.ReferenceNumber;
                 txtNotes.Text = cr.Notes;
@@ -281,10 +282,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
-                MJdatabase.EnsureOnlinePaymentMethod();
-                var methods = MJdatabase.GetLookupItems("Payment Method");
+                // Nov 10: the payment method is one of these four (the list is fixed).
                 cbPaymentMethod.Items.Clear();
-                foreach (var m in methods) cbPaymentMethod.Items.Add(m);
+                foreach (var m in new[] { "Check", "Cash", "Bank Transfer", "GCash" }) cbPaymentMethod.Items.Add(m);
 
                 LoadPayTargets(); // Nov 6: statements and lone invoices with nothing paid yet
 
