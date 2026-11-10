@@ -344,6 +344,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (e.RowIndex < 0 || e.ColumnIndex < 0 || isBindingForm) return;
                 string cn = gridStores.Columns[e.ColumnIndex].Name;
                 if (cn is "colStore" or "colCode" or "colLoadE" or "colLoadG" or "colRetE" or "colRetG") OpenStoreDetails(e.RowIndex);
+                // Nov 10: a click on Time in, Time out, Received by or No. Drops always starts typing there (the theme can switch the table to whole-row selection, which blocks typing).
+                else if (cn is "colIn" or "colOut" or "colRep" or "colRem")
+                {
+                    var cell = gridStores.Rows[e.RowIndex].Cells[e.ColumnIndex];
+                    if (cell.ReadOnly || gridStores.ReadOnly) return;
+                    try
+                    {
+                        if (gridStores.CurrentCell != cell) gridStores.CurrentCell = cell;
+                        if (!gridStores.IsCurrentCellInEditMode) gridStores.BeginEdit(false);
+                        if (gridStores.EditingControl is TextBox tb) { tb.SelectionStart = tb.TextLength; tb.SelectionLength = 0; }
+                    }
+                    catch (Exception ex) { ErrLog.Swallowed(ex); }
+                }
             };
             gridStores.CellValueChanged += (s, e) =>
             {
