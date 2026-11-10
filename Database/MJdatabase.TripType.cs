@@ -42,7 +42,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (type != "REF" && type != "DRY") return;
             try
             {
-                EnsureTripTypeColumn();
+                EnsureTripTypeColumn(); EnsureWorkflowColumns(); EnsureSpecialTripColumns();
                 using var conn = new SqliteConnection(connectionString);
                 conn.Open();
                 using var cmd = conn.CreateCommand();
@@ -79,7 +79,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var map = new Dictionary<int, string>();
             try
             {
-                EnsureTripTypeColumn();
+                EnsureTripTypeColumn(); EnsureWorkflowColumns(); EnsureSpecialTripColumns();   // older databases may lack these columns
                 using var conn = new SqliteConnection(connectionString);
                 conn.Open();
                 using var cmd = conn.CreateCommand();
