@@ -56,7 +56,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             row.Controls.AddRange(new Control[] { txtPickSearch, cbPickClient, cbPickShow, cbPickSort, lblPickCount, lnkPickClear });
 
             void Changed(object? s, EventArgs e) { if (!pickFilterBusy) ApplyPickFilter(GetSelectedDelivery()?.DispatchNumber); }
-            txtPickSearch.TextChanged += Changed;
+            txtPickSearch.TextChanged += (s, e) =>
+            {
+                Changed(s, e);
+                // Nov 10: show the matches right away (they used to sit in the closed drop-down, so a search looked empty).
+                if (!pickFilterBusy && txtPickSearch.TextLength > 0 && cbDelivery.Items.Count > 0 && cbDelivery.Enabled && IsHandleCreated)
+                    BeginInvoke(new Action(() => { try { if (!cbDelivery.IsDisposed && txtPickSearch.TextLength > 0 && cbDelivery.Items.Count > 0) cbDelivery.DroppedDown = true; } catch (Exception ex) { ErrLog.Swallowed(ex); } }));
+            };
             cbPickClient.SelectedIndexChanged += Changed;
             cbPickShow.SelectedIndexChanged += Changed;
             cbPickSort.SelectedIndexChanged += Changed;
