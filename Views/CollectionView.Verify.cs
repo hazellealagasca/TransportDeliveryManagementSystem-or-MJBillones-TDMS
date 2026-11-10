@@ -24,6 +24,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             chkVerifyAmount.CheckedChanged += (s, e) => ScheduleCollGuide();
             pnlFormBody.Controls.Add(chkVerifyAmount);
             pnlLinkedInvoice.Height = 74; // the carried-over billing details are longer than one line
+            pnlLinkedInvoice.Resize += (s, e) => FitCollectionBoxes();
+        }
+
+        /// <summary>Makes the details box and the "I checked the overall amount" line as tall as their text needs, so nothing is cut off.</summary>
+        private void FitCollectionBoxes()
+        {
+            try
+            {
+                lblLinkedInvoiceInfo.AutoEllipsis = false;
+                int w = Math.Max(200, pnlLinkedInvoice.ClientSize.Width - 16);
+                var sz = TextRenderer.MeasureText(lblLinkedInvoiceInfo.Text ?? "", lblLinkedInvoiceInfo.Font, new Size(w, 0), TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix);
+                pnlLinkedInvoice.Height = Math.Max(74, sz.Height + 22);
+                if (chkVerifyAmount != null)
+                {
+                    int cw = Math.Max(200, chkVerifyAmount.ClientSize.Width - 36);
+                    var cz = TextRenderer.MeasureText(chkVerifyAmount.Text ?? "", chkVerifyAmount.Font, new Size(cw, 0), TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix);
+                    chkVerifyAmount.Height = Math.Max(44, cz.Height + 16);
+                }
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
         }
 
         /// <summary>The overall amount of the picked statement / invoice is shown and must be ticked as checked.</summary>

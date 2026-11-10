@@ -182,6 +182,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ? $"Statement {t.SoaNumber} | {t.Client} | {t.Invoices.Count} invoice(s): {lines}{trPart}{Environment.NewLine}Freight PHP {(t.Gross - t.Fuel):N2} + fuel PHP {t.Fuel:N2} − withholding PHP {t.Deductions:N2} = OVERALL AMOUNT DUE PHP {t.Net:N2}"
                 : $"Invoice SI {t.Invoices[0].Number} | {t.Client}{trPart}{Environment.NewLine}Freight PHP {(t.Gross - t.Fuel):N2} + fuel PHP {t.Fuel:N2} − withholding PHP {t.Deductions:N2} = OVERALL AMOUNT DUE PHP {t.Net:N2}");
             ShowVerifyFor(t); // Nov 10: the overall amount must be ticked as checked before the receipt can be issued
+            FitCollectionBoxes();
             if (t.Net > numAmountPaid.Maximum) numAmountPaid.Maximum = t.Net * 2;
             numAmountPaid.SetSafe(Math.Max(numAmountPaid.Minimum, Math.Min(numAmountPaid.Maximum, t.Net)));
         }
