@@ -18,8 +18,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static readonly Area[] Areas =
         {
             new("Operations", "Dispatch", "Loading schedule & dispatch", "Create and edit loading orders and dispatches."),
-            new("Operations", "SpecialTrips", "Special trip history", "Book and manage special trips."),
-            new("Operations", "Incidents", "Incident & damage logs", "Log damaged or missing crates."),
             new("Operations", "TripReports", "Trip reports", "File trip reports when trucks come back."),
             new("Operations", "History", "Order history", "Look up every past order, dispatch and special trip."),
             new("Resources", "Trucks", "Trucks", "The fleet list and truck profiles."),
