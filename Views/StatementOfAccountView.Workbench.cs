@@ -69,7 +69,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tabs.Controls.Add(btnTabInvoices);
             soaCardLines.Dock = DockStyle.Top; soaCardPicker.Dock = DockStyle.Top; soaCardClient.Dock = DockStyle.Top;
 
-            var topLeft = Grow(); topLeft.Margin = new Padding(0, 0, Dpi(8), 0); topLeft.Controls.Add(BuildTripPayCard()); topLeft.Controls.Add(Gap()); topLeft.Controls.Add(soaCardClient); soaCardPay!.Dock = DockStyle.Top;
+            var topLeft = Grow(); topLeft.Margin = new Padding(0, 0, Dpi(8), 0); topLeft.Controls.Add(soaCardClient);
+            var payRow = Grow(); payRow.Margin = new Padding(0, Dpi(14), 0, 0); payRow.Controls.Add(BuildTripPayCard()); soaCardPay!.Dock = DockStyle.Top;   // Nov 10: step 2 spans the full width, under Client & SOA type
             soaTape = new TapeCard { EmptyText = "Pick the ready service invoices to see the statement add up.", Dock = DockStyle.Top };
             soaTape.Set("The statement adds up to", Array.Empty<(string, string)>(), "Total amount due", "₱0.00", "");
             var topRight = Grow(); topRight.Margin = new Padding(Dpi(8), 0, 0, 0); topRight.Controls.Add(soaTape);
@@ -93,13 +94,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bottomRight.Controls.Add(soaChecklist);
             var left = topLeft; var right = topRight; var rightScroll = bottomRight;
 
-            var split = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 2, RowCount = 3, BackColor = AppTheme.Canvas, Padding = new Padding(Dpi(24), Dpi(16), Dpi(24), Dpi(16)) };
+            var split = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 2, RowCount = 4, BackColor = AppTheme.Canvas, Padding = new Padding(Dpi(24), Dpi(16), Dpi(24), Dpi(16)) };
             split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60f));
             split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40f));
-            for (int i = 0; i < 3; i++) split.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            for (int i = 0; i < 4; i++) split.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             split.Controls.Add(topLeft, 0, 0); split.Controls.Add(topRight, 1, 0);
-            split.Controls.Add(middle, 0, 1); split.SetColumnSpan(middle, 2);
-            split.Controls.Add(bottomLeft, 0, 2); split.Controls.Add(bottomRight, 1, 2);
+            split.Controls.Add(payRow, 0, 1); split.SetColumnSpan(payRow, 2);
+            split.Controls.Add(middle, 0, 2); split.SetColumnSpan(middle, 2);
+            split.Controls.Add(bottomLeft, 0, 3); split.Controls.Add(bottomRight, 1, 3);
             pnlFormBody.AutoScroll = true;
             pnlFormBody.Controls.Add(split);
             // the old totals card keeps its boxes (they are read-only and still feed the tape), but is not shown

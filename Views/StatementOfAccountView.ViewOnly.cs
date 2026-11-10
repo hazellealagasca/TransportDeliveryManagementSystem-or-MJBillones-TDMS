@@ -95,7 +95,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             ExitSoaViewOnly();
             soaViewOnly = true;
-            foreach (var card in new Control?[] { soaCardClient, soaCardPicker, soaCardLines, soaCardSign }) if (card != null) LockSoaControls(card);
+            foreach (var card in new Control?[] { soaCardClient, soaCardPay, soaCardPicker, soaCardLines, soaCardSign }) if (card != null) LockSoaControls(card);
             gridItems.ReadOnly = true; gridItems.AllowUserToDeleteRows = false; gridItems.AllowUserToAddRows = false;
             soaViewOnlyRestore.Add(() => { gridItems.ReadOnly = false; gridItems.AllowUserToDeleteRows = true; });
             btnSaveSoa.Visible = false; btnDeleteSoa.Visible = false; btnClearForm.Visible = false;
