@@ -332,6 +332,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridStores.Columns.Add(Locked("colRetG", "Returned G", 80, roNumStyle, 92));
             gridStores.Columns.Add(Col("colRem", "No. Drops", 66, editNumStyle, 80));
             InputGuards.DigitsOnlyColumns(gridStores, "colRem");
+            InputGuards.PersonNameColumns(gridStores, "colRep");   // Nov 10: Received by is a person's name: letters, not numbers
             // "…" beside the DR cell opens the DR list. Added last so the other columns keep their positions.
             gridStores.Columns.Add(DrCellSupport.MakeButtonColumn("colDrBtn", Dpi(34)));
             gridStores.Columns["colDrBtn"]!.DisplayIndex = gridStores.Columns["colDr"]!.DisplayIndex + 1;

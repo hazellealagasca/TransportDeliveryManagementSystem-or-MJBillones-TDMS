@@ -75,6 +75,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (string.IsNullOrWhiteSpace(cell.Value?.ToString())) cell.Value = "0";
             };
         }
+        /// <summary>Grid columns that hold a person's name: typing is limited to letters, spaces and the marks . - ' , and a name with numbers can't be committed.</summary>
+        public static void PersonNameColumns(DataGridView grid, params string[] columnNames)
+        {
+            var names = new HashSet<string>(columnNames, StringComparer.OrdinalIgnoreCase);
+            void BlockNonLetters(object? s, KeyPressEventArgs e)
+            {
+                if (char.IsControl(e.KeyChar) || char.IsLetter(e.KeyChar) || " .-',".IndexOf(e.KeyChar) >= 0) return;
+                e.Handled = true;
+            }
+            grid.EditingControlShowing += (s, e) =>
+            {
+                if (e.Control is not TextBox tb) return;
+                tb.KeyPress -= BlockNonLetters;
+                var col = grid.CurrentCell?.OwningColumn;
+                if (col != null && names.Contains(col.Name)) tb.KeyPress += BlockNonLetters;
+            };
+            grid.CellValidating += (s, e) =>
+            {
+                if (e.RowIndex < 0 || e.ColumnIndex < 0 || !names.Contains(grid.Columns[e.ColumnIndex].Name)) return;
+                string v = (e.FormattedValue?.ToString() ?? "").Trim();
+                grid.Rows[e.RowIndex].ErrorText = "";
+                if (v.Length > 0 && v.Any(char.IsDigit))
+                {
+                    grid.Rows[e.RowIndex].ErrorText = $"{grid.Columns[e.ColumnIndex].HeaderText.Replace("✎", "").Trim()} must be a person's name: letters only, no numbers.";
+                    e.Cancel = true;
+                }
+            };
+        }
         /// <summary>A grid column whose values must be unique (case-insensitive), checked while typing.</summary>
         public static void UniqueColumn(DataGridView grid, string columnName, string label, Func<int, string, string?>? extraCheck = null)
         {
