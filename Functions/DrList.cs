@@ -46,7 +46,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// </summary>
         private static bool AppliesTo(TextBox tb)
         {
-            if (tb.Parent is MultiValueGrid g)
+            if ((tb as IDataGridViewEditingControl)?.EditingControlDataGridView is MultiValueGrid g)   // the typing box sits in a panel inside the table, so its Parent is not the table
             {
                 var cell = g.CurrentCell;
                 return cell != null && cell.ColumnIndex >= 0 && g.MultiLineColumns.Contains(g.Columns[cell.ColumnIndex].Name);
