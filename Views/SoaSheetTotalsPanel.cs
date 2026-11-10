@@ -32,6 +32,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             grid.ColumnDisplayIndexChanged += (s, e) => Invalidate();
         }
 
+        [System.ComponentModel.Browsable(false), System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
         public Action? AfterResize { get; set; }
         protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Height = TotalHeight; AfterResize?.Invoke(); }
         protected override void OnDpiChangedAfterParent(EventArgs e) { base.OnDpiChangedAfterParent(e); Height = TotalHeight; AfterResize?.Invoke(); }
