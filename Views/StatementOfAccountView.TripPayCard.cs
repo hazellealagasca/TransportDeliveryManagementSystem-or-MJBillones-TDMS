@@ -29,26 +29,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Height = Dpi(80), AllowUserToAddRows = false, AllowUserToDeleteRows = false, RowHeadersVisible = false, AutoGenerateColumns = false,
                 BackgroundColor = AppTheme.Surface, BorderStyle = BorderStyle.FixedSingle, SelectionMode = DataGridViewSelectionMode.CellSelect, MultiSelect = false,
                 EditMode = DataGridViewEditMode.EditOnEnter, ScrollBars = ScrollBars.None, EnableHeadersVisualStyles = false,
-                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing, ColumnHeadersHeight = Dpi(34),
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing, ColumnHeadersHeight = Dpi(46),
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, Font = new Font("Segoe UI", 9.5F)
             };
-            gridPay.RowTemplate.Height = Dpi(32);
+            gridPay.RowTemplate.Height = Dpi(34);
+            gridPay.RowTemplate.MinimumHeight = Dpi(34);
             gridPay.ColumnHeadersDefaultCellStyle.BackColor = Pal.C(219, 234, 254);
             gridPay.ColumnHeadersDefaultCellStyle.ForeColor = Pal.C(30, 58, 138);
             gridPay.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI Semibold", 8.75F);
+            gridPay.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.True;   // long headers wrap onto two lines instead of being cut off
+            gridPay.AllowUserToResizeRows = false;
             var ro = new DataGridViewCellStyle { BackColor = Pal.C(248, 250, 252) };
             var edit = new DataGridViewCellStyle { BackColor = Pal.C(254, 252, 232), Alignment = DataGridViewContentAlignment.MiddleRight };
             var money = new DataGridViewCellStyle(edit) { Format = "N2" };
             DataGridViewTextBoxColumn C(string name, string header, int w, bool readOnly, DataGridViewCellStyle st, int min)
                 => new DataGridViewTextBoxColumn { Name = name, HeaderText = header, FillWeight = w, MinimumWidth = Dpi(min), ReadOnly = readOnly, DefaultCellStyle = new DataGridViewCellStyle(st), SortMode = DataGridViewColumnSortMode.NotSortable };
-            gridPay.Columns.Add(C("pTrip", "Trip", 30, true, ro, 36));
-            gridPay.Columns.Add(C("pReport", "Trip report #", 100, true, ro, 110));
-            gridPay.Columns.Add(C("pDate", "Date", 70, true, ro, 80));
-            gridPay.Columns.Add(C("pStores", "Stores", 150, true, ro, 120));
-            gridPay.Columns.Add(C("pDrops", "No. of drops", 60, false, edit, 70));
-            gridPay.Columns.Add(C("pAmount", "Amount (VAT incl.)", 80, false, money, 100));
-            gridPay.Columns.Add(C("pFuel", "Fuel surcharge", 70, false, money, 90));
-            gridPay.Columns.Add(C("pTotal", "Row total", 70, true, new DataGridViewCellStyle(ro) { Alignment = DataGridViewContentAlignment.MiddleRight, Format = "N2" }, 90));
+            gridPay.Columns.Add(C("pTrip", "Trip", 30, true, ro, 34));
+            gridPay.Columns.Add(C("pReport", "Trip report #", 100, true, ro, 70));
+            gridPay.Columns.Add(C("pDate", "Date", 70, true, ro, 66));
+            gridPay.Columns.Add(C("pStores", "Stores", 150, true, ro, 70));
+            gridPay.Columns.Add(C("pDrops", "No. of drops", 60, false, edit, 56));
+            gridPay.Columns.Add(C("pAmount", "Amount (VAT incl.)", 80, false, money, 80));
+            gridPay.Columns.Add(C("pFuel", "Fuel surcharge", 70, false, money, 76));
+            gridPay.Columns.Add(C("pTotal", "Row total", 70, true, new DataGridViewCellStyle(ro) { Alignment = DataGridViewContentAlignment.MiddleRight, Format = "N2" }, 76));
             gridPay.EditingControlShowing += (s, e) =>
             {
                 if (e.Control is not TextBox tb) return;
@@ -129,7 +132,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         gridPay.Rows[idx].Cells["pStores"].ToolTipText = "This trip's Amount and Fuel surcharge come from its service invoice.";
                     }
                 }
-                gridPay.Height = gridPay.ColumnHeadersHeight + Math.Max(1, gridPay.Rows.Count) * gridPay.RowTemplate.Height + 4;
+                gridPay.Height = gridPay.ColumnHeadersHeight + Math.Max(1, gridPay.Rows.Count) * gridPay.RowTemplate.Height + SystemInformation.HorizontalScrollBarHeight + Dpi(8);
                 if (lblPayHint != null) lblPayHint.Text = lines.Count == 0
                     ? "No trip reports on this statement yet. Tick them in the Ready service invoices tab and add them; they appear here."
                     : "Type only the No. of drops, Amount and Fuel surcharge of each trip report. The statement's totals follow as you type.";
