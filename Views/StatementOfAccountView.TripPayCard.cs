@@ -104,6 +104,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return soaCardPay;
         }
 
+        /// <summary>Once trips are on the statement the client can't be changed (the trips, amounts and TIN belong to it); Clear form frees it again.</summary>
+        private void UpdateClientLock()
+        {
+            if (cbClient == null || gridItems == null) return;
+            bool hasTrips = gridItems.Rows.Cast<DataGridViewRow>().Any(r => !r.IsNewRow);
+            if (!hasTrips || cbClient.Enabled) cbClient.Enabled = !hasTrips;
+        }
+
         private void SchedulePayRefresh()
         {
             if (payWriting || payBuilding || payTimer == null) return;
@@ -139,6 +147,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             finally { payBuilding = false; }
             RefreshPayComputation();
+            UpdateClientLock();
         }
 
         private void RefreshPayComputation()

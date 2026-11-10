@@ -504,11 +504,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlFormBody.SuspendLayout();
 
             // ---------------- Inputs
-            cbClient = new ComboBox { DropDownStyle = ComboBoxStyle.DropDown, Font = new Font("Segoe UI", 10F) };
+            cbClient = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 10F) };   // Nov 10: pick an existing client; it is locked once trips are on the statement
             cbClient.SelectedIndexChanged += (s, e) => { if (!isBindingForm) { AutoFillClientDetails(); AutoFillClientTrips(); } SchedulePickerRefresh(); };
             cbClient.TextChanged += (s, e) => SchedulePickerRefresh();
             txtClientAddress = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };
-            txtClientTin = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };
+            txtClientTin = new TextBox { Font = new Font("Segoe UI", 10F), Text = "", ReadOnly = true, TabStop = false, BackColor = AppTheme.Canvas, PlaceholderText = "From the client's profile" };   // Nov 10: the TIN is the client's, never typed here
             cbDeliveryType = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 10F) };
             cbDeliveryType.Items.AddRange(new object[] { "REF", "DRY" });
             cbDeliveryType.SelectedIndex = -1;
@@ -1246,6 +1246,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     txtClientAddress.Text = cl.Address;
                     txtClientTin.Text = string.IsNullOrWhiteSpace(cl.TIN) ? "" : cl.TIN;
+                    txtClientTin.PlaceholderText = string.IsNullOrWhiteSpace(cl.TIN) ? "This client has no TIN: add it in Master Data > Clients" : "From the client's profile";
                 }
             }
         }
@@ -1619,7 +1620,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     string tin = new string(txtClientTin.Text.Where(char.IsDigit).ToArray());
                     if (tin.Length != 9 && tin.Length != 12)
                     {
-                        MessageBox.Show(FindForm(), tin.Length == 0 ? "The client's TIN is required on a statement. Type it in \"Client TIN\" (or add it in Master Data > Clients)." : "The TIN should have 9 digits (or 12 with the branch code), e.g. 006-896-371-000.", "Client TIN required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show(FindForm(), tin.Length == 0 ? "The client's TIN is required on a statement. It comes from the client's profile: add it in Master Data > Clients, then pick the client again." : "The TIN should have 9 digits (or 12 with the branch code), e.g. 006-896-371-000.", "Client TIN required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         txtClientTin.Focus();
                         return;
                     }
