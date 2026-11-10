@@ -40,12 +40,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// Stops a DR number from growing past 8 characters while typing or pasting into <paramref name="tb"/>
         /// (one DR or a list separated by commas, semicolons or new lines). Hooked once per box.
         /// </summary>
+        /// <summary>
+        /// A table shares ONE typing box between all its cells, so the DR guard must only act while a DR cell is being typed in
+        /// (otherwise it blocked letters in "Received by" and other text cells).
+        /// </summary>
+        private static bool AppliesTo(TextBox tb)
+        {
+            if (tb.Parent is MultiValueGrid g)
+            {
+                var cell = g.CurrentCell;
+                return cell != null && cell.ColumnIndex >= 0 && g.MultiLineColumns.Contains(g.Columns[cell.ColumnIndex].Name);
+            }
+            return true;
+        }
+
         public static void GuardLength(TextBox tb)
         {
             if (tb.Tag as string == "drGuard") return;
             tb.Tag = "drGuard";
             tb.KeyPress += (s, e) =>
             {
+                if (!AppliesTo(tb)) return;
                 if (char.IsControl(e.KeyChar) || Array.IndexOf(Separators, e.KeyChar) >= 0 || e.KeyChar == ' ') return;
                 if (!char.IsDigit(e.KeyChar)) { e.Handled = true; return; }   // numbers only
                 int start = tb.SelectionStart;
@@ -57,6 +72,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             tb.TextChanged += (s, e) =>
             {
+                if (!AppliesTo(tb)) return;
                 // a paste: cut every DR in the text to 8 characters
                 var parts = System.Text.RegularExpressions.Regex.Split(tb.Text, @"([,;
 	])");
