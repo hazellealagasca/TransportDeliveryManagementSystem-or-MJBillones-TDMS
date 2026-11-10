@@ -11164,7 +11164,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.Parameters.AddWithValue("@in", inv.InvoiceNumber);
                 cmd.Parameters.AddWithValue("@nk", NumberKey.Of(NumberKind.SI, inv.InvoiceNumber));
                 cmd.Parameters.AddWithValue("@soa", inv.SoaId);
-                cmd.Parameters.AddWithValue("@did", inv.DeliveryId > 0 ? inv.DeliveryId : DBNull.Value); // no dispatch (special trip): NULL, so the dispatch link stays valid
+                cmd.Parameters.AddWithValue("@did", inv.DeliveryId > 0 ? inv.DeliveryId : (InvoiceColumnNotNull(conn, tx, "DeliveryId") ? (object)0 : DBNull.Value)); // no dispatch (special trip): NULL, so the dispatch link stays valid
                 cmd.Parameters.AddWithValue("@c", inv.ClientName);
                 cmd.Parameters.AddWithValue("@id", inv.IssueDate.ToString("yyyy-MM-dd"));
                 cmd.Parameters.AddWithValue("@dd", inv.DueDate.ToString("yyyy-MM-dd"));
