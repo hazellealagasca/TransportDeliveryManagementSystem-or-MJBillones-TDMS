@@ -76,7 +76,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 b.LostFocus += (s, e) => { if (b.IsHandleCreated) b.BeginInvoke(new Action(() => { if (!txtCode.Focused && !txtName.Focused) matches.HideList(); })); };
                 b.KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) matches.HideList(); };
             }
-            quick.Controls.AddRange(new Control[] { txtCode, txtName, btnAdd, btnPaste });
+            quick.Controls.AddRange(new Control[] { txtCode, txtName, btnAdd });   // Nov 10: the Paste list button is hidden
             quick.Paint += (s, e) => PaintOutline(quick, e);
             lblPreview = new Label { Dock = DockStyle.Top, Height = D(LargePrint.Px(22, 20)), Font = FontCache.Get("Segoe UI", LargePrint.Pt(9.5F, 8.5F)), ForeColor = AppTheme.AccentText, UseMnemonic = false, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(D(10), 0, 0, 0), Text = "" };
             storesGrid.Dock = DockStyle.Fill;
