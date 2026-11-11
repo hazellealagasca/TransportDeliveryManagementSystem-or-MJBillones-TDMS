@@ -82,6 +82,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "colKind", HeaderText = "Type", FillWeight = 50, MinimumWidth = D(80) });
             grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "colCode", HeaderText = "Code", FillWeight = 50, MinimumWidth = D(80) });
             grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "colName", HeaderText = "Name", FillWeight = 170, MinimumWidth = D(160) });
+            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "colAddress", HeaderText = "Address", FillWeight = 130, MinimumWidth = D(120) });
             grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "colClient", HeaderText = "Client", FillWeight = 130, MinimumWidth = D(140) });
             grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "colOn", HeaderText = "Archived on", FillWeight = 60, MinimumWidth = D(100) });
             var colRestore = new DataGridViewButtonColumn { Name = "colRestore", HeaderText = "", Text = "↩ Restore", UseColumnTextForButtonValue = true, FillWeight = 50, MinimumWidth = D(96), FlatStyle = FlatStyle.Flat };
@@ -117,7 +118,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             grid.Rows.Clear();
             foreach (var it in shown)
             {
-                int r = grid.Rows.Add(it.Kind, it.Code.Length == 0 ? "—" : it.Code, it.Name, it.Kind == "Client" ? "—" : (it.Client.Length == 0 ? "—" : it.Client), it.ArchivedOn.Length == 0 ? "—" : it.ArchivedOn);
+                int r = grid.Rows.Add(it.Kind, it.Code.Length == 0 ? "—" : it.Code, it.Name, it.Address.Length == 0 ? "—" : it.Address, it.Kind == "Client" ? "—" : (it.Client.Length == 0 ? "—" : it.Client), it.ArchivedOn.Length == 0 ? "—" : it.ArchivedOn);
                 grid.Rows[r].Tag = it;
             }
             grid.ClearSelection();

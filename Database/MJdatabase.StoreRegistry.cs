@@ -38,16 +38,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             using var conn = new SqliteConnection(connectionString);
             conn.Open();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = @"SELECT Id, COALESCE(ClientId,0), COALESCE(ClientCompanyName,''), COALESCE(StoreCode,''), COALESCE(StoreName,''), COALESCE(DestinationRoute,'')
+            cmd.CommandText = @"SELECT Id, COALESCE(ClientId,0), COALESCE(ClientCompanyName,''), COALESCE(StoreCode,''), COALESCE(StoreName,''), COALESCE(DestinationRoute,''), COALESCE(Address,'')
                                 FROM ClientStores WHERE COALESCE(IsArchived,0) = 0";
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
-                var st = new ClientStore { Id = r.GetInt32(0), ClientId = r.GetInt32(1), ClientCompanyName = r.GetString(2), StoreCode = r.GetString(3), StoreName = r.GetString(4), DestinationRoute = r.GetString(5) };
+                var st = new ClientStore { Id = r.GetInt32(0), ClientId = r.GetInt32(1), ClientCompanyName = r.GetString(2), StoreCode = r.GetString(3), StoreName = r.GetString(4), DestinationRoute = r.GetString(5), Address = r.GetString(6) };
                 if (string.Equals(CleanStoreText(st.StoreCode), t, StringComparison.OrdinalIgnoreCase) || string.Equals(CleanStoreText(st.StoreName), t, StringComparison.OrdinalIgnoreCase))
                     list.Add(st);
             }
             return list;
+        }
+
+        /// <summary>How many active (not archived) stores have no address yet. Older stores start blank; the dashboard reminds the office to fill them in.</summary>
+        public static int CountActiveStoresWithoutAddress()
+        {
+            using var conn = new SqliteConnection(connectionString);
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT COUNT(*) FROM ClientStores WHERE COALESCE(IsArchived,0) = 0 AND TRIM(COALESCE(Address,'')) = ''";
+            return Convert.ToInt32(cmd.ExecuteScalar() ?? 0);
         }
 
         /// <summary>The store (any client, archived included) that already uses this code, or null.</summary>
@@ -58,12 +68,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             using var conn = new SqliteConnection(connectionString);
             conn.Open();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = @"SELECT Id, COALESCE(ClientId,0), COALESCE(ClientCompanyName,''), COALESCE(StoreCode,''), COALESCE(StoreName,''), COALESCE(DestinationRoute,''), COALESCE(IsArchived,0)
+            cmd.CommandText = @"SELECT Id, COALESCE(ClientId,0), COALESCE(ClientCompanyName,''), COALESCE(StoreCode,''), COALESCE(StoreName,''), COALESCE(DestinationRoute,''), COALESCE(IsArchived,0), COALESCE(Address,'')
                                 FROM ClientStores WHERE UPPER(TRIM(StoreCode)) = UPPER(@c)" + (includeArchived ? "" : " AND COALESCE(IsArchived,0) = 0") + " LIMIT 1";
             cmd.Parameters.AddWithValue("@c", c);
             using var r = cmd.ExecuteReader();
             if (!r.Read()) return null;
-            return new ClientStore { Id = r.GetInt32(0), ClientId = r.GetInt32(1), ClientCompanyName = r.GetString(2), StoreCode = r.GetString(3), StoreName = r.GetString(4), DestinationRoute = r.GetString(5) };
+            return new ClientStore { Id = r.GetInt32(0), ClientId = r.GetInt32(1), ClientCompanyName = r.GetString(2), StoreCode = r.GetString(3), StoreName = r.GetString(4), DestinationRoute = r.GetString(5), Address = r.GetString(7) };
         }
 
         /// <summary>
@@ -112,15 +122,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// are saved in one transaction, so both are saved or neither is. When the route refuses the store (the rules of
         /// <see cref="SetStoreOnRoute"/>) nothing is saved. Throws with a readable message when a rule fails.
         /// </summary>
-        public static ClientStore RegisterClientStore(string client, string code, string name, string routeLabel)
+        public static ClientStore RegisterClientStore(string client, string code, string name, string routeLabel, string address = "")
         {
             string? problem = CheckNewStore(client, code, name, routeLabel, out var route);
             if (problem != null) throw new InvalidOperationException(problem);
-            if (route == null) return RegisterCompanyStore(client, code, name); // no route chosen: company store pool only (rule 16c)
+            if (route == null) return RegisterCompanyStore(client, code, name, address); // no route chosen: company store pool only (rule 16c)
             client = CleanStoreText(client);
             string cleanCode = CleanStoreCode(code), cleanName = CleanStoreText(name), label = RouteLabel(route);
             int clientId = GetClientByCompanyName(client)?.Id ?? 0;
-            var store = new ClientStore { ClientId = clientId, ClientCompanyName = client, StoreCode = cleanCode, StoreName = cleanName, DestinationRoute = label };
+            var store = new ClientStore { ClientId = clientId, ClientCompanyName = client, StoreCode = cleanCode, StoreName = cleanName, DestinationRoute = label, Address = CleanStoreText(address) };
             using (var conn = new SqliteConnection(connectionString))
             {
                 conn.Open();
@@ -129,13 +139,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (refused != null) throw new InvalidOperationException(refused); // nothing written; the transaction rolls back
                 using var ins = conn.CreateCommand();
                 ins.Transaction = tx;
-                ins.CommandText = @"INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson)
-                                    VALUES (@cid, @cl, @sc, @sn, @dr, ''); SELECT last_insert_rowid();";
+                ins.CommandText = @"INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson, Address)
+                                    VALUES (@cid, @cl, @sc, @sn, @dr, '', @addr); SELECT last_insert_rowid();";
                 ins.Parameters.AddWithValue("@cid", clientId);
                 ins.Parameters.AddWithValue("@cl", client);
                 ins.Parameters.AddWithValue("@sc", cleanCode);
                 ins.Parameters.AddWithValue("@sn", cleanName);
                 ins.Parameters.AddWithValue("@dr", label);
+                ins.Parameters.AddWithValue("@addr", store.Address);
                 store.Id = Convert.ToInt32(ins.ExecuteScalar() ?? 0);
                 WriteRoutePlaces(route.Id, places, conn, tx);
                 tx.Commit();

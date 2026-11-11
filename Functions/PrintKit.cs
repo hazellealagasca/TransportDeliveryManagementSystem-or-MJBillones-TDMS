@@ -69,7 +69,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public bool HasBlankRows { get; set; }
         public int BlankRows { get; set; } = 8;
         public bool On(string key) => Sections.FirstOrDefault(s => s.Key == key)?.On ?? true;
-        public bool Col(string key) => Columns.FirstOrDefault(s => s.Key == key)?.On ?? true;
+        /// <summary>A column listed in the options follows its tick box; a column the saved options do not know yet is shown, except the optional store address (off until ticked).</summary>
+        public bool Col(string key) => Columns.FirstOrDefault(s => s.Key == key)?.On ?? key != "store_address";
         public PrintField? Field(string key) => Fields.FirstOrDefault(f => f.Key == key) ?? Header.FirstOrDefault(f => f.Key == key);
         public string F(string key) => Field(key)?.Value ?? "";
         public bool FOn(string key) { var f = Field(key); return f != null && f.On; }

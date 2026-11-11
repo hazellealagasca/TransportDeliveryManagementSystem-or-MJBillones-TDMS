@@ -21,7 +21,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly Action reloadStores;
         private readonly Button tab1, tab2;
         private readonly Panel page1, page2;
-        private readonly TextBox txtCode, txtName, txtSearch, txtNewCode, txtNewName;
+        private readonly TextBox txtCode, txtName, txtAddress, txtSearch, txtNewCode, txtNewName;
         private readonly DataGridView gridRoutes, gridAssign;
         private readonly Label lblAssignTitle, lblMsg;
         private List<DeliveryRoute> routes = new List<DeliveryRoute>();
@@ -61,13 +61,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             page1 = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Surface };
             var quick = new FlowLayoutPanel { Dock = DockStyle.Top, Height = D(LargePrint.Px(58, 44)), WrapContents = false, BackColor = AppTheme.SurfaceAlt, Padding = new Padding(D(8), D(8), D(8), D(6)) };
             txtCode = Entry("Store Code", 170, upper: true);
-            txtName = Entry("Store Name", 340, upper: false);
+            txtName = Entry("Store Name", 260, upper: false);
+            txtAddress = Entry("Store address", 300, upper: false);
+            txtAddress.MaxLength = 200;
             var btnAdd = BigButton("＋ Add store", AppTheme.Success);
             btnAdd.Click += (s, e) => AddStore();
             var btnPaste = BigButton("Paste list…", AppTheme.Accent);
             btnPaste.Click += (s, e) => PasteStores();
             txtCode.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; txtName.Focus(); } };
-            txtName.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; AddStore(); } };
+            txtName.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; txtAddress.Focus(); } };
+            txtAddress.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; AddStore(); } };
             txtCode.TextChanged += (s, e) => LiveCheckStore(txtCode);
             txtName.TextChanged += (s, e) => LiveCheckStore(txtName);
             foreach (var box in new[] { txtCode, txtName })
@@ -76,7 +79,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 b.LostFocus += (s, e) => { if (b.IsHandleCreated) b.BeginInvoke(new Action(() => { if (!txtCode.Focused && !txtName.Focused) matches.HideList(); })); };
                 b.KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) matches.HideList(); };
             }
-            quick.Controls.AddRange(new Control[] { txtCode, txtName, btnAdd });   // Nov 10: the Paste list button is hidden
+            quick.Controls.AddRange(new Control[] { txtCode, txtName, txtAddress, btnAdd });   // Nov 10: the Paste list button is hidden
             quick.Paint += (s, e) => PaintOutline(quick, e);
             lblPreview = new Label { Dock = DockStyle.Top, Height = D(LargePrint.Px(22, 20)), Font = FontCache.Get("Segoe UI", LargePrint.Pt(9.5F, 8.5F)), ForeColor = AppTheme.AccentText, UseMnemonic = false, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(D(10), 0, 0, 0), Text = "" };
             storesGrid.Dock = DockStyle.Fill;
@@ -243,7 +246,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 b.ForeColor = on ? AppTheme.AccentText : AppTheme.TextSecondary;
                 b.Invalidate();
             }
-            lblMsg.Text = n == 1 ? "Type a store code and name, then press Enter. Stores are not tied to a route here." : "Pick a route on the left, then tick the stores it serves. " + (client().Length > 0 && !isPending() && MJdatabase.GetOneRoutePerStore(client()) ? "Each store can be on only one of this client's routes." : "A store can be on any of this client's routes.");
+            lblMsg.Text = n == 1 ? "Type a store code, name and address, then press Enter. Stores are not tied to a route here." : "Pick a route on the left, then tick the stores it serves. " + (client().Length > 0 && !isPending() && MJdatabase.GetOneRoutePerStore(client()) ? "Each store can be on only one of this client's routes." : "A store can be on any of this client's routes.");
             lblMsg.ForeColor = AppTheme.TextSecondary;
             if (n == 2) LoadRoutes();
         }
@@ -263,8 +266,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 string? problem = MJdatabase.CheckCompanyStore(c, txtCode.Text, txtName.Text);
                 if (problem != null) { Say("✕ " + problem, true); Outline(StoreProblemBox(problem)); return; }
-                var st = MJdatabase.RegisterCompanyStore(c, txtCode.Text, txtName.Text);
-                txtCode.Clear(); txtName.Clear(); txtCode.Focus(); // clearing runs the live check, so say the result after it
+                if (MJdatabase.CleanStoreText(txtAddress.Text).Length == 0) { Say("✕ Enter the store address.", true); Outline(txtAddress); txtAddress.Focus(); return; } // a NEW store needs its address
+                var st = MJdatabase.RegisterCompanyStore(c, txtCode.Text, txtName.Text, txtAddress.Text);
+                txtCode.Clear(); txtName.Clear(); txtAddress.Clear(); txtCode.Focus(); // clearing runs the live check, so say the result after it
                 Outline(null);
                 Say($"✔ Added {st.StoreCode} – {st.StoreName} to {c}'s stores.", false);
                 reloadStores();
@@ -389,7 +393,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>Called when another client is opened.</summary>
-        public void RefreshForClient() { txtCode.Clear(); txtName.Clear(); lblMsg.Text = ""; ApplyPendingMode(); if (page2.Visible) LoadRoutes(); }
+        public void RefreshForClient() { txtCode.Clear(); txtName.Clear(); txtAddress.Clear(); lblMsg.Text = ""; ApplyPendingMode(); if (page2.Visible) LoadRoutes(); }
 
         public void LoadRoutes(string? selectCode = null)
         {

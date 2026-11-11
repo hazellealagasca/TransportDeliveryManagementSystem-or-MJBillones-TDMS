@@ -494,6 +494,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridBranches.EditMode = DataGridViewEditMode.EditOnEnter;
             gridBranches.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "StoreCode", Name = "StoreCode", HeaderText = "Store code", FillWeight = 70, MinimumWidth = Dpi(90) });
             gridBranches.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "StoreName", Name = "StoreName", HeaderText = "Store name", FillWeight = 200, MinimumWidth = Dpi(160) });
+            gridBranches.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Address", Name = "Address", HeaderText = "Address", FillWeight = 220, MinimumWidth = Dpi(160) });
             gridBranches.Columns.Add(new DataGridViewComboBoxColumn
             {
                 DataPropertyName = "DestinationRoute",
@@ -1077,9 +1078,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             store.ClientId = selectedClient.Id;
             store.StoreCode = (store.StoreCode ?? "").Trim();
             store.StoreName = (store.StoreName ?? "").Trim();
+            store.Address = MJdatabase.CleanStoreText(store.Address);
             if (store.StoreName.Length == 0 || store.StoreCode.Length == 0)
             {
                 lblSaveState.Text = store.StoreCode.Length == 0 ? "Type a store code to save this row" : "Type a store name to save this row";
+                lblSaveState.ForeColor = AppTheme.WarningText;
+                return;
+            }
+            if (store.Id <= 0 && store.Address.Length == 0) // a NEW store needs its address; older stores without one can still be edited
+            {
+                lblSaveState.Text = "Type the store's address to save this row";
                 lblSaveState.ForeColor = AppTheme.WarningText;
                 return;
             }
@@ -1139,7 +1147,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 gridBranches.CurrentCell = gridBranches.Rows[idx].Cells["StoreCode"];
                 gridBranches.BeginEdit(true);
             }
-            lblSaveState.Text = "New store: type its code and name — it saves when both are filled in";
+            lblSaveState.Text = "New store: type its code, name and address — it saves when all three are filled in";
             lblSaveState.ForeColor = AppTheme.TextMuted;
         }
 

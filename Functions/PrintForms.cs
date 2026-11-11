@@ -519,7 +519,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 new("trip", "Trip report"), new("incident", "Incident"), new("billing", "Billing")
             };
             AddCommon(o);
-            o.Columns = new List<PrintChoice> { new("seq", "#"), new("store", "Store"), new("planned", "Planned"), new("delivered", "Delivered"), new("returned", "Returned"), new("time", "Arrival / departure"), new("received", "Received by"), new("status", "Status") };
+            o.Columns = new List<PrintChoice> { new("seq", "#"), new("store", "Store"), new("store_address", "Store address", false), new("planned", "Planned"), new("delivered", "Delivered"), new("returned", "Returned"), new("time", "Arrival / departure"), new("received", "Received by"), new("status", "Status") };
             o.Signatures = new List<PrintSig> { new PrintSig("Dispatched by", CurrentUserName, "Dispatcher", true), new PrintSig("Driver", d.DriverName, "Driver", true), new PrintSig("Verified by", OwnerName, "Owner") };
             var def = new PrintFormDef { Key = o.FormKey, Name = "Delivery dossier", FileName = $"Dossier_{d.DispatchNumber}", Defaults = o };
             def.Body = opt =>
@@ -533,8 +533,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (opt.On("stops") && stops.Count > 0)
                 {
                     sb.Append(SectionTitle($"Stores ({stops.Count})"));
-                    sb.Append(Table(opt, new[] { ("seq", "#", "center"), ("store", "Store", ""), ("planned", "Planned", "num"), ("delivered", "Delivered", "num"), ("returned", "Returned", "num"), ("time", "Arrival / departure", ""), ("received", "Received by", ""), ("status", "Status", "") },
-                        stops.OrderBy(s => s.StopSequence).Select(s => Row(("seq", s.StopSequence), ("store", $"<b>{Esc((s.StoreCode + " " + s.Destination).Trim())}</b>{(DrList.Count(s.DrNumbers) == 0 ? "" : "<br/>" + DrList.Html(s.DrNumbers, "DR# "))}"),
+                    sb.Append(Table(opt, new[] { ("seq", "#", "center"), ("store", "Store", ""), ("store_address", "Store address", ""), ("planned", "Planned", "num"), ("delivered", "Delivered", "num"), ("returned", "Returned", "num"), ("time", "Arrival / departure", ""), ("received", "Received by", ""), ("status", "Status", "") },
+                        stops.OrderBy(s => s.StopSequence).Select(s => Row(("seq", s.StopSequence), ("store", $"<b>{Esc((s.StoreCode + " " + s.Destination).Trim())}</b>{(DrList.Count(s.DrNumbers) == 0 ? "" : "<br/>" + DrList.Html(s.DrNumbers, "DR# "))}"), ("store_address", Esc(StoreAddressBook.Get(d.ClientName, s.StoreCode, s.Destination))),
                             ("planned", $"{s.TotalCrates} (G {s.GCrate} / E {s.ECrate})"), ("delivered", $"{s.DeliveredCrates}"), ("returned", $"{s.ReturnedCrates}"), ("time", $"{s.ArrivalTime} – {s.DepartureTime}"), ("received", s.StoreManagerName), ("status", s.Status)))));
                 }
                 if (opt.On("trip"))
@@ -644,7 +644,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             o.Sections = new List<PrintChoice> { new("info", "Date & totals line"), new("subtotals", "Route subtotal rows"), new("grand", "Grand total row") };
             AddCommon(o);
-            o.Columns = new List<PrintChoice> { new("route", "Route"), new("order", "Order / dispatch #", false), new("client", "Client", false), new("code", "Store code"), new("store", "Store name"), new("e", "E-crates"), new("g", "G-crates"), new("total", "Total"), new("volume", "Route volume"), new("ratio", "Truck load %"), new("departure", "Departure"), new("truck", "Truck"), new("crew", "Driver / helper") };
+            o.Columns = new List<PrintChoice> { new("route", "Route"), new("order", "Order / dispatch #", false), new("client", "Client", false), new("code", "Store code"), new("store", "Store name"), new("store_address", "Store address", false), new("e", "E-crates"), new("g", "G-crates"), new("total", "Total"), new("volume", "Route volume"), new("ratio", "Truck load %"), new("departure", "Departure"), new("truck", "Truck"), new("crew", "Driver / helper") };
             o.Signatures = new List<PrintSig> { new PrintSig("Prepared by", CurrentUserName, "Dispatcher", true), new PrintSig("Checked by", "", "Warehouse / checker"), new PrintSig("Approved by", OwnerName, "Owner") };
             var def = new PrintFormDef { Key = o.FormKey, Name = "Loading schedule", FileName = $"LoadingSchedule_{date:yyyyMMdd}", Defaults = o };
             def.Body = opt =>
@@ -653,7 +653,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (opt.On("info")) sb.Append(FieldGrid(opt, 2, "date", "routes", "crates", "warehouse"));
                 var cols = new (string Key, string Header, string Css, bool PerRoute)[]
                 {
-                    ("route", "Route", "center", true), ("order", "Order #", "center", true), ("client", "Client", "", true), ("code", "Store code", "center", false), ("store", "Store name", "", false),
+                    ("route", "Route", "center", true), ("order", "Order #", "center", true), ("client", "Client", "", true), ("code", "Store code", "center", false), ("store", "Store name", "", false), ("store_address", "Store address", "", false),
                     ("e", "E-crates", "num", false), ("g", "G-crates", "num", false), ("total", "Total", "num", false), ("volume", "Route volume", "center", true), ("ratio", "Load %", "center", true),
                     ("departure", "Departure", "center", true), ("truck", "Truck", "center", true), ("crew", "Driver / helper", "", true)
                 }.Where(c => opt.Col(c.Key)).ToList();
@@ -675,7 +675,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             string rs = c.PerRoute && span > 1 ? $" rowspan='{span}'" : "";
                             string v = c.Key switch
                             {
-                                "route" => $"<b>{Esc(g.Route)}</b>", "order" => Esc(g.Order), "client" => Esc(g.Client), "code" => $"<b>{Esc(s.Item1)}</b>", "store" => Esc(s.Item2),
+                                "route" => $"<b>{Esc(g.Route)}</b>", "order" => Esc(g.Order), "client" => Esc(g.Client), "code" => $"<b>{Esc(s.Item1)}</b>", "store" => Esc(s.Item2), "store_address" => Esc(StoreAddressBook.Get(g.Client, s.Item1, s.Item2)),
                                 "e" => s.Item3.ToString(), "g" => s.Item4.ToString(), "total" => $"<b>{s.Item3 + s.Item4}</b>", "volume" => $"<b>{rT}</b>",
                                 "ratio" => g.Capacity > 0 ? $"{Math.Round(rT * 100.0 / g.Capacity):0}%" : "", "departure" => $"<b>{Esc(g.Departure)}</b>", "truck" => Esc(g.Truck), "crew" => Esc(g.Crew), _ => ""
                             };
@@ -724,7 +724,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             o.Sections = new List<PrintChoice> { new("head", "Trip details (driver, route, plate…)"), new("stores", "Stores table"), new("totals", "Totals row"), new("signoff", "Plant gate & sign-off box"), new("remarks_box", "Trip remarks") };
             AddCommon(o);
             o.Sections.First(s => s.Key == "printed").On = false;
-            o.Columns = new List<PrintChoice> { new("no", "No."), new("code", "Store code"), new("store", "Store name & DR"), new("in", "Store in"), new("out", "Store out"), new("rep", "Store representative"), new("le", "Loaded E-crates"), new("lg", "Loaded G-crates"), new("re", "Returned E-crates"), new("rg", "Returned G-crates"), new("remarks", "No. Drops") };
+            o.Columns = new List<PrintChoice> { new("no", "No."), new("code", "Store code"), new("store", "Store name & DR"), new("store_address", "Store address", false), new("in", "Store in"), new("out", "Store out"), new("rep", "Store representative"), new("le", "Loaded E-crates"), new("lg", "Loaded G-crates"), new("re", "Returned E-crates"), new("rg", "Returned G-crates"), new("remarks", "No. Drops") };
             o.Signatures = new List<PrintSig> { new PrintSig("Driver", d.DriverName, "Signature over printed name", true, false), new PrintSig("Checked by", "", "Plant checker", false, false) };
             var def = new PrintFormDef { Key = o.FormKey, Name = "Trip report", FileName = $"TripReport_{d.DispatchNumber}", Defaults = o };
             def.Body = opt =>
@@ -737,11 +737,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     int Le(DispatchStop s) => s.DeliveredECrates > 0 || s.DeliveredGCrates > 0 ? s.DeliveredECrates : s.ECrate;
                     int Lg(DispatchStop s) => s.DeliveredECrates > 0 || s.DeliveredGCrates > 0 ? s.DeliveredGCrates : s.GCrate;
                     var rows = stops.Select(s => Row(("no", ++n), ("code", $"<b>{Esc(s.StoreCode)}</b>"), ("store", $"<b>{Esc(s.Destination)}</b>{(DrList.Count(s.DrNumbers) == 0 ? "" : "<br/>" + DrList.Html(s.DrNumbers, "DR# "))}"),
-                        ("in", s.ArrivalTime), ("out", s.DepartureTime), ("rep", s.StoreManagerName), ("le", Le(s)), ("lg", Lg(s)),
+                        ("store_address", Esc(StoreAddressBook.Get(d.ClientName, s.StoreCode, s.Destination))), ("in", s.ArrivalTime), ("out", s.DepartureTime), ("rep", s.StoreManagerName), ("le", Le(s)), ("lg", Lg(s)),
                         ("re", s.ReturnedECrates), ("rg", s.ReturnedGCrates), ("remarks", s.Remarks))).ToList();
                     var totals = opt.On("totals") ? new Dictionary<string, string> { ["store"] = "TOTAL", ["le"] = stops.Sum(Le).ToString(), ["lg"] = stops.Sum(Lg).ToString(), ["re"] = stops.Sum(s => s.ReturnedECrates).ToString(), ["rg"] = stops.Sum(s => s.ReturnedGCrates).ToString() } : null;
                     sb.Append(SectionTitle("Stores"));
-                    sb.Append(Table(opt, new[] { ("no", "No", "center"), ("code", "Store code", "center"), ("store", "Store name & DR / invoice #", ""), ("in", "Store in", "center"), ("out", "Store out", "center"), ("rep", "Store representative (sign over printed name)", ""),
+                    sb.Append(Table(opt, new[] { ("no", "No", "center"), ("code", "Store code", "center"), ("store", "Store name & DR / invoice #", ""), ("store_address", "Store address", ""), ("in", "Store in", "center"), ("out", "Store out", "center"), ("rep", "Store representative (sign over printed name)", ""),
                         ("le", "Loaded E", "center"), ("lg", "Loaded G", "center"), ("re", "Returned E", "center"), ("rg", "Returned G", "center"), ("remarks", "No. Drops", "center") },
                         rows, totals, Math.Max(0, opt.BlankRows - stops.Count)));
                     if (opt.On("totals"))

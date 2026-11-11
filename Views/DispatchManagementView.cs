@@ -2082,6 +2082,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 () => cbClient.Text, () => storeListRoute != null ? $"{storeListRoute.RouteCode} - {storeListRoute.RouteName}" : cbDestination.Text, ShowStoreWarning);
 
+            StoreAddressBook.AttachTips(gridRouteStores, () => cbClient.Text, "colStoreCode", "colStoreName"); // hover a store to see its address
             storeGuard.RowHasData = row => CratesOf(row) > 0;
             storeGuard.UseOrderRoute = true;
             VisibleChanged += (s, e) => SetFullScreen(Visible && pnlForm.Visible); // leaving the page ends full screen // Nov 6: every row shows the route picked in Delivery Route; the store list has no Route column

@@ -37,6 +37,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             public List<Invoice> Invoices = new();
             public List<CollectionReceipt> Receipts = new();
             public int PendingUsers;
+            public int StoresNoAddress;
         }
         private Snapshot data = new Snapshot();
         private string scope = "Today";
@@ -154,7 +155,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
         }
         // ---------- Needs attention: filter, sort, group ----------
-        private static readonly string[] AttnAreas = { "All areas", "Dispatches", "Loading orders", "Trip reports", "Incidents", "Billing", "Trucks", "Crew", "Accounts", "Backups" };
+        private static readonly string[] AttnAreas = { "All areas", "Dispatches", "Loading orders", "Trip reports", "Incidents", "Billing", "Trucks", "Crew", "Master data", "Accounts", "Backups" };
         private static readonly string[] AttnSorts = { "Most urgent first", "Oldest first", "Newest first", "Most records first", "Group by area" };
         private static int attnLevel, attnArea, attnSort;
         private static bool attnExpanded;
@@ -479,7 +480,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             loading = true;
             try
             {
-                bool ops = CanOps, fin = CanFin, res = CanRes, admin = SessionContext.IsAdmin;
+                bool ops = CanOps, fin = CanFin, res = CanRes, admin = SessionContext.IsAdmin, masterData = SessionContext.CanAccessMasterData;
                 var snap = await Task.Run(() =>
                 {
                     var s = new Snapshot();
@@ -493,6 +494,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     s.Invoices = Safe(MJdatabase.GetInvoices, new List<Invoice>());
                     if (fin) s.Receipts = Safe(MJdatabase.GetCollectionReceipts, new List<CollectionReceipt>());
                     if (admin) s.PendingUsers = Safe(MJdatabase.GetPendingUsersCount, 0);
+                    if (masterData) s.StoresNoAddress = Safe(MJdatabase.CountActiveStoresWithoutAddress, 0);
                     return s;
                 });
                 if (IsDisposed || !IsHandleCreated) return;
@@ -660,6 +662,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         $"{string.Join(", ", noExpiry.Take(3).Select(c => c.FullName))}{(noExpiry.Count > 3 ? "…" : "")} · add it in Crew Management so expired licences are caught",
                         "Crew", () => MainForm.Instance?.NavigateToResources("Crew"), "Crew", 2, null, noExpiry.Count));
             }
+            if (SessionContext.CanAccessMasterData && data.StoresNoAddress > 0)
+                items.Add(new ActionList.Item(AppTheme.Info, $"{data.StoresNoAddress} store{(data.StoresNoAddress == 1 ? " has" : "s have")} no address", "Older stores were saved before addresses were kept · fill them in under Master data › Clients (new stores need one)", "Clients", () => MainForm.Instance?.NavigateToMasterData("Clients"), "Master data", 2, null, data.StoresNoAddress));
             if (SessionContext.IsAdmin && data.PendingUsers > 0)
                 items.Add(new ActionList.Item(AppTheme.Warning, $"{data.PendingUsers} account(s) waiting for approval", "New staff sign-ups need an administrator", "Review", () => MainForm.Instance?.OpenUserAccounts(), "Accounts", 1, null, data.PendingUsers));
             if (SessionContext.IsAdmin && Features.On(Features.BackupReminder))
@@ -682,6 +686,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 "Billing" => Permissions.Can("Payments", "Billing") || Permissions.Can("Payments", "StatementOfAccount"),
                 "Trucks" => Permissions.Can("Resources", "Trucks"),
                 "Crew" => Permissions.Can("Resources", "Crew"),
+                "Master data" => Permissions.Can("MasterData", "Clients"),
                 _ => true
             };
             allAttention = items.Where(CanAct).ToList();

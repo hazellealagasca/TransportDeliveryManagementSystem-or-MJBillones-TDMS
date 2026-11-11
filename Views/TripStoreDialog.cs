@@ -109,6 +109,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtCode.ReadOnly = txtName.ReadOnly = !canRenameStore;
             if (!canRenameStore) { txtCode.BackColor = AppTheme.SurfaceAlt; txtName.BackColor = AppTheme.SurfaceAlt; txtCode.TabStop = txtName.TabStop = false; }
             Add2(txtCode, txtName);
+            // The store's address (read-only; typed in Master data). Nothing shows for an older store that has none.
+            var lblAddress = new Label { AutoSize = true, ForeColor = AppTheme.TextMuted, Font = new Font("Segoe UI", 9.5F), MaximumSize = new Size(D(520), 0), Margin = new Padding(0, 0, 0, D(4)), UseMnemonic = false, Visible = false };
+            Add2(lblAddress, null, 2);
+            void ShowAddress() { string a = StoreAddressBook.Get(StoreClient, txtCode.Text, txtName.Text); lblAddress.Text = a.Length == 0 ? "" : "Address: " + a; lblAddress.Visible = a.Length > 0; }
+            txtCode.TextChanged += (s, e) => ShowAddress();
+            txtName.TextChanged += (s, e) => ShowAddress();
+            Shown += (s, e) => ShowAddress(); // StoreClient is set before the window is shown
 
 
 

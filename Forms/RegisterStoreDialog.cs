@@ -18,7 +18,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public ClientStore? RegisteredStore { get; private set; }
         private readonly string client;
         private readonly ComboBox cbRoute = new ComboBox();
-        private readonly TextBox txtCode = new TextBox(), txtName = new TextBox();
+        private readonly TextBox txtCode = new TextBox(), txtName = new TextBox(), txtAddress = new TextBox();
         private readonly Label lblProblem = new Label();
         private readonly Button btnSave = new Button(), btnCancel = new Button(), btnNewRoute = new Button();
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
@@ -79,6 +79,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtName.MaxLength = MJdatabase.StoreNameMaxLength;
             root.Controls.Add(txtName);
 
+            root.Controls.Add(Cap("Store address *"));
+            Field(txtAddress);
+            txtAddress.MaxLength = 200;
+            root.Controls.Add(txtAddress);
+
             lblProblem.AutoSize = true;
             lblProblem.MaximumSize = new Size(D(480), 0);
             lblProblem.Font = new Font("Segoe UI Semibold", 9.5F);
@@ -105,10 +110,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             LoadRoutes(defaultRouteLabel);
             txtCode.TextChanged += (s, e) => lblProblem.Text = "";
             txtName.TextChanged += (s, e) => lblProblem.Text = "";
+            txtAddress.TextChanged += (s, e) => lblProblem.Text = "";
             cbRoute.SelectedIndexChanged += (s, e) => lblProblem.Text = "";
             Shown += (s, e) =>
             {
-                Control first = cbRoute.SelectedIndex < 0 ? cbRoute : txtCode.Text.Length == 0 ? txtCode : txtName.Text.Length == 0 ? txtName : (Control)btnSave;
+                Control first = cbRoute.SelectedIndex < 0 ? cbRoute : txtCode.Text.Length == 0 ? txtCode : txtName.Text.Length == 0 ? txtName : txtAddress.Text.Length == 0 ? txtAddress : (Control)btnSave;
                 first.Focus();
             };
             UIThemeHelper.ApplyTheme(this);
@@ -163,10 +169,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string? problem;
             try { problem = MJdatabase.CheckNewStore(client, txtCode.Text, txtName.Text, route, out _); }
             catch (Exception ex) { ErrLog.Error("RegisterStoreDialog", ex); problem = "Couldn't check the store: " + ex.Message; }
+            if (problem == null && MJdatabase.CleanStoreText(txtAddress.Text).Length == 0) problem = "Enter the store address."; // a NEW store needs its address
             if (problem != null) { ShowProblem(problem); return; }
             try
             {
-                RegisteredStore = MJdatabase.RegisterClientStore(client, txtCode.Text, txtName.Text, route);
+                RegisteredStore = MJdatabase.RegisterClientStore(client, txtCode.Text, txtName.Text, route, txtAddress.Text);
             }
             catch (InvalidOperationException ex) { ShowProblem(ex.Message); return; }
             catch (Exception ex) { ErrLog.Error("RegisterStoreDialog", ex); ShowProblem("The store was not saved: " + ex.Message); return; }
@@ -179,6 +186,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblProblem.Text = "⚠ " + problem;
             if (problem.IndexOf("route", StringComparison.OrdinalIgnoreCase) >= 0 && cbRoute.SelectedIndex < 0) cbRoute.Focus();
             else if (problem.IndexOf("code", StringComparison.OrdinalIgnoreCase) >= 0) { txtCode.Focus(); txtCode.SelectAll(); }
+            else if (problem.IndexOf("address", StringComparison.OrdinalIgnoreCase) >= 0) { txtAddress.Focus(); txtAddress.SelectAll(); }
             else if (problem.IndexOf("name", StringComparison.OrdinalIgnoreCase) >= 0) { txtName.Focus(); txtName.SelectAll(); }
         }
     }

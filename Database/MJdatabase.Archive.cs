@@ -22,6 +22,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             public string Name { get; init; } = "";
             public string Client { get; init; } = "";
             public string ArchivedOn { get; init; } = "";
+            public string Address { get; init; } = "";
         }
 
 
@@ -40,10 +41,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 using var conn = new SqliteConnection(connectionString);
                 conn.Open();
                 using var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT Id, COALESCE(StoreCode,''), COALESCE(StoreName,''), COALESCE(ClientCompanyName,''), COALESCE(ArchivedAt,'') FROM ClientStores WHERE COALESCE(IsArchived,0) = 1 ORDER BY ClientCompanyName, StoreName";
+                cmd.CommandText = "SELECT Id, COALESCE(StoreCode,''), COALESCE(StoreName,''), COALESCE(ClientCompanyName,''), COALESCE(ArchivedAt,''), COALESCE(Address,'') FROM ClientStores WHERE COALESCE(IsArchived,0) = 1 ORDER BY ClientCompanyName, StoreName";
                 using var r = cmd.ExecuteReader();
                 while (r.Read())
-                    list.Add(new ArchivedItem { Kind = "Store", Id = r.GetInt32(0), Code = r.GetString(1), Name = r.GetString(2), Client = r.GetString(3), ArchivedOn = FormatArchivedOn(r.GetString(4)) });
+                    list.Add(new ArchivedItem { Kind = "Store", Id = r.GetInt32(0), Code = r.GetString(1), Name = r.GetString(2), Client = r.GetString(3), ArchivedOn = FormatArchivedOn(r.GetString(4)), Address = r.GetString(5) });
             }
             catch (Exception ex) { ErrLog.Swallowed(ex); }
             try

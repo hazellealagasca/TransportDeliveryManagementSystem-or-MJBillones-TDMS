@@ -325,6 +325,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string StoreCode { get; set; } = string.Empty;
         public string StoreName { get; set; } = string.Empty;
         public string DestinationRoute { get; set; } = string.Empty;
+        /// <summary>The store's street address (blank for stores registered before addresses were kept; required for new stores).</summary>
+        public string Address { get; set; } = string.Empty;
         public string CreatedAt { get; set; } = string.Empty;
         /// <summary>Values of user-defined store columns, as a JSON object keyed by column key.</summary>
         public string ExtraFieldsJson { get; set; } = string.Empty;

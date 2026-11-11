@@ -143,24 +143,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>Tab 1 quick entry: adds a store to the client's pool (no route needed). Throws with a readable message.</summary>
-        public static ClientStore RegisterCompanyStore(string client, string code, string name)
+        public static ClientStore RegisterCompanyStore(string client, string code, string name, string address = "")
         {
             string? problem = CheckCompanyStore(client, code, name);
             if (problem != null) throw new InvalidOperationException(problem);
             client = CleanStoreText(client);
             string cleanCode = CleanStoreCode(code), cleanName = CleanStoreText(name);
             int clientId = GetClientByCompanyName(client)?.Id ?? 0;
-            var store = new ClientStore { ClientId = clientId, ClientCompanyName = client, StoreCode = cleanCode, StoreName = cleanName, DestinationRoute = "" };
+            var store = new ClientStore { ClientId = clientId, ClientCompanyName = client, StoreCode = cleanCode, StoreName = cleanName, DestinationRoute = "", Address = CleanStoreText(address) };
             using (var conn = new SqliteConnection(connectionString))
             {
                 conn.Open();
                 using var ins = conn.CreateCommand();
-                ins.CommandText = @"INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson)
-                                    VALUES (@cid, @cl, @sc, @sn, '', ''); SELECT last_insert_rowid();";
+                ins.CommandText = @"INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson, Address)
+                                    VALUES (@cid, @cl, @sc, @sn, '', '', @addr); SELECT last_insert_rowid();";
                 ins.Parameters.AddWithValue("@cid", clientId);
                 ins.Parameters.AddWithValue("@cl", client);
                 ins.Parameters.AddWithValue("@sc", cleanCode);
                 ins.Parameters.AddWithValue("@sn", cleanName);
+                ins.Parameters.AddWithValue("@addr", store.Address);
                 store.Id = Convert.ToInt32(ins.ExecuteScalar() ?? 0);
             }
             try { LogAuditTrail("ADD", "ClientStores", store.Id, $"{cleanCode} - {cleanName}", null, null, null, $"Added store {cleanCode} - {cleanName} to {client}'s stores"); } catch (Exception ex) { ErrLog.Swallowed(ex); }

@@ -336,6 +336,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // "…" beside the DR cell opens the DR list. Added last so the other columns keep their positions.
             gridStores.Columns.Add(DrCellSupport.MakeButtonColumn("colDrBtn", Dpi(34)));
             gridStores.Columns["colDrBtn"]!.DisplayIndex = gridStores.Columns["colDr"]!.DisplayIndex + 1;
+            StoreAddressBook.AttachTips(gridStores, () => TripDelivery()?.ClientName ?? "", "colCode", "colStore"); // hover a store to see its address
             AddDispatchColumns();   // Nov 9: a "Dispatch" column (shown when several dispatches share the table) and the hidden owner id
             DrCellSupport.Attach((MultiValueGrid)gridStores, "colDr", "colDrBtn",
                 row => (row.Cells["colStore"].Value?.ToString() ?? "").Trim(),
