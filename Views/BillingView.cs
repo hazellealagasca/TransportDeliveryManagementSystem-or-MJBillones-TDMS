@@ -301,6 +301,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "IssueDate", HeaderText = "Date", DefaultCellStyle = { Format = "MM/dd/yyyy" }, FillWeight = 10F, MinimumWidth = 85, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Freight", HeaderText = "Amount", DefaultCellStyle = { Format = "N2" }, FillWeight = 12F, MinimumWidth = 95, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "FuelSurcharge", HeaderText = "Fuel surcharge", DefaultCellStyle = { Format = "N2" }, FillWeight = 12F, MinimumWidth = 95, ReadOnly = true });
+            gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TotalAmount", HeaderText = "Invoice total", DefaultCellStyle = { Format = "N2" }, FillWeight = 12F, MinimumWidth = 100, ReadOnly = true });
             gridInvoices.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 10F, MinimumWidth = 80, ReadOnly = true });
             gridInvoices.CellFormatting -= GridInvoices_CellFormatting;
             gridInvoices.CellFormatting += GridInvoices_CellFormatting;
@@ -486,8 +487,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void RecalculateNet(object? sender, EventArgs e)
         {
             if (isBindingForm) return;
-            decimal net = numTotalAmount.Value + numFuel.Value; // stored as the invoice's total; never shown as a computed figure on the invoice
-            lblNetAmount.Text = "";
+            lblNetAmount.Text = ""; // hidden on the Ledger Desk layout: the amounts tape on the right shows the Invoice total (UpdateBillNet)
             DateTime baseDate = selectedInvoice != null ? selectedInvoice.IssueDate : DateTime.Today;
             lblDueDate.Text = $"Payment Due Date (15 Days): {(selectedInvoice != null ? selectedInvoice.DueDate : baseDate.AddDays(15)):MM/dd/yyyy}";
         }
@@ -710,7 +710,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 // Nov 9: a trip on a statement is invoiced for exactly the statement line's amounts (the boxes are locked; this is the real guard).
                 var stLine = selDel.Id > 0 ? MJdatabase.GetStatementLineForTrip(selDel.Id) : MJdatabase.GetStatementLineForTrip(0, -selDel.Id);
                 decimal fuel = stLine != null ? stLine.Fuel : numFuel.Value;
-                decimal total = stLine != null ? stLine.Freight + stLine.Fuel : numTotalAmount.Value + fuel; // what the trip is billed in all: freight tariff + fuel surcharge
+                decimal total = stLine != null ? InvoiceTotal.Of(stLine.Freight, stLine.Fuel) : InvoiceTotal.Of(numTotalAmount.Value, fuel); // what the trip is billed in all: freight tariff + fuel surcharge
 
                 // Nov 6 workflow: no amount yet (no rate) is allowed; the invoice is kept as a Draft until it gets its amount.
                 // Nov 7: no deductions on an invoice; the net due is the whole amount.
@@ -790,7 +790,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedInvoice.InvoiceNumber = invNum;
 
                 decimal fuel = numFuel.Value;
-                decimal total = numTotalAmount.Value + fuel; // freight tariff + fuel surcharge
+                decimal total = InvoiceTotal.Of(numTotalAmount.Value, fuel); // freight tariff + fuel surcharge
 
                 // Nov 6 workflow: an amount of PHP 0.00 keeps (or makes) the invoice a Draft instead of being refused.
                 // Nov 7: no deductions on an invoice; the net due is the whole amount.

@@ -125,15 +125,33 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlNetDue.Visible = false; // replaced by the tape on the right (not removed: its labels are still updated by the form)
             formKit.ApplyWorkbench(55f, new[] { 0 }, new[] { 1 }, billChecklist, new Control?[] { billStepper, billHelp }, billStrip, 620, new Control[] { billTape }, new Control[] { billNetTape });
         }
-        /// <summary>The amounts tape on the right: the amount and the fuel surcharge exactly as typed, and the payment due date. No total, VAT or withholding on an invoice.</summary>
+        /// <summary>
+        /// The amounts tape on the right: Amount, + Fuel surcharge, = Invoice total (the same sum the save stores, InvoiceTotal.Of), and the payment due date.
+        /// When the invoice bills a statement, one more line reads that statement's SAVED total due; nothing here works out VAT or withholding.
+        /// </summary>
         private void UpdateBillNet(decimal net)
         {
             if (billNetTape == null) return;
-            _ = net; // not shown: an invoice carries no computation
+            _ = net; // the sum is taken from InvoiceTotal below, the same formula the save uses
             DateTime due = selectedInvoice != null && selectedInvoice.DueDate > DateTime.MinValue ? selectedInvoice.DueDate : DateTime.Today.AddDays(15);
             decimal amount = numTotalAmount.Value, fuel = numFuel.Value;
-            billNetTape.Set("What was typed on this invoice", new (string, string)[] { ("Amount (freight tariff)", "₱" + amount.ToString("N2")), ("Fuel surcharge", "₱" + fuel.ToString("N2")), ("Payment due", $"{due:MMM d, yyyy} · 15 days") },
-                "", "", "");
+            var rows = InvoiceTotal.Lines(amount, fuel);
+            decimal? due2 = BillStatementTotalDue(SelectedBillDelivery());
+            if (due2.HasValue) rows.Add(InvoiceTotal.StatementLine(due2.Value));
+            rows.Add(("Payment due", $"{due:MMM d, yyyy} · 15 days"));
+            billNetTape.Set("What this invoice adds up to", rows, "", "", "");
+        }
+        /// <summary>The saved total due of the statement this invoice bills (a saved invoice on a statement, or a picked trip that is on one); null when it bills none.</summary>
+        private decimal? BillStatementTotalDue(Delivery? picked)
+        {
+            try
+            {
+                int soaId = 0;
+                if (selectedInvoice != null) soaId = selectedInvoice.SoaId;
+                else if (picked != null && billOnSoa.ContainsKey(picked.Id)) soaId = (picked.Id > 0 ? MJdatabase.GetStatementLineForTrip(picked.Id) : MJdatabase.GetStatementLineForTrip(0, -picked.Id))?.SoaId ?? 0;
+                return MJdatabase.GetSavedStatementTotalDue(soaId);
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); return null; }
         }
         /// <summary>Fills the trip card on the left from the picked trip (read-only; the picked trip itself is still the Completed Delivery Trip box).</summary>
         private void UpdateBillTrip(Delivery? d)

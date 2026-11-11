@@ -166,9 +166,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             billTape.Set("The statement being billed", new List<(string, string)> { ("Statement", s.SoaNumber), ("Client", s.ClientName), ("Trips", s.Trips.ToString("N0")), ("Trip reports", s.TripReports.Length > 0 ? s.TripReports : "—") },
                 "Total amount due", "₱" + s.Totals.Due.ToString("N2"), "worked out on the statement");
             var t = s.Totals;
-            billNetTape.Set("What this invoice bills", new (string, string)[] { ("Total sales (VAT inclusive)", "₱" + t.TotalSales.ToString("N2")), ("Less VAT", "₱" + t.Vat.ToString("N2")), ("Net of VAT", "₱" + t.NetOfVat.ToString("N2")),
-                ("Fuel surcharge", "₱" + t.Fuel.ToString("N2")), ("Withholding tax (2%)", "₱" + t.Withholding.ToString("N2")), ("Payment due", $"{DateTime.Today.AddDays(15):MMM d, yyyy} · 15 days") },
-                "Total amount due", "₱" + t.Due.ToString("N2"), "");
+            var rows = new List<(string, string)> { ("Total sales (VAT inclusive)", "₱" + t.TotalSales.ToString("N2")), ("Less VAT", "₱" + t.Vat.ToString("N2")), ("Net of VAT", "₱" + t.NetOfVat.ToString("N2")),
+                ("Fuel surcharge", "₱" + t.Fuel.ToString("N2")), ("Withholding tax (2%)", "₱" + t.Withholding.ToString("N2")) };
+            rows.Add(("= Invoice total (amount + fuel surcharge)", "₱" + InvoiceTotal.Of(t.TotalSales, t.Fuel).ToString("N2")));
+            rows.Add(("Payment due", $"{DateTime.Today.AddDays(15):MMM d, yyyy} · 15 days"));
+            billNetTape.Set("What this invoice bills", rows, "Total amount due", "₱" + t.Due.ToString("N2"), "");
         }
 
         /// <summary>Issue invoice for the picked statement: one invoice, the statement's figures, the typed SI No.</summary>

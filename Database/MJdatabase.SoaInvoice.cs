@@ -93,6 +93,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return list;
         }
 
+        /// <summary>The statement's SAVED total amount due (read, never recalculated); null when the statement is not found.</summary>
+        public static decimal? GetSavedStatementTotalDue(int soaId) => soaId <= 0 ? null : GetStatementOfAccountById(soaId)?.TotalAmount;
+
         /// <summary>
         /// Issues ONE service invoice for the whole statement. The amounts are the statement's, worked out here from its lines (never typed):
         /// total = freight + fuel, deductions = the statement's withholding, net = its Total Amount Due. The typed SI No. is the only input.
@@ -108,7 +111,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 InvoiceNumber = (invoiceNumber ?? "").Trim(), SoaId = soaId, DeliveryId = 0, ClientName = (soa.ClientName ?? "").Trim(),
                 IssueDate = DateTime.Now, DueDate = DateTime.Now.AddDays(15),
-                TotalAmount = t.TotalSales + t.Fuel, FuelSurcharge = t.Fuel, Deductions = 0, NetAmount = t.TotalSales + t.Fuel, Status = PayStatus.Unpaid
+                TotalAmount = InvoiceTotal.Of(t.TotalSales, t.Fuel), FuelSurcharge = t.Fuel, Deductions = 0, NetAmount = InvoiceTotal.Of(t.TotalSales, t.Fuel), Status = PayStatus.Unpaid
             };
             SaveInvoice(inv, crossTypeConfirmed: crossTypeConfirmed);
             using var conn = new SqliteConnection(connectionString);
