@@ -120,5 +120,5 @@ That is why plain Windows auto-complete was never added: it matches from the sta
 
 | | Question | Recommendation | Answer |
 |---|---|---|---|
-| D1 | Store address required? | Required for new stores, optional for old ones, plus a Needs-attention reminder "N stores have no address" | **Recommended (used)** |
+| D1 | Store address required? | Address optional for all stores (user decision, 2026-11-11); no dashboard reminder | **User decision (used)** |
 | D2 | Total line on the printed service invoice too? | Yes, if the paper invoice has a total line; otherwise screen only | **Yes, print it too (recommended, used)** |

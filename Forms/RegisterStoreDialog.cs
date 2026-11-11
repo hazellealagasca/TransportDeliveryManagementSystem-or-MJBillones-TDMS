@@ -79,7 +79,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtName.MaxLength = MJdatabase.StoreNameMaxLength;
             root.Controls.Add(txtName);
 
-            root.Controls.Add(Cap("Store address *"));
+            root.Controls.Add(Cap("Store address (optional)"));
             Field(txtAddress);
             txtAddress.MaxLength = 200;
             root.Controls.Add(txtAddress);
@@ -114,7 +114,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbRoute.SelectedIndexChanged += (s, e) => lblProblem.Text = "";
             Shown += (s, e) =>
             {
-                Control first = cbRoute.SelectedIndex < 0 ? cbRoute : txtCode.Text.Length == 0 ? txtCode : txtName.Text.Length == 0 ? txtName : txtAddress.Text.Length == 0 ? txtAddress : (Control)btnSave;
+                Control first = cbRoute.SelectedIndex < 0 ? cbRoute : txtCode.Text.Length == 0 ? txtCode : txtName.Text.Length == 0 ? txtName : (Control)btnSave;
                 first.Focus();
             };
             UIThemeHelper.ApplyTheme(this);
@@ -169,7 +169,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string? problem;
             try { problem = MJdatabase.CheckNewStore(client, txtCode.Text, txtName.Text, route, out _); }
             catch (Exception ex) { ErrLog.Error("RegisterStoreDialog", ex); problem = "Couldn't check the store: " + ex.Message; }
-            if (problem == null && MJdatabase.CleanStoreText(txtAddress.Text).Length == 0) problem = "Enter the store address."; // a NEW store needs its address
             if (problem != null) { ShowProblem(problem); return; }
             try
             {
@@ -186,7 +185,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblProblem.Text = "⚠ " + problem;
             if (problem.IndexOf("route", StringComparison.OrdinalIgnoreCase) >= 0 && cbRoute.SelectedIndex < 0) cbRoute.Focus();
             else if (problem.IndexOf("code", StringComparison.OrdinalIgnoreCase) >= 0) { txtCode.Focus(); txtCode.SelectAll(); }
-            else if (problem.IndexOf("address", StringComparison.OrdinalIgnoreCase) >= 0) { txtAddress.Focus(); txtAddress.SelectAll(); }
             else if (problem.IndexOf("name", StringComparison.OrdinalIgnoreCase) >= 0) { txtName.Focus(); txtName.SelectAll(); }
         }
     }

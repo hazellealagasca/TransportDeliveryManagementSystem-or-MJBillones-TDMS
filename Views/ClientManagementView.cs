@@ -1085,12 +1085,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblSaveState.ForeColor = AppTheme.WarningText;
                 return;
             }
-            if (store.Id <= 0 && store.Address.Length == 0) // a NEW store needs its address; older stores without one can still be edited
-            {
-                lblSaveState.Text = "Type the store's address to save this row";
-                lblSaveState.ForeColor = AppTheme.WarningText;
-                return;
-            }
             var sameCode = store.StoreCode.Length == 0 ? null : currentStores.FirstOrDefault(o => !ReferenceEquals(o, store) && string.Equals((o.StoreCode ?? "").Trim(), store.StoreCode, StringComparison.OrdinalIgnoreCase));
             if (sameCode != null)
             {
@@ -1147,7 +1141,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 gridBranches.CurrentCell = gridBranches.Rows[idx].Cells["StoreCode"];
                 gridBranches.BeginEdit(true);
             }
-            lblSaveState.Text = "New store: type its code, name and address — it saves when all three are filled in";
+            lblSaveState.Text = "New store: type its code and name — it saves when both are filled in (the address is optional)";
             lblSaveState.ForeColor = AppTheme.TextMuted;
         }
 

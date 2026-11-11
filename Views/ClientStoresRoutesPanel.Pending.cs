@@ -91,7 +91,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (code.Length == 0) { Say("✕ Enter the store code (letters, numbers and hyphens).", true); txtCode.Focus(); return; }
             if (name.Length == 0) { Say("✕ Enter the store name.", true); txtName.Focus(); return; }
             string address = MJdatabase.CleanStoreText(txtAddress.Text);
-            if (address.Length == 0) { Say("✕ Enter the store address.", true); txtAddress.Focus(); return; } // a NEW store needs its address
             if (name.Length > MJdatabase.StoreNameMaxLength) { Say($"✕ The store name is too long (at most {MJdatabase.StoreNameMaxLength} characters).", true); return; }
             if (pendingStores.Any(p => string.Equals(p.Code, code, StringComparison.OrdinalIgnoreCase))) { Say($"✕ Store code {code} is already in this list.", true); return; }
             if (pendingStores.Any(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))) { Say($"✕ \"{name}\" is already in this list.", true); return; }

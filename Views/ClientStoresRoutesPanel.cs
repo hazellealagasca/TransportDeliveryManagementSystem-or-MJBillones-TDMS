@@ -246,7 +246,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 b.ForeColor = on ? AppTheme.AccentText : AppTheme.TextSecondary;
                 b.Invalidate();
             }
-            lblMsg.Text = n == 1 ? "Type a store code, name and address, then press Enter. Stores are not tied to a route here." : "Pick a route on the left, then tick the stores it serves. " + (client().Length > 0 && !isPending() && MJdatabase.GetOneRoutePerStore(client()) ? "Each store can be on only one of this client's routes." : "A store can be on any of this client's routes.");
+            lblMsg.Text = n == 1 ? "Type a store code and name (address if you have it), then press Enter. Stores are not tied to a route here." : "Pick a route on the left, then tick the stores it serves. " + (client().Length > 0 && !isPending() && MJdatabase.GetOneRoutePerStore(client()) ? "Each store can be on only one of this client's routes." : "A store can be on any of this client's routes.");
             lblMsg.ForeColor = AppTheme.TextSecondary;
             if (n == 2) LoadRoutes();
         }
@@ -266,7 +266,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 string? problem = MJdatabase.CheckCompanyStore(c, txtCode.Text, txtName.Text);
                 if (problem != null) { Say("✕ " + problem, true); Outline(StoreProblemBox(problem)); return; }
-                if (MJdatabase.CleanStoreText(txtAddress.Text).Length == 0) { Say("✕ Enter the store address.", true); Outline(txtAddress); txtAddress.Focus(); return; } // a NEW store needs its address
                 var st = MJdatabase.RegisterCompanyStore(c, txtCode.Text, txtName.Text, txtAddress.Text);
                 txtCode.Clear(); txtName.Clear(); txtAddress.Clear(); txtCode.Focus(); // clearing runs the live check, so say the result after it
                 Outline(null);

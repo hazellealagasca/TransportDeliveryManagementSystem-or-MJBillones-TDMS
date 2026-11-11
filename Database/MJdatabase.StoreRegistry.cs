@@ -50,16 +50,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return list;
         }
 
-        /// <summary>How many active (not archived) stores have no address yet. Older stores start blank; the dashboard reminds the office to fill them in.</summary>
-        public static int CountActiveStoresWithoutAddress()
-        {
-            using var conn = new SqliteConnection(connectionString);
-            conn.Open();
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT COUNT(*) FROM ClientStores WHERE COALESCE(IsArchived,0) = 0 AND TRIM(COALESCE(Address,'')) = ''";
-            return Convert.ToInt32(cmd.ExecuteScalar() ?? 0);
-        }
-
         /// <summary>The store (any client, archived included) that already uses this code, or null.</summary>
         public static ClientStore? FindStoreByCodeAnyClient(string? code, bool includeArchived = true)
         {
