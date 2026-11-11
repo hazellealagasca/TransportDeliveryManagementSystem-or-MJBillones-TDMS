@@ -169,6 +169,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbDriver.ItemHeight = 28;
 
             cbDriver.DrawItem += (s, e) => DrawStatusComboBoxItem(cbDriver, e);
+            // Type to search: the boxes keep their items, order and DropDownList style; a pick maps back to the ORIGINAL index (SearchPicker).
+            SearchPicker.Attach(cbTruck, i => i >= 0 && i < trucks.Count ? $"{trucks[i].PlateNumber} {trucks[i].TruckType}" : "");
+            SearchPicker.Attach(cbDriver, i => i >= 0 && i < drivers.Count ? drivers[i].FullName : "");
 
             SetupEvents();
 
@@ -6750,6 +6753,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         {
 
+            if (e.Index < 0 && (cb == cbTruck || cb == cbDriver)) { SearchPicker.DrawHint(cb, e); return; } // nothing picked yet: the grey "Type to search" hint
             if (e.Index < 0 || e.Index >= cb.Items.Count) return;
 
 

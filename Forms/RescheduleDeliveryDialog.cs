@@ -382,7 +382,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnAides = new Button { Location = cbAide.Location, Size = new Size(cbAide.Width, cbAide.Height + 2), Text = "Keep current aides  ▾", TextAlign = ContentAlignment.MiddleLeft, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 9F), Cursor = Cursors.Hand, UseMnemonic = false, AutoEllipsis = true };
             btnAides.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
             btnAides.Click += (s, e) => ShowAidePicker();
-            lblResHint.Text = "Picking another truck, driver or aides changes them when you confirm.";
+            lblResHint.Text = "Picking another truck, driver or aides changes them when you confirm. Type in the truck or driver box to search.";
+            // Type to search (item 0 is "Keep current"; item n is availableTrucks[n - 1] / availableDrivers[n - 1]). Items and order are untouched.
+            SearchPicker.Attach(cbTruck, i => i == 0 ? (cbTruck.Items.Count > 0 ? cbTruck.Items[0]?.ToString() ?? "" : "") : i - 1 < availableTrucks.Count ? $"{availableTrucks[i - 1].PlateNumber} {availableTrucks[i - 1].TruckType}" : "");
+            SearchPicker.Attach(cbDriver, i => i == 0 ? (cbDriver.Items.Count > 0 ? cbDriver.Items[0]?.ToString() ?? "" : "") : i - 1 < availableDrivers.Count ? availableDrivers[i - 1].FullName : "");
             pnlResources.Controls.AddRange(new Control[]
             {
                 lblResTitle,
