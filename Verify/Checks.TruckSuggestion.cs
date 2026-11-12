@@ -89,7 +89,9 @@ public static partial class Checks
             if (truck == null || link == null) return "Truck box or the 'Use suggested truck' link was not created";
             var problems = new List<string>();
             view.InitiateDispatchForSchedule(new LoadingSchedule { ClientName = "CLIENT A", Destination = "Route 1", ScheduleDate = DateTime.Today, GCrate = 1, ECrate = 0, TotalCrates = 1, CargoType = MJdatabase.CargoCold });
-            Pump(300);
+            // The truck list and footer can fill a little later on a busy PC: wait up to 5 s instead of a fixed pause.
+            for (int w = 0; w < 50 && !link.Visible; w++) Pump(100);
+            Pump(100);
             if (truck.SelectedIndex != -1) problems.Add($"a truck was auto-selected (index {truck.SelectedIndex})");
             if (!link.Visible) problems.Add("the 'Use suggested truck' link is not shown when no truck is picked");
             typeof(DispatchManagementView).GetMethod("UseSuggestedTruck", F)!.Invoke(view, null);
