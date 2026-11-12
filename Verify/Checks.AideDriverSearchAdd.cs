@@ -145,4 +145,49 @@ public static partial class Checks
             return string.Join("; ", bad);
         });
     }
+
+    [Check]
+    public static string AddCrewDialog_LayoutIsClean_NormalAndLargePrint()
+    {
+        Fresh();
+        MJdatabase.RunOneTimeMigrations();
+        return RunOnSta(() =>
+        {
+            SignInAsAdmin();
+            var bad = new List<string>();
+            bool was = LargePrint.On;
+            try
+            {
+                foreach (var (large, file) in new[] { (false, "add_driver_dialog.png"), (true, "add_driver_dialog_large.png") })
+                {
+                    LargePrint.Set(large);
+                    using var dlg = new QuickAddCrewDialog(true, "Juan Santos");
+                    dlg.StartPosition = FormStartPosition.Manual; dlg.Location = new Point(-5000, -5000);
+                    dlg.Show(); Pump(300);
+                    var texts = dlg.Controls.OfType<Control>().SelectMany(Flat).OfType<TextBox>().ToList();
+                    var btn = dlg.Controls.OfType<Control>().SelectMany(Flat).OfType<Button>().First(b => b.Text.StartsWith("Save"));
+                    texts[3].Text = "12"; // invalid phone
+                    btn.PerformClick(); Pump(200);
+                    var lbls = dlg.Controls.OfType<Control>().SelectMany(Flat).OfType<Label>().ToList();
+                    var prob = lbls.FirstOrDefault(l => l.Text.Contains("contact number"));
+                    if (prob == null) bad.Add($"{file}: no inline problem shown");
+                    else if (TextRenderer.MeasureText(prob.Text, prob.Font, new Size(prob.Width, 0), TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix).Height > prob.Height) bad.Add($"{file}: problem label too small for its text");
+                    foreach (var l in lbls.Where(l => l.Text.Contains("(optional)") || l.Text.EndsWith("name") || l.Text.EndsWith("number")))
+                    {
+                        var parent = l.Parent!;
+                        if (l.Right > parent.ClientSize.Width || l.Bottom > parent.ClientSize.Height) bad.Add($"{file}: label '{l.Text}' is clipped");
+                    }
+                    foreach (var b in dlg.Controls.OfType<Control>().SelectMany(Flat).OfType<Button>())
+                        if (b.Left < 0 || b.Right > b.Parent!.ClientSize.Width || b.Bottom > b.Parent.ClientSize.Height) bad.Add($"{file}: button '{b.Text}' is clipped");
+                    Pump(100);
+                    TbShot(dlg, file);
+                    dlg.Close();
+                }
+            }
+            finally { LargePrint.Set(was); }
+            return string.Join("; ", bad);
+        });
+    }
+
+    private static IEnumerable<Control> Flat(Control c) { yield return c; foreach (Control k in c.Controls) foreach (var x in Flat(k)) yield return x; }
 }

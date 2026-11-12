@@ -114,7 +114,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             CancelButton = btnCancel; AcceptButton = btnSave;
 
             var grid = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(D(20), D(12), D(20), D(4)), BackColor = AppTheme.Canvas, AutoScroll = false };
-            grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, D(150)));
+            grid.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             TextBox Add(string caption, int row)
             {
