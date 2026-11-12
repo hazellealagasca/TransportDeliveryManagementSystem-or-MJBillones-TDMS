@@ -149,7 +149,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             chkAutoTruck = new CheckBox
             {
-                Text = "Suggest the best free truck automatically",
+                Text = "Suggest the smallest free truck that fits (you choose the truck)",
                 Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold),
                 ForeColor = Pal.C(30, 41, 59),
                 AutoSize = true,

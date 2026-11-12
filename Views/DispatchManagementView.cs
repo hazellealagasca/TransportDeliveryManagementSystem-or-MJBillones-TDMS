@@ -1218,29 +1218,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     trucks = MJdatabase.GetTrucks();
 
                 }
-
-
-
-                var rec = Features.On(Features.TruckSuggestion) ? MJdatabase.GetTruckRecommendation(schedule.TotalCrates, schedule.ScheduleDate, schedule.CargoType) : null;
-
-                if (rec?.RecommendedTruck != null)
-
-                {
-
-                    int trkIdx = trucks.FindIndex(t => t.Id == rec.RecommendedTruck.Id);
-
-                    if (trkIdx >= 0 && trkIdx < cbTruck.Items.Count)
-
-                    {
-
-                        cbTruck.SelectedIndex = trkIdx;
-
-                    }
-
-                }
-
-
-
+                // The Truck box stays as the user left it: the suggestion is only shown in the footer.
                 chkMultiDrop.Checked = false;
 
                 CalculateCratesAndRecommendation();
@@ -1637,6 +1615,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UpdateCombiSplitUi(total);
 
             if (lnkCapDetails != null) lnkCapDetails.Visible = false;
+            ShowUseSuggested(null, "Use suggested truck");
 
             if (total == 0)
 
@@ -1689,13 +1668,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
 
                 // Nov 6 workflow: one compact line instead of the recommendation card.
-                var rec = MJdatabase.GetTruckRecommendation(total, dtpDispatchDate.Value, "");
+                var rec = SuggestTruckForForm(total);
                 lblRec.Text = rec.RecommendedTruck != null
                     ? $"ℹ️ Total {total:N0} crates  ·  suggested truck {rec.RecommendedTruck.PlateNumber} ({CapacityValidator.MatrixFor(rec.RecommendedTruck).TruckMax:N0} crates)"
                     : $"ℹ️ Total {total:N0} crates  ·  {rec.RecommendationMessage}";
 
 
 
+                if (rec.RecommendedTruck != null && !rec.IsMultiTruckNeeded) ShowUseSuggested(rec.RecommendedTruck, "Use suggested truck");
                 if (rec.IsMultiTruckNeeded)
 
                 {

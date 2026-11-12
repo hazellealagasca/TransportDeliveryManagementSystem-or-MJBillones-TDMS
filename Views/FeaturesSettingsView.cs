@@ -19,7 +19,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         };
         private static readonly Option[] DispatchRules =
         {
-            new(Features.TruckSuggestion, "Suggest the best truck", "When you enter the crates on a loading order or dispatch, the system suggests the free truck that fits them best and picks it for you. When off, no truck is suggested and you choose one yourself. Warnings about an overloaded truck or the wrong cargo type still show."),
+            new(Features.TruckSuggestion, "Suggest the best truck", "When you enter the crates on a loading order or dispatch, the system suggests the smallest free truck that fits them; you choose the truck. When off, no truck is suggested. Nothing is ever selected for you. Warnings about an overloaded truck or the wrong cargo type still show."),
             new(Features.EmptyCrateCheck, "Check returned empty crates", "When a trip report is saved with no returned empty crates, the system asks first, so the empties the crew brought back are not forgotten. When off, trip reports save without asking."),
         };
         private static readonly Option[] TableConfig =

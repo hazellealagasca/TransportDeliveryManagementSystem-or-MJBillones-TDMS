@@ -5370,140 +5370,99 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
-        public static TruckRecommendation GetTruckRecommendation(int totalCrates, DateTime dispatchDate, string? cargoType = null)
-
+        public static TruckRecommendation GetTruckRecommendation(int totalCrates, DateTime dispatchDate, string? cargoType = null, int coldCrates = -1, int dryCrates = -1)
         {
-
             var rec = new TruckRecommendation { TotalCrates = totalCrates };
-
             if (totalCrates <= 0)
-
             {
-
                 rec.RecommendationMessage = "Enter crate quantity to calculate vehicle recommendation.";
-
                 return rec;
-
             }
-
             var trucks = GetTrucks();
-
             var busyTruckIds = new HashSet<int>();
-
             using (var conn = new SqliteConnection(connectionString))
-
             {
-
                 conn.Open();
-
                 using var cmd = conn.CreateCommand();
-
                 cmd.CommandText = $"SELECT TruckId FROM Deliveries WHERE DATE(DispatchDate) = DATE(@dd) AND Status IN {ActiveDeliveryStatusesSql}";
-
                 cmd.Parameters.AddWithValue("@dd", dispatchDate.ToString("yyyy-MM-dd"));
-
                 using (var r = cmd.ExecuteReader())
-
                 {
-
                     while (r.Read()) if (!r.IsDBNull(0)) busyTruckIds.Add(r.GetInt32(0));
-
                 }
-
                 try
-
                 {
-
                     using var stCmd = conn.CreateCommand();
-
                     stCmd.CommandText = $"SELECT TruckId FROM SpecialTrips WHERE DATE(DispatchDate) = DATE(@dd) AND Status IN {ActiveSpecialTripStatusesSql}";
-
                     stCmd.Parameters.AddWithValue("@dd", dispatchDate.ToString("yyyy-MM-dd"));
-
                     using var r2 = stCmd.ExecuteReader();
-
                     while (r2.Read()) if (!r2.IsDBNull(0)) busyTruckIds.Add(r2.GetInt32(0));
-
                 }
-
                 catch (SqliteException) { }
-
             }
-
             bool needsCold = !string.IsNullOrWhiteSpace(cargoType) &&
-
-                             (cargoType.Contains("Cold", StringComparison.OrdinalIgnoreCase) || cargoType.Contains("Chill", StringComparison.OrdinalIgnoreCase) || cargoType.Contains("Mix", StringComparison.OrdinalIgnoreCase));
-
+                             (cargoType.Contains("Cold", StringComparison.OrdinalIgnoreCase) || cargoType.Contains("Chill", StringComparison.OrdinalIgnoreCase) || cargoType.Contains("Mix", StringComparison.OrdinalIgnoreCase) || cargoType.Contains("Combi", StringComparison.OrdinalIgnoreCase));
             bool isFutureDate = dispatchDate.Date > DateTime.Today;
-
-            var availableTrucks = trucks.Where(t =>
-
+            var candidates = trucks.Where(t =>
                                             !IsTruckBlockedStatus(t.Status) &&
-
                                             (IsTruckReadyStatus(t.Status) || isFutureDate) &&
-
                                             !busyTruckIds.Contains(t.Id) &&
-
                                             (!needsCold || !string.Equals(t.CargoType, "Dry Goods", StringComparison.OrdinalIgnoreCase)))
-
-                                        .OrderBy(t => t.CapacityCrates)
-
                                         .ToList();
-
-            if (availableTrucks.Count == 0)
-
+            if (candidates.Count == 0)
             {
-
                 rec.RecommendationMessage = needsCold
-
                     ? "⚠️ No refrigerated truck is free on this date. Check maintenance status or reschedule another trip."
-
                     : "⚠️ No truck is free on this date. Check maintenance status or reschedule another trip.";
-
                 rec.IsMultiTruckNeeded = true;
-
                 return rec;
-
             }
-
-            var optimalTruck = availableTrucks.FirstOrDefault(t => t.CapacityCrates >= totalCrates);
-
-            if (optimalTruck != null)
-
+            // Same sizing and same check as the capacity check on the form (CapacityValidator + the category matrix), so the
+            // suggestion and the warning always agree. Smallest limit first, plate number breaks a tie.
+            string cargo = string.IsNullOrWhiteSpace(cargoType) ? "" : NormalizeCargo(cargoType);
+            int cold = 0, dry = 0;
+            if (cargo == CargoCombi)
             {
-
+                if (coldCrates >= 0 && dryCrates >= 0 && coldCrates + dryCrates > 0) { cold = coldCrates; dry = dryCrates; }
+                else { cargo = CargoCold; cold = totalCrates; }
+                // A Combi load with only one part is simply that kind of load (as on the form).
+                if (cargo == CargoCombi && cold == 0) cargo = CargoDry;
+                else if (cargo == CargoCombi && dry == 0) cargo = CargoCold;
+            }
+            else if (cargo == CargoDry) dry = totalCrates;
+            else if (cargo == CargoCold) cold = totalCrates;
+            int LimitOf(Truck t)
+            {
+                var m = CapacityValidator.MatrixFor(t);
+                return cargo == CargoDry ? m.DryMax : cargo == CargoCold ? m.ColdMax : m.TruckMax;
+            }
+            bool Fits(Truck t) => cargo == ""
+                ? CapacityValidator.ValidateTotal(t, totalCrates).State == CapacityState.Allow
+                : CapacityValidator.Validate(t, cargo, cold, dry).State == CapacityState.Allow;
+            var fitting = candidates.Where(Fits)
+                                    .Select(t => (Truck: t, Limit: cargo == "" || cargo == CargoCombi ? CapacityValidator.MatrixFor(t).TruckMax : LimitOf(t)))
+                                    .OrderBy(x => x.Limit).ThenBy(x => x.Truck.PlateNumber)
+                                    .ToList();
+            if (fitting.Count > 0)
+            {
+                var (optimalTruck, limit) = fitting[0];
                 rec.RecommendedTruck = optimalTruck;
-
                 rec.RequiredTruckCount = 1;
-
-                rec.CapacityUtilization = Math.Round(((double)totalCrates / optimalTruck.CapacityCrates) * 100.0, 1);
-
-                rec.RecommendationMessage = $"✓ Recommended: {optimalTruck.PlateNumber} ({optimalTruck.TruckType} - {optimalTruck.CapacityCrates} crates) - {rec.CapacityUtilization}% capacity utilized.";
-
+                rec.CapacityUtilization = limit > 0 ? Math.Round(((double)totalCrates / limit) * 100.0, 1) : 0;
+                rec.RecommendationMessage = $"✓ Recommended: {optimalTruck.PlateNumber} ({optimalTruck.TruckType} - {limit} crates) - {rec.CapacityUtilization}% capacity utilized.";
                 rec.IsMultiTruckNeeded = false;
-
             }
-
             else
-
             {
-
-                var maxTruck = availableTrucks.OrderByDescending(t => t.CapacityCrates).First();
-
-                int countNeeded = maxTruck.CapacityCrates > 0 ? (int)Math.Ceiling((double)totalCrates / maxTruck.CapacityCrates) : 1;
-
+                var maxTruck = candidates.OrderByDescending(LimitOf).ThenBy(t => t.PlateNumber).First();
+                int maxLimit = LimitOf(maxTruck);
+                int countNeeded = maxLimit > 0 ? (int)Math.Ceiling((double)totalCrates / maxLimit) : 1;
                 rec.RecommendedTruck = maxTruck;
-
                 rec.RequiredTruckCount = countNeeded;
-
                 rec.IsMultiTruckNeeded = true;
-
-                rec.RecommendationMessage = $"⚠️ Volume ({totalCrates} crates) exceeds single truck capacity ({maxTruck.CapacityCrates} crates max). Minimum {countNeeded} truck trips required.";
-
+                rec.RecommendationMessage = $"⚠️ Volume ({totalCrates} crates) exceeds single truck capacity ({maxLimit} crates max). Minimum {countNeeded} truck trips required.";
             }
-
             return rec;
-
         }
 
         public static List<RateMatrix> GetRateMatrix()

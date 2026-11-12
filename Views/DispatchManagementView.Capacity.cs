@@ -21,6 +21,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Panel pnlCombiSplit = null!;
         private LinkLabel? lnkCapDetails;
         private Dictionary<int, int> overCapacityMap = new Dictionary<int, int>();
+        private LinkLabel? lnkUseSuggested;
+        private int suggestedTruckId;
 
 
 
@@ -48,6 +50,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lnkCapDetails = new LinkLabel { Text = "View capacity details", AutoSize = true, Dock = DockStyle.Bottom, Font = new Font("Segoe UI Semibold", 8.75F), LinkColor = AppTheme.Accent, ActiveLinkColor = AppTheme.AccentHover, Padding = new Padding(0, Dpi(2), 0, 0), Visible = false };
             lnkCapDetails.LinkClicked += (s, e) => ShowCapacityDetails();
             pnlRec.Controls.Add(lnkCapDetails);
+
+            // "Use suggested truck" / "Use it": the user's own click selects the suggested truck (nothing is ever selected for them).
+            lnkUseSuggested = new LinkLabel { Text = "Use suggested truck", AutoSize = true, Dock = DockStyle.Bottom, Font = new Font("Segoe UI Semibold", 8.75F), LinkColor = AppTheme.Accent, ActiveLinkColor = AppTheme.AccentHover, Padding = new Padding(0, Dpi(2), 0, 0), Visible = false };
+            lnkUseSuggested.LinkClicked += (s, e) => UseSuggestedTruck();
+            pnlRec.Controls.Add(lnkUseSuggested);
+        }
+
+        /// <summary>The smallest free truck that fits the crates, sized for the form's current Temp Type (same check as the capacity status).</summary>
+        private TruckRecommendation SuggestTruckForForm(int total)
+        {
+            string cargo = cbTempType != null && cbTempType.SelectedIndex >= 0 ? CargoOfTempType(cbTempType.SelectedItem as string) : "";
+            var (cold, dry) = CurrentCrateSplit(total);
+            return MJdatabase.GetTruckRecommendation(total, dtpDispatchDate.Value, cargo, cold, dry);
+        }
+
+        private void ShowUseSuggested(Truck? truck, string text)
+        {
+            suggestedTruckId = truck?.Id ?? 0;
+            if (lnkUseSuggested == null) return;
+            lnkUseSuggested.Text = text;
+            lnkUseSuggested.Visible = truck != null;
+        }
+
+        private void UseSuggestedTruck()
+        {
+            if (suggestedTruckId <= 0) return;
+            int idx = trucks.FindIndex(t => t.Id == suggestedTruckId);
+            if (idx >= 0 && idx < cbTruck.Items.Count) cbTruck.SelectedIndex = idx; // the normal selection logic (driver suggestion, footer) runs
         }
 
 
@@ -121,6 +151,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblRec.ForeColor = fore;
             lblRec.Text = $"{icon} Total {total:N0} crates  ·  {selTruck.PlateNumber}  ·  {total:N0} / {r.Limit:N0}" + (r.Limit > 0 ? $" ({Math.Round(total * 100.0 / r.Limit):0}% full)" : "") + (r.State == CapacityState.Allow ? "" : $"  ·  {r.Title}");
             if (lnkCapDetails != null) lnkCapDetails.Visible = true;
+            // Soft note only: a smaller free truck would also fit. Never blocks, never asks for a reason.
+            if (r.State == CapacityState.Allow && Features.On(Features.TruckSuggestion))
+            {
+                try
+                {
+                    var rec = SuggestTruckForForm(total);
+                    var alt = rec.RecommendedTruck;
+                    if (alt != null && !rec.IsMultiTruckNeeded && alt.Id != selTruck.Id)
+                    {
+                        var ar = ValidateLoad(alt, total);
+                        if (ar.State == CapacityState.Allow && ar.Limit > 0 && ar.Limit < r.Limit)
+                        {
+                            lblRec.Text += $"\nA smaller truck ({alt.PlateNumber}) is free and fits {total:N0} crates.";
+                            ShowUseSuggested(alt, "Use it");
+                        }
+                    }
+                }
+                catch (Exception ex) { ErrLog.Swallowed(ex); }
+            }
             return true;
         }
 
