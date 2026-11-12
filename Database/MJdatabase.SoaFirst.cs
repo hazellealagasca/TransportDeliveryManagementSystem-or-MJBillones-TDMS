@@ -138,7 +138,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (total != line.Freight + line.Fuel || fuel != line.Fuel)
                     throw new InvalidOperationException($"The invoice amount (PHP {total:N2}) must match the statement {line.SoaNumber} (PHP {line.Freight + line.Fuel:N2}). It is locked to the statement.");
 
-                // Every trip of the statement: its freight, to share the withholding in proportion.
+                // Every trip of the statement: its freight plus fuel, to share the withholding in proportion.
                 var trips = new List<(int Del, int Sp, decimal Freight, decimal Fuel)>();
                 using (var c = conn.CreateCommand())
                 {
@@ -151,7 +151,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     while (r.Read()) trips.Add((r.GetInt32(0), r.GetInt32(1), Centavos(Convert.ToDecimal(r.GetValue(2))), Centavos(Convert.ToDecimal(r.GetValue(3)))));
                 }
                 var t = SoaTotals.From(trips.Sum(x => x.Freight), trips.Sum(x => x.Fuel));
-                var shares = SoaTotals.Share(t.Withholding, trips.Select(x => x.Freight).ToArray());
+                var shares = SoaTotals.Share(t.Withholding, trips.Select(x => x.Freight + x.Fuel).ToArray());
                 int at = trips.FindIndex(x => deliveryId > 0 ? x.Del == deliveryId : x.Sp == specialTripId);
                 decimal share = at >= 0 ? shares[at] : 0m;
                 using (var u = conn.CreateCommand())

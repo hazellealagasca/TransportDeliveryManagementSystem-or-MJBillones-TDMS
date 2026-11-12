@@ -229,8 +229,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             decimal TripFuel(List<StatementOfAccountItem> g) => InvoiceOf(g)?.Fuel ?? g.Sum(x => x.FuelSurcharge);
             decimal amountSum = groups.Sum(TripAmount), fuelSum = groups.Sum(TripFuel);
             int crateSum = items.Sum(i => Math.Max(0, i.TotalCrates));
-            // The figures of the statement (Nov 7): the ones saved with it; a statement not saved yet gets them from the one formula (SoaTotals):
-            // VAT and the 2% withholding on the freight only, the fuel surcharge added outside both.
+            // The figures of the statement (Nov 12): the ones saved with it; a statement not saved yet gets them from the one formula (SoaTotals):
+            // the fuel surcharge is part of Total Sales, so VAT and the 2% withholding are on freight + fuel.
             bool saved = soa.TotalAmount > 0;
             var fm = SoaTotals.From(amountSum, fuelSum);
             decimal totalSales = saved ? soa.TotalSalesVatInc : fm.TotalSales;
@@ -239,8 +239,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             decimal fuel = saved ? soa.FuelSurchargeTotal : fm.Fuel;
             decimal wtax = saved ? soa.WithholdingTax : fm.Withholding;
             decimal due = saved ? soa.TotalAmount : fm.Due;
-            // An older statement kept its fuel inside the sales, so its figures don't add up the sheet's way: it keeps the older five-line computation.
-            bool sheetStyle = Math.Abs(netOfVat + fuel + vat - wtax - due) <= 0.02m;
+            // A statement saved before Nov 12 kept its fuel outside the sales (net + fuel + VAT − withholding = due): it keeps showing the figures it was saved with, in its old lines.
+            bool newRule = Math.Abs(totalSales - wtax - due) <= 0.02m;
+            bool oldRule = !newRule && Math.Abs(netOfVat + fuel + vat - wtax - due) <= 0.02m;
+            bool sheetStyle = newRule || oldRule;
             // Nov 6 workflow: new form keys, so layouts saved before (with zone, crates, trip report # columns) don't come back.
             var o = NewOptions(special ? "SOA_Special" : "SOA_Official", special ? "Statement of Account — Special Trips" : "Statement of Account", $"{soa.SoaNumber} · {D(soa.IssueDate)}");
             o.Orientation = "Landscape";
@@ -326,11 +328,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         // The statement sheet's totals block: directly under the table, labels on the left, values in the Amount column, the fuel column's total beside the first line.
                         int fuelIdx = cols.FindIndex(c => c.Key == "fuel"), after = cols.Count - amtIdx - 1;
-                        var lines = new (string Label, decimal Value)[]
-                        {
-                            ("Total Sales (VAT Inclusive)", totalSales), ("Less: VAT", vat), ("Amount: Net of VAT", netOfVat), ("Fuel surcharge", fuel),
-                            ("Add: VAT", vat), ("Less: Withholding Tax", wtax), ("TOTAL AMOUNT DUE", due)
-                        };
+                        var lines = oldRule
+                            ? new (string Label, decimal Value)[]
+                            {
+                                ("Total Sales (VAT Inclusive)", totalSales), ("Less: VAT", vat), ("Amount: Net of VAT", netOfVat), ("Fuel surcharge", fuel),
+                                ("Add: VAT", vat), ("Less: Withholding Tax", wtax), ("TOTAL AMOUNT DUE", due)
+                            }
+                            : new (string Label, decimal Value)[]
+                            {
+                                ("Total Sales + Fuel surcharge (VAT Inclusive)", totalSales), ("Less: VAT (12%)", vat), ("Amount: Net of VAT", netOfVat),
+                                ("Less: Withholding Tax (2%)", wtax), ("TOTAL AMOUNT DUE", due)
+                            };
                         sb.Append("<tfoot>");
                         for (int li = 0; li < lines.Length; li++)
                         {
@@ -362,8 +370,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (opt.On("taxes") && !sheetBlock)
                     sb.Append(Summary(new[]
                     {
-                        ("Total sales (VAT inclusive)", totalSales.ToString("N2")), ("Less: VAT (12%)", vat.ToString("N2")), ("Net of VAT", netOfVat.ToString("N2")),
-                        ("Less: Expanded withholding tax (2%)", "- " + wtax.ToString("N2")), ("Total amount due", "₱" + due.ToString("N2"))
+                        ("Total Sales + Fuel surcharge (VAT Inclusive)", totalSales.ToString("N2")), ("Less: VAT (12%)", vat.ToString("N2")), ("Amount: Net of VAT", netOfVat.ToString("N2")),
+                        ("Less: Withholding Tax (2%)", "- " + wtax.ToString("N2")), ("Total amount due", "₱" + due.ToString("N2"))
                     }, "Computation"));
                 if (opt.On("pay") && opt.FOn("pay_instr") && !string.IsNullOrWhiteSpace(opt.F("pay_instr"))) sb.Append($"<div class='note'><b>{Esc(opt.L("pay_instr"))}:</b> {Multi(opt.F("pay_instr"))}</div>");
                 return sb.ToString();

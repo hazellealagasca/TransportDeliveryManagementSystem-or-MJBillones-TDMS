@@ -207,6 +207,38 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             return checks;
         }
+        /// <summary>
+        /// The rows of "What is being paid". For a statement: Client, Statement / invoice, Invoiced, Due, then the five computation rows (Nov 12: the fuel
+        /// surcharge is inside Total Sales), worked out by SoaTotals over its invoices' freight and fuel. The amount actually paid is always the stored NetAmount:
+        /// when the computation doesn't come to it (a statement saved under the older rule and not saved again) the older rows are shown with a note. An invoice
+        /// on no statement keeps amount + fuel surcharge, with no VAT or withholding.
+        /// </summary>
+        public static (string, string)[] ReceiptTapeRows(Invoice inv)
+        {
+            var rows = new List<(string, string)>
+            {
+                ("Client", inv.ClientName ?? ""), ("Statement / invoice", inv.InvoiceNumber ?? ""), ("Invoiced", inv.IssueDate.ToString("MMM d, yyyy")), ("Due", inv.DueDate.ToString("MMM d, yyyy"))
+            };
+            if (inv.SoaId > 0)
+            {
+                var t = SoaTotals.From(inv.Freight, inv.FuelSurcharge);
+                if (Math.Abs(t.Due - inv.NetAmount) <= 0.01m)
+                {
+                    rows.Add(("Total Sales + Fuel surcharge (VAT Inclusive)", "₱" + t.TotalSales.ToString("N2")));
+                    rows.Add(("Less: VAT (12%)", "₱" + t.Vat.ToString("N2")));
+                    rows.Add(("Amount: Net of VAT", "₱" + t.NetOfVat.ToString("N2")));
+                    rows.Add(("Less: Withholding Tax (2%)", "₱" + t.Withholding.ToString("N2")));
+                    return rows.ToArray();
+                }
+                rows.Add(("Amount", "₱" + inv.Freight.ToString("N2"))); rows.Add(("Fuel surcharge", "₱" + inv.FuelSurcharge.ToString("N2")));
+                rows.Add(("Less: withholding tax (from the statement)", "₱" + inv.Deductions.ToString("N2")));
+                rows.Add(("Saved with the older computation — open and save the statement to update", ""));
+                return rows.ToArray();
+            }
+            rows.Add(("Amount", "₱" + inv.Freight.ToString("N2"))); rows.Add(("Fuel surcharge", "₱" + inv.FuelSurcharge.ToString("N2")));
+            rows.Add(("Less: withholding tax (from the statement)", "₱" + inv.Deductions.ToString("N2")));
+            return rows.ToArray();
+        }
         private void UpdateCollGuide()
         {
             if (collChecklist == null || !pnlForm.Visible) return;
@@ -224,11 +256,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     decimal dueNow = Math.Max(0, inv.NetAmount - collPaidOthers);
                     int days = (int)(inv.DueDate.Date - DateTime.Today).TotalDays;
-                    collTape.Set("What is being paid", new (string, string)[]
-                    {
-                        ("Client", inv.ClientName ?? ""), ("Statement / invoice", inv.InvoiceNumber ?? ""), ("Invoiced", inv.IssueDate.ToString("MMM d, yyyy")), ("Due", inv.DueDate.ToString("MMM d, yyyy")),
-                        ("Amount", "₱" + inv.Freight.ToString("N2")), ("Fuel surcharge", "₱" + inv.FuelSurcharge.ToString("N2")), ("Less: withholding tax (from the statement)", "₱" + inv.Deductions.ToString("N2"))
-                    }, "Amount due · paid in full", "₱" + dueNow.ToString("N2"), days < 0 ? $"{-days} d overdue" : days == 0 ? "due today" : $"due in {days} d");
+                    collTape.Set("What is being paid", ReceiptTapeRows(inv), "Amount due · paid in full", "₱" + dueNow.ToString("N2"), days < 0 ? $"{-days} d overdue" : days == 0 ? "due today" : $"due in {days} d");
                 }
                 else collTape.Set("What is being paid", Array.Empty<(string, string)>(), "", "", "");
             }

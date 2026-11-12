@@ -8,13 +8,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 {
     /// <summary>
     /// The statement sheet's totals block, drawn under the trips table exactly like the printed statement: labels on the left,
-    /// the values under the Amount column, the fuel surcharge total beside the first line. It follows the table's columns and scrolling.
+    /// the values under the Amount column, the fuel surcharge total beside the first line (it is already inside Total Sales). It follows the table's columns and scrolling.
     /// </summary>
     internal sealed class SoaSheetTotalsPanel : Control
     {
         private readonly DataGridView grid;
-        private readonly Func<decimal[]> values;   // total sales, VAT, net of VAT, fuel, VAT, withholding, total due
-        private static readonly string[] Labels = { "Total Sales (VAT Inclusive)", "Less: VAT", "Amount: Net of VAT", "Fuel surcharge", "Add: VAT", "Less: Withholding Tax", "TOTAL AMOUNT DUE" };
+        private readonly Func<decimal[]> values;   // total sales (fuel included), VAT, net of VAT, withholding, total due, then the fuel total (beside the first line)
+        private static readonly string[] Labels = { "Total Sales + Fuel surcharge (VAT Inclusive)", "Less: VAT (12%)", "Amount: Net of VAT", "Less: Withholding Tax (2%)", "TOTAL AMOUNT DUE" };
 
         public int LineHeight => (int)Math.Round(26 * DeviceDpi / 96f);
         public int TotalHeight => LineHeight * Labels.Length + 2;
@@ -66,7 +66,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     var fc = new Rectangle(fuel.Left, y, fuel.Width, h);
                     g.DrawRectangle(line, fc.X, fc.Y, fc.Width - 1, fc.Height);
-                    TextRenderer.DrawText(g, v.Length > 3 ? v[3].ToString("N2", CultureInfo.InvariantCulture) : "", normal, Rectangle.Inflate(fc, -8, 0), AppTheme.TextPrimary, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+                    TextRenderer.DrawText(g, v.Length > 5 ? v[5].ToString("N2", CultureInfo.InvariantCulture) : "", normal, Rectangle.Inflate(fc, -8, 0), AppTheme.TextPrimary, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
                 }
             }
         }

@@ -80,10 +80,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblPayHint = new Label { Dock = DockStyle.Top, Height = Dpi(24), Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.TextMuted, TextAlign = ContentAlignment.MiddleLeft, Text = "Type only the No. of drops, Amount and Fuel surcharge of each trip report. The statement's totals follow as you type." };
             lblPayNote = new Label { Dock = DockStyle.Top, Height = Dpi(24), Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.WarningText, TextAlign = ContentAlignment.MiddleLeft };
 
-            var comp = new TableLayoutPanel { Height = Dpi(6 * 24 + 8), ColumnCount = 2, BackColor = AppTheme.Canvas, Padding = new Padding(Dpi(12), Dpi(4), Dpi(12), Dpi(4)) };
+            var comp = new TableLayoutPanel { Height = Dpi(5 * 24 + 8), ColumnCount = 2, BackColor = AppTheme.Canvas, Padding = new Padding(Dpi(12), Dpi(4), Dpi(12), Dpi(4)) };
             comp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             comp.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Dpi(150)));
-            string[] names = { "Total Sales (VAT Inclusive)", "Less: VAT (12%)", "Amount: Net of VAT", "Fuel surcharge (added, no VAT)", "Less: Withholding Tax (2%)", "TOTAL AMOUNT DUE" };
+            string[] names = { "Total Sales + Fuel surcharge (VAT Inclusive)", "Less: VAT (12%)", "Amount: Net of VAT", "Less: Withholding Tax (2%)", "TOTAL AMOUNT DUE" };
             for (int i = 0; i < names.Length; i++)
             {
                 comp.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(24)));
@@ -167,7 +167,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             finally { payBuilding = false; }
             var t = SoaTotals.From(a, fu);
-            decimal[] vals = { t.TotalSales, t.Vat, t.NetOfVat, t.Fuel, t.Withholding, t.Due };
+            decimal[] vals = { t.TotalSales, t.Vat, t.NetOfVat, t.Withholding, t.Due };
             for (int i = 0; i < vals.Length && i < payVals.Count; i++) payVals[i].Text = "₱" + vals[i].ToString("N2", CultureInfo.InvariantCulture);
             if (lblPayNote != null) lblPayNote.Text = missing > 0 ? $"⚠ {missing} trip{(missing == 1 ? "" : "s")} without an amount yet. The statement can't be saved until every trip has one." : "";
         }

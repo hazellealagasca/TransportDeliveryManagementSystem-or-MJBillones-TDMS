@@ -135,6 +135,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     Id = invs[0].Id,
                     InvoiceNumber = invs.Count == 1 ? invs[0].InvoiceNumber : cr.InvoiceNumber,
+                    SoaId = invs[0].SoaId,
                     ClientName = invs[0].ClientName,
                     IssueDate = invs.Max(i => i.IssueDate),
                     DueDate = invs.Min(i => i.DueDate),

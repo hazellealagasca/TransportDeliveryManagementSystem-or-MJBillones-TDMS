@@ -27,15 +27,15 @@ public static partial class Checks
         var waiting = MJdatabase.GetSoasWaitingForOwnInvoice();
         var pick = waiting.FirstOrDefault(s => s.SoaId == soaId);
         if (pick == null) return "a saved statement is not offered for invoicing";
-        if (pick.Totals.TotalSales != 10000m || pick.Totals.Fuel != 500m || pick.Totals.Due != 10321.43m) return $"statement figures: sales {pick.Totals.TotalSales}, fuel {pick.Totals.Fuel}, due {pick.Totals.Due} (expected 10000 / 500 / 10321.43)";
+        if (pick.Totals.TotalSales != 10500m || pick.Totals.Fuel != 500m || pick.Totals.Due != 10312.50m) return $"statement figures: sales {pick.Totals.TotalSales}, fuel {pick.Totals.Fuel}, due {pick.Totals.Due} (expected 10500 / 500 / 10312.50)";
         if (pick.Trips != 2) return $"trips on the statement: {pick.Trips}";
 
         var inv = MJdatabase.SaveInvoiceForSoa(soaId, "SI-9201");
         if (inv.SoaId != soaId || inv.DeliveryId != 0) return "the invoice is not the statement's own invoice";
         if (inv.TotalAmount != 10500m || inv.FuelSurcharge != 500m) return $"invoice total {inv.TotalAmount} / fuel {inv.FuelSurcharge}";
-        if (inv.NetAmount != 10321.43m) return $"invoice net {inv.NetAmount}, the statement's total due is 10321.43";
+        if (inv.NetAmount != 10312.50m) return $"invoice net {inv.NetAmount}, the statement's total due is 10312.50";
         decimal stored = Convert.ToDecimal(Scalar("SELECT NetAmount FROM Invoices WHERE Id=@i", ("@i", inv.Id)) ?? 0);
-        if (stored != 10321.43m) return $"stored net {stored}";
+        if (stored != 10312.50m) return $"stored net {stored}";
         if (!string.Equals(Convert.ToString(Scalar("SELECT SalesInvoiceNo FROM StatementsOfAccount WHERE Id=@s", ("@s", soaId))), "SI-9201", StringComparison.Ordinal)) return "the statement does not show its SI No.";
         if (MJdatabase.GetSoasWaitingForOwnInvoice().Any(s => s.SoaId == soaId)) return "an invoiced statement is still offered";
         if (MJdatabase.GetSoaTripsWithoutInvoice().ContainsKey(soaId)) return "an invoiced statement still shows trips without an invoice";

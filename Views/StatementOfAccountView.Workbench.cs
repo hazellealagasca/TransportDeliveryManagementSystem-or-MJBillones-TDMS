@@ -177,8 +177,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int invoices = gridPicker == null ? 0 : 0;
             var rows = new (string, string)[]
             {
-                ("Total Sales (VAT Inclusive)", numTotalSales.Value.ToString("N2")), ("Less: VAT (12%)", numVat.Value.ToString("N2")),
-                ("Amount: Net of VAT", numNetOfVat.Value.ToString("N2")), ("Fuel surcharge (added, no VAT)", numFuelSurchargeTotal.Value.ToString("N2")),
+                ("Total Sales + Fuel surcharge (VAT Inclusive)", numTotalSales.Value.ToString("N2")), ("Less: VAT (12%)", numVat.Value.ToString("N2")),
+                ("Amount: Net of VAT", numNetOfVat.Value.ToString("N2")),
                 ("Less: Withholding Tax (2%)", numWithholdingTax.Value.ToString("N2"))
             };
             int lines = gridItems.Rows.Cast<DataGridViewRow>().Count(r => !r.IsNewRow);

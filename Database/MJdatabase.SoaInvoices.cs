@@ -264,10 +264,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (found.Count == 0 && problems.Count == 0) problems.Add("Add at least one completed trip report to the statement.");
             if (problems.Count > 0) throw new InvalidOperationException("This statement can't be saved yet:\n\n• " + string.Join("\n• ", problems));
 
-            // Nov 7: the statement's totals are worked out from its invoices' freight and fuel surcharge (VAT and the 2% withholding on the freight only).
+            // Nov 12: the statement's totals are worked out from its invoices' freight and fuel surcharge (the fuel is part of the sales: VAT and the 2% withholding are on both).
             var totals = SoaTotals.From(found.Sum(f => f.Freight), found.Sum(f => f.Fuel));
             if (Math.Abs(totals.Due - soa.TotalAmount) > 0.05m)
-                throw new InvalidOperationException($"The statement's total (PHP {soa.TotalAmount:N2}) must be what its service invoices work out to (PHP {totals.Due:N2}: freight PHP {totals.TotalSales:N2}, fuel surcharge PHP {totals.Fuel:N2}, less withholding tax PHP {totals.Withholding:N2}). Nothing was saved.");
+                throw new InvalidOperationException($"The statement's total (PHP {soa.TotalAmount:N2}) must be what its service invoices work out to (PHP {totals.Due:N2}: total sales PHP {totals.TotalSales:N2} including fuel surcharge PHP {totals.Fuel:N2}, less withholding tax PHP {totals.Withholding:N2}). Nothing was saved.");
 
             // Invoices of trips taken off the statement go back to being lone invoices (only while nothing is paid on them).
             var keep = new HashSet<int>(found.Where(f => f.Id > 0).Select(f => f.Id));
@@ -298,7 +298,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             // The statement's withholding is worked out once on its total (as on the statement sheet) and shared out over its invoices,
             // so each invoice's net due is what is collected for it and the shares add up to the statement's total due exactly.
-            var shares = SoaTotals.Share(totals.Withholding, found.Select(f => f.Freight).ToArray());
+            var shares = SoaTotals.Share(totals.Withholding, found.Select(f => f.Freight + f.Fuel).ToArray());
             for (int k = 0; k < found.Count; k++)
             {
                 var f = found[k];

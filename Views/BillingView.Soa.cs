@@ -115,12 +115,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (!cbClient.Items.Contains(s.ClientName)) cbClient.Items.Add(s.ClientName);
             cbClient.SelectedItem = s.ClientName; cbClient.Text = s.ClientName;
             txtLoadingSchedule.Text = $"{s.Trips} trip{(s.Trips == 1 ? "" : "s")}" + (s.TripReports.Length > 0 ? " · " + s.TripReports : "");
-            if (t.TotalSales > numTotalAmount.Maximum) numTotalAmount.Maximum = t.TotalSales * 2;
+            decimal freightOnly = t.TotalSales - t.Fuel; // TotalSales now includes the fuel surcharge; the form has the two typed apart
+            if (freightOnly > numTotalAmount.Maximum) numTotalAmount.Maximum = freightOnly * 2;
             if (t.Fuel > numFuel.Maximum) numFuel.Maximum = t.Fuel * 2;
-            numTotalAmount.SetSafe(t.TotalSales);
+            numTotalAmount.SetSafe(freightOnly);
             numFuel.SetSafe(t.Fuel);
             numTotalAmount.Enabled = false; numFuel.Enabled = false;
-            lblTariffMatch.Text = $"🔒 From {s.SoaNumber}: freight PHP {t.TotalSales:N2} + fuel surcharge PHP {t.Fuel:N2} − withholding tax PHP {t.Withholding:N2} = total amount due PHP {t.Due:N2}. Nothing is typed here except the Service Invoice No.";
+            lblTariffMatch.Text = $"🔒 From {s.SoaNumber}: total sales PHP {t.TotalSales:N2} (freight PHP {freightOnly:N2} + fuel surcharge PHP {t.Fuel:N2}, VAT inclusive) − withholding tax PHP {t.Withholding:N2} = total amount due PHP {t.Due:N2}. Nothing is typed here except the Service Invoice No.";
             lblTariffMatch.Visible = true;
             RecalculateNet(this, EventArgs.Empty);
             ScheduleBillGuide();
@@ -166,9 +167,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             billTape.Set("The statement being billed", new List<(string, string)> { ("Statement", s.SoaNumber), ("Client", s.ClientName), ("Trips", s.Trips.ToString("N0")), ("Trip reports", s.TripReports.Length > 0 ? s.TripReports : "—") },
                 "Total amount due", "₱" + s.Totals.Due.ToString("N2"), "worked out on the statement");
             var t = s.Totals;
-            var rows = new List<(string, string)> { ("Total sales (VAT inclusive)", "₱" + t.TotalSales.ToString("N2")), ("Less VAT", "₱" + t.Vat.ToString("N2")), ("Net of VAT", "₱" + t.NetOfVat.ToString("N2")),
-                ("Fuel surcharge", "₱" + t.Fuel.ToString("N2")), ("Withholding tax (2%)", "₱" + t.Withholding.ToString("N2")) };
-            rows.Add(("= Invoice total (amount + fuel surcharge)", "₱" + InvoiceTotal.Of(t.TotalSales, t.Fuel).ToString("N2")));
+            var rows = new List<(string, string)> { ("Total Sales + Fuel surcharge (VAT Inclusive)", "₱" + t.TotalSales.ToString("N2")), ("Less: VAT (12%)", "₱" + t.Vat.ToString("N2")), ("Amount: Net of VAT", "₱" + t.NetOfVat.ToString("N2")),
+                ("Less: Withholding Tax (2%)", "₱" + t.Withholding.ToString("N2")) };
             rows.Add(("Payment due", $"{DateTime.Today.AddDays(15):MMM d, yyyy} · 15 days"));
             billNetTape.Set("What this invoice bills", rows, "Total amount due", "₱" + t.Due.ToString("N2"), "");
         }

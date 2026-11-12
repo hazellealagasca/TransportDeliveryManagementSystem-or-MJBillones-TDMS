@@ -23,14 +23,14 @@ public static partial class Checks
 
         var target = MJdatabase.GetPayTargets().FirstOrDefault(p => p.SoaId == soaId);
         if (target == null) return "the invoiced statement is not collectable";
-        if (target.Net != 10321.43m) return $"overall amount due {target.Net}, expected 10321.43";
+        if (target.Net != 10312.50m) return $"overall amount due {target.Net}, expected 10312.50";
 
         // an amount that was not the one checked is refused and nothing is saved
         if (!Refused(() => MJdatabase.SaveOneReceipt("4417", target, "Cash", "", "", DateTime.Today, false, verifiedAmount: 10000m), out _)) return "a receipt was issued for an amount that was not the one checked";
         if (Convert.ToInt64(Scalar("SELECT COUNT(*) FROM CollectionReceipts WHERE COALESCE(IsVoid,0) = 0") ?? 0) != 0) return "a refused receipt left a row behind";
 
         var rows = MJdatabase.SaveOneReceipt("4417", target, "Cash", "", "", DateTime.Today, false, verifiedAmount: target.Net);
-        if (rows.Count != 1 || rows[0].AmountPaid != 10321.43m) return $"receipt rows {rows.Count}, amount {(rows.Count > 0 ? rows[0].AmountPaid : 0)}";
+        if (rows.Count != 1 || rows[0].AmountPaid != 10312.50m) return $"receipt rows {rows.Count}, amount {(rows.Count > 0 ? rows[0].AmountPaid : 0)}";
         if (Str("SELECT Status FROM Invoices WHERE Id = @i", ("@i", inv.Id)) != "Paid") return "the invoice is not Paid after the receipt";
         if (Str("SELECT Status FROM StatementsOfAccount WHERE Id = @s", ("@s", soaId)) != "Paid") return "the statement is not Paid after the receipt";
         foreach (var d in new[] { a, b })

@@ -131,7 +131,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             decimal net = t.Due;
             if (Math.Abs(net - numTotalAmountDue.Value) <= 0.05m) return true;
             var ans = MessageBox.Show(FindForm(),
-                $"The service invoices on this statement ({string.Join(", ", invs.Select(i => i.Number))}) work out to PHP {net:N2} (freight PHP {t.TotalSales:N2}, fuel surcharge PHP {t.Fuel:N2}, less withholding tax PHP {t.Withholding:N2}).\n" +
+                $"The service invoices on this statement ({string.Join(", ", invs.Select(i => i.Number))}) work out to PHP {net:N2} (total sales PHP {t.TotalSales:N2} including fuel surcharge PHP {t.Fuel:N2}, less withholding tax PHP {t.Withholding:N2}).\n" +
                 $"The statement shows PHP {numTotalAmountDue.Value:N2}.\n\nA statement's total is worked out from its service invoices. Use the invoices' figures and save?",
                 "Statement total", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
             if (ans != DialogResult.Yes) return false;

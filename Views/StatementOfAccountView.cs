@@ -743,7 +743,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetupTripMerge();   // Nov 10: a trip's cells are one tall cell, like the printed statement
             pnlItemsGridHost.Controls.Add(gridItems);
             // Nov 10: the statement sheet's totals block sits right under the trips table, like the print.
-            sheetTotals = new SoaSheetTotalsPanel(gridItems, () => new[] { numTotalSales.Value, numVat.Value, numNetOfVat.Value, numFuelSurchargeTotal.Value, numVat.Value, numWithholdingTax.Value, numTotalAmountDue.Value });
+            sheetTotals = new SoaSheetTotalsPanel(gridItems, () => new[] { numTotalSales.Value, numVat.Value, numNetOfVat.Value, numWithholdingTax.Value, numTotalAmountDue.Value, numFuelSurchargeTotal.Value });
             sheetTotals.AfterResize = SizeItemsGrid;
             pnlItemsGridHost.Controls.Add(sheetTotals);
             gridItems.BringToFront();
@@ -788,13 +788,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numTotalAmountDue.BackColor = AppTheme.AccentSoft;
             numTotalAmountDue.ForeColor = AppTheme.AccentText;
             var taxFields = CreateFieldGrid(2,
-                ("Total Sales (VAT Inclusive)", numTotalSales), ("Less: VAT (12%)", numVat),
-                ("Amount: Net of VAT", numNetOfVat), ("Fuel surcharge (added, no VAT)", numFuelSurchargeTotal),
-                ("Less: Withholding Tax (2% of net of VAT)", numWithholdingTax), null);
+                ("Total Sales + Fuel surcharge (VAT Inclusive)", numTotalSales), ("Less: VAT (12%)", numVat),
+                ("Amount: Net of VAT", numNetOfVat), ("Less: Withholding Tax (2% of net of VAT)", numWithholdingTax));
             taxFields.Dock = DockStyle.Fill;
             var totalBox = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.AccentSoft, Padding = new Padding(Dpi(18), Dpi(14), Dpi(18), Dpi(12)), Margin = new Padding(Dpi(20), 0, 0, Dpi(8)) };
             var lblDueCaption = new Label { Dock = DockStyle.Top, Height = Dpi(24), Text = "TOTAL AMOUNT DUE", Font = new Font("Segoe UI Semibold", 9.5F), ForeColor = AppTheme.AccentText };
-            var lblDueNote = new Label { Dock = DockStyle.Bottom, Height = Dpi(64), Text = "= Net of VAT + fuel surcharge + VAT − withholding tax.\nVAT and the withholding tax are on the freight only. These come from the service invoices on this statement: to change an amount, correct the invoice in Billing.", Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.AccentText };
+            var lblDueNote = new Label { Dock = DockStyle.Bottom, Height = Dpi(64), Text = "= Total Sales (freight + fuel surcharge) − withholding tax.\nVAT and the withholding tax are worked out on the sales, fuel included. These come from the service invoices on this statement: to change an amount, correct the invoice in Billing.", Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.AccentText };
             numTotalAmountDue.Dock = DockStyle.Top;
             totalBox.Controls.Add(numTotalAmountDue);
             totalBox.Controls.Add(lblDueCaption);
@@ -1345,12 +1344,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtReceivedBy1.Text = soa.ReceivedBy1 ?? "";
             txtReceivedBy2.Text = soa.ReceivedBy2 ?? "";
 
+            // The saved figures are shown exactly as saved: setting the boxes one by one must not re-work the total from the parts (a statement
+            // saved under the older rule would show a different total than it was paid / issued for).
+            bool wasCalculating = isCalculatingTaxes; isCalculatingTaxes = true;
             numTotalSales.SetSafe(Math.Min(numTotalSales.Maximum, Math.Max(numTotalSales.Minimum, soa.TotalSalesVatInc)));
             numVat.SetSafe(Math.Min(numVat.Maximum, Math.Max(numVat.Minimum, soa.VatAmount)));
             numNetOfVat.SetSafe(Math.Min(numNetOfVat.Maximum, Math.Max(numNetOfVat.Minimum, soa.NetOfVat)));
             numFuelSurchargeTotal.SetSafe(Math.Min(numFuelSurchargeTotal.Maximum, Math.Max(numFuelSurchargeTotal.Minimum, soa.FuelSurchargeTotal)));
             numWithholdingTax.SetSafe(Math.Min(numWithholdingTax.Maximum, Math.Max(numWithholdingTax.Minimum, soa.WithholdingTax)));
             numTotalAmountDue.SetSafe(Math.Min(numTotalAmountDue.Maximum, Math.Max(numTotalAmountDue.Minimum, soa.TotalAmount)));
+            isCalculatingTaxes = wasCalculating;
 
             var items = MJdatabase.GetStatementOfAccountItems(soa.Id);
             gridItems.Rows.Clear();
@@ -1365,6 +1368,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             isBindingForm = false;
             UpdateItemsSummary();
+            // Nov 12: an unpaid statement saved under the old rule (fuel outside the VAT) shows the new computation when it is opened; saving writes it.
+            // A paid or cancelled one keeps and shows exactly what it was saved with (never recomputed).
+            bool open = string.Equals(soa.Status, PayStatus.Unpaid, StringComparison.OrdinalIgnoreCase) || string.Equals(soa.Status, "Draft", StringComparison.OrdinalIgnoreCase);
+            if (open && soa.Id > 0 && !IsLegacySoa(soa.Id)) { try { RecalculateTaxes(manualOverride: false); } catch (Exception ex) { ErrLog.Swallowed(ex); } }
         }
 
         private void ClearForm()
@@ -1472,7 +1479,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         fuelSum += rFuel;
                     }
 
-                    // Nov 7: one formula (SoaTotals): VAT and the 2% withholding tax are on the freight only; the fuel surcharge is added outside both.
+                    // Nov 12: one formula (SoaTotals): the fuel surcharge is part of Total Sales, so VAT and the 2% withholding tax are on freight + fuel.
                     // The statement follows its trips' service invoices; an old statement that made its own invoice keeps the old rule.
                     decimal totalSales, vat, netOfVat, withholdingTax, totalDue;
                     var invTotals = InvoiceTotalsOfLines();
@@ -1508,7 +1515,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     decimal netOfVat = numNetOfVat.Value;
                     decimal fuel = numFuelSurchargeTotal.Value;
                     decimal wtax = numWithholdingTax.Value;
-                    decimal totalDue = netOfVat + fuel + vat - wtax;
+                    decimal totalDue = netOfVat + vat - wtax; // the fuel surcharge is already inside the sales
                     SetNum(numTotalAmountDue, totalDue);
                 }
             }
@@ -1645,6 +1652,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!CheckSpecialTripsBeforeSave()) return;
                 if (!CheckSalesInvoiceNoBeforeSave()) return;
                 if (!CheckRepeatedDrsBeforeSave()) return;
+                if (!IsLegacySoa()) RecalculateTaxes(manualOverride: false); // Nov 12: a statement saved under the old rule is re-worked by the new one on this save
                 if (!IsLegacySoa() && !UseInvoiceTotals()) return; // Nov 6: the statement's total is its invoices' total
                 var items = CollectItemsFromGrid();
                 string period = $"{dtpPeriodFrom.Value:yyyy-MM-dd} to {dtpPeriodTo.Value:yyyy-MM-dd}";
@@ -1875,7 +1883,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (stay.Count > 0)
                 {
                     var tt = SoaTotals.From(stay.Sum(i => i.Freight), stay.Sum(i => i.Fuel));
-                    var sh = SoaTotals.Share(tt.Withholding, stay.Select(i => i.Freight).ToArray());
+                    var sh = SoaTotals.Share(tt.Withholding, stay.Select(i => i.Freight + i.Fuel).ToArray());
                     for (int k = 0; k < stay.Count; k++)
                     {
                         var inv = stay[k];

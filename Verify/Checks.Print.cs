@@ -105,26 +105,27 @@ public static partial class Checks
         var (_, items) = PrintSample(SoaTypes.Normal);
         string h = Html(PrintForms.StatementOfAccount(soa, items));
         var bad = new List<string>();
-        if (t.Vat != 28553.57m || t.NetOfVat != 237946.43m || t.Withholding != 4758.93m || t.Due != 327165.07m) bad.Add($"formula gave vat {t.Vat}, net {t.NetOfVat}, withholding {t.Withholding}, due {t.Due}");
-        var order = new[] { "Total Sales (VAT Inclusive)", "Less: VAT", "Amount: Net of VAT", "Fuel surcharge", "Add: VAT", "Less: Withholding Tax", "TOTAL AMOUNT DUE" };
+        if (t.TotalSales != 331924m || t.Vat != 35563.29m || t.NetOfVat != 296360.71m || t.Withholding != 5927.21m || t.Due != 325996.79m) bad.Add($"formula gave vat {t.Vat}, net {t.NetOfVat}, withholding {t.Withholding}, due {t.Due}");
+        var order = new[] { "Total Sales + Fuel surcharge (VAT Inclusive)", "Less: VAT (12%)", "Amount: Net of VAT", "Less: Withholding Tax (2%)", "TOTAL AMOUNT DUE" };
         int last = h.IndexOf("<tfoot>"); if (last < 0) bad.Add("no totals block under the table");
         foreach (var o in order) { int at = h.IndexOf(">" + o + "<", Math.Max(0, last)); if (at < 0 || at < last) bad.Add("line missing or out of order: " + o); else last = at; }
-        foreach (var n in new[] { "266,500.00", "28,553.57", "237,946.43", "65,424.00", "4,758.93", "327,165.07" }) if (!h.Contains(n)) bad.Add("figure missing: " + n);
+        foreach (var n in new[] { "331,924.00", "35,563.29", "296,360.71", "65,424.00", "5,927.21", "325,996.79" }) if (!h.Contains(n)) bad.Add("figure missing: " + n);
         if (h.Contains("Expanded withholding tax")) bad.Add("the older five-line computation still prints");
+        if (h.Contains("Add: VAT")) bad.Add("the old 'Add: VAT' line still prints");
+        if (h.IndexOf(">Fuel surcharge<", Math.Max(0, h.IndexOf("<tfoot>")), StringComparison.Ordinal) >= 0 && h.IndexOf("<tfoot>") >= 0 && h.IndexOf(">Fuel surcharge<", h.IndexOf("<tfoot>"), StringComparison.Ordinal) >= 0) bad.Add("a separate Fuel surcharge line prints in the totals block");
         return string.Join("; ", bad);
     }
 
     [Check]
-    public static string SoaPrint_OlderStatement_KeepsFiveLines()
+    public static string SoaPrint_StatementSavedUnderTheOlderRule_KeepsItsSavedFigures()
     {
         Fresh();
-        // An older statement kept its fuel inside the sales, so it does not add up the sheet's way and keeps its own computation.
-        var soa = new StatementOfAccount { Id = 1, SoaNumber = "SOA-T-5", ClientName = "CLIENT A", SoaType = SoaTypes.Normal, IssueDate = DateTime.Today, TotalSalesVatInc = 1120m, VatAmount = 120m, NetOfVat = 1000m, FuelSurchargeTotal = 120m, WithholdingTax = 20m, TotalAmount = 1100m };
+        // Saved before Nov 12 (fuel outside the VAT): freight 1,000.00, VAT 107.14, net 892.86, fuel 120.00, withholding 17.86, due 1,102.14. It prints as saved, never recomputed.
+        var soa = new StatementOfAccount { Id = 1, SoaNumber = "SOA-T-5", ClientName = "CLIENT A", SoaType = SoaTypes.Normal, IssueDate = DateTime.Today, TotalSalesVatInc = 1000m, VatAmount = 107.14m, NetOfVat = 892.86m, FuelSurchargeTotal = 120m, WithholdingTax = 17.86m, TotalAmount = 1102.14m };
         var (_, items) = PrintSample(SoaTypes.Normal);
         string h = Html(PrintForms.StatementOfAccount(soa, items));
-        var must = new[] { "Total sales (VAT inclusive)", "VAT (12%)", "Net of VAT", "Expanded withholding tax (2%)", "Total amount due" };
-        var missing = must.Where(m => !h.Contains(m)).ToList();
-        return missing.Count == 0 && !h.Contains("Add: VAT") ? "" : $"missing [{string.Join(", ", missing)}]; sheet block printed: {h.Contains("Add: VAT")}";
+        var missing = new[] { "Add: VAT", "1,102.14", "892.86", "17.86" }.Where(m => !h.Contains(m)).ToList();
+        return missing.Count == 0 ? "" : $"missing [{string.Join(", ", missing)}]";
     }
 
     [Check]
@@ -132,13 +133,17 @@ public static partial class Checks
     {
         var t = SoaTotals.From(266500m, 65424m);
         var bad = new List<string>();
-        if (t.Due != t.NetOfVat + t.Fuel + t.Vat - t.Withholding) bad.Add("due is not net + fuel + vat - withholding");
-        if (t.Due != t.TotalSales + t.Fuel - t.Withholding) bad.Add("due is not sales + fuel - withholding");
+        if (t.Due != t.NetOfVat + t.Vat - t.Withholding) bad.Add("due is not net + vat - withholding");
+        if (t.Due != t.TotalSales - t.Withholding || t.TotalSales != 266500m + 65424m) bad.Add("due is not sales (freight + fuel) - withholding");
         // Odd centavos: the shares always add up to the statement's withholding exactly.
         foreach (var f in new[] { new[] { 23500m, 23500m, 34500m }, new[] { 10000.01m, 3333.33m, 7777.77m, 1.05m }, new[] { 999.99m }, new decimal[] { 0m, 0m } })
         {
             var whole = SoaTotals.From(f.Sum(), 0m).Withholding;
             var shares = SoaTotals.Share(whole, f);
+            if (shares.Sum() != whole) bad.Add($"shares {string.Join("+", shares)} != {whole}");
+            var wf = f.Select(x => x + 111.11m).ToArray(); // freight + fuel weights
+            whole = SoaTotals.From(f.Sum(), wf.Sum() - f.Sum()).Withholding;
+            shares = SoaTotals.Share(whole, wf);
             if (shares.Sum() != whole) bad.Add($"shares {string.Join("+", shares)} != {whole}");
         }
         return string.Join("; ", bad);

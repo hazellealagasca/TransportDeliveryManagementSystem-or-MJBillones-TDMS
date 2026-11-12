@@ -359,11 +359,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 checks.Add(new PaymentCheck(unpriced == 0 ? "Every trip has an amount" : $"{unpriced} trip(s) without an amount", unpriced == 0));
                 checks.Add(new PaymentCheck(repeatedDr == 0 ? "No DR number repeated" : $"{repeatedDr} DR number(s) repeated on this statement", repeatedDr == 0));
             }
-            // Math (Nov 7, the statement sheet): net of VAT + fuel surcharge + VAT − withholding tax = total due. An old statement kept its fuel inside the sales.
-            decimal fuelPart = IsLegacySoa() ? 0m : numFuelSurchargeTotal.Value;
-            decimal calc = numNetOfVat.Value + fuelPart + numVat.Value - numWithholdingTax.Value;
+            // Math (Nov 12): the fuel surcharge is inside Total Sales, so total sales − withholding tax = total due (= net of VAT + VAT − withholding tax).
+            decimal calc = numTotalSales.Value - numWithholdingTax.Value;
             bool mathOk = Math.Abs(calc - numTotalAmountDue.Value) <= 0.01m;
-            checks.Add(new PaymentCheck(mathOk ? "Totals add up (net of VAT + fuel surcharge + VAT − withholding tax = total due)" : $"Totals don't add up: ₱{numNetOfVat.Value:N2} + ₱{fuelPart:N2} + ₱{numVat.Value:N2} − ₱{numWithholdingTax.Value:N2} = ₱{calc:N2}, not ₱{numTotalAmountDue.Value:N2}", mathOk));
+            checks.Add(new PaymentCheck(mathOk ? "Totals add up (total sales − withholding tax = total due)" : $"Totals don't add up: ₱{numTotalSales.Value:N2} − ₱{numWithholdingTax.Value:N2} = ₱{calc:N2}, not ₱{numTotalAmountDue.Value:N2}", mathOk));
             checks.Add(new PaymentCheck(numTotalAmountDue.Value > 0 ? "Total amount due is more than ₱0.00" : "Total amount due is ₱0.00", numTotalAmountDue.Value > 0));
             if (SoaTotalsAdjusted(out var expected, out var entered))
             {

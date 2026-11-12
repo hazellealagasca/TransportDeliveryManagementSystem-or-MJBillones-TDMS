@@ -232,11 +232,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
                 // computation panel
-                var comp = new TableLayoutPanel { Dock = DockStyle.Bottom, Height = Dpi(190), ColumnCount = 2, Padding = new Padding(Dpi(16), Dpi(8), Dpi(16), Dpi(4)), BackColor = AppTheme.Canvas };
+                var comp = new TableLayoutPanel { Dock = DockStyle.Bottom, Height = Dpi(166), ColumnCount = 2, Padding = new Padding(Dpi(16), Dpi(8), Dpi(16), Dpi(4)), BackColor = AppTheme.Canvas };
                 comp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
                 comp.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Dpi(140)));
                 var valLabels = new List<Label>();
-                string[] names = { "Total Sales (VAT Inclusive)", "Less: VAT (12%)", "Amount: Net of VAT", "Fuel surcharge (added, no VAT)", "Less: Withholding Tax (2%)", "TOTAL AMOUNT DUE" };
+                string[] names = { "Total Sales + Fuel surcharge (VAT Inclusive)", "Less: VAT (12%)", "Amount: Net of VAT", "Less: Withholding Tax (2%)", "TOTAL AMOUNT DUE" };
                 for (int i = 0; i < names.Length; i++)
                 {
                     bool last = i == names.Length - 1;
@@ -272,7 +272,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             r.Cells["pTotal"].Value = ra + rf;
                         }
                         var t = SoaTotals.From(a, fu);
-                        decimal[] vals = { t.TotalSales, t.Vat, t.NetOfVat, t.Fuel, t.Withholding, t.Due };
+                        decimal[] vals = { t.TotalSales, t.Vat, t.NetOfVat, t.Withholding, t.Due };
                         for (int i = 0; i < vals.Length; i++) valLabels[i].Text = "₱" + vals[i].ToString("N2", CultureInfo.InvariantCulture);
                         note.Text = missing > 0 ? $"⚠ {missing} trip{(missing == 1 ? "" : "s")} without an amount yet. The statement can't be saved until every trip has one." : "";
                     }
