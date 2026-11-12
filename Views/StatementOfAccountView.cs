@@ -807,9 +807,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             taxLayout.Controls.Add(totalBox, 1, 0);
             // ---------------- Sign-off
             txtSalesInvoiceNo = new TextBox { Font = new Font("Segoe UI Semibold", 10F), Text = "", ReadOnly = true, PlaceholderText = "Filled from the trips' service invoices" }; // Nov 6: not typed here any more
-            txtPreparedBy = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };
-            txtReceivedBy1 = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };
-            txtReceivedBy2 = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };
+            txtPreparedBy = new TextBox { Font = new Font("Segoe UI", 10F), Text = "", MaxLength = DailyRules.SignOffNameMax }; // Nov 12
+            txtReceivedBy1 = new TextBox { Font = new Font("Segoe UI", 10F), Text = "", MaxLength = DailyRules.SignOffNameMax };
+            txtReceivedBy2 = new TextBox { Font = new Font("Segoe UI", 10F), Text = "", MaxLength = DailyRules.SignOffNameMax };
             var gridSign = CreateFieldGrid(2,
                 ("Service invoices on this statement (from Billing)", txtSalesInvoiceNo), ("Prepared by (billing officer)", txtPreparedBy),
                 ("Received by 1 (client accountant)", txtReceivedBy1), ("Received by 2 (client accountant)", txtReceivedBy2));
@@ -1594,6 +1594,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 if (cbDeliveryType.SelectedIndex < 0) { MessageBox.Show("Please choose the delivery type (REF or DRY).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbDeliveryType.Focus(); return; } // Nov 6
                 if (string.IsNullOrWhiteSpace(txtPreparedBy.Text)) { MessageBox.Show("Please type who prepared this statement (Prepared by).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); txtPreparedBy.Focus(); return; }
+                if (!SoaPreparedByAllowed(txtPreparedBy.Text)) { MessageBox.Show("Prepared by must be a name: letters, spaces, period, hyphen or apostrophe (up to 100 characters).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); txtPreparedBy.Focus(); txtPreparedBy.SelectAll(); return; } // Nov 12
 
                 if (gridItems.Rows.Count == 0)
                 {
@@ -1663,9 +1664,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 soa.WithholdingTax = numWithholdingTax.Value;
                 soa.TotalAmount = numTotalAmountDue.Value;
                 soa.SalesInvoiceNo = txtSalesInvoiceNo.Text.Trim();
-                soa.PreparedBy = txtPreparedBy.Text.Trim();
-                soa.ReceivedBy1 = txtReceivedBy1.Text.Trim();
-                soa.ReceivedBy2 = txtReceivedBy2.Text.Trim();
+                soa.PreparedBy = DailyRules.Tidy(txtPreparedBy.Text);
+                soa.ReceivedBy1 = DailyRules.Tidy(txtReceivedBy1.Text);
+                soa.ReceivedBy2 = DailyRules.Tidy(txtReceivedBy2.Text);
                 if (!isEditingExisting) { soa.Status = PayStatus.Unpaid; soa.SoaType = CurrentSoaType; }
                 soa.TripRemovalReason = "";
                 if (isEditingExisting && soa.Id > 0 && !IsLegacySoa(soa.Id) && !AskWhyTripsRemoved(soa, items, out string removalReason)) return;
@@ -1740,6 +1741,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int selfId = isEditingExisting && selectedSoa != null ? selectedSoa.Id : 0;
             try
             {
+                // Nov 12: the same SI check the invoice screen uses (format, length, never used before), so this screen never saves a number that screen would refuse
+                var siWhy = SoaSiNumberProblem(invNum, selfId);
+                if (siWhy != null)
+                {
+                    MessageBox.Show(siWhy, "Sales invoice no.", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    try { txtSalesInvoiceNo.Focus(); txtSalesInvoiceNo.SelectAll(); } catch { }
+                    return false;
+                }
                 var clash = MJdatabase.GetInvoices().FirstOrDefault(i => i.InvoiceNumber.Equals(invNum, StringComparison.OrdinalIgnoreCase) && (selfId == 0 || i.SoaId != selfId));
                 if (clash != null)
                 {
@@ -1752,6 +1761,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             catch (Exception ex) { ErrLog.Swallowed(ex); }
             return true;
+        }
+        /// <summary>Nov 12: a name for "Prepared by": a name already saved on this statement is never refused.</summary>
+        private bool SoaPreparedByAllowed(string? text)
+        {
+            string t = DailyRules.Tidy(text);
+            if (isEditingExisting && selectedSoa != null && string.Equals(DailyRules.Tidy(selectedSoa.PreparedBy), t, StringComparison.Ordinal)) return true;
+            return DailyRules.SignOffNameOk(t);
+        }
+        /// <summary>Nov 12: why this SI number can't be saved on a statement (the invoice screen's own check), or null. The statement's own invoice doesn't count as a repeat.</summary>
+        internal static string? SoaSiNumberProblem(string invNum, int soaId)
+        {
+            int own = 0;
+            if (soaId > 0) { try { own = MJdatabase.GetInvoices().FirstOrDefault(i => i.SoaId == soaId && i.InvoiceNumber.Equals(invNum, StringComparison.OrdinalIgnoreCase))?.Id ?? 0; } catch (Exception ex) { ErrLog.Swallowed(ex); } }
+            return MJdatabase.CheckSiNumber(invNum, own);
         }
         private int CurrentSoaId => isEditingExisting && selectedSoa != null ? selectedSoa.Id : 0;
         private static string SoaLineLabel(DataGridViewRow r) => $"trip {r.Cells["colTripNo"].Value} {(r.Cells["colDest"].Value?.ToString() ?? "").Trim()}".Trim();

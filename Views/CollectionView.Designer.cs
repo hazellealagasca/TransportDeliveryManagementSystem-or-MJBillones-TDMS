@@ -267,6 +267,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtRefNo.Location = new System.Drawing.Point(16, 145);
             this.txtRefNo.Margin = new System.Windows.Forms.Padding(0, 0, 0, 8);
             this.txtRefNo.Name = "txtRefNo";
+            this.txtRefNo.MaxLength = 30;
             this.txtRefNo.PlaceholderText = "e.g. CHK-990214, BDO-TXN-55410, or REF-001";
             this.txtRefNo.Size = new System.Drawing.Size(448, 24);
             this.txtRefNo.TabIndex = 4;
@@ -287,6 +288,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtNotes.Location = new System.Drawing.Point(16, 196);
             this.txtNotes.Multiline = true;
             this.txtNotes.Name = "txtNotes";
+            this.txtNotes.MaxLength = 500;
             this.txtNotes.PlaceholderText = "Payment received in full settlement of invoice...";
             this.txtNotes.Size = new System.Drawing.Size(448, 64);
             this.txtNotes.TabIndex = 6;

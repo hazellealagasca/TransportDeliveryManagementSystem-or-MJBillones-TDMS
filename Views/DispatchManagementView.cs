@@ -5026,6 +5026,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+        /// <summary>Nov 12: a new or changed dispatch number is letters, digits, "-" and "/" (up to 30). A number already on the saved order is never refused.</summary>
+        private bool DispatchNumberAllowed(string? text)
+        {
+            string t = (text ?? "").Trim();
+            if (selectedDelivery != null && string.Equals((selectedDelivery.DispatchNumber ?? "").Trim(), t, StringComparison.Ordinal)) return true;
+            return DailyRules.DispatchNumberOk(t);
+        }
+
         private void BtnSave_Click(object? sender, EventArgs e)
 
         {
@@ -5038,6 +5046,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ValidationHelper.ClearErrors(pnlForm);
 
                 if (!ValidationHelper.ValidateRequiredText(txtDispatchNumber, "Order Reference / Dispatch #", valErrors)) firstInvalid ??= txtDispatchNumber;
+                else if (!DispatchNumberAllowed(txtDispatchNumber.Text)) { ValidationHelper.ApplyValidationState(txtDispatchNumber, false, DailyRules.DispatchNumberMessage); valErrors.Add(DailyRules.DispatchNumberMessage); firstInvalid ??= txtDispatchNumber; } // Nov 12
                 if (!chkMultiDrop.Checked)
                 {
                     if (!ValidationHelper.ValidateRequiredCombo(cbClient, "Client Company", valErrors)) firstInvalid ??= cbClient;
