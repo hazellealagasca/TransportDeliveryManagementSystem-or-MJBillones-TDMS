@@ -26,6 +26,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly Func<int>? pinnedIndex;            // original index of the suggested item, -1 for none
         private readonly Func<int, string>? pinnedChip;     // chip text for that item
         private readonly string noun;
+        private readonly Action<string>? onNotFound;        // "cannot be found" row with an add button; null = the plain "No ... matches" line
+        private readonly Func<int, string>? rowChip;        // chip text drawn on the right of each row (status), "" for none
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ComboBox, SearchPicker> Pickers = new();
         private int pinned = -1;
         private readonly List<int> matches = new List<int>();   // original item indexes, in the box's own order
@@ -35,8 +37,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
         private int RowH => D(30);
 
-        private SearchPicker(ComboBox box, Func<int, string> searchText, Func<int>? pinnedIndex, Func<int, string>? pinnedChip, string noun)
+        private SearchPicker(ComboBox box, Func<int, string> searchText, Func<int>? pinnedIndex, Func<int, string>? pinnedChip, string noun, Action<string>? onNotFound, Func<int, string>? rowChip)
         {
+            this.onNotFound = onNotFound; this.rowChip = rowChip;
             this.box = box; this.searchText = searchText; this.pinnedIndex = pinnedIndex; this.pinnedChip = pinnedChip; this.noun = noun;
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
@@ -56,11 +59,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         /// <summary>
         /// Adds type-to-search to <paramref name="box"/>. <paramref name="searchText"/> gives the text to search for item number i (its position in the box).
+        /// With <paramref name="onNotFound"/>, a query that matches nothing shows '"x" cannot be found.' and a "+ Add" row; Enter or a click on it closes the list and calls it with the typed text.
+        /// <paramref name="rowChip"/> gives a small status chip drawn on the right of each row (and is not part of the item's text).
         /// Returns the picker (disposed automatically with the box).
         /// </summary>
-        public static SearchPicker Attach(ComboBox box, Func<int, string> searchText, Func<int>? pinnedIndex = null, Func<int, string>? pinnedChip = null, string noun = "")
+        public static SearchPicker Attach(ComboBox box, Func<int, string> searchText, Func<int>? pinnedIndex = null, Func<int, string>? pinnedChip = null, string noun = "", Action<string>? onNotFound = null, Func<int, string>? rowChip = null)
         {
-            var p = new SearchPicker(box, searchText, pinnedIndex, pinnedChip, noun);
+            var p = new SearchPicker(box, searchText, pinnedIndex, pinnedChip, noun, onNotFound, rowChip);
             Pickers.AddOrUpdate(box, p);
             box.KeyPress += (s, e) => p.HandleKeyPress(e);
             box.PreviewKeyDown += (s, e) => { if (p.Visible && (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Escape || e.KeyCode == Keys.Up || e.KeyCode == Keys.Down)) e.IsInputKey = true; };
@@ -145,10 +150,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (e.KeyCode == Keys.Enter)
             {
-                if (selected >= 0 && selected < matches.Count) Pick(matches[selected]);
+                if (NotFound) AddNew();
+                else if (selected >= 0 && selected < matches.Count) Pick(matches[selected]);
                 e.Handled = true; e.SuppressKeyPress = true;
             }
             else if (e.KeyCode == Keys.Escape) { Close2(); e.Handled = true; e.SuppressKeyPress = true; }
+        }
+
+        private bool NotFound => matches.Count == 0 && onNotFound != null && query.Trim().Length > 0;
+        /// <summary>The line shown when nothing matches and an add action exists ("" otherwise).</summary>
+        public string NotFoundMessage => NotFound ? $"{NounCap} \"{query.Trim()}\" cannot be found." : "";
+        /// <summary>The text of the add button in that row ("" otherwise).</summary>
+        public string AddButtonText => NotFound ? "+ Add " + noun : "";
+        private string NounCap => noun.Length == 0 ? "" : char.ToUpper(noun[0]) + noun.Substring(1);
+
+        private void AddNew()
+        {
+            string typed = query.Trim();
+            Close2();
+            try { onNotFound?.Invoke(typed); } catch (Exception ex) { ErrLog.Error("SearchPicker.onNotFound", ex); }
         }
 
         private void Pick(int original)
@@ -181,7 +201,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var owner = box.FindForm();
             if (owner == null || !box.IsHandleCreated) return;
             var r = box.RectangleToScreen(box.ClientRectangle);
-            int rows = 1 + Math.Max(1, matches.Count) + (extra > 0 ? 1 : 0); // header + matches (or a no-match line) + more line
+            int rows = 1 + (NotFound ? 2 : Math.Max(1, matches.Count)) + (extra > 0 ? 1 : 0); // header + matches (or a no-match line) + more line
             var size = new Size(Math.Max(pinned >= 0 ? D(460) : D(300), r.Width), rows * RowH + 2);
             var wa = Screen.FromRectangle(r).WorkingArea;
             int x = Math.Max(wa.Left, Math.Min(r.Left, wa.Right - size.Width));
@@ -194,11 +214,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         private int Hit(Point pt) { int i = (pt.Y - 1) / RowH - 1; return i >= 0 && i < matches.Count ? i : -1; }
-        protected override void OnMouseMove(MouseEventArgs e) { int i = Hit(e.Location); if (i >= 0 && i != selected) { selected = i; Invalidate(); } base.OnMouseMove(e); }
+        private bool OnAddRow(Point pt) => NotFound && (pt.Y - 1) / RowH == 2;
+        protected override void OnMouseMove(MouseEventArgs e) { Cursor = OnAddRow(e.Location) ? Cursors.Hand : Cursors.Default; int i = Hit(e.Location); if (i >= 0 && i != selected) { selected = i; Invalidate(); } base.OnMouseMove(e); }
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
             if (e.Button != MouseButtons.Left) return;
+            if (OnAddRow(e.Location)) { AddNew(); return; }
             int i = Hit(e.Location);
             if (i >= 0) Pick(matches[i]);
         }
@@ -209,6 +231,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (text.StartsWith("[ON TRIP]", StringComparison.OrdinalIgnoreCase)) return (Pal.C(249, 115, 22), "ON TRIP");
             if (text.StartsWith("[MAINTENANCE]", StringComparison.OrdinalIgnoreCase)) return (Pal.C(239, 68, 68), "MAINTENANCE");
             return (Color.Empty, "");
+        }
+
+        /// <summary>A small filled chip with centred text: green for "Available" or a suggestion, blue for "On ..." (e.g. "On this order").</summary>
+        public static void DrawChip(Graphics g, Font small, string chip, Rectangle cr)
+        {
+            bool info = chip.StartsWith("On ", StringComparison.OrdinalIgnoreCase);
+            using (var cb = new SolidBrush(info ? AppTheme.InfoSoft : Pal.C(220, 252, 231))) g.FillRectangle(cb, cr);
+            TextRenderer.DrawText(g, chip, small, cr, info ? AppTheme.InfoText : Pal.C(22, 101, 52), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding);
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -227,6 +257,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             TextRenderer.DrawText(g, query + "\u258F", bold, new Rectangle(pad + sw, y0, w - pad * 2 - sw, h), AppTheme.TextPrimary, flags | TextFormatFlags.NoPadding);
             using var lp = new Pen(AppTheme.Border);
             g.DrawLine(lp, 1, y0 + h - 1, w - 1, y0 + h - 1);
+            if (NotFound)
+            {
+                string msg = NotFoundMessage;
+                TextRenderer.DrawText(g, msg, small, new Rectangle(pad, y0 + h, w - pad * 2, h), AppTheme.TextPrimary, flags);
+                int ay = y0 + 2 * h;
+                using (var sb = new SolidBrush(AppTheme.AccentSoftStrong)) g.FillRectangle(sb, 1, ay, w - 2, h);
+                string add = AddButtonText;
+                int aw = TextRenderer.MeasureText(add, bold).Width + D(20);
+                var ar = new Rectangle(pad, ay + D(3), aw, h - D(6));
+                using (var ab = new SolidBrush(AppTheme.Accent)) g.FillRectangle(ab, ar);
+                TextRenderer.DrawText(g, add, bold, ar, Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding);
+                TextRenderer.DrawText(g, "Enter to add, Esc to close", small, new Rectangle(pad + aw + D(12), ay, w - pad * 2 - aw - D(12), h), AppTheme.TextMuted, flags);
+                return;
+            }
             if (matches.Count == 0)
             {
                 TextRenderer.DrawText(g, (noun.Length > 0 ? $"No {noun} matches '{query}'" : $"No match for '{query}'") + ". Backspace to change it, Esc to close.", small, new Rectangle(pad, y0 + h, w - pad * 2, h), AppTheme.TextMuted, flags);
@@ -253,13 +297,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     TextRenderer.DrawText(g, tag, small, new Rectangle(w - pad - tagW, y, tagW, h), AppTheme.TextMuted, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
                 }
                 int chipW = 0;
-                if (matches[i] == pinned)
+                string chip = matches[i] == pinned ? (pinnedChip?.Invoke(pinned) ?? "\u2605 Suggested") : (rowChip?.Invoke(matches[i]) ?? "");
+                if (chip.Length > 0)
                 {
-                    string chip = pinnedChip?.Invoke(pinned) ?? "\u2605 Suggested";
                     chipW = TextRenderer.MeasureText(chip, small).Width + D(12);
                     var cr = new Rectangle(w - pad - tagW - (tagW > 0 ? D(8) : 0) - chipW, y + D(5), chipW, h - D(10));
-                    using (var cb = new SolidBrush(Pal.C(220, 252, 231))) g.FillRectangle(cb, cr);
-                    TextRenderer.DrawText(g, chip, small, cr, Pal.C(22, 101, 52), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding);
+                    DrawChip(g, small, chip, cr);
                     chipW += D(8);
                 }
                 TextRenderer.DrawText(g, label, bold, new Rectangle(tx, y, w - tx - pad - tagW - chipW, h), AppTheme.TextPrimary, flags);

@@ -172,7 +172,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Type to search: the boxes keep their items, order and DropDownList style; a pick maps back to the ORIGINAL index (SearchPicker).
             SearchPicker.Attach(cbTruck, i => i >= 0 && i < trucks.Count ? TruckSearchText(trucks[i]) : "",
                 () => listSuggestId > 0 ? trucks.FindIndex(t => t.Id == listSuggestId) : -1, i => "★ Suggested", "truck");
-            SearchPicker.Attach(cbDriver, i => i >= 0 && i < drivers.Count ? drivers[i].FullName : "", noun: "driver");
+            SearchPicker.Attach(cbDriver, i => i >= 0 && i < drivers.Count ? drivers[i].FullName : "", noun: "driver", onNotFound: typed => AddCrewFromSearch(true, typed, null));
             cbTruck.DropDownWidth = Dpi(480);
 
             SetupEvents();
@@ -4248,18 +4248,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (this.IsDisposed || !this.IsHandleCreated) return;
 
-                allDrivers = crews.FindAll(c => c.Role.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0 && c.IsActive);
-
-                allAides = crews.FindAll(c => (c.Role.IndexOf("Aide", StringComparison.OrdinalIgnoreCase) >= 0 || c.Role.IndexOf("Helper", StringComparison.OrdinalIgnoreCase) >= 0 || c.Role.IndexOf("Crew", StringComparison.OrdinalIgnoreCase) >= 0) && c.IsActive);
-
-                foreach (var licensedAide in allAides.Where(a => a.HasLicense))
-
-                {
-                    if (!allDrivers.Any(d => d.Id == licensedAide.Id))
-                    {
-                        allDrivers.Add(licensedAide);
-                    }
-                }
+                SplitCrewLists(crews);
 
                 allDispatches = await MJdatabase.GetDeliveriesAsync();
 
@@ -4502,6 +4491,63 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 cbDriver.SelectedIndex = idx;
             }
+        }
+
+        /// <summary>The one place that turns the crew table into the driver list and the aide list (active only; a licensed aide can also be picked as driver).</summary>
+        private void SplitCrewLists(List<Crew> crews)
+        {
+            allDrivers = crews.FindAll(c => c.Role.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0 && c.IsActive);
+            allAides = crews.FindAll(c => (c.Role.IndexOf("Aide", StringComparison.OrdinalIgnoreCase) >= 0 || c.Role.IndexOf("Helper", StringComparison.OrdinalIgnoreCase) >= 0 || c.Role.IndexOf("Crew", StringComparison.OrdinalIgnoreCase) >= 0) && c.IsActive);
+            foreach (var licensedAide in allAides.Where(a => a.HasLicense))
+                if (!allDrivers.Any(d => d.Id == licensedAide.Id)) allDrivers.Add(licensedAide);
+        }
+
+        /// <summary>
+        /// "+ Add driver" / "+ Add aide" from a search box that found nobody: opens the small add window on top of this screen, then reloads the crew
+        /// and picks the new person in the box that asked (<paramref name="slot"/> is the aide box, null for the Driver box). Cancel changes nothing.
+        /// </summary>
+        private void AddCrewFromSearch(bool driver, string typed, ComboBox? slot)
+        {
+            int newId;
+            using (var dlg = new QuickAddCrewDialog(driver, typed))
+            {
+                if (dlg.ShowDialog(FindForm()) != DialogResult.OK || dlg.SavedId <= 0) return;
+                newId = dlg.SavedId;
+            }
+            AfterCrewAdded(newId, driver, slot);
+        }
+
+        /// <summary>Reloads the crew lists after a person was saved and picks him in the box that asked; the truck and driver picks already made are kept.</summary>
+        private void AfterCrewAdded(int newId, bool driver, ComboBox? slot)
+        {
+            try
+            {
+                int keepTruck = cbTruck.SelectedIndex >= 0 && cbTruck.SelectedIndex < trucks.Count ? trucks[cbTruck.SelectedIndex].Id : 0;
+                int keepDriver = cbDriver.SelectedIndex >= 0 && cbDriver.SelectedIndex < drivers.Count ? drivers[cbDriver.SelectedIndex].Id : 0;
+                var slots = AideSlots();
+                int a1 = slots.Count > 0 ? slots[0] : 0, a2 = slots.Count > 1 ? slots[1] : 0;
+                SplitCrewLists(MJdatabase.GetCrews());
+                WhileBinding(() =>
+                {
+                    PopulateTrucksDriversAndAides();
+                    int ti = trucks.FindIndex(t => t.Id == keepTruck);
+                    if (ti >= 0) cbTruck.SelectedIndex = ti;
+                    int di = drivers.FindIndex(c => c.Id == keepDriver);
+                    if (di >= 0) cbDriver.SelectedIndex = di;
+                });
+                if (driver)
+                {
+                    int ni = drivers.FindIndex(c => c.Id == newId);
+                    if (ni >= 0) cbDriver.SelectedIndex = ni;
+                }
+                else
+                {
+                    if (slot == cbAideSlot1 || a1 == 0) a1 = newId; else a2 = newId;
+                    SetAideSlots(a1, a2);
+                    RenderAidesModule();
+                }
+            }
+            catch (Exception ex) { LogViewError("AfterCrewAdded", ex); }
         }
 
         private void PopulateTrucksDriversAndAides()
@@ -6599,9 +6645,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private sealed class AideItem
         {
             public Crew Aide { get; }
-            public string Label { get; }
-            public AideItem(Crew a, string status) { Aide = a; Label = $"{a.FullName}  ·  {status}"; }
-            public override string ToString() => Label;
+            public string Status { get; }
+            public AideItem(Crew a, string status) { Aide = a; Status = status; }
+            public override string ToString() => Aide.FullName; // the name only: the status is drawn as a chip so it can never be typed over
         }
         private List<int> AideSlots() => selectedAideIds.Take(MJdatabase.MaxAidesPerOrder).ToList();
         private void SetAideSlots(int a1, int a2)
@@ -6614,20 +6660,42 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             var cb = new ComboBox
             {
-                DropDownStyle = ComboBoxStyle.DropDown,
-                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-                AutoCompleteSource = AutoCompleteSource.ListItems,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                DrawMode = DrawMode.OwnerDrawFixed,
+                ItemHeight = 28,
                 Font = LargePrint.On ? LargePrint.Bold(12F, 9.75F) : new Font("Segoe UI", 9.75F),
                 Width = Dpi(LargePrint.Px(420, 320)),
                 Margin = new Padding(0, 0, Dpi(6), 0),
                 IntegralHeight = false,
                 MaxDropDownItems = 12
             };
-            // Typed text must match a listed aide; anything else snaps back to the slot's current aide.
-            cb.Leave += (s, e) => { if (!renderingAides && cb.SelectedItem == null && cb.Text.Trim().Length > 0) BeginInvoke(new Action(RenderAidesModule)); };
-            cb.SelectionChangeCommitted += (s, e) => BeginInvoke(new Action(() => OnAideSlotPicked(cb)));
+            cb.DrawItem += (s, e) => DrawAideSlotItem(cb, e);
+            // Same search box as Truck and Driver: SearchPicker commits a pick by setting SelectedIndex.
+            SearchPicker.Attach(cb, i => i >= 0 && i < cb.Items.Count ? cb.Items[i]?.ToString() ?? "" : "", noun: "aide",
+                onNotFound: typed => AddCrewFromSearch(false, typed, cb),
+                rowChip: i => i >= 0 && i < cb.Items.Count && cb.Items[i] is AideItem ai ? ai.Status : "");
+            cb.SelectedIndexChanged += (s, e) => OnAideSlotPicked(cb);
             UIThemeHelper.StyleInput(cb);
             return cb;
+        }
+        private void DrawAideSlotItem(ComboBox cb, DrawItemEventArgs e)
+        {
+            if (e.Index < 0) { SearchPicker.DrawHint(cb, e); return; }
+            if (e.Index >= cb.Items.Count) return;
+            e.DrawBackground();
+            var g = e.Graphics;
+            var item = cb.Items[e.Index] as AideItem;
+            using var small = new Font("Segoe UI", 8.5F);
+            int chipW = 0;
+            if (item != null && item.Status.Length > 0)
+            {
+                chipW = TextRenderer.MeasureText(item.Status, small).Width + Dpi(12);
+                var cr = new Rectangle(e.Bounds.Right - chipW - Dpi(6), e.Bounds.Top + Dpi(2), chipW, e.Bounds.Height - Dpi(4));
+                SearchPicker.DrawChip(g, small, item.Status, cr);
+                chipW += Dpi(10);
+            }
+            bool sel = (e.State & DrawItemState.Selected) == DrawItemState.Selected && (e.State & DrawItemState.ComboBoxEdit) == 0;
+            TextRenderer.DrawText(g, cb.Items[e.Index]?.ToString() ?? "", cb.Font, new Rectangle(e.Bounds.Left + Dpi(4), e.Bounds.Top, e.Bounds.Width - Dpi(8) - chipW, e.Bounds.Height), sel ? SystemColors.HighlightText : e.ForeColor, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
         }
         private void OnAideSlotPicked(ComboBox cb)
         {
@@ -6638,7 +6706,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (cb == cbAideSlot1) a1 = pick; else a2 = pick;
             if (a1 == 0 && a2 > 0) { a1 = a2; a2 = 0; } // keep Aide 1 filled first
             SetAideSlots(a1, a2);
-            RenderAidesModule();
+            BeginInvoke(new Action(RenderAidesModule)); // the list is rebuilt after the pick has finished
         }
         private void BuildAideSlotsPanel()
         {
@@ -6691,8 +6759,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Only active, available aides (or the one already on this order), never the other slot's aide.
             foreach (var a in aides.Where(a => a.Id != other && (CrewFree(a) || a.Id == current)).OrderBy(a => a.FullName))
                 cb.Items.Add(new AideItem(a, a.Id == current && !CrewFree(a) ? "On this order" : "Available"));
-            cb.SelectedItem = cb.Items.Cast<AideItem>().FirstOrDefault(i => i.Aide.Id == current);
-            if (cb.SelectedItem == null) cb.Text = "";
+            cb.SelectedIndex = cb.Items.Cast<AideItem>().ToList().FindIndex(i => i.Aide.Id == current);
             cb.EndUpdate();
         }
         private void RenderAidesModule()
