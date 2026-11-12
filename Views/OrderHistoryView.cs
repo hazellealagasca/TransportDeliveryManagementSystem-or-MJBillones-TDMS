@@ -214,7 +214,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (r.Source is Delivery del && r.StatusGroup == "Completed")
                 {
                     m.Items.Add(new ToolStripSeparator());
-                    if (CanFin && string.IsNullOrWhiteSpace(r.InvoiceNo)) m.Items.Add("🧾  Create billing invoice", null, (a, b) => OnCreateInvoiceRequested?.Invoke(del));
                     m.Items.Add("📝  View trip report", null, (a, b) => OnTripReportRequested?.Invoke(del.Id, del.DispatchNumber));
                     m.Items.Add("🖨  Print trip report", null, (a, b) => PrintHelper.PrintOfficialTripReport(del.Id, del.DispatchNumber));
                     m.Items.Add("🖨  Print dossier", null, (a, b) => PrintHelper.PrintEndToEndDeliveryDossier(del.Id, del.DispatchNumber));
@@ -595,7 +594,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         b.Click += (s, e) => a();
                         return b;
                     }
-                    if (CanFin && string.IsNullOrWhiteSpace(r.InvoiceNo)) done.Controls.Add(Act("🧾  Create invoice", "primary", () => OnCreateInvoiceRequested?.Invoke(del)));
                     done.Controls.Add(Act("📝  Trip report", "secondary", () => OnTripReportRequested?.Invoke(del.Id, del.DispatchNumber)));
                     done.Controls.Add(Act("🖨  Print trip report", "secondary", () => PrintHelper.PrintOfficialTripReport(del.Id, del.DispatchNumber)));
                     done.Controls.Add(Act("🖨  Print dossier", "secondary", () => PrintHelper.PrintEndToEndDeliveryDossier(del.Id, del.DispatchNumber)));

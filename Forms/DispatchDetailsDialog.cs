@@ -399,9 +399,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (invoice == null)
             {
-                text = "Trip report filed. This order is ready to bill.";
+                text = "Trip report filed. Next: it is billed on a Statement of Account (Finance › Statement of Account).";
                 back = AppTheme.InfoSoft; fore = AppTheme.InfoText;
-                actions.Add(ActionButton("💰  Create invoice", "primary", CreateInvoice));
             }
             else if (!IsPaid)
             {
@@ -755,8 +754,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else
             {
-                items.Add(DocRow("💰", "Invoice", IsCompleted ? "Not billed yet." : "Created once the order is delivered.",
-                    IsCompleted ? ("Create invoice", trip != null ? "primary" : "secondary", CreateInvoice) : default));
+                items.Add(DocRow("💰", "Invoice", IsCompleted ? "Billed on its Statement of Account." : "Created once the order is delivered."));
             }
             // Incidents (hidden: Nov 10)
             if (!Features.On(Features.Incidents)) { }
@@ -1012,7 +1010,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.Add(trip == null ? "File trip report" : "Open trip report", null, (s, e) => OpenTripReport());
                 if (Features.On(Features.Incidents)) m.Items.Add("Log incident / damage", null, (s, e) => LogIncident());
             }
-            if (IsCompleted && invoice == null) m.Items.Add("Create invoice", null, (s, e) => CreateInvoice());
             m.Items.Add("Show all trip reports for this order", null, (s, e) => { MainForm.Instance?.ShowTripReportsForDispatch(del.DispatchNumber); Close(); });
             if (IsActiveOrder)
             {
