@@ -61,6 +61,10 @@ public static partial class Checks
                 if (items.Count == 0) problems.Add("row menu is empty");
             }
             finally { host.Close(); }
+            // The order history row menu and detail buttons are built inline in mouse handlers (not reachable by reflection): scan the source.
+            var oh = File.ReadAllText(Path.Combine(RepoRoot(), "Views", "OrderHistoryView.cs"));
+            foreach (var banned in new[] { "Create billing invoice", "Create invoice" })
+                if (oh.Contains(banned)) problems.Add("OrderHistoryView.cs still has '" + banned + "'");
             return string.Join("; ", problems);
         });
     }
