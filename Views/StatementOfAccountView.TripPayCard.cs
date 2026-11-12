@@ -9,7 +9,7 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.F
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
 {
     /// <summary>
-    /// Nov 10: "2 · Trip payments" sits right under Client &amp; SOA type inside the statement form (not in a pop-up). One row per trip report:
+    /// Nov 10: "2 · Trip payments" sits right under Client inside the statement form (not in a pop-up). One row per trip report:
     /// type its No. of drops, Amount and Fuel surcharge; every change goes straight into the trips table and the statement's totals,
     /// and the computation shows underneath. The trips table and this card always show the same figures.
     /// </summary>

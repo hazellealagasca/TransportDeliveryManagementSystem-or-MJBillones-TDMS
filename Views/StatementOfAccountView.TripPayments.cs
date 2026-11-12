@@ -186,12 +186,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     Font = new Font("Segoe UI", 9.5F)
                 };
                 try { ThemeManager.StyleWindowChrome(f); } catch (Exception swx) { ErrLog.Swallowed(swx); }
-                string client = cbClient.Text.Trim(), soaType = cbSoaType.Text.Trim();
+                string client = cbClient.Text.Trim(), soaType = Features.On(Features.SpecialTrips) ? cbSoaType.Text.Trim() : "";
                 var head = new Label
                 {
                     Dock = DockStyle.Top, Height = Dpi(64), Padding = new Padding(Dpi(16), Dpi(10), Dpi(16), 0),
                     Font = new Font("Segoe UI Semibold", 11F), ForeColor = AppTheme.TextPrimary,
-                    Text = $"Trip payments  ·  {lines.Count} trip report{(lines.Count == 1 ? "" : "s")}\r\n{(client.Length > 0 ? client : "(no client)")}  ·  {(soaType.Length > 0 ? soaType : "SOA type not chosen")}  ·  type only the drops, Amount and Fuel surcharge"
+                    Text = $"Trip payments  ·  {lines.Count} trip report{(lines.Count == 1 ? "" : "s")}\r\n{(client.Length > 0 ? client : "(no client)")}  ·  {(soaType.Length > 0 ? soaType + "  ·  " : "")}type only the drops, Amount and Fuel surcharge"
                 };
                 var grid = new DataGridView
                 {

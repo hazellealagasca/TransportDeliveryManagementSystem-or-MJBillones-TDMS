@@ -399,6 +399,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 dtpPeriodFrom.SetSafe(dates.Min());
                 dtpPeriodTo.SetSafe(dates.Max());
             }
+            if (!string.IsNullOrWhiteSpace(cbClient.Text)) AutoFillClientDetails();   // Nov 13: address and TIN always come from the client's profile once trips are on
             RecalculateTaxes(manualOverride: false);
             RefreshPicker();
         }

@@ -70,7 +70,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             soaCardLines.Dock = DockStyle.Top; soaCardPicker.Dock = DockStyle.Top; soaCardClient.Dock = DockStyle.Top;
 
             var topLeft = Grow(); topLeft.Margin = new Padding(0, 0, Dpi(8), 0); topLeft.Controls.Add(soaCardClient);
-            var payRow = Grow(); payRow.Margin = new Padding(0, Dpi(14), 0, 0); payRow.Controls.Add(BuildTripPayCard()); soaCardPay!.Dock = DockStyle.Top;   // Nov 10: step 2 spans the full width, under Client & SOA type
+            var payRow = Grow(); payRow.Margin = new Padding(0, Dpi(14), 0, 0); payRow.Controls.Add(BuildTripPayCard()); soaCardPay!.Dock = DockStyle.Top;   // Nov 10: step 2 spans the full width, under Client
             soaTape = new TapeCard { EmptyText = "Pick the ready service invoices to see the statement add up.", Dock = DockStyle.Top };
             soaTape.Set("The statement adds up to", Array.Empty<(string, string)>(), "Total amount due", "₱0.00", "");
             var topRight = Grow(); topRight.Margin = new Padding(Dpi(8), 0, 0, 0); topRight.Controls.Add(soaTape);

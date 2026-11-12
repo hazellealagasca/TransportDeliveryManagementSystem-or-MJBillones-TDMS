@@ -507,7 +507,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbClient = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 10F) };   // Nov 10: pick an existing client; it is locked once trips are on the statement
             cbClient.SelectedIndexChanged += (s, e) => { if (!isBindingForm) { AutoFillClientDetails(); AutoFillClientTrips(); } SchedulePickerRefresh(); };
             cbClient.TextChanged += (s, e) => SchedulePickerRefresh();
-            txtClientAddress = new TextBox { Font = new Font("Segoe UI", 10F), Text = "" };
+            txtClientAddress = new TextBox { Font = new Font("Segoe UI", 10F), Text = "", ReadOnly = true, TabStop = false, BackColor = AppTheme.Canvas, PlaceholderText = "From the client's profile" };   // Nov 13: the address is the client's, never typed here
             txtClientTin = new TextBox { Font = new Font("Segoe UI", 10F), Text = "", ReadOnly = true, TabStop = false, BackColor = AppTheme.Canvas, PlaceholderText = "From the client's profile" };   // Nov 10: the TIN is the client's, never typed here
             cbDeliveryType = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 10F) };
             cbDeliveryType.Items.AddRange(new object[] { "REF", "DRY" });
@@ -516,6 +516,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbSoaType.Items.AddRange(Features.On(Features.SpecialTrips) ? new object[] { "Normal Operations SOA", "Special Trips SOA" } : new object[] { "Normal Operations SOA" });
             cbSoaType.SelectedIndex = 0;
             cbSoaType.SelectedIndexChanged += (s, e) => { if (!isBindingForm) SchedulePickerRefresh(); };
+            var clientHint = new ToolTip();
+            clientHint.SetToolTip(txtClientAddress, ClientProfileHint);
+            clientHint.SetToolTip(txtClientTin, ClientProfileHint);
             dtpIssueDate = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Font = new Font("Segoe UI", 10F) };
             var pnlDates = new TableLayoutPanel { Height = Dpi(30), ColumnCount = 3, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             pnlDates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -548,7 +551,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblPopulateHint = new Label
             {
                 Height = Dpi(26),
-                Text = "The client's unpaid service invoices of this SOA type are listed in step 2. Tick the ones to put on this statement (for example the whole week or month).",
+                Text = (Features.On(Features.SpecialTrips) ? "The client's unpaid service invoices of this SOA type are listed in step 2. " : "The client's unpaid service invoices are listed in step 2. ") + "Tick the ones to put on this statement (for example the whole week or month).",
                 Font = new Font("Segoe UI", 8.75F),
                 ForeColor = AppTheme.TextMuted,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -557,11 +560,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Nov 6 workflow: the statement is filled from the client's service invoices, so the period is taken from them
             // (it can still be changed for the print). The old "import trips by period" buttons are no longer shown.
             _ = flowPeriodPresets;
-            var gridClient = CreateFieldGrid(2,
-                ("Billed to (client company)", cbClient), ("SOA type", cbSoaType),
-                ("Client address", txtClientAddress), ("Client TIN", txtClientTin),
-                ("Delivery type", cbDeliveryType), ("Statement date", dtpIssueDate),
-                ("Period covered (from the invoices)", pnlDates), null);
+            // Nov 13: the SOA type box only shows when special trips are on; otherwise every statement is a Normal one (the control stays for the code).
+            bool showSoaType = Features.On(Features.SpecialTrips);
+            cbSoaType.Visible = showSoaType;
+            var gridClient = showSoaType
+                ? CreateFieldGrid(2,
+                    ("Billed to (client company)", cbClient), ("SOA type", cbSoaType),
+                    ("Client address", txtClientAddress), ("Client TIN", txtClientTin),
+                    ("Delivery type", cbDeliveryType), ("Statement date", dtpIssueDate),
+                    ("Period covered (from the invoices)", pnlDates), null)
+                : CreateFieldGrid(2,
+                    ("Billed to (client company)", cbClient), ("Statement date", dtpIssueDate),
+                    ("Client address", txtClientAddress), ("Client TIN", txtClientTin),
+                    ("Delivery type", cbDeliveryType), ("Period covered (from the invoices)", pnlDates));
             // ---------------- Trips & stores grid
             var bar = new TableLayoutPanel { Height = Dpi(46), ColumnCount = 8, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
@@ -822,7 +833,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
 
             // ---------------- Cards
-            var card1 = CreateSectionCard(1, "Client & SOA type", "Who the statement is for, and whether it bills normal dispatches or special trips (never both).", gridClient, lblPopulateHint);
+            var card1 = CreateSectionCard(1, "Client", Features.On(Features.SpecialTrips) ? "Who the statement is for, and whether it bills normal dispatches or special trips (never both)." : "Who the statement is for. The address and TIN come from the client's profile.", gridClient, lblPopulateHint);
             var cardPicker = CreateSectionCard(2, "Ready service invoices", "Tick the client's service invoices to put on this statement, or type a trip report or dispatch number.", BuildDispatchPicker());
             var card2 = CreateSectionCard(3, "Trips & stores", "Every trip and store billed on this statement.", bar, lblItemsHint, pnlItemsGridHost, lblItemsTotals);
             var card3 = CreateSectionCard(4, "Totals", "VAT, withholding tax and the amount the client pays. They follow the service invoices and can't be typed.", taxLayout, BuildSoaAdjustPanel());
@@ -1230,24 +1241,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbFilterClient.SelectedIndex = 0;
         }
 
+        /// <summary>Nov 13: the saved statement's address and TIN are the client's profile, not what the boxes show (the boxes are the fallback only when there is no profile).</summary>
+        private void ApplyClientProfile(StatementOfAccount soa)
+        {
+            var prof = ClientProfileDetails(soa.ClientName);
+            soa.ClientAddress = prof.Found ? prof.Address.Trim() : txtClientAddress.Text.Trim();
+            soa.ClientTin = prof.Found ? prof.Tin.Trim() : txtClientTin.Text.Trim();
+        }
+
+        internal const string ClientProfileHint = "From the client's profile. To change it, edit the client in Master Data › Clients";
+
+        /// <summary>The client's address and TIN from its profile (MORE THAN CAKES, INC. falls back to its fixed details when it has no profile).</summary>
+        private static (string Address, string Tin, bool Found) ClientProfileDetails(string cname)
+        {
+            cname = (cname ?? "").Trim();
+            if (cname.Length == 0) return ("", "", false);
+            var cl = MJdatabase.GetClientByCompanyName(cname);
+            if (cl != null) return (cl.Address ?? "", string.IsNullOrWhiteSpace(cl.TIN) ? "" : cl.TIN, true);
+            if (cname.Equals("MORE THAN CAKES, INC.", StringComparison.OrdinalIgnoreCase)) return ("BCS CMPD., ALCANTARA ST., VIGAN CITY, ILOCOS SUR", "006-896-371-000", true);
+            return ("", "", false);
+        }
+
         private void AutoFillClientDetails()
         {
-            string cname = cbClient.Text.Trim();
-            if (cname.Equals("MORE THAN CAKES, INC.", StringComparison.OrdinalIgnoreCase))
-            {
-                txtClientAddress.Text = "BCS CMPD., ALCANTARA ST., VIGAN CITY, ILOCOS SUR";
-                txtClientTin.Text = "006-896-371-000";
-            }
-            else
-            {
-                var cl = MJdatabase.GetClientByCompanyName(cname);
-                if (cl != null)
-                {
-                    txtClientAddress.Text = cl.Address;
-                    txtClientTin.Text = string.IsNullOrWhiteSpace(cl.TIN) ? "" : cl.TIN;
-                    txtClientTin.PlaceholderText = string.IsNullOrWhiteSpace(cl.TIN) ? "This client has no TIN: add it in Master Data > Clients" : "From the client's profile";
-                }
-            }
+            var d = ClientProfileDetails(cbClient.Text);
+            if (!d.Found) { txtClientAddress.Text = ""; txtClientTin.Text = ""; return; }
+            txtClientAddress.Text = d.Address;
+            txtClientTin.Text = d.Tin;
+            txtClientTin.PlaceholderText = d.Tin.Length == 0 ? "This client has no TIN: add it in Master Data › Clients" : "From the client's profile";
         }
 
         public void RefreshData()
@@ -1625,10 +1646,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
                 {
-                    string tin = new string(txtClientTin.Text.Where(char.IsDigit).ToArray());
+                    var profile = ClientProfileDetails(cbClient.Text);
+                    string tin = new string((profile.Found ? profile.Tin : txtClientTin.Text).Where(char.IsDigit).ToArray());
                     if (tin.Length != 9 && tin.Length != 12)
                     {
-                        MessageBox.Show(FindForm(), tin.Length == 0 ? "The client's TIN is required on a statement. It comes from the client's profile: add it in Master Data > Clients, then pick the client again." : "The TIN should have 9 digits (or 12 with the branch code), e.g. 006-896-371-000.", "Client TIN required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show(FindForm(), tin.Length == 0 ? "The client's TIN is required on a statement. It comes from the client's profile: add it in Master Data › Clients (edit the client), then pick the client again." : "The TIN should have 9 digits (or 12 with the branch code), e.g. 006-896-371-000.", "Client TIN required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         txtClientTin.Focus();
                         return;
                     }
@@ -1660,8 +1682,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 StatementOfAccount soa = isEditingExisting && selectedSoa != null ? selectedSoa : new StatementOfAccount();
                 soa.SoaNumber = string.IsNullOrWhiteSpace(txtSoaNumber.Text) ? MJdatabase.GenerateNextSoaNumber() : txtSoaNumber.Text.Trim();
                 soa.ClientName = cbClient.Text.Trim();
-                soa.ClientAddress = txtClientAddress.Text.Trim();
-                soa.ClientTin = txtClientTin.Text.Trim();
+                ApplyClientProfile(soa);
                 soa.PeriodCovered = period;
                 soa.IssueDate = dtpIssueDate.Value.Date;
                 soa.DeliveryType = cbDeliveryType.Text.Trim();
