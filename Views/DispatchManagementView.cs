@@ -433,7 +433,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            lblRec.Font = new Font("Segoe UI Semibold", 8F, FontStyle.Bold);
+            lblRec.Font = new Font("Segoe UI Semibold", 10.5F, FontStyle.Bold);
 
             lblRec.MaximumSize = new Size(Math.Max(200, pnlRec.ClientSize.Width - 12), 0);
 
@@ -1669,38 +1669,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 // Nov 6 workflow: one compact line instead of the recommendation card.
                 var rec = SuggestTruckForForm(total);
+                if (rec.RecommendedTruck != null && !rec.IsMultiTruckNeeded)
+                {
+                    ShowSuggestedTruckFooter(rec.RecommendedTruck, total, Pal.C(240, 253, 244), Pal.C(22, 101, 52));
+                    return;
+                }
                 lblRec.Text = rec.RecommendedTruck != null
                     ? $"ℹ️ Total {total:N0} crates  ·  suggested truck {rec.RecommendedTruck.PlateNumber} ({CapacityValidator.MatrixFor(rec.RecommendedTruck).TruckMax:N0} crates)"
                     : $"ℹ️ Total {total:N0} crates  ·  {rec.RecommendationMessage}";
-
-
-
-                if (rec.RecommendedTruck != null && !rec.IsMultiTruckNeeded) ShowUseSuggested(rec.RecommendedTruck, "Use suggested truck");
                 if (rec.IsMultiTruckNeeded)
-
                 {
-
                     pnlRec.BackColor = Pal.C(254, 242, 242);
-
                     lblRec.ForeColor = Pal.C(185, 28, 28);
-
                 }
-
                 else
-
                 {
-
                     pnlRec.BackColor = Pal.C(240, 253, 244);
-
                     lblRec.ForeColor = Pal.C(22, 101, 52);
-
                 }
-
             }
-
         }
-
-
 
         private Panel? pnlRouteStoresBreakdown;
         private Label? lblRouteStoresHeader;

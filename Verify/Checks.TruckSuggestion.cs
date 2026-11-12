@@ -85,22 +85,40 @@ public static partial class Checks
             Pump(800);
             const BindingFlags F = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
             T? Get<T>(string n) where T : class => typeof(DispatchManagementView).GetField(n, F)!.GetValue(view) as T;
-            var truck = Get<ComboBox>("cbTruck"); var link = Get<LinkLabel>("lnkUseSuggested");
-            if (truck == null || link == null) return "Truck box or the 'Use suggested truck' link was not created";
+            var truck = Get<ComboBox>("cbTruck"); var link = Get<Button>("btnUseSuggested");
+            if (truck == null || link == null) return "Truck box or the 'Use this truck' button was not created";
             var problems = new List<string>();
             view.InitiateDispatchForSchedule(new LoadingSchedule { ClientName = "CLIENT A", Destination = "Route 1", ScheduleDate = DateTime.Today, GCrate = 1, ECrate = 0, TotalCrates = 1, CargoType = MJdatabase.CargoCold });
             // The truck list and footer can fill a little later on a busy PC: wait up to 5 s instead of a fixed pause.
             for (int w = 0; w < 50 && !link.Visible; w++) Pump(100);
             Pump(100);
             if (truck.SelectedIndex != -1) problems.Add($"a truck was auto-selected (index {truck.SelectedIndex})");
-            if (!link.Visible) problems.Add("the 'Use suggested truck' link is not shown when no truck is picked");
+            if (!link.Visible) problems.Add("the 'Use this truck' button is not shown when no truck is picked");
+            else if (!link.TabStop || link.Text != "Use this truck") problems.Add($"the button is not keyboard reachable or has the wrong text ('{link.Text}')");
+            var main = Get<Label>("lblSuggestMain"); var cap = Get<Label>("lblSuggestCap"); var recLbl = Get<Label>("lblRec");
+            if (main == null || !main.Visible || !main.Text.Contains("4-tonner") || !main.Text.Contains("B-COLD")) problems.Add($"footer main line is '{main?.Text}' (visible {main?.Visible}), expected the tonner and plate of the suggested truck");
+            if (cap == null || !cap.Text.Contains("fits 1 of 120 crates")) problems.Add($"footer capacity is '{cap?.Text}', expected 'fits 1 of 120 crates'");
+            if (recLbl != null && (!recLbl.Text.Contains("4-tonner") || !recLbl.Text.Contains("B-COLD"))) problems.Add($"footer text is '{recLbl.Text}'");
+            try { var pnl = Get<Panel>("pnlRec"); if (pnl != null && Environment.GetEnvironmentVariable("TDMS_SHOT_DIR") is string dir) { using var bmp = new Bitmap(pnl.Width, pnl.Height); pnl.DrawToBitmap(bmp, new Rectangle(0, 0, pnl.Width, pnl.Height)); bmp.Save(Path.Combine(dir, "footer.png")); } } catch { }
             typeof(DispatchManagementView).GetMethod("UseSuggestedTruck", F)!.Invoke(view, null);
             Pump(200);
             var trucks = (List<Truck>)typeof(DispatchManagementView).GetField("trucks", F)!.GetValue(view)!;
             string picked = truck.SelectedIndex >= 0 && truck.SelectedIndex < trucks.Count ? trucks[truck.SelectedIndex].PlateNumber : "(none)";
-            if (picked != "B-COLD") problems.Add($"clicking the link selected {picked}, expected B-COLD");
+            if (picked != "B-COLD") problems.Add($"clicking the button selected {picked}, expected B-COLD");
             view.Dispose();
             return string.Join(" | ", problems);
         });
+    }
+
+    [Check]
+    public static string TruckSuggestion_TonnerOf_ReadsTheSizeFromTheTruckType()
+    {
+        var problems = new List<string>();
+        foreach (var (type, want) in new[] { ("FORWARD 6 TONS", "6-tonner"), ("FORWARD 8 TONS", "8-tonner"), ("4.5T Closed Van", "4.5-tonner"), ("Refrigerated Van", "Refrigerated Van"), ("L300 Van", "L300 Van"),("", "Truck") })
+        {
+            string got = CapacityValidator.TonnerOf(new Truck { TruckType = type });
+            if (got != want) problems.Add($"'{type}' -> '{got}', expected '{want}'");
+        }
+        return string.Join(" | ", problems);
     }
 }

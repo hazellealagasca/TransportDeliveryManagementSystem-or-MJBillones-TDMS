@@ -21,7 +21,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Panel pnlCombiSplit = null!;
         private LinkLabel? lnkCapDetails;
         private Dictionary<int, int> overCapacityMap = new Dictionary<int, int>();
-        private LinkLabel? lnkUseSuggested;
+        private Button? btnUseSuggested;
+        private TableLayoutPanel? tblSuggest;
+        private FlowLayoutPanel? pnlUseRow;
+        private Label? lblSuggestKicker, lblSuggestMain, lblSuggestCap, lblSuggestHint;
+        private string suggestFallbackText = "";
+        private bool suggestBusy;
         private int suggestedTruckId;
 
 
@@ -51,11 +56,63 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lnkCapDetails.LinkClicked += (s, e) => ShowCapacityDetails();
             pnlRec.Controls.Add(lnkCapDetails);
 
-            // "Use suggested truck" / "Use it": the user's own click selects the suggested truck (nothing is ever selected for them).
-            lnkUseSuggested = new LinkLabel { Text = "Use suggested truck", AutoSize = true, Dock = DockStyle.Bottom, Font = new Font("Segoe UI Semibold", 8.75F), LinkColor = AppTheme.Accent, ActiveLinkColor = AppTheme.AccentHover, Padding = new Padding(0, Dpi(2), 0, 0), Visible = false };
-            lnkUseSuggested.LinkClicked += (s, e) => UseSuggestedTruck();
-            pnlRec.Controls.Add(lnkUseSuggested);
+            // The "SUGGESTED TRUCK" footer: small kicker, a bold "{tonner} · {plate}" with the capacity after it, and a real button on the right.
+            Color muted = AppTheme.TextSecondary;
+            lblSuggestKicker = new Label { Text = "SUGGESTED TRUCK", AutoSize = true, Font = new Font("Segoe UI Semibold", 9F), ForeColor = muted, Margin = new Padding(0, 0, 0, Dpi(1)), UseMnemonic = false };
+            lblSuggestMain = new Label { AutoSize = true, Font = new Font("Segoe UI Semibold", 12F, FontStyle.Bold), Margin = new Padding(0, 0, Dpi(10), 0), UseMnemonic = false };
+            lblSuggestCap = new Label { AutoSize = true, Font = new Font("Segoe UI", 10.5F), Margin = new Padding(0, Dpi(3), 0, 0), UseMnemonic = false };
+            lblSuggestHint = new Label { AutoSize = true, Font = new Font("Segoe UI", 9F), ForeColor = muted, Margin = new Padding(0, Dpi(2), 0, 0), UseMnemonic = false, Visible = false };
+            var flowMain = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(0), Dock = DockStyle.Fill };
+            flowMain.Controls.Add(lblSuggestMain);
+            flowMain.Controls.Add(lblSuggestCap);
+            tblSuggest = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 2, RowCount = 3, BackColor = Color.Transparent, Margin = new Padding(0), Visible = false };
+            tblSuggest.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tblSuggest.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            for (int i = 0; i < 3; i++) tblSuggest.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            tblSuggest.Controls.Add(lblSuggestKicker, 0, 0);
+            tblSuggest.Controls.Add(flowMain, 0, 1);
+            tblSuggest.Controls.Add(lblSuggestHint, 0, 2);
+            tblSuggest.SetColumnSpan(lblSuggestHint, 2);
+
+            // "Use this truck" / "Use it": the user's own click selects the suggested truck (nothing is ever selected for them).
+            btnUseSuggested = new Button
+            {
+                Text = "Use this truck", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlatStyle = FlatStyle.Flat, UseVisualStyleBackColor = false,
+                BackColor = AppTheme.Accent, ForeColor = AppTheme.OnAccent, Font = new Font("Segoe UI Semibold", 9.5F), Cursor = Cursors.Hand,
+                Margin = new Padding(Dpi(10), Dpi(2), 0, Dpi(2)), Padding = new Padding(Dpi(8), Dpi(2), Dpi(8), Dpi(2)), TabStop = true, Visible = false, Anchor = AnchorStyles.Right
+            };
+            btnUseSuggested.FlatAppearance.BorderSize = 0;
+            btnUseSuggested.FlatAppearance.MouseOverBackColor = AppTheme.AccentHover;
+            btnUseSuggested.Click += (s, e) => UseSuggestedTruck();
+            tblSuggest.Controls.Add(btnUseSuggested, 1, 0);
+            tblSuggest.SetRowSpan(btnUseSuggested, 2);
+            pnlUseRow = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0), Visible = false };
+            pnlRec.Controls.Add(pnlUseRow);
+            pnlRec.Controls.Add(tblSuggest);
+            lblRec.TextChanged += LblRec_TextChangedForSuggest;
         }
+
+        /// <summary>Someone else wrote a plain message into the footer: show it, unless it only appended a note to the suggestion text (the date hint).</summary>
+        private void LblRec_TextChangedForSuggest(object? sender, EventArgs e)
+        {
+            if (suggestBusy || tblSuggest == null || !tblSuggest.Visible) return;
+            if (suggestFallbackText.Length > 0 && lblRec.Text.StartsWith(suggestFallbackText, StringComparison.Ordinal) && lblRec.Text.Length > suggestFallbackText.Length)
+            {
+                if (lblSuggestHint != null) { lblSuggestHint.Text = lblRec.Text.Substring(suggestFallbackText.Length).TrimStart(' ', '|'); lblSuggestHint.Visible = true; }
+                return;
+            }
+            HideSuggestPanel();
+        }
+
+        private void HideSuggestPanel()
+        {
+            if (tblSuggest != null) tblSuggest.Visible = false;
+            suggestFallbackText = "";
+            lblRec.Visible = true;
+        }
+
+        /// <summary>"6-tonner" from "FORWARD 6 TONS"; a truck type with no tonnage stays as typed.</summary>
+        private static string TonnerOf(Truck t) => CapacityValidator.TonnerOf(t);
 
         /// <summary>The smallest free truck that fits the crates, sized for the form's current Temp Type (same check as the capacity status).</summary>
         private TruckRecommendation SuggestTruckForForm(int total)
@@ -65,12 +122,51 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return MJdatabase.GetTruckRecommendation(total, dtpDispatchDate.Value, cargo, cold, dry);
         }
 
-        private void ShowUseSuggested(Truck? truck, string text)
+        /// <summary>Shows (or hides, when truck is null) the "use it" button. beside = inside the "SUGGESTED TRUCK" footer, else on its own row under the status line.</summary>
+        private void ShowUseSuggested(Truck? truck, string text, bool beside = false)
         {
             suggestedTruckId = truck?.Id ?? 0;
-            if (lnkUseSuggested == null) return;
-            lnkUseSuggested.Text = text;
-            lnkUseSuggested.Visible = truck != null;
+            if (btnUseSuggested == null || pnlUseRow == null || tblSuggest == null) return;
+            btnUseSuggested.Visible = false;
+            if (truck == null) { pnlUseRow.Visible = false; HideSuggestPanel(); return; }
+            btnUseSuggested.Text = text;
+            if (beside)
+            {
+                if (btnUseSuggested.Parent != tblSuggest) { tblSuggest.Controls.Add(btnUseSuggested, 1, 0); tblSuggest.SetRowSpan(btnUseSuggested, 2); }
+                btnUseSuggested.Anchor = AnchorStyles.Right;
+                pnlUseRow.Visible = false;
+            }
+            else
+            {
+                if (btnUseSuggested.Parent != pnlUseRow) pnlUseRow.Controls.Add(btnUseSuggested);
+                btnUseSuggested.Anchor = AnchorStyles.Left;
+                pnlUseRow.Visible = true;
+            }
+            btnUseSuggested.Visible = true;
+        }
+
+        /// <summary>No truck picked and one is suggested: the "SUGGESTED TRUCK" footer with the larger line and the button.</summary>
+        private void ShowSuggestedTruckFooter(Truck truck, int total, Color back, Color fore)
+        {
+            if (tblSuggest == null || lblSuggestMain == null || lblSuggestCap == null || lblSuggestHint == null) return;
+            var r = ValidateLoad(truck, total);
+            int limit = r.Limit > 0 ? r.Limit : CapacityValidator.MatrixFor(truck).TruckMax;
+            string main = $"{TonnerOf(truck)}  ·  {truck.PlateNumber}";
+            string cap = limit > 0 ? $"fits {total:N0} of {limit:N0} crates ({Math.Round(total * 100.0 / limit):0}%)" : $"fits {total:N0} crates";
+            suggestBusy = true;
+            try
+            {
+                lblRec.Text = $"ℹ️ Total {total:N0} crates  ·  suggested truck {main}  ·  {cap}";
+                suggestFallbackText = lblRec.Text;
+            }
+            finally { suggestBusy = false; }
+            pnlRec.BackColor = back;
+            lblSuggestMain.Text = main; lblSuggestCap.Text = cap;
+            lblSuggestMain.ForeColor = fore; lblSuggestCap.ForeColor = fore;
+            lblSuggestHint.Visible = false; lblSuggestHint.Text = "";
+            ShowUseSuggested(truck, "Use this truck", beside: true);
+            tblSuggest.Visible = true;
+            lblRec.Visible = false;
         }
 
         private void UseSuggestedTruck()
@@ -149,7 +245,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             pnlRec.BackColor = back;
             lblRec.ForeColor = fore;
-            lblRec.Text = $"{icon} Total {total:N0} crates  ·  {selTruck.PlateNumber}  ·  {total:N0} / {r.Limit:N0}" + (r.Limit > 0 ? $" ({Math.Round(total * 100.0 / r.Limit):0}% full)" : "") + (r.State == CapacityState.Allow ? "" : $"  ·  {r.Title}");
+            lblRec.Text = $"{icon} {TonnerOf(selTruck)}  ·  {selTruck.PlateNumber}  ·  {total:N0} / {r.Limit:N0} crates" + (r.Limit > 0 ? $" ({Math.Round(total * 100.0 / r.Limit):0}% full)" : "") + (r.State == CapacityState.Allow ? "" : $"  ·  {r.Title}");
             if (lnkCapDetails != null) lnkCapDetails.Visible = true;
             // Soft note only: a smaller free truck would also fit. Never blocks, never asks for a reason.
             if (r.State == CapacityState.Allow && Features.On(Features.TruckSuggestion))
@@ -163,7 +259,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         var ar = ValidateLoad(alt, total);
                         if (ar.State == CapacityState.Allow && ar.Limit > 0 && ar.Limit < r.Limit)
                         {
-                            lblRec.Text += $"\nA smaller truck ({alt.PlateNumber}) is free and fits {total:N0} crates.";
+                            lblRec.Text += $"\nA smaller truck ({TonnerOf(alt)}  ·  {alt.PlateNumber}) is free and fits {total:N0} crates.";
                             ShowUseSuggested(alt, "Use it");
                         }
                     }

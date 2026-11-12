@@ -400,7 +400,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             lblRec.AutoSize = true;
             lblRec.Dock = DockStyle.Top;
-            lblRec.Font = new Font("Segoe UI Semibold", 8.25F, FontStyle.Bold);
+            lblRec.Font = new Font("Segoe UI Semibold", 10.5F, FontStyle.Bold);
             lblRec.ForeColor = Color.FromArgb(22, 101, 52);
             lblRec.Location = new Point(6, 3);
             lblRec.MaximumSize = new Size(355, 0);

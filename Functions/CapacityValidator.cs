@@ -69,6 +69,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     {
         public const int MinReasonLength = 5;
 
+        private static readonly System.Text.RegularExpressions.Regex TonnerRx = new(@"(?<![A-Za-z0-9.])(\d+(?:\.\d+)?)\s*(?:TONNER|TONS|TON|T)?\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+        /// <summary>The size of a truck in words: "FORWARD 6 TONS" gives "6-tonner", "4.5T Closed Van" gives "4.5-tonner". A type with no number stays as typed ("Truck" if empty).</summary>
+        public static string TonnerOf(Truck t)
+        {
+            string type = (t?.TruckType ?? "").Trim();
+            if (type.Length == 0) return "Truck";
+            var m = TonnerRx.Match(type);
+            return m.Success ? $"{m.Groups[1].Value}-tonner" : type;
+        }
+
 
 
 
