@@ -170,8 +170,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             cbDriver.DrawItem += (s, e) => DrawStatusComboBoxItem(cbDriver, e);
             // Type to search: the boxes keep their items, order and DropDownList style; a pick maps back to the ORIGINAL index (SearchPicker).
-            SearchPicker.Attach(cbTruck, i => i >= 0 && i < trucks.Count ? $"{trucks[i].PlateNumber} {trucks[i].TruckType}" : "");
-            SearchPicker.Attach(cbDriver, i => i >= 0 && i < drivers.Count ? drivers[i].FullName : "");
+            SearchPicker.Attach(cbTruck, i => i >= 0 && i < trucks.Count ? TruckSearchText(trucks[i]) : "",
+                () => listSuggestId > 0 ? trucks.FindIndex(t => t.Id == listSuggestId) : -1, i => "★ Suggested", "truck");
+            SearchPicker.Attach(cbDriver, i => i >= 0 && i < drivers.Count ? drivers[i].FullName : "", noun: "driver");
+            cbTruck.DropDownWidth = Dpi(480);
 
             SetupEvents();
 
@@ -1390,6 +1392,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             cbTruck.SelectedIndexChanged += (s, e) =>
             {
+                if (cbTruck.SelectedIndex >= 0) HideTruckBoxSuggestion();
                 if (!isBindingForm)
                 {
                     AutoSuggestDriverForSelectedTruck();
@@ -2657,6 +2660,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblTr, cbTruck,
                 lblDr, cbDriver
             );
+            // The suggestion line sits in its own row under the Truck box (left column only, so the Driver box is never covered); no room when hidden.
+            pnlRowTruckDriver.RowCount = 3;
+            pnlRowTruckDriver.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            pnlTruckSuggest!.Margin = new Padding(0, 0, Dpi(10), 0);
+            pnlRowTruckDriver.Controls.Add(pnlTruckSuggest, 0, 2);
 
             var pnlRowDateTime = CreateTwoColumnRow(
                 lblDd, dtpDispatchDate,
@@ -6732,6 +6740,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bool isSelected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
 
             string text = cb.Items[e.Index]?.ToString() ?? "";
+            string suggestChip = cb == cbTruck && listSuggestId > 0 && trucks != null && e.Index < trucks.Count && trucks[e.Index].Id == listSuggestId && (e.State & DrawItemState.ComboBoxEdit) == 0
+                ? $"★ Suggested · {listSuggestFits}" : "";
 
 
 
@@ -6883,7 +6893,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             int textStartX = tagRect.Right + 6;
 
-            Rectangle textRect = new Rectangle(textStartX, e.Bounds.Y, Math.Max(40, e.Bounds.Right - textStartX - 4), e.Bounds.Height);
+            int chipW = 0;
+            if (suggestChip.Length > 0)
+            {
+                using var chipFont = new Font("Segoe UI", 8F, FontStyle.Bold);
+                chipW = TextRenderer.MeasureText(g, suggestChip, chipFont, new Size(400, e.Bounds.Height), TextFormatFlags.NoPadding).Width + 12;
+                var chipRect = new Rectangle(e.Bounds.Right - chipW - 4, e.Bounds.Y + 4, chipW, e.Bounds.Height - 8);
+                using (var chipBrush = new SolidBrush(isSelected ? Pal.White : Pal.C(220, 252, 231))) g.FillRectangle(chipBrush, chipRect);
+                TextRenderer.DrawText(g, suggestChip, chipFont, chipRect, Pal.C(22, 101, 52), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+                chipW += 8;
+            }
+            Rectangle textRect = new Rectangle(textStartX, e.Bounds.Y, Math.Max(40, e.Bounds.Right - textStartX - 4 - chipW), e.Bounds.Height);
 
             TextRenderer.DrawText(g, cleanText, FontCache.Get("Segoe UI Semibold", 8.75F, FontStyle.Bold), textRect, textColor, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
 

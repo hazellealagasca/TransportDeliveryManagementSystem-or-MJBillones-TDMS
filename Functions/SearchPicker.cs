@@ -23,15 +23,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private readonly ComboBox box;
         private readonly Func<int, string> searchText;
+        private readonly Func<int>? pinnedIndex;            // original index of the suggested item, -1 for none
+        private readonly Func<int, string>? pinnedChip;     // chip text for that item
+        private readonly string noun;
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ComboBox, SearchPicker> Pickers = new();
+        private int pinned = -1;
         private readonly List<int> matches = new List<int>();   // original item indexes, in the box's own order
         private int selected = -1, extra;
         private string query = "";
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
         private int RowH => D(30);
 
-        private SearchPicker(ComboBox box, Func<int, string> searchText)
+        private SearchPicker(ComboBox box, Func<int, string> searchText, Func<int>? pinnedIndex, Func<int, string>? pinnedChip, string noun)
         {
-            this.box = box; this.searchText = searchText;
+            this.box = box; this.searchText = searchText; this.pinnedIndex = pinnedIndex; this.pinnedChip = pinnedChip; this.noun = noun;
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.Manual;
@@ -52,9 +57,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// Adds type-to-search to <paramref name="box"/>. <paramref name="searchText"/> gives the text to search for item number i (its position in the box).
         /// Returns the picker (disposed automatically with the box).
         /// </summary>
-        public static SearchPicker Attach(ComboBox box, Func<int, string> searchText)
+        public static SearchPicker Attach(ComboBox box, Func<int, string> searchText, Func<int>? pinnedIndex = null, Func<int, string>? pinnedChip = null, string noun = "")
         {
-            var p = new SearchPicker(box, searchText);
+            var p = new SearchPicker(box, searchText, pinnedIndex, pinnedChip, noun);
+            Pickers.AddOrUpdate(box, p);
             box.KeyPress += (s, e) => p.HandleKeyPress(e);
             box.PreviewKeyDown += (s, e) => { if (p.Visible && (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Escape || e.KeyCode == Keys.Up || e.KeyCode == Keys.Down)) e.IsInputKey = true; };
             box.KeyDown += (s, e) => p.HandleKeyDown(e);
@@ -71,11 +77,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return p;
         }
 
-        /// <summary>Draws the grey "Type to search" hint in a box that has nothing picked (call from the box's DrawItem when e.Index is below 0).</summary>
+        /// <summary>What is typed into the box's search right now ("" when nothing).</summary>
+        public static string QueryFor(ComboBox box) => Pickers.TryGetValue(box, out var p) ? p.query : "";
+
+        /// <summary>Draws the grey "Type to search" hint in a box that has nothing picked, or the text being typed (call from the box's DrawItem when e.Index is below 0).</summary>
         public static void DrawHint(ComboBox box, DrawItemEventArgs e)
         {
             e.DrawBackground();
-            TextRenderer.DrawText(e.Graphics, HintText, box.Font, e.Bounds, AppTheme.TextMuted, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
+            string q = QueryFor(box);
+            TextRenderer.DrawText(e.Graphics, q.Length > 0 ? q : HintText, box.Font, e.Bounds, q.Length > 0 ? AppTheme.TextPrimary : AppTheme.TextMuted, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
         }
 
         /// <summary>The original item numbers whose search text contains <paramref name="typed"/> (case-insensitive), in the box's own order.</summary>
@@ -84,15 +94,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var res = new List<int>();
             string q = (typed ?? "").Trim();
             if (q.Length == 0) return res;
+            string qs = Squeeze(q);
             for (int i = 0; i < itemCount; i++)
-                if ((searchText(i) ?? "").IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0) res.Add(i);
+            {
+                string t = searchText(i) ?? "";
+                // contains what was typed, or contains it ignoring spaces and dashes ("cao1116" finds "CAO 1116")
+                if (t.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0 || (qs.Length > 0 && Squeeze(t).IndexOf(qs, StringComparison.OrdinalIgnoreCase) >= 0)) res.Add(i);
+            }
             return res;
         }
 
+        private static string Squeeze(string t) => new string(t.Where(ch => ch != ' ' && ch != '-').ToArray());
+
         private void HandleKeyPress(KeyPressEventArgs e)
         {
-            if (box.DroppedDown || !box.Enabled) return;
+            if (!box.Enabled) return;
             char c = e.KeyChar;
+            if (box.DroppedDown)
+            {
+                // The normal list is open (e.g. just clicked): a letter or digit closes it and starts the search with that character.
+                if (!char.IsLetterOrDigit(c)) return;
+                box.DroppedDown = false;
+            }
             if (c == '\b')
             {
                 if (query.Length == 0) return;
@@ -132,22 +155,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>Hides the list and forgets what was typed. The box keeps whatever is picked.</summary>
-        public void Close2() { query = ""; matches.Clear(); selected = -1; if (!IsDisposed && Visible) Hide(); }
+        public void Close2()
+        {
+            query = ""; matches.Clear(); selected = -1;
+            if (!IsDisposed && Visible) Hide();
+            if (box.IsHandleCreated && !box.IsDisposed) box.Invalidate();
+        }
 
         private void Refresh2()
         {
             if (IsDisposed) return;
             if (query.Length == 0) { Close2(); return; }
             var all = Match(box.Items.Count, searchText, query);
+            pinned = -1;
+            try { if (pinnedIndex != null) pinned = pinnedIndex(); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            if (pinned >= 0 && all.Remove(pinned)) all.Insert(0, pinned); else pinned = -1; // the suggested item leads when it matches
             matches.Clear();
             matches.AddRange(all.Take(MaxRows));
             extra = Math.Max(0, all.Count - matches.Count);
             selected = matches.Count > 0 ? 0 : -1;
+            if (box.IsHandleCreated) box.Invalidate(); // the box shows what is typed
             var owner = box.FindForm();
             if (owner == null || !box.IsHandleCreated) return;
             var r = box.RectangleToScreen(box.ClientRectangle);
             int rows = 1 + Math.Max(1, matches.Count) + (extra > 0 ? 1 : 0); // header + matches (or a no-match line) + more line
-            var size = new Size(Math.Max(D(300), r.Width), rows * RowH + 2);
+            var size = new Size(Math.Max(pinned >= 0 ? D(460) : D(300), r.Width), rows * RowH + 2);
             var wa = Screen.FromRectangle(r).WorkingArea;
             int x = Math.Max(wa.Left, Math.Min(r.Left, wa.Right - size.Width));
             int y = r.Bottom + 1;
@@ -187,12 +219,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             using var small = new Font("Segoe UI", 8.5F);
             var flags = TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.VerticalCenter;
             using (var hb = new SolidBrush(AppTheme.SurfaceAlt)) g.FillRectangle(hb, 1, y0, w - 2, h);
-            TextRenderer.DrawText(g, $"Search: {query}", bold, new Rectangle(pad, y0, w - pad * 2, h), AppTheme.TextPrimary, flags);
+            int sw = TextRenderer.MeasureText(g, "Search: ", small, new Size(w, h), TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix).Width;
+            TextRenderer.DrawText(g, "Search:", small, new Rectangle(pad, y0, sw, h), AppTheme.TextMuted, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.VerticalCenter);
+            TextRenderer.DrawText(g, query + "\u258F", bold, new Rectangle(pad + sw, y0, w - pad * 2 - sw, h), AppTheme.TextPrimary, flags | TextFormatFlags.NoPadding);
             using var lp = new Pen(AppTheme.Border);
             g.DrawLine(lp, 1, y0 + h - 1, w - 1, y0 + h - 1);
             if (matches.Count == 0)
             {
-                TextRenderer.DrawText(g, "No match. Backspace to change it, Esc to close.", small, new Rectangle(pad, y0 + h, w - pad * 2, h), AppTheme.TextMuted, flags);
+                TextRenderer.DrawText(g, (noun.Length > 0 ? $"No {noun} matches '{query}'" : $"No match for '{query}'") + ". Backspace to change it, Esc to close.", small, new Rectangle(pad, y0 + h, w - pad * 2, h), AppTheme.TextMuted, flags);
                 return;
             }
             for (int i = 0; i < matches.Count; i++)
@@ -215,7 +249,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     tagW = TextRenderer.MeasureText(tag, small).Width + D(6);
                     TextRenderer.DrawText(g, tag, small, new Rectangle(w - pad - tagW, y, tagW, h), AppTheme.TextMuted, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
                 }
-                TextRenderer.DrawText(g, label, bold, new Rectangle(tx, y, w - tx - pad - tagW, h), AppTheme.TextPrimary, flags);
+                int chipW = 0;
+                if (matches[i] == pinned)
+                {
+                    string chip = pinnedChip?.Invoke(pinned) ?? "\u2605 Suggested";
+                    chipW = TextRenderer.MeasureText(chip, small).Width + D(12);
+                    var cr = new Rectangle(w - pad - tagW - (tagW > 0 ? D(8) : 0) - chipW, y + D(5), chipW, h - D(10));
+                    using (var cb = new SolidBrush(Pal.C(220, 252, 231))) g.FillRectangle(cb, cr);
+                    TextRenderer.DrawText(g, chip, small, cr, Pal.C(22, 101, 52), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding);
+                    chipW += D(8);
+                }
+                TextRenderer.DrawText(g, label, bold, new Rectangle(tx, y, w - tx - pad - tagW - chipW, h), AppTheme.TextPrimary, flags);
                 g.DrawLine(lp, 1, y + h - 1, w - 1, y + h - 1);
             }
             if (extra > 0)

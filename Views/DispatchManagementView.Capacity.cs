@@ -28,6 +28,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private string suggestFallbackText = "";
         private bool suggestBusy;
         private int suggestedTruckId;
+        // The suggestion shown where the truck is picked (line under the Truck box, chip in the lists). 0 = none.
+        private int listSuggestId;
+        private string listSuggestFits = "";
+        private TableLayoutPanel? pnlTruckSuggest;
+        private Label? lblTruckSuggest;
+        private Button? btnTruckSuggest;
 
 
 
@@ -54,6 +60,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             lnkCapDetails = new LinkLabel { Text = "View capacity details", AutoSize = true, Dock = DockStyle.Bottom, Font = new Font("Segoe UI Semibold", 8.75F), LinkColor = AppTheme.Accent, ActiveLinkColor = AppTheme.AccentHover, Padding = new Padding(0, Dpi(2), 0, 0), Visible = false };
             lnkCapDetails.LinkClicked += (s, e) => ShowCapacityDetails();
+
+            // Compact suggestion line right under the Truck box (section 2): "★ Suggested: 4-tonner · CAO 1116 · fits 193 of 280 crates" + a small button.
+            lblTruckSuggest = new Label { Dock = DockStyle.Fill, AutoSize = false, Font = new Font("Segoe UI Semibold", 10.5F, FontStyle.Bold), ForeColor = Pal.C(22, 101, 52), TextAlign = ContentAlignment.MiddleLeft, UseMnemonic = false, Margin = new Padding(0, 0, Dpi(6), 0) };
+            btnTruckSuggest = new Button
+            {
+                Text = "Use this truck", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlatStyle = FlatStyle.Flat, UseVisualStyleBackColor = false,
+                BackColor = AppTheme.Accent, ForeColor = AppTheme.OnAccent, Font = new Font("Segoe UI Semibold", 9F), Cursor = Cursors.Hand,
+                Margin = new Padding(0, Dpi(2), Dpi(10), Dpi(2)), Padding = new Padding(Dpi(6), Dpi(1), Dpi(6), Dpi(1)), TabStop = true, Anchor = AnchorStyles.Right
+            };
+            btnTruckSuggest.FlatAppearance.BorderSize = 0;
+            btnTruckSuggest.FlatAppearance.MouseOverBackColor = AppTheme.AccentHover;
+            btnTruckSuggest.Click += (s, e) => UseSuggestedTruck();
+            pnlTruckSuggest = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 2, RowCount = 1, Margin = new Padding(0), Visible = false };
+            pnlTruckSuggest.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            pnlTruckSuggest.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            pnlTruckSuggest.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            pnlTruckSuggest.Controls.Add(lblTruckSuggest, 0, 0);
+            pnlTruckSuggest.Controls.Add(btnTruckSuggest, 1, 0);
+            pnlTruckSuggest.SizeChanged += (s, e) => FitTruckSuggestLabel();
             pnlRec.Controls.Add(lnkCapDetails);
 
             // The "SUGGESTED TRUCK" footer: small kicker, a bold "{tonner} · {plate}" with the capacity after it, and a real button on the right.
@@ -104,8 +129,42 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             HideSuggestPanel();
         }
 
+        /// <summary>Wraps the line under the Truck box to the room it has (the label grows taller instead of being cut off).</summary>
+        private void FitTruckSuggestLabel()
+        {
+            if (lblTruckSuggest == null || lblTruckSuggest.Width <= 0 || lblTruckSuggest.Text.Length == 0) return;
+            int h = TextRenderer.MeasureText(lblTruckSuggest.Text, lblTruckSuggest.Font, new Size(lblTruckSuggest.Width, 0), TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix).Height + Dpi(6);
+            if (lblTruckSuggest.MinimumSize.Height != h) lblTruckSuggest.MinimumSize = new Size(0, h);
+        }
+
+        private void ShowTruckBoxSuggestion(Truck truck, int total, int limit)
+        {
+            listSuggestId = truck.Id;
+            listSuggestFits = limit > 0 ? $"fits {total:N0} of {limit:N0}" : $"fits {total:N0}";
+            if (pnlTruckSuggest == null || lblTruckSuggest == null) return;
+            lblTruckSuggest.Text = $"★ Suggested: {TonnerOf(truck)}  ·  {truck.PlateNumber}  ·  " + (limit > 0 ? $"fits {total:N0} of {limit:N0} crates" : $"fits {total:N0} crates");
+            pnlTruckSuggest.Visible = true;
+            FitTruckSuggestLabel();
+            cbTruck.Invalidate();
+        }
+
+        private void HideTruckBoxSuggestion()
+        {
+            listSuggestId = 0; listSuggestFits = "";
+            if (pnlTruckSuggest != null) pnlTruckSuggest.Visible = false;
+        }
+
+        /// <summary>Search text for the Truck box: plate, truck type and the tonner, so "cao", "1116", "4 ton" and "4-tonner" all find it (spaces are ignored too).</summary>
+        private static string TruckSearchText(Truck t)
+        {
+            string tonner = TonnerOf(t);
+            string tons = tonner.EndsWith("-tonner", StringComparison.Ordinal) ? tonner.Substring(0, tonner.Length - 7) + " ton" : "";
+            return $"{t.PlateNumber} {t.TruckType} {tonner} {tons}".Trim();
+        }
+
         private void HideSuggestPanel()
         {
+            HideTruckBoxSuggestion();
             if (tblSuggest != null) tblSuggest.Visible = false;
             suggestFallbackText = "";
             lblRec.Visible = true;
@@ -165,6 +224,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblSuggestMain.ForeColor = fore; lblSuggestCap.ForeColor = fore;
             lblSuggestHint.Visible = false; lblSuggestHint.Text = "";
             ShowUseSuggested(truck, "Use this truck", beside: true);
+            ShowTruckBoxSuggestion(truck, total, limit);
             tblSuggest.Visible = true;
             lblRec.Visible = false;
         }
