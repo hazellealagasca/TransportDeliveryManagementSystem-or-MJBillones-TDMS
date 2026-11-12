@@ -438,13 +438,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlProfileActions.Controls.Add(lblSaveState);
             pnlProfileActions.Controls.Add(flowActions);
             // Card 1: company details
-            txtClientName = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "Full registered company name" };
-            txtClientTin = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "000-000-000-000" };
+            txtClientName = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "Full registered company name", MaxLength = 150 };
+            txtClientTin = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "000-000-000-000", MaxLength = 15 };
             txtClientTin.TextChanged += TxtClientTin_TextChanged;
-            txtClientAddress = new TextBox { Font = new Font("Segoe UI", 10.5F), Multiline = true, PlaceholderText = "Head office address" };
-            txtContactPerson = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "e.g. Dela Cruz, Juan" };
-            txtContactNumber = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "e.g. 0917 123 4567" };
-            txtEmail = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "billing@company.com" };
+            txtClientAddress = new TextBox { Font = new Font("Segoe UI", 10.5F), Multiline = true, PlaceholderText = "Head office address", MaxLength = 250 };
+            txtContactPerson = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "e.g. Dela Cruz, Juan", MaxLength = 100 };
+            txtContactNumber = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "e.g. 0917 123 4567", MaxLength = 20 };
+            txtEmail = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "billing@company.com", MaxLength = 100 };
             foreach (var t in new[] { txtClientName, txtClientTin, txtClientAddress, txtContactPerson, txtContactNumber, txtEmail })
                 t.TextChanged += (s, e) => MarkDirty();
             var tblDetails = new TableLayoutPanel { Height = Dpi(66) * 2 + Dpi(92), ColumnCount = 3, RowCount = 3, BackColor = AppTheme.Surface, Margin = new Padding(0) };
@@ -956,6 +956,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 missing[0].Box.Focus();
                 return false;
             }
+            if (!InputRules.IsValidPersonName(txtContactPerson.Text))
+            {
+                txtContactPerson.BackColor = AppTheme.DangerSoft;
+                MessageBox.Show("The contact person's name can only have letters, spaces, periods, hyphens and apostrophes (no digits).", "Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtContactPerson.Focus();
+                return false;
+            }
             string tinDigits = new string(txtClientTin.Text.Where(char.IsDigit).ToArray());
             if (tinDigits.Length == 0)
             {
@@ -971,16 +978,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return false;
             }
             string email = txtEmail.Text.Trim();
-            if (email.Length > 0 && (!email.Contains('@') || !email.Contains('.')))
+            if (email.Length > 0 && !InputRules.IsValidEmail(email))
             {
-                MessageBox.Show("Please check the email address.", "Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Please check the email address. It should look like name@company.com.", "Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtEmail.Focus();
                 return false;
             }
-            string phone = txtContactNumber.Text.Trim();
-            string digits = new string(phone.Where(char.IsDigit).ToArray());
-            bool phoneShapeOk = phone.All(ch => char.IsDigit(ch) || " -()+/".IndexOf(ch) >= 0) && digits.Length >= 7 && digits.Length <= 13;
-            if (phone.Length > 0 && !phoneShapeOk)
+            string phone = InputRules.Tidy(txtContactNumber.Text);
+            if (phone.Length > 0 && !InputRules.PhoneShapeOk(phone))
             {
                 MessageBox.Show("Please enter a valid contact number (e.g. 09171234567 or (02) 8123-4567).", "Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtContactNumber.Focus();
@@ -1011,10 +1016,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var client = isNewClient || selectedClient == null ? new ClientCompany() : selectedClient;
                 client.CompanyName = name;
                 client.TIN = txtClientTin.Text.Trim();
-                client.Address = txtClientAddress.Text.Trim();
-                client.ContactNumber = txtContactNumber.Text.Trim();
+                client.Address = InputRules.Tidy(txtClientAddress.Text);
+                client.ContactNumber = phone;
                 client.Email = email;
-                client.ContactPerson = txtContactPerson.Text.Trim();
+                client.ContactPerson = InputRules.Tidy(txtContactPerson.Text);
                 var extraValues = GridLayoutStore.ReadValues(client.ExtraFieldsJson);
                 foreach (var kv in customFieldBoxes) extraValues[kv.Key] = kv.Value.Text.Trim();
                 client.ExtraFieldsJson = GridLayoutStore.WriteValues(extraValues);
@@ -1288,25 +1293,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
         // ------------------------------------------------------------------ Helpers
-        private void TxtClientTin_TextChanged(object? sender, EventArgs e)
-        {
-            string raw = new string(txtClientTin.Text.Where(char.IsDigit).ToArray());
-            if (raw.Length > 12) raw = raw.Substring(0, 12);
-
-            string formatted = "";
-            for (int i = 0; i < raw.Length; i++)
-            {
-                if (i > 0 && i % 3 == 0 && i <= 9) formatted += "-";
-                formatted += raw[i];
-            }
-
-            if (txtClientTin.Text != formatted)
-            {
-                int cursor = txtClientTin.SelectionStart;
-                txtClientTin.Text = formatted;
-                txtClientTin.SelectionStart = Math.Min(cursor + 1, txtClientTin.Text.Length);
-            }
-        }
+        private void TxtClientTin_TextChanged(object? sender, EventArgs e) => InputRules.FormatTinBox(txtClientTin);
 
         private void CopyText(string text)
         {

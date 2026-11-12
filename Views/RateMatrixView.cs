@@ -492,6 +492,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+        /// <summary>
+        /// A rate more than 3 times the highest, or less than a third of the lowest, of the OTHER rates for the same truck type is probably a typo (an extra zero).
+        /// Needs at least 2 other rates to compare with. Returns the question to ask, or null when the rate looks normal.
+        /// </summary>
+        public static string? RateOutlierWarning(decimal amount, string? truckType, IEnumerable<RateMatrix> others, int? excludeId = null)
+        {
+            string tt = (truckType ?? "").Trim();
+            var peers = others.Where(r => (excludeId == null || r.Id != excludeId) && r.RateAmount > 0 && string.Equals((r.TruckType ?? "").Trim(), tt, StringComparison.OrdinalIgnoreCase))
+                              .Select(r => r.RateAmount).ToList();
+            if (peers.Count < 2 || amount <= 0) return null;
+            decimal min = peers.Min(), max = peers.Max();
+            string M(decimal v) => v == decimal.Truncate(v) ? "₱" + v.ToString("N0") : "₱" + v.ToString("N2");
+            if (amount > max * 3) return $"{M(amount)} is much higher than the other {tt} rates ({M(min)}–{M(max)}). Save anyway?";
+            if (amount < min / 3) return $"{M(amount)} is much lower than the other {tt} rates ({M(min)}–{M(max)}). Save anyway?";
+            return null;
+        }
+
+        private bool ConfirmOutlier(decimal amount, string truckType, int? excludeId)
+        {
+            string? q = RateOutlierWarning(amount, truckType, MJdatabase.GetRateMatrix(), excludeId);
+            if (q == null) return true;
+            numRate.Focus();
+            return MessageBox.Show(FindForm(), q, "Check the rate", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
+        }
+
         private void BtnSave_Click(object? sender, EventArgs e)
         {
             try
@@ -547,6 +572,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         return;
                     }
 
+                    if (!ConfirmOutlier(numRate.Value, ttypeMulti, null)) return;
                     bool isCombined = rbCombinedRoute.Checked;
                     var (added, updated, saved) = MJdatabase.SaveMultipleRateMatrix(selectedDests, ttypeMulti, chkPeak.Checked, numRate.Value, isCombined);
 
@@ -591,6 +617,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                if (!ConfirmOutlier(numRate.Value, ttype, null)) return;
                 MJdatabase.SaveLookupItem("Truck Type / Category", ttype);
 
                 RateMatrix rm = new RateMatrix
@@ -660,6 +687,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
 
+                if (!ConfirmOutlier(numRate.Value, ttype, selectedRate.Id)) return;
                 MJdatabase.SaveLookupItem("Truck Type / Category", ttype);
 
                 selectedRate.RouteName = routeTitle;

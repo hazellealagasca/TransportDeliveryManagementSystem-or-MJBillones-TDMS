@@ -185,21 +185,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtMake.AutoCompleteCustomSource = makes; txtMake.AutoCompleteMode = AutoCompleteMode.SuggestAppend; txtMake.AutoCompleteSource = AutoCompleteSource.CustomSource;
             dtpReg = DatePicker(specs.RegistrationExpiry);
             dtpIns = DatePicker(specs.InsuranceExpiry);
-            void Pair(int row, string a, Control ca, string b, Control cb)
+            void Pair(int row, string a, Control ca, string b, Control cb, Label? na = null, Label? nb = null)
             {
                 var pa = new Panel { Dock = DockStyle.Fill, Height = D(58), Padding = new Padding(D(6), 0, D(6), 0), BackColor = AppTheme.Surface };
                 var pb = new Panel { Dock = DockStyle.Fill, Height = D(58), Padding = new Padding(D(6), 0, D(6), 0), BackColor = AppTheme.Surface };
                 ca.Dock = DockStyle.Top; cb.Dock = DockStyle.Top;
+                if (na != null) pa.Controls.Add(na);
+                if (nb != null) pb.Controls.Add(nb);
                 pa.Controls.Add(ca); pa.Controls.Add(new Label { Text = a, Dock = DockStyle.Top, Height = D(22), Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextSecondary, TextAlign = ContentAlignment.BottomLeft });
                 pb.Controls.Add(cb); pb.Controls.Add(new Label { Text = b, Dock = DockStyle.Top, Height = D(22), Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextSecondary, TextAlign = ContentAlignment.BottomLeft });
-                form.RowStyles.Add(new RowStyle(SizeType.Absolute, D(60)));
+                form.RowStyles.Add(new RowStyle(SizeType.Absolute, D(na != null ? 84 : 60)));
                 form.Controls.Add(pa, 0, row);
                 form.Controls.Add(pb, 1, row);
             }
             Pair(0, "Make", txtMake, "Model", txtModel);
             Pair(1, "Year model", txtYear, "Odometer (km)", txtOdo);
             Pair(2, "Chassis number", txtChassis, "Engine number", txtEngine);
-            Pair(3, "Registration (OR/CR) expires", dtpReg, "Insurance expires", dtpIns);
+            // Red note under the date when the paper has already expired (saving is still allowed).
+            var noteReg = new Label { Dock = DockStyle.Top, Height = D(22), ForeColor = AppTheme.DangerText, Font = new Font("Segoe UI Semibold", 9F), AutoEllipsis = true, UseMnemonic = false };
+            var noteIns = new Label { Dock = DockStyle.Top, Height = D(22), ForeColor = AppTheme.DangerText, Font = new Font("Segoe UI Semibold", 9F), AutoEllipsis = true, UseMnemonic = false };
+            void Notes()
+            {
+                noteReg.Text = ExpiryNote("Registration", dtpReg.Checked ? dtpReg.Value.Date : null) ?? "";
+                noteIns.Text = ExpiryNote("Insurance", dtpIns.Checked ? dtpIns.Value.Date : null) ?? "";
+            }
+            dtpReg.ValueChanged += (s, e) => Notes();
+            dtpIns.ValueChanged += (s, e) => Notes();
+            Notes();
+            Pair(3, "Registration (OR/CR) expires", dtpReg, "Insurance expires", dtpIns, noteReg, noteIns);
             var bar = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, BackColor = AppTheme.Surface, Padding = new Padding(D(6), D(8), 0, 0) };
             var lblMsg = new Label { AutoSize = true, ForeColor = AppTheme.TextMuted, Margin = new Padding(D(6), D(8), 0, 0) };
             bar.Controls.Add(ProfileKit.Button("Save specifications", "primary", (s, e) => SaveSpecs(lblMsg)));
@@ -216,6 +229,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             page.Controls.Add(stats);
             return page;
         }
+        /// <summary>"Registration expired on Mar 5, 2026" when the date is before today; null when there is no date or it has not passed. Only a warning: saving is still allowed.</summary>
+        public static string? ExpiryNote(string what, DateTime? when, DateTime? today = null)
+        {
+            if (!when.HasValue || when.Value.Date >= (today ?? DateTime.Today).Date) return null;
+            return $"{what} expired on {when.Value:MMM d, yyyy}";
+        }
+
         private DateTimePicker DatePicker(DateTime? value)
         {
             var d = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", ShowCheckBox = true, Font = new Font("Segoe UI", 10F) };

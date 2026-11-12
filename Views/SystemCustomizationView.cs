@@ -17,6 +17,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private TextBox txtCompanyAddress = null!;
         private TextBox txtCompanyTin = null!;
         private TextBox txtInvoiceFooter = null!;
+        private readonly System.Collections.Generic.Dictionary<TextBox, Label> fieldNotes = new();
 
         private ComboBox cbDefaultDeparture = null!;
         private ComboBox cbRefreshInterval = null!;
@@ -89,12 +90,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblBranding.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tblBranding.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
 
-            txtCompanyName = AddFormField(tblBranding, 0, 0, "Business trading name *", "M.J. Billones Transport Service");
-            txtCompanyTagline = AddFormField(tblBranding, 0, 1, "Tagline / subtitle", "Reliable Cold Chain & Cargo Logistics");
-            txtCompanyContact = AddFormField(tblBranding, 1, 0, "Contact telephone / mobile *", "0917-123-4567");
-            txtCompanyTin = AddFormField(tblBranding, 1, 1, "TIN (tax identification no.)", "123-456-789-000");
-            txtCompanyAddress = AddFormField(tblBranding, 2, 0, "Business address (optional)", "Cavite / Batangas Operations Depot", true);
-            txtInvoiceFooter = AddFormField(tblBranding, 3, 0, "Invoice footer note (terms)", "Thank you for your business! All deliveries are subject to standard transport terms.", true);
+            txtCompanyName = AddFormField(tblBranding, 0, 0, "Business trading name *", "M.J. Billones Transport Service", maxLength: 150);
+            txtCompanyTagline = AddFormField(tblBranding, 0, 1, "Tagline / subtitle", "Reliable Cold Chain & Cargo Logistics", maxLength: 150);
+            txtCompanyContact = AddFormField(tblBranding, 1, 0, "Contact telephone / mobile (optional)", "0917-123-4567", maxLength: 20);
+            txtCompanyTin = AddFormField(tblBranding, 1, 1, "TIN (tax identification no.)", "123-456-789-000", maxLength: 15);
+            txtCompanyTin.TextChanged += (s, e) => InputRules.FormatTinBox(txtCompanyTin);
+            txtCompanyAddress = AddFormField(tblBranding, 2, 0, "Business address (optional)", "Cavite / Batangas Operations Depot", true, 250);
+            txtInvoiceFooter = AddFormField(tblBranding, 3, 0, "Invoice footer note (terms)", "Thank you for your business! All deliveries are subject to standard transport terms.", true, 300);
             AddLogoPicker(tblBranding, 8);
             cardBranding.Controls.Add(tblBranding);
 
@@ -492,7 +494,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         private int Sc(int v) => (int)Math.Round(v * DeviceDpi / 96f);
-        private TextBox AddFormField(TableLayoutPanel parent, int row, int col, string label, string defaultVal, bool spanTwo = false)
+        private TextBox AddFormField(TableLayoutPanel parent, int row, int col, string label, string defaultVal, bool spanTwo = false, int maxLength = 200)
         {
             Label lbl = new Label
             {
@@ -510,16 +512,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Font = new Font("Segoe UI", 9.5F),
                 Text = defaultVal,
                 Margin = new Padding(0, 0, col == 0 && !spanTwo ? Sc(16) : 0, Sc(10)),
-                MaxLength = 200
+                MaxLength = maxLength
             };
+            // The red note about this box goes right under it (inside the same cell).
+            var note = new Label { Dock = DockStyle.Top, AutoSize = true, MaximumSize = new Size(Sc(spanTwo ? 900 : 430), 0), ForeColor = Pal.C(185, 28, 28), Font = new Font("Segoe UI Semibold", 9F), Visible = false, UseMnemonic = false, Padding = new Padding(0, 0, 0, Sc(6)) };
+            var cell = new Panel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, col == 0 && !spanTwo ? Sc(16) : 0, Sc(4)) };
+            txt.Margin = new Padding(0);
+            cell.Controls.Add(note);
+            cell.Controls.Add(txt);
+            fieldNotes[txt] = note;
 
             parent.Controls.Add(lbl, col, row * 2);
-            parent.Controls.Add(txt, col, (row * 2) + 1);
+            parent.Controls.Add(cell, col, (row * 2) + 1);
 
             if (spanTwo)
             {
                 parent.SetColumnSpan(lbl, 2);
-                parent.SetColumnSpan(txt, 2);
+                parent.SetColumnSpan(cell, 2);
             }
 
             return txt;
@@ -581,17 +590,49 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+        private void ShowNote(TextBox box, string? problem)
+        {
+            if (!fieldNotes.TryGetValue(box, out var note)) return;
+            note.Text = problem ?? "";
+            note.Visible = problem != null;
+        }
+
+        /// <summary>What was wrong with each company detail (null = fine).</summary>
+        public readonly record struct CompanyProblems(string? Name, string? Contact, string? Tin);
+
+        /// <summary>
+        /// Checks the company details and saves every one that is fine; a value with a problem is NOT saved (the previous saved value stays).
+        /// Company name is required; the TIN follows the client rule (9 digits, or 12 with the branch code); the contact number is optional but must look like a phone number.
+        /// Text is trimmed and double spaces collapsed.
+        /// </summary>
+        public static CompanyProblems SaveCompanyDetails(string name, string tagline, string contact, string tin, string address, string footer)
+        {
+            name = InputRules.Tidy(name); tagline = InputRules.Tidy(tagline); contact = InputRules.Tidy(contact);
+            tin = InputRules.FormatTin(tin); address = InputRules.Tidy(address); footer = InputRules.Tidy(footer);
+            string? pName = null, pContact = null, pTin = null;
+            if (name.Length == 0) pName = "Company name is required. The saved name is kept until you enter a new one.";
+            else if (name.Length > 150) pName = "Company name can be at most 150 characters.";
+            if (contact.Length > 0 && !InputRules.PhoneShapeOk(contact)) pContact = "Not saved: enter a valid contact number (e.g. 09171234567 or (02) 8123-4567).";
+            pTin = InputRules.CheckTin(tin, required: false, who: "The company TIN");
+            if (pTin != null) pTin = "Not saved: " + char.ToLowerInvariant(pTin[0]) + pTin.Substring(1);
+            if (pName == null) MJdatabase.SetSystemSetting("CompanyName", name, "Official business name");
+            MJdatabase.SetSystemSetting("CompanyTagline", tagline, "Company slogan");
+            if (pContact == null) MJdatabase.SetSystemSetting("CompanyContact", contact, "Company contact number");
+            if (pTin == null) MJdatabase.SetSystemSetting("CompanyTin", tin, "Tax identification number");
+            MJdatabase.SetSystemSetting("CompanyAddress", address, "Depot and warehouse address");
+            MJdatabase.SetSystemSetting("InvoiceFooter", footer, "Footer note on printouts");
+            return new CompanyProblems(pName, pContact, pTin);
+        }
+
         private void AutoSavePreferences(bool notify = false)
         {
             if (isInitializingSettings) return;
             try
             {
-                MJdatabase.SetSystemSetting("CompanyName", txtCompanyName.Text.Trim(), "Official business name");
-                MJdatabase.SetSystemSetting("CompanyTagline", txtCompanyTagline.Text.Trim(), "Company slogan");
-                MJdatabase.SetSystemSetting("CompanyContact", txtCompanyContact.Text.Trim(), "Company contact number");
-                MJdatabase.SetSystemSetting("CompanyTin", txtCompanyTin.Text.Trim(), "Tax identification number");
-                MJdatabase.SetSystemSetting("CompanyAddress", txtCompanyAddress.Text.Trim(), "Depot and warehouse address");
-                MJdatabase.SetSystemSetting("InvoiceFooter", txtInvoiceFooter.Text.Trim(), "Footer note on printouts");
+                var problems = SaveCompanyDetails(txtCompanyName.Text, txtCompanyTagline.Text, txtCompanyContact.Text, txtCompanyTin.Text, txtCompanyAddress.Text, txtInvoiceFooter.Text);
+                ShowNote(txtCompanyName, problems.Name);
+                ShowNote(txtCompanyContact, problems.Contact);
+                ShowNote(txtCompanyTin, problems.Tin);
 
                 MJdatabase.SetSystemSetting("DefaultDepartureTime", cbDefaultDeparture.SelectedItem?.ToString() ?? "08:00 AM", "Default dispatch departure time");
                 MJdatabase.SetSystemSetting("AutoRefreshRate", cbRefreshInterval.SelectedItem?.ToString() ?? "Manual Refresh Only", "Table grid refresh frequency");
@@ -606,9 +647,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.SetSystemSetting("EnableProactiveAlerts", chkEnableProactiveAlerts.Checked ? "True" : "False", "Automated truck & aging invoice alerts");
                 MJdatabase.SetSystemSetting("NotifyLowTrucks", chkNotifyLowTrucks.Checked ? "True" : "False", "Alert when available trucks fall to 1 vehicle");
 
-                lblStatus.Text = "⚡ Auto-saved!";
-                lblStatus.ForeColor = Pal.C(22, 101, 52);
-                if (notify)
+                bool anyProblem = problems.Name != null || problems.Contact != null || problems.Tin != null;
+                lblStatus.Text = anyProblem ? "Some company details were not saved. See the red notes." : "⚡ Auto-saved!";
+                lblStatus.ForeColor = anyProblem ? Pal.C(185, 28, 28) : Pal.C(22, 101, 52);
+                if (notify && !anyProblem)
                 {
                     EventNotificationService.Publish("Preferences Saved", "System customization preferences updated successfully.", ToastType.Success, this);
                 }
@@ -621,6 +663,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 AutoSavePreferences(true);
+                if (lblStatus.Text.StartsWith("Some company details")) return;
 
                 lblStatus.Text = "✅ System customization preferences successfully saved!";
                 lblStatus.ForeColor = Pal.C(22, 101, 52);

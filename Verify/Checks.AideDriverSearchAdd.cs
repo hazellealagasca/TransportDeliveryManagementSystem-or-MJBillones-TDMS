@@ -113,14 +113,14 @@ public static partial class Checks
             if (QuickAddCrewDialog.SplitTyped("Juan Santos") != ("Santos", "Juan")) bad.Add("SplitTyped 'Juan Santos'");
             if (QuickAddCrewDialog.SplitTyped("SANTOS, JUAN") != ("SANTOS", "JUAN")) bad.Add("SplitTyped comma");
             if (QuickAddCrewDialog.SplitTyped("Santos") != ("Santos", "")) bad.Add("SplitTyped one word");
-            var dup = QuickAddCrewDialog.TrySave(true, "Santos", "Maria", "", "");
+            var dup = QuickAddCrewDialog.TrySave(true, "Santos", "Maria", "", "", CrewManagementView.LicPro, DateTime.Today.AddYears(-1), DateTime.Today.AddYears(4));
             if (dup.Id != 0 || string.IsNullOrEmpty(dup.Problem)) bad.Add("duplicate name was not refused");
-            var badName = QuickAddCrewDialog.TrySave(true, "Sa1ntos", "Juan", "", "");
+            var badName = QuickAddCrewDialog.TrySave(true, "Sa1ntos", "Juan", "", "", CrewManagementView.LicPro, DateTime.Today.AddYears(-1), DateTime.Today.AddYears(4));
             if (badName.Id != 0 || string.IsNullOrEmpty(badName.Problem)) bad.Add("a name with a digit was not refused");
-            var badPhone = QuickAddCrewDialog.TrySave(true, "Santos", "Juan", "", "12");
+            var badPhone = QuickAddCrewDialog.TrySave(true, "Santos", "Juan", "", "12", CrewManagementView.LicPro, DateTime.Today.AddYears(-1), DateTime.Today.AddYears(4));
             if (badPhone.Id != 0 || badPhone.Field != "contact") bad.Add("a bad phone was not refused");
 
-            var saved = QuickAddCrewDialog.TrySave(true, "Santos", "Juan", "", "09171234567");
+            var saved = QuickAddCrewDialog.TrySave(true, "Santos", "Juan", "", "09171234567", CrewManagementView.LicPro, DateTime.Today.AddYears(-1), DateTime.Today.AddYears(4));
             if (saved.Id <= 0 || saved.Problem != null) bad.Add("new driver not saved: " + saved.Problem);
             else
             {
@@ -179,6 +179,29 @@ public static partial class Checks
                     }
                     foreach (var b in dlg.Controls.OfType<Control>().SelectMany(Flat).OfType<Button>())
                         if (b.Left < 0 || b.Right > b.Parent!.ClientSize.Width || b.Bottom > b.Parent.ClientSize.Height) bad.Add($"{file}: button '{b.Text}' is clipped");
+                    // the license rows (driver): an expired license shows its problem inside the window
+                    var all = dlg.Controls.OfType<Control>().SelectMany(Flat).ToList();
+                    var pickers = all.OfType<DateTimePicker>().ToList();
+                    if (pickers.Count != 2 || all.OfType<ComboBox>().Count() != 1) bad.Add($"{file}: expected the license type and two dates, found {all.OfType<ComboBox>().Count()} lists / {pickers.Count} dates");
+                    else
+                    {
+                        texts[3].Text = "";
+                        pickers[0].Value = DateTime.Today.AddYears(-6); pickers[1].Value = DateTime.Today.AddDays(-30);
+                        btn.PerformClick(); Pump(200);
+                        var exp = all.OfType<Label>().FirstOrDefault(l => l.Text.Contains("expired on"));
+                        if (exp == null) bad.Add($"{file}: no expired-license problem shown");
+                        else if (TextRenderer.MeasureText(exp.Text, exp.Font, new Size(exp.Width, 0), TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix).Height > exp.Height) bad.Add($"{file}: expired-license text clipped");
+                        foreach (var c in pickers.Cast<Control>().Concat(all.OfType<ComboBox>()))
+                            if (c.Bottom > c.Parent!.ClientSize.Height || c.Right > c.Parent.ClientSize.Width) bad.Add($"{file}: '{c.Name}{c.GetType().Name}' is clipped");
+                        foreach (var l in all.OfType<Label>().Where(l => l.Text.StartsWith("License")))
+                            if (l.Right > l.Parent!.ClientSize.Width || l.Bottom > l.Parent.ClientSize.Height) bad.Add($"{file}: label '{l.Text}' is clipped");
+                        // Non-Professional shows the tick box inline
+                        var cbl = all.OfType<ComboBox>().First(); cbl.SelectedIndex = 1; Pump(100);
+                        var chk = all.OfType<CheckBox>().FirstOrDefault();
+                        if (chk == null || !chk.Visible) bad.Add($"{file}: the Non-Professional tick box is not shown");
+                        cbl.SelectedIndex = 0; Pump(100);
+                        btn.PerformClick(); Pump(200);
+                    }
                     Pump(100);
                     TbShot(dlg, file);
                     dlg.Close();
