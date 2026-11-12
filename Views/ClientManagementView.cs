@@ -459,7 +459,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblDetails.Controls.Add(Field("Email", txtEmail), 2, 0);
             tblDetails.Controls.Add(Field("Contact person", txtContactPerson), 0, 1);
             tblDetails.Controls.Add(Field("Contact number", txtContactNumber), 1, 1);
-            var addr = Field("Address", txtClientAddress, Dpi(56));
+            var addr = Field("Address (optional)", txtClientAddress, Dpi(56));
             tblDetails.Controls.Add(addr, 0, 2);
             tblDetails.SetColumnSpan(addr, 3);
             pnlCustomFields = new Panel { Height = 0, BackColor = AppTheme.Surface, Visible = false };
@@ -946,10 +946,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Required fields cannot be empty or only spaces.
             var missing = new List<(string Label, TextBox Box)>();
             if (string.IsNullOrWhiteSpace(txtClientName.Text)) missing.Add(("Company name", txtClientName));
-            if (string.IsNullOrWhiteSpace(txtClientAddress.Text)) missing.Add(("Address", txtClientAddress));
             if (string.IsNullOrWhiteSpace(txtContactPerson.Text)) missing.Add(("Contact person", txtContactPerson));
             if (string.IsNullOrWhiteSpace(txtContactNumber.Text)) missing.Add(("Contact number", txtContactNumber));
-            foreach (var t in new[] { txtClientName, txtClientAddress, txtContactPerson, txtContactNumber }) t.BackColor = AppTheme.InputBack;
+            foreach (var t in new[] { txtClientName, txtContactPerson, txtContactNumber }) t.BackColor = AppTheme.InputBack;
             if (missing.Count > 0)
             {
                 foreach (var m in missing) m.Box.BackColor = AppTheme.DangerSoft;

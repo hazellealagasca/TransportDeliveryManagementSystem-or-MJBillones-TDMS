@@ -93,7 +93,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtCompanyTagline = AddFormField(tblBranding, 0, 1, "Tagline / subtitle", "Reliable Cold Chain & Cargo Logistics");
             txtCompanyContact = AddFormField(tblBranding, 1, 0, "Contact telephone / mobile *", "0917-123-4567");
             txtCompanyTin = AddFormField(tblBranding, 1, 1, "TIN (tax identification no.)", "123-456-789-000");
-            txtCompanyAddress = AddFormField(tblBranding, 2, 0, "Business address *", "Cavite / Batangas Operations Depot", true);
+            txtCompanyAddress = AddFormField(tblBranding, 2, 0, "Business address (optional)", "Cavite / Batangas Operations Depot", true);
             txtInvoiceFooter = AddFormField(tblBranding, 3, 0, "Invoice footer note (terms)", "Thank you for your business! All deliveries are subject to standard transport terms.", true);
             AddLogoPicker(tblBranding, 8);
             cardBranding.Controls.Add(tblBranding);

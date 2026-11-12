@@ -142,7 +142,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             listSuggestId = truck.Id;
             listSuggestFits = limit > 0 ? $"fits {total:N0} of {limit:N0}" : $"fits {total:N0}";
             if (pnlTruckSuggest == null || lblTruckSuggest == null) return;
-            lblTruckSuggest.Text = $"★ Suggested: {TonnerOf(truck)}  ·  {truck.PlateNumber}  ·  " + (limit > 0 ? $"fits {total:N0} of {limit:N0} crates" : $"fits {total:N0} crates");
+            // Each part keeps its own spaces (non-breaking), so a wrap only ever falls between the parts, never inside "CAO 1116".
+            string Nb(string t) => t.Replace(' ', ' ');
+            lblTruckSuggest.Text = "★ " + string.Join(" · ", new[] { Nb($"Total {total:N0} crates"), Nb($"Suggested: {TonnerOf(truck)}"), Nb(truck.PlateNumber), Nb(limit > 0 ? $"fits {total:N0} of {limit:N0} crates" : $"fits {total:N0} crates") });
             pnlTruckSuggest.Visible = true;
             FitTruckSuggestLabel();
             cbTruck.Invalidate();
@@ -210,12 +212,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (tblSuggest == null || lblSuggestMain == null || lblSuggestCap == null || lblSuggestHint == null) return;
             var r = ValidateLoad(truck, total);
             int limit = r.Limit > 0 ? r.Limit : CapacityValidator.MatrixFor(truck).TruckMax;
-            string main = $"{TonnerOf(truck)}  ·  {truck.PlateNumber}";
+            string tp = $"{TonnerOf(truck)}  ·  {truck.PlateNumber}";
+            string main = $"Total {total:N0} crates  ·  {tp}";
             string cap = limit > 0 ? $"fits {total:N0} of {limit:N0} crates ({Math.Round(total * 100.0 / limit):0}%)" : $"fits {total:N0} crates";
             suggestBusy = true;
             try
             {
-                lblRec.Text = $"ℹ️ Total {total:N0} crates  ·  suggested truck {main}  ·  {cap}";
+                lblRec.Text = $"ℹ️ Total {total:N0} crates  ·  suggested truck {tp}  ·  {cap}";
                 suggestFallbackText = lblRec.Text;
             }
             finally { suggestBusy = false; }
@@ -305,7 +308,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             pnlRec.BackColor = back;
             lblRec.ForeColor = fore;
-            lblRec.Text = $"{icon} {TonnerOf(selTruck)}  ·  {selTruck.PlateNumber}  ·  {total:N0} / {r.Limit:N0} crates" + (r.Limit > 0 ? $" ({Math.Round(total * 100.0 / r.Limit):0}% full)" : "") + (r.State == CapacityState.Allow ? "" : $"  ·  {r.Title}");
+            lblRec.Text = $"{icon} Total {total:N0} crates  ·  {TonnerOf(selTruck)}  ·  {selTruck.PlateNumber}  ·  {total:N0} / {r.Limit:N0} crates" + (r.Limit > 0 ? $" ({Math.Round(total * 100.0 / r.Limit):0}% full)" : "") + (r.State == CapacityState.Allow ? "" : $"  ·  {r.Title}");
             if (lnkCapDetails != null) lnkCapDetails.Visible = true;
             // Soft note only: a smaller free truck would also fit. Never blocks, never asks for a reason.
             if (r.State == CapacityState.Allow && Features.On(Features.TruckSuggestion))
