@@ -1678,8 +1678,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
                 lblRec.Text = rec.RecommendedTruck != null
-                    ? $"ℹ️ Total {total:N0} crates  ·  suggested truck {rec.RecommendedTruck.PlateNumber} ({CapacityValidator.MatrixFor(rec.RecommendedTruck).TruckMax:N0} crates)"
-                    : $"ℹ️ Total {total:N0} crates  ·  {rec.RecommendationMessage}";
+                    ? $"ℹ️ Total {CratesWord(total)}  ·  suggested truck {rec.RecommendedTruck.PlateNumber} ({CapacityValidator.MatrixFor(rec.RecommendedTruck).TruckMax:N0} crates)"
+                    : $"ℹ️ Total {CratesWord(total)}  ·  {rec.RecommendationMessage}";
                 if (rec.IsMultiTruckNeeded)
                 {
                     pnlRec.BackColor = Pal.C(254, 242, 242);

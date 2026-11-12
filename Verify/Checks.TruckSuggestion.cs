@@ -96,16 +96,16 @@ public static partial class Checks
             if (!link.Visible) problems.Add("the 'Use this truck' button is not shown when no truck is picked");
             else if (!link.TabStop || link.Text != "Use this truck") problems.Add($"the button is not keyboard reachable or has the wrong text ('{link.Text}')");
             var main = Get<Label>("lblSuggestMain"); var cap = Get<Label>("lblSuggestCap"); var recLbl = Get<Label>("lblRec");
-            if (main == null || !main.Visible || !main.Text.Contains("Total 1 crates") || !main.Text.Contains("4-tonner") || !main.Text.Contains("B-COLD")) problems.Add($"footer main line is '{main?.Text}' (visible {main?.Visible}), expected the tonner and plate of the suggested truck");
+            if (main == null || !main.Visible || !main.Text.Contains("Total 1 crate") || main.Text.Contains("Total 1 crates") || !main.Text.Contains("4-tonner") || !main.Text.Contains("B-COLD")) problems.Add($"footer main line is '{main?.Text}' (visible {main?.Visible}), expected the tonner and plate of the suggested truck");
             if (cap == null || !cap.Text.Contains("fits 1 of 120 crates")) problems.Add($"footer capacity is '{cap?.Text}', expected 'fits 1 of 120 crates'");
-            if (recLbl != null && (!recLbl.Text.Contains("Total 1 crates") || !recLbl.Text.Contains("4-tonner") || !recLbl.Text.Contains("B-COLD"))) problems.Add($"footer text is '{recLbl.Text}'");
+            if (recLbl != null && (!recLbl.Text.Contains("Total 1 crate") || recLbl.Text.Contains("Total 1 crates") || !recLbl.Text.Contains("4-tonner") || !recLbl.Text.Contains("B-COLD"))) problems.Add($"footer text is '{recLbl.Text}'");
             try { var pnl = Get<Panel>("pnlRec"); if (pnl != null && Environment.GetEnvironmentVariable("TDMS_SHOT_DIR") is string dir) { using var bmp = new Bitmap(pnl.Width, pnl.Height); pnl.DrawToBitmap(bmp, new Rectangle(0, 0, pnl.Width, pnl.Height)); bmp.Save(Path.Combine(dir, "footer.png")); } } catch { }
             typeof(DispatchManagementView).GetMethod("UseSuggestedTruck", F)!.Invoke(view, null);
             Pump(200);
             var trucks = (List<Truck>)typeof(DispatchManagementView).GetField("trucks", F)!.GetValue(view)!;
             string picked = truck.SelectedIndex >= 0 && truck.SelectedIndex < trucks.Count ? trucks[truck.SelectedIndex].PlateNumber : "(none)";
             if (picked != "B-COLD") problems.Add($"clicking the button selected {picked}, expected B-COLD");
-            if (recLbl != null && (!recLbl.Text.Contains("Total 1 crates") || !recLbl.Text.Contains("1 / 120 crates"))) problems.Add($"picked-truck line is '{recLbl.Text}'");
+            if (recLbl != null && (!recLbl.Text.Contains("Total 1 crate") || recLbl.Text.Contains("Total 1 crates") || !recLbl.Text.Contains("1 / 120 crates"))) problems.Add($"picked-truck line is '{recLbl.Text}'");
             view.Dispose();
             return string.Join(" | ", problems);
         });

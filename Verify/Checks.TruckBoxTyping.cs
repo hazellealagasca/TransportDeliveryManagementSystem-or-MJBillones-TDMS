@@ -61,7 +61,7 @@ public static partial class Checks
 
             // (c) the line under the Truck box: tonner + plate, in the left column, clear of the Driver box
             string lineTxt = lineLbl.Text.Replace(' ', ' '); // the parts use non-breaking spaces so a wrap never splits the plate
-            if (!lineTxt.Contains("Total 1 crates") || !lineTxt.Contains("4-tonner") || !lineTxt.Contains("CAO 1116") || !lineTxt.Contains("fits 1 of 120")) bad.Add($"line text '{lineLbl.Text}'");
+            if (!lineTxt.Contains("Total 1 crate") || lineTxt.Contains("Total 1 crates") || !lineTxt.Contains("4-tonner") || !lineTxt.Contains("CAO 1116") || !lineTxt.Contains("fits 1 of 120")) bad.Add($"line text '{lineLbl.Text}'");
             var tr = truck.RectangleToScreen(truck.ClientRectangle); var dr = driver.RectangleToScreen(driver.ClientRectangle); var lr = line.RectangleToScreen(line.ClientRectangle);
             if (lr.Top < tr.Bottom) bad.Add("the line overlaps the Truck box");
             if (lr.IntersectsWith(dr)) bad.Add("the line overlaps the Driver box");
