@@ -595,7 +595,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         b.Click += (s, e) => a();
                         return b;
                     }
-                    if (CanFin && string.IsNullOrWhiteSpace(r.InvoiceNo)) done.Controls.Add(Act("🧾  Create invoice", "primary", () => OnCreateInvoiceRequested?.Invoke(del)));
                     done.Controls.Add(Act("📝  Trip report", "secondary", () => OnTripReportRequested?.Invoke(del.Id, del.DispatchNumber)));
                     done.Controls.Add(Act("🖨  Print trip report", "secondary", () => PrintHelper.PrintOfficialTripReport(del.Id, del.DispatchNumber)));
                     done.Controls.Add(Act("🖨  Print dossier", "secondary", () => PrintHelper.PrintEndToEndDeliveryDossier(del.Id, del.DispatchNumber)));

@@ -124,11 +124,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.Add(completed || trip != null
                     ? Item(trip == null ? "📝  File trip report" : $"📝  Open trip report ({trip.TripReportNumber})", () => MainForm.Instance?.OpenTripReportForDispatch(d))
                     : Item("📝  Trip report — mark the order complete first", () => { }, enabled: false));
-                if (completed)
+                if (completed && invoice != null)
                 {
-                    m.Items.Add(invoice == null
-                        ? Item("💰  Create invoice", () => OnCreateInvoiceRequested?.Invoke(d))
-                        : Item($"💰  Open invoice ({invoice.InvoiceNumber} · {invoice.Status})", () => MainForm.Instance?.NavigateToFinance("Billing")));
+                    m.Items.Add(
+                        Item($"💰  Open invoice ({invoice.InvoiceNumber} · {invoice.Status})", () => MainForm.Instance?.NavigateToFinance("Billing")));
                 }
                 if (Features.On(Features.Incidents)) m.Items.Add(incidents > 0
                     ? Sub($"⚠  Incidents ({incidents})",
