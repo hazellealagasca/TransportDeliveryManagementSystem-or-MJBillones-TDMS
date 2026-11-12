@@ -334,6 +334,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             + RideWarningTail + Environment.NewLine + Environment.NewLine + "File them together anyway?";
                 if (MessageBox.Show(FindForm(), text, "Check these dispatches", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
             }
+            if (!ConfirmGateOrder()) return; // Nov 12: gate time out before time in asks once
             gridStores.EndEdit();
 
             var plans = new List<(Delivery D, List<DispatchStop> Stops, int Dg, int De, int Rg, int Re, string Arr, string Dep, string Mgr)>();

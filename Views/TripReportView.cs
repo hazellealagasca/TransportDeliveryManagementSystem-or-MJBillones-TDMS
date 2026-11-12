@@ -1366,6 +1366,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
 
+                if (!asDraft && !ConfirmGateOrder()) return; // Nov 12
                 int dgc = (int)numDeliveredGCrates.Value;
                 int dec = (int)numDeliveredECrates.Value;
                 int rgc = (int)numReturnedGCrates.Value;
@@ -1582,6 +1583,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                 }
 
+                if (!ConfirmGateOrder()) return; // Nov 12
                 int dgc = (int)numDeliveredGCrates.Value;
                 int dec = (int)numDeliveredECrates.Value;
                 int rgc = (int)numReturnedGCrates.Value;

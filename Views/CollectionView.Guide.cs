@@ -62,7 +62,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblCollBlocked.Click += (s, e) => formKit?.ScrollTo(collChecklist);
             formKit.Actions?.Controls.Add(lblCollBlocked);
             InputGuard.MoneyOnly(numAmountPaid);
-            InputGuard.ReferenceOnly(txtRefNo, 40);
+            InputGuard.ReferenceDashOnly(txtRefNo, Functions.DailyRules.ReferenceMax); // Nov 12
             collGuideTimer.Tick += (s, e) => { collGuideTimer.Stop(); UpdateCollGuide(); };
             cbInvoice.SelectedIndexChanged += (s, e) => { collGuideKey = int.MinValue; ScheduleCollGuide(); };
             numAmountPaid.ValueChanged += (s, e) => ScheduleCollGuide();

@@ -214,6 +214,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 valErrors.Add($"A reference / cheque number is required for {method} payments.");
                 firstInvalid ??= txtRefNo;
             }
+            string oldRef = editing ? (selectedCollection?.ReferenceNumber ?? "").Trim() : "";
+            if (refNum.Length > 0 && !string.Equals(refNum, oldRef, StringComparison.Ordinal) && !DailyRules.PaymentReferenceOk(refNum)) // Nov 12: a reference already on a saved receipt is never refused
+            {
+                ValidationHelper.ApplyValidationState(txtRefNo, false, DailyRules.PaymentReferenceMessage);
+                valErrors.Add(DailyRules.PaymentReferenceMessage);
+                firstInvalid ??= txtRefNo;
+            }
             if (refNum.Length > 0)
             {
                 string self = editing ? (selectedCollection?.ReceiptNumber ?? "").Trim() : "\u0000";
@@ -232,7 +239,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             MJdatabase.SaveLookupItem("Payment Method", method);
             string rno = txtReceiptNo.Text.Trim();
             if (chkVerifyAmount != null && !chkVerifyAmount.Checked) { MessageBox.Show(FindForm(), "Tick \"I checked the overall amount\" first. The receipt is issued only for the amount you checked.", "Verify the overall amount", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
-            var rows = MJdatabase.SaveOneReceipt(rno, target, method, txtRefNo.Text.Trim(), txtNotes.Text.Trim(), dtpPaymentDate.Value.Date, receiptNumberGuard.CrossTypeConfirmed, verifiedAmount: verifyAmount);
+            var rows = MJdatabase.SaveOneReceipt(rno, target, method, txtRefNo.Text.Trim(), DailyRules.CollapseSpaces(txtNotes.Text), dtpPaymentDate.Value.Date, receiptNumberGuard.CrossTypeConfirmed, verifiedAmount: verifyAmount);
             ClearFields();
             LoadData();
             SetFormVisibility(false);
@@ -255,7 +262,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (!CheckReceiptForm(editing: true)) return;
             string method = cbPaymentMethod.Text.Trim();
             MJdatabase.SaveLookupItem("Payment Method", method);
-            MJdatabase.UpdateReceiptDetails(sel.ReceiptNumber, txtReceiptNo.Text.Trim(), method, txtRefNo.Text.Trim(), txtNotes.Text.Trim(), dtpPaymentDate.Value.Date, receiptNumberGuard.CrossTypeConfirmed);
+            MJdatabase.UpdateReceiptDetails(sel.ReceiptNumber, txtReceiptNo.Text.Trim(), method, txtRefNo.Text.Trim(), DailyRules.CollapseSpaces(txtNotes.Text), dtpPaymentDate.Value.Date, receiptNumberGuard.CrossTypeConfirmed);
             QuietBox.Show($"Collection Receipt {txtReceiptNo.Text.Trim()} is updated. (The amount is the full amount paid and does not change.)", "Receipt updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
             ClearFields();
             LoadData();

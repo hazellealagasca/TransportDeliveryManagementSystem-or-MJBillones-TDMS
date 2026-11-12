@@ -54,6 +54,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return list;
         }
 
+        /// <summary>Nov 12: the question to ask when the truck's plant gate time out is earlier than its time in (an overnight trip is real, so this asks and never blocks). Null when the order is fine.</summary>
+        private string? GateOrderQuestion()
+        {
+            string tin = (txtTruckTimeIn?.Text ?? "").Trim(), tout = (txtTruckTimeOut?.Text ?? "").Trim();
+            return DailyRules.GateOutBeforeIn(tin, tout) ? DailyRules.GateOvernightQuestion(tin, tout) : null;
+        }
+
+        /// <summary>Asks the overnight question; false (stay on the form, back to the time out box) when the answer is No.</summary>
+        private bool ConfirmGateOrder()
+        {
+            var q = GateOrderQuestion();
+            if (q == null) return true;
+            if (MessageBox.Show(FindForm(), q, "Plant gate times", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes) return true;
+            try { txtTruckTimeOut.Focus(); txtTruckTimeOut.SelectAll(); } catch { }
+            return false;
+        }
+
         private static bool GateTimeOk(string t) => System.Text.RegularExpressions.Regex.IsMatch((t ?? "").Trim(), @"^([01]\d|2[0-3])[0-5]\d$");
 
         private IEnumerable<(TextBox? Box, string Name)> SignOffBoxes() => new (TextBox?, string)[]
@@ -80,6 +97,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (tb == null) continue;
                 var box = tb;
+                box.MaxLength = 60; // Nov 12: the name check allows up to 60 letters
                 box.Leave += (s, e) =>
                 {
                     if (string.IsNullOrWhiteSpace(box.Text)) { ValidationHelper.ClearErrors(box); return; }

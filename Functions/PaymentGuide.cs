@@ -618,6 +618,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (dot >= 0 && next.Length - dot - 1 > 2) { e.Handled = true; System.Media.SystemSounds.Beep.Play(); }
             };
         }
+        /// <summary>Nov 12: a payment reference takes letters, digits and "-" only (the other symbols are not typed).</summary>
+        public static void ReferenceDashOnly(TextBox tb, int maxLength = 30)
+        {
+            tb.MaxLength = maxLength;
+            static bool Ok(char ch) => (ch < 128 && char.IsLetterOrDigit(ch)) || ch == '-';
+            tb.KeyPress += (s, e) => { if (!char.IsControl(e.KeyChar) && !Ok(e.KeyChar)) { e.Handled = true; System.Media.SystemSounds.Beep.Play(); } };
+            tb.TextChanged += (s, e) =>
+            {
+                if (tb.Text.All(Ok)) return;
+                int c = tb.SelectionStart;
+                tb.Text = new string(tb.Text.Where(Ok).ToArray());
+                tb.SelectionStart = Math.Min(c, tb.TextLength);
+            };
+        }
         /// <summary>Reference / receipt / invoice numbers: letters, digits, dash, slash, dot, space — no other symbols.</summary>
         public static void ReferenceOnly(TextBox tb, int maxLength = 40)
         {

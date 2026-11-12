@@ -613,6 +613,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtDispatchNumber.Location = new Point(14, 27);
             txtDispatchNumber.Margin = new Padding(0, 0, 0, 3);
             txtDispatchNumber.Name = "txtDispatchNumber";
+            txtDispatchNumber.MaxLength = 30;
             txtDispatchNumber.PlaceholderText = "e.g. DSP-20261001-0001";
             txtDispatchNumber.Size = new Size(394, 27);
             txtDispatchNumber.TabIndex = 2;
