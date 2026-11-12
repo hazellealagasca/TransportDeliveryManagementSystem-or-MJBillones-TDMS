@@ -30,6 +30,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private int pinned = -1;
         private readonly List<int> matches = new List<int>();   // original item indexes, in the box's own order
         private int selected = -1, extra;
+        private int indexAtDropDown = -1;                     // the pick when the normal list opened (restored if closing it to type moved it)
         private string query = "";
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
         private int RowH => D(30);
@@ -66,7 +67,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             box.KeyDown += (s, e) => p.HandleKeyDown(e);
             box.Leave += (s, e) => p.Close2();
             box.MouseDown += (s, e) => p.Close2();
-            box.DropDown += (s, e) => p.Close2();
+            box.DropDown += (s, e) => { p.indexAtDropDown = box.SelectedIndex; p.Close2(); };
             box.SelectedIndexChanged += (s, e) => p.Close2();
             box.EnabledChanged += (s, e) => p.Close2();
             box.VisibleChanged += (s, e) => p.Close2();
@@ -115,6 +116,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 // The normal list is open (e.g. just clicked): a letter or digit closes it and starts the search with that character.
                 if (!char.IsLetterOrDigit(c)) return;
                 box.DroppedDown = false;
+                // Closing the list must never pick the row the mouse happened to rest on: keep the pick from before it opened.
+                if (box.SelectedIndex != indexAtDropDown && indexAtDropDown < box.Items.Count) box.SelectedIndex = indexAtDropDown;
             }
             if (c == '\b')
             {
