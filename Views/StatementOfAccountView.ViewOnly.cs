@@ -106,6 +106,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblFormHeader.Text = $"Statement  ·  {soa.SoaNumber}  ·  view only";
             FillSoaHistory(soa, why);
             if (soaHistoryCard != null) soaHistoryCard.Visible = true;
+            try { UpdateSoaGuide(); } catch (Exception ex) { ErrLog.Swallowed(ex); }   // the strip, the totals block and the tape show the saved figures
         }
 
         private void ExitSoaViewOnly()

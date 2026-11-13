@@ -276,7 +276,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private (decimal ExpectedDue, decimal ExpectedSales) ExpectedSoaTotals()
         {
             var inv = InvoiceTotalsOfLines();
-            if (inv != null) { var it = SoaTotals.From(inv.Value.Freight, inv.Value.Fuel); return (it.Due, it.TotalSales); } // follows the service invoices
+            bool oldRule = SoaShowsOldRule();   // a statement saved before Nov 12 is judged by the rule it was saved under (its amounts stay as saved)
+            if (inv != null) { var it = oldRule ? SoaTotals.OldFrom(inv.Value.Freight, inv.Value.Fuel) : SoaTotals.From(inv.Value.Freight, inv.Value.Fuel); return (it.Due, it.TotalSales); } // follows the service invoices
             decimal amt = 0, fuel = 0;
             foreach (DataGridViewRow row in gridItems.Rows)
             {
@@ -285,7 +286,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 decimal.TryParse(row.Cells["colFuel"].Value?.ToString(), out var f);
                 amt += a; fuel += f;
             }
-            var lt = SoaTotals.From(amt, fuel);
+            var lt = oldRule ? SoaTotals.OldFrom(amt, fuel) : SoaTotals.From(amt, fuel);
             return (lt.Due, lt.TotalSales);
         }
         /// <summary>True when the totals no longer match what the trip lines work out to (so a reason is needed).</summary>
@@ -360,9 +361,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 checks.Add(new PaymentCheck(repeatedDr == 0 ? "No DR number repeated" : $"{repeatedDr} DR number(s) repeated on this statement", repeatedDr == 0));
             }
             // Math (Nov 12): the fuel surcharge is inside Total Sales, so total sales − withholding tax = total due (= net of VAT + VAT − withholding tax).
-            decimal calc = numTotalSales.Value - numWithholdingTax.Value;
+            // A statement saved before Nov 12 (fuel outside the VAT) adds up the old way: net + fuel + VAT - withholding = due. Its saved amounts are never changed.
+            bool oldMath = SoaShowsOldRule();
+            decimal calc = oldMath ? numNetOfVat.Value + numFuelSurchargeTotal.Value + numVat.Value - numWithholdingTax.Value : numTotalSales.Value - numWithholdingTax.Value;
             bool mathOk = Math.Abs(calc - numTotalAmountDue.Value) <= 0.01m;
-            checks.Add(new PaymentCheck(mathOk ? "Totals add up (total sales − withholding tax = total due)" : $"Totals don't add up: ₱{numTotalSales.Value:N2} − ₱{numWithholdingTax.Value:N2} = ₱{calc:N2}, not ₱{numTotalAmountDue.Value:N2}", mathOk));
+            string mathLabel = oldMath ? "net of VAT + fuel + VAT − withholding tax" : "total sales − withholding tax";
+            checks.Add(new PaymentCheck(mathOk ? $"Totals add up ({mathLabel} = total due)" : $"Totals don't add up: {mathLabel} = ₱{calc:N2}, not ₱{numTotalAmountDue.Value:N2}", mathOk));
             checks.Add(new PaymentCheck(numTotalAmountDue.Value > 0 ? "Total amount due is more than ₱0.00" : "Total amount due is ₱0.00", numTotalAmountDue.Value > 0));
             if (SoaTotalsAdjusted(out var expected, out var entered))
             {
@@ -389,15 +393,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void UpdateSoaGuide()
         {
-            if (soaChecklist == null || !pnlForm.Visible || soaViewOnly) return;
+            if (soaChecklist == null || !pnlForm.Visible) return;
             // Cache misses (a trip just added): reload once.
             if (DeliveryIdsInTable().Any(id => id > 0 && !guideDeliveries.ContainsKey(id))) LoadSoaGuideCache();
             var checks = ComputeSoaChecks();
             soaChecklist.SetChecks(checks);
             int fails = soaChecklist.Failed, warns = soaChecklist.Warnings;
             decimal due = numTotalAmountDue.Value;
-            soaStrip.SetTotals(numTotalSales.Value + (IsLegacySoa() ? 0m : numFuelSurchargeTotal.Value), numWithholdingTax.Value, guidePaid, Math.Max(0, due - guidePaid), fails, warns);
+            // Sales + fuel: the new rule already has the fuel inside Total Sales; a statement saved under the old rule has it outside, so it is added. Total due is the statement's own box.
+            bool oldRule = SoaShowsOldRule();
+            soaStrip.SetTotals(numTotalSales.Value + (oldRule ? numFuelSurchargeTotal.Value : 0m), numWithholdingTax.Value, guidePaid, Math.Max(0, due - guidePaid), fails, warns, soaViewOnly ? "View only" : null, due);
             UpdateSoaTape();
+            if (soaViewOnly) { sheetTotals?.Relayout(); return; }   // a view-only statement shows its figures; the steps and the adjustment box are for editing
             // Steps
             int rows = gridItems.Rows.Cast<DataGridViewRow>().Count(r => !r.IsNewRow);
             int ready = gridPicker == null ? 0 : gridPicker.Rows.Cast<DataGridViewRow>().Count(r => r.Tag is PickRow pr && pr.State == PickState.Ready && !r.Cells["pkPick"].ReadOnly);

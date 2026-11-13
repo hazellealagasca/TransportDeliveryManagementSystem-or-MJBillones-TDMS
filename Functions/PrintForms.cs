@@ -240,8 +240,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             decimal wtax = saved ? soa.WithholdingTax : fm.Withholding;
             decimal due = saved ? soa.TotalAmount : fm.Due;
             // A statement saved before Nov 12 kept its fuel outside the sales (net + fuel + VAT − withholding = due): it keeps showing the figures it was saved with, in its old lines.
-            bool newRule = Math.Abs(totalSales - wtax - due) <= 0.02m;
-            bool oldRule = !newRule && Math.Abs(netOfVat + fuel + vat - wtax - due) <= 0.02m;
+            bool newRule = SoaTotals.IsNewRule(totalSales, wtax, due);
+            bool oldRule = SoaTotals.IsOldRule(totalSales, vat, netOfVat, fuel, wtax, due);
             bool sheetStyle = newRule || oldRule;
             // Nov 6 workflow: new form keys, so layouts saved before (with zone, crates, trip report # columns) don't come back.
             var o = NewOptions(special ? "SOA_Special" : "SOA_Official", special ? "Statement of Account — Special Trips" : "Statement of Account", $"{soa.SoaNumber} · {D(soa.IssueDate)}");

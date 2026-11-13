@@ -754,7 +754,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetupTripMerge();   // Nov 10: a trip's cells are one tall cell, like the printed statement
             pnlItemsGridHost.Controls.Add(gridItems);
             // Nov 10: the statement sheet's totals block sits right under the trips table, like the print.
-            sheetTotals = new SoaSheetTotalsPanel(gridItems, () => new[] { numTotalSales.Value, numVat.Value, numNetOfVat.Value, numWithholdingTax.Value, numTotalAmountDue.Value, numFuelSurchargeTotal.Value });
+            sheetTotals = new SoaSheetTotalsPanel(gridItems, () => new[] { numTotalSales.Value, numVat.Value, numNetOfVat.Value, numWithholdingTax.Value, numTotalAmountDue.Value, numFuelSurchargeTotal.Value }, SoaShowsOldRule);
             sheetTotals.AfterResize = SizeItemsGrid;
             pnlItemsGridHost.Controls.Add(sheetTotals);
             gridItems.BringToFront();
@@ -793,7 +793,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numFuelSurchargeTotal = MakeNum();
             numWithholdingTax = MakeNum();
             numTotalAmountDue = MakeNum();
-            foreach (var tn in new[] { numTotalSales, numVat, numNetOfVat, numFuelSurchargeTotal, numWithholdingTax, numTotalAmountDue }) tn.ValueChanged += (s2, e2) => sheetTotals?.Invalidate();
+            foreach (var tn in new[] { numTotalSales, numVat, numNetOfVat, numFuelSurchargeTotal, numWithholdingTax, numTotalAmountDue }) tn.ValueChanged += (s2, e2) => sheetTotals?.Relayout();
             numTotalAmountDue.Font = new Font("Segoe UI Semibold", 18F);
             numTotalAmountDue.BorderStyle = BorderStyle.None;
             numTotalAmountDue.BackColor = AppTheme.AccentSoft;
@@ -921,7 +921,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     unpriced++;
                 }
             }
-            lblItemsTotals.Text = $"{gridItems.Rows.Count} rows  ·  {trips.Count} trips  ·  Total Sales ₱{amt:N2} + Fuel Surcharge ₱{fuel:N2} = ₱{amt + fuel:N2} (VAT Inclusive)" +
+            string sumText = SoaShowsOldRule()   // saved before Nov 12: the fuel is outside the VAT, so the sum is not "VAT Inclusive"
+                ? $"Total Sales ₱{amt:N2} (VAT Inclusive) + Fuel Surcharge ₱{fuel:N2} (outside VAT) = ₱{amt + fuel:N2}"
+                : $"Total Sales ₱{amt:N2} + Fuel Surcharge ₱{fuel:N2} = ₱{amt + fuel:N2} (VAT Inclusive)";
+            lblItemsTotals.Text = $"{gridItems.Rows.Count} rows  ·  {trips.Count} trips  ·  {sumText}" +
                                   (unpriced > 0 ? $"   ·   ⚠ {unpriced} trip{(unpriced == 1 ? "" : "s")} without an amount" : "");
             lblItemsTotals.ForeColor = unpriced > 0 ? AppTheme.WarningText : AppTheme.TextSecondary;
         }
@@ -1806,6 +1809,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return MJdatabase.CheckSiNumber(invNum, own);
         }
         private int CurrentSoaId => isEditingExisting && selectedSoa != null ? selectedSoa.Id : 0;
+        /// <summary>
+        /// True for a SAVED statement whose figures follow the old rule (before Nov 12: fuel outside the VAT). It shows its seven old lines and keeps its saved amounts.
+        /// Decided from the figures in the boxes (the same test as the print), never from whether the statement has its own invoice.
+        /// </summary>
+        private bool SoaShowsOldRule() => selectedSoa != null && selectedSoa.Id > 0 && SoaTotals.IsOldRule(numTotalSales.Value, numVat.Value, numNetOfVat.Value, numFuelSurchargeTotal.Value, numWithholdingTax.Value, numTotalAmountDue.Value);
         private static string SoaLineLabel(DataGridViewRow r) => $"trip {r.Cells["colTripNo"].Value} {(r.Cells["colDest"].Value?.ToString() ?? "").Trim()}".Trim();
         /// <summary>
         /// A DR number can be billed only once. DRs just entered on <paramref name="row"/> that are already on another

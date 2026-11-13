@@ -181,6 +181,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ("Amount: Net of VAT", numNetOfVat.Value.ToString("N2")),
                 ("Less: Withholding Tax (2%)", numWithholdingTax.Value.ToString("N2"))
             };
+            if (SoaShowsOldRule())   // saved before Nov 12: the same seven lines as the print, then the note
+            {
+                string F(decimal v) => v.ToString("N2");
+                var ol = SoaSheetTotalsPanel.OldLabels;
+                rows = new (string, string)[]
+                {
+                    (ol[0], F(numTotalSales.Value)), (ol[1], F(numVat.Value)), (ol[2], F(numNetOfVat.Value)), (ol[3], F(numFuelSurchargeTotal.Value)),
+                    (ol[4], F(numVat.Value)), (ol[5], F(numWithholdingTax.Value)), (SoaSheetTotalsPanel.OldRuleNote, "")
+                };
+            }
             int lines = gridItems.Rows.Cast<DataGridViewRow>().Count(r => !r.IsNewRow);
             _ = invoices;
             soaTape.Set("The statement adds up to · from the service invoices", rows, "Total amount due", "₱" + numTotalAmountDue.Value.ToString("N2"),

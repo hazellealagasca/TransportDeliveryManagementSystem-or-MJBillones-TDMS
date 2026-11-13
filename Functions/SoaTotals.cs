@@ -18,6 +18,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private static decimal R(decimal v) => Math.Round(v, 2, MidpointRounding.AwayFromZero);
 
+        /// <summary>True when a statement's figures follow the Nov 12 rule: Total Sales (fuel included) - withholding = total due.</summary>
+        public static bool IsNewRule(decimal totalSales, decimal withholding, decimal due) => Math.Abs(totalSales - withholding - due) <= 0.02m;
+
+        /// <summary>
+        /// True for a statement saved before Nov 12 (the old rule: Total Sales is the freight only, the fuel surcharge is outside the VAT):
+        /// net + fuel + VAT - withholding = total due, and it does not fit the new rule. Its saved amounts are never changed; this only picks how to show them.
+        /// </summary>
+        public static bool IsOldRule(decimal totalSales, decimal vat, decimal net, decimal fuel, decimal withholding, decimal due)
+            => !IsNewRule(totalSales, withholding, due) && Math.Abs(net + fuel + vat - withholding - due) <= 0.02m;
+
+        /// <summary>What the old rule made of a freight and a fuel surcharge (to recognise an old statement from its invoices).</summary>
+        public static SoaTotalsResult OldFrom(decimal freight, decimal fuel, decimal withholdingRate = DefaultWithholdingRate)
+        {
+            decimal sales = R(freight), vat = R(sales / 1.12m * 0.12m), net = sales - vat, wht = R(net * withholdingRate), f = R(fuel);
+            return new SoaTotalsResult(sales, vat, net, f, wht, net + f + vat - wht);
+        }
+
         public static SoaTotalsResult From(decimal freight, decimal fuel, decimal withholdingRate = DefaultWithholdingRate)
         {
             decimal fuelTotal = R(fuel);

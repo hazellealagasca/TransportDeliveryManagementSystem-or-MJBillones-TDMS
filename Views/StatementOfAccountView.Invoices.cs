@@ -87,7 +87,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 missing.Count == 0));
             if (invs.Count > 0 && noInvoice == 0)
             {
-                decimal net = SoaTotals.From(invs.Sum(i => i.Freight), invs.Sum(i => i.Fuel)).Due;
+                decimal net = (SoaShowsOldRule() ? SoaTotals.OldFrom(invs.Sum(i => i.Freight), invs.Sum(i => i.Fuel)) : SoaTotals.From(invs.Sum(i => i.Freight), invs.Sum(i => i.Fuel))).Due;
                 bool same = Math.Abs(net - numTotalAmountDue.Value) <= 0.05m;
                 checks.Add(new PaymentCheck(same ? $"Total due matches its service invoices (PHP {net:N2})"
                     : $"Total due PHP {numTotalAmountDue.Value:N2} is not its service invoices' total (PHP {net:N2}); Save uses the invoices' totals", true, Warning: !same));

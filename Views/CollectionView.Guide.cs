@@ -222,7 +222,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (inv.SoaId > 0)
             {
                 var t = SoaTotals.From(inv.Freight, inv.FuelSurcharge);
-                if (Math.Abs(t.Due - inv.NetAmount) <= 0.01m)
+                if (SoaTotals.IsNewRule(t.TotalSales, t.Withholding, inv.NetAmount))
                 {
                     rows.Add(("Total Sales + Fuel surcharge (VAT Inclusive)", "₱" + t.TotalSales.ToString("N2")));
                     rows.Add(("Less: VAT (12%)", "₱" + t.Vat.ToString("N2")));
@@ -248,7 +248,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int fails = collChecklist.Failed, warns = collChecklist.Warnings;
             var inv = collInvoice;
             decimal amt = numAmountPaid.Value;
-            if (inv != null) collStrip.SetTotals(inv.TotalAmount, inv.Deductions, collPaidOthers, Math.Max(0, inv.NetAmount - collPaidOthers - amt), fails, warns);
+            if (inv != null) collStrip.SetTotals(inv.TotalAmount, inv.Deductions, collPaidOthers, Math.Max(0, inv.NetAmount - collPaidOthers - amt), fails, warns, due: inv.NetAmount);
             else collStrip.SetTotals(0, 0, 0, 0, fails, warns);
             if (collTape != null)
             {

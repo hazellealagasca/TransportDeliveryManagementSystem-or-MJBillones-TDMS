@@ -16,6 +16,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     public sealed class PaymentSummaryStrip : Control, IZoomAware
     {
         private decimal gross, deductions, paid;
+        private decimal? explicitDue;   // when given, the third figure (total due) is this, not gross - deductions
         private int problems, warnings;
         private string status = "";
         /// <summary>Workbench header mode: no outer frame, sits inside the one 56 px header.</summary>
@@ -43,10 +44,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public void ZoomChanged() { Height = D(Compact ? 40 : 46); if (Compact && Dock == DockStyle.Right) Width = D(620); Invalidate(); }
         protected override void OnDpiChangedAfterParent(EventArgs e) { base.OnDpiChangedAfterParent(e); Height = D(Compact ? 40 : 46); }
         protected override void OnPaddingChanged(EventArgs e) { base.OnPaddingChanged(e); Invalidate(); }
-        public void SetTotals(decimal gross, decimal deductions, decimal paid, decimal balance, int problems, int warnings = 0, string? status = null)
+        public void SetTotals(decimal gross, decimal deductions, decimal paid, decimal balance, int problems, int warnings = 0, string? status = null, decimal? due = null)
         {
             this.gross = gross; this.deductions = deductions; this.paid = paid; _ = balance; // payments are in full: no balance is shown
-            this.problems = problems; this.warnings = warnings; this.status = status ?? "";
+            this.problems = problems; this.warnings = warnings; this.status = status ?? ""; explicitDue = due;
             Invalidate();
         }
         protected override void OnPaint(PaintEventArgs e)
@@ -62,7 +63,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 using (var p = new Pen(AppTheme.Border)) g.DrawRectangle(p, r);
             }
             string Money(decimal v) => "₱" + v.ToString("N2");
-            decimal net = SecondIsAddition ? gross + deductions : gross - deductions;
+            decimal net = explicitDue ?? (SecondIsAddition ? gross + deductions : gross - deductions);
             var parts = new (string Cap, string Val, Color Ink)[]
             {
                 (FirstCaption, Money(gross), AppTheme.TextPrimary),
