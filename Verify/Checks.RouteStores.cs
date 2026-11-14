@@ -482,7 +482,7 @@ public static partial class Checks
         AddStore("DWARDO", "DD5", "San Miguel");
         string? same = MJdatabase.CheckCompanyStore("DWARDO", "DD6", "san miguel");
         if (same == null || !same.Contains("DD5")) fails.Add($"same name gave \"{same}\"");
-        if (MJdatabase.CheckCompanyStore("DWARDO", "", "Capas") == null) fails.Add("empty code gave no message");
+        if (MJdatabase.CheckCompanyStore("DWARDO", "", "Capas") != null) fails.Add("empty code was refused (blank codes are now generated)");
         if (MJdatabase.CheckCompanyStore("DWARDO", "DD2", "") == null) fails.Add("empty name gave no message");
         if (MJdatabase.CheckCompanyStore("", "DD2", "Capas") == null) fails.Add("empty client gave no message");
         try { MJdatabase.RegisterCompanyStore("DWARDO", "dd 1", "Capas"); fails.Add("RegisterCompanyStore did not refuse"); }
