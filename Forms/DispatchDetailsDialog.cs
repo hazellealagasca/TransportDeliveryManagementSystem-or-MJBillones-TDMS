@@ -207,7 +207,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 client = SafeGet(() => MJdatabase.GetClientByCompanyName(clientName), null);
                 trip = SafeGet(() => MJdatabase.GetTripReports().FirstOrDefault(t => t.DeliveryId == del.Id || (!string.IsNullOrEmpty(t.DispatchNumber) && t.DispatchNumber == del.DispatchNumber)), null);
                 invoice = SafeGet(() => MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == del.Id), null);
-                incidents = SafeGet(() => MJdatabase.GetIncidentReports().Where(i => i.DeliveryId == del.Id).ToList(), new List<IncidentReport>());
+                incidents = SafeGet(() => MJdatabase.GetTripIncidents(del.Id), new List<IncidentReport>());   // Nov 14: the trip incidents (step 3 of the trip report), read-only here
                 crews = SafeGet(() => MJdatabase.GetCrews(), new List<Crew>());
                 truck = SafeGet(() => MJdatabase.GetTrucks().FirstOrDefault(t => t.Id == del.TruckId), null);
                 string num = del.DispatchNumber ?? "";
@@ -759,19 +759,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 items.Add(DocRow("💰", "Invoice", IsCompleted ? "Billed on its Statement of Account." : "Created once the order is delivered."));
             }
-            // Incidents (hidden: Nov 10)
-            if (!Features.On(Features.Incidents)) { }
+            // Incidents: Nov 14 read-only lines from step 3 of the trip report (switch: Features.TripIncidents). The full Incident screen
+            // and its "Log incident" / "Open" buttons stay behind Features.Incidents (off).
+            if (!Features.On(Features.TripIncidents)) { }
             else if (incidents.Count == 0)
             {
-                items.Add(DocRow("⚠️", "Incidents & damage", "None reported for this order.",
-                    IsCancelled ? default : ("Log incident", "secondary", LogIncident)));
+                items.Add(DocRow("⚠️", "Incidents & damage", trip != null ? "None reported on the trip report." : "Reported in step 3 of the trip report."));
             }
             else
             {
                 foreach (var inc in incidents)
                 {
-                    items.Add(DocRow("⚠️", $"Incident · {inc.Cause}", $"{Fmt.Date(inc.IncidentDate)} · {inc.DamagedQuantity:N0} crates · PHP {inc.EstimatedCost:N2} · {inc.Status}" + (inc.ChargeableToCrew ? " · charged to crew" : ""),
-                        ("Open", "secondary", OpenIncidents)));
+                    items.Add(DocRow("⚠️", $"Incident · {inc.Cause}", $"{Fmt.Date(inc.IncidentDate)} · {inc.DamagedQuantity:N0} crates · PHP {inc.EstimatedCost:N2}" + (inc.ChargeableToCrew ? " · charged to crew" : "") + (string.IsNullOrWhiteSpace(inc.Description) ? "" : " · " + inc.Description.Trim()),
+                        Features.On(Features.Incidents) ? ("Open", "secondary", OpenIncidents) : default));
                 }
             }
             for (int i = items.Count - 1; i >= 0; i--)

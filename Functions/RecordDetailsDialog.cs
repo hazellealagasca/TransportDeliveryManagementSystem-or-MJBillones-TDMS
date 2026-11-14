@@ -360,8 +360,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 keyValues.Add(("Assigned Driver", matchDel?.DriverName ?? "N/A"));
                 keyValues.Add(("Assigned Helpers / Aides", matchDel != null ? (string.IsNullOrEmpty(matchDel.AideNames) ? (string.IsNullOrEmpty(matchDel.AideName) ? "None" : matchDel.AideName) : matchDel.AideNames) : "None"));
                 keyValues.Add(("Report / Audit Date", Fmt.Date(tr.ReportDate)));
-                keyValues.Add(("Store Arrival Time", tr.ArrivalTime));
-                keyValues.Add(("Store Departure Time", tr.DepartureTime));
+                keyValues.Add(("Store Arrival Time", Fmt.Time(tr.ArrivalTime)));
+                keyValues.Add(("Store Departure Time", Fmt.Time(tr.DepartureTime)));
                 keyValues.Add(("Dispatched Volume", $"{totalDisp:N0} Crates"));
                 keyValues.Add(("Delivered G-Crates", $"{tr.DeliveredGCrates:N0}"));
                 keyValues.Add(("Delivered E-Crates", $"{tr.DeliveredECrates:N0}"));

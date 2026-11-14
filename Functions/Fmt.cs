@@ -121,6 +121,41 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         // ---- controls ----
+        /// <summary>
+        /// The same 12-hour behaviour for the time cells of a table: while typing only digits, a/p, m, ":" and space are taken (capitals),
+        /// a cell that is left shows hh:mm AM/PM, and text that is not a time gets an error text on the cell (it is refused when saving).
+        /// Other columns of the table are left alone.
+        /// </summary>
+        public static void ApplyTimeColumns(DataGridView g, params string[] columns)
+        {
+            var names = new System.Collections.Generic.HashSet<string>(columns, StringComparer.Ordinal);
+            var wired = new System.Collections.Generic.HashSet<TextBox>();
+            g.EditingControlShowing += (s, e) =>
+            {
+                if (e.Control is not TextBox tb) return;
+                bool timeCell = g.CurrentCell != null && names.Contains(g.Columns[g.CurrentCell.ColumnIndex].Name);
+                if (timeCell) tb.MaxLength = 8;
+                else if (tb.MaxLength == 8) tb.MaxLength = 32767;
+                if (!wired.Add(tb)) return;
+                tb.KeyPress += (ks, ke) =>
+                {
+                    if (g.CurrentCell == null || !names.Contains(g.Columns[g.CurrentCell.ColumnIndex].Name) || char.IsControl(ke.KeyChar)) return;
+                    char c = char.ToUpperInvariant(ke.KeyChar);
+                    if (char.IsDigit(c) || c == ':' || c == ' ' || c == 'A' || c == 'P' || c == 'M') ke.KeyChar = c;
+                    else ke.Handled = true;
+                };
+            };
+            g.CellEndEdit += (s, e) =>
+            {
+                if (e.RowIndex < 0 || e.ColumnIndex < 0 || !names.Contains(g.Columns[e.ColumnIndex].Name)) return;
+                var cell = g.Rows[e.RowIndex].Cells[e.ColumnIndex];
+                string text = (cell.Value?.ToString() ?? "").Trim();
+                if (text.Length == 0) { cell.ErrorText = ""; return; }
+                if (TryParseTime(text, out var t)) { string shown = Time(t); if (shown != text) cell.Value = shown; cell.ErrorText = ""; }
+                else cell.ErrorText = "Enter a time like 08:42 PM.";
+            };
+        }
+
         public static void ApplyDatePicker(DateTimePicker p)
         {
             p.Format = DateTimePickerFormat.Custom;

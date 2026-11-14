@@ -10819,7 +10819,62 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
-        public static void SaveIncidentReport(IncidentReport ir)
+        /// <summary>The incident lines of one trip, oldest first (voided ones left out). Read for the trip report's step 3 and Dispatch details, so it follows
+        /// <see cref="Features.TripIncidents"/> (not <see cref="Features.Incidents"/>, which hides the full Incident screen). Nothing in billing reads this.</summary>
+        public static List<IncidentReport> GetTripIncidents(int deliveryId)
+        {
+            var list = new List<IncidentReport>();
+            if (deliveryId <= 0 || !Features.On(Features.TripIncidents)) return list;
+            using var conn = new SqliteConnection(connectionString);
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT Id, DeliveryId, DispatchNumber, IncidentDate, DamagedQuantity, EstimatedCost, Cause, ChargeableToCrew, Description, Status, PhotoPath FROM IncidentReports WHERE DeliveryId = @d AND COALESCE(Status,'') <> 'Voided' ORDER BY Id ASC";
+            cmd.Parameters.AddWithValue("@d", deliveryId);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(new IncidentReport
+                {
+                    Id = reader.GetInt32(0),
+                    DeliveryId = reader.GetInt32(1),
+                    DispatchNumber = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                    IncidentDate = DateTime.TryParse(reader.GetString(3), out var dt) ? dt : DateTime.Today,
+                    DamagedQuantity = reader.GetInt32(4),
+                    EstimatedCost = Convert.ToDecimal(reader.GetDouble(5)),
+                    Cause = reader.IsDBNull(6) ? "" : reader.GetString(6),
+                    ChargeableToCrew = reader.GetInt32(7) == 1,
+                    Description = reader.IsDBNull(8) ? "" : reader.GetString(8),
+                    Status = reader.IsDBNull(9) ? "Pending" : reader.GetString(9),
+                    PhotoPath = reader.IsDBNull(10) ? "" : Functions.AppPaths.Resolve(reader.GetString(10))
+                });
+            }
+            return list;
+        }
+
+        /// <summary>Takes an incident line off its trip (step 3 of the trip report): it is voided, not erased, and stays in the audit log.</summary>
+        public static void VoidTripIncident(int incidentId)
+        {
+            if (incidentId <= 0) return;
+            string no = "", cause = "";
+            using (var conn = new SqliteConnection(connectionString))
+            {
+                conn.Open();
+                using (var read = conn.CreateCommand())
+                {
+                    read.CommandText = "SELECT COALESCE(DispatchNumber,''), COALESCE(Cause,'') FROM IncidentReports WHERE Id = @id";
+                    read.Parameters.AddWithValue("@id", incidentId);
+                    using var r = read.ExecuteReader();
+                    if (r.Read()) { no = r.GetString(0); cause = r.GetString(1); }
+                }
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "UPDATE IncidentReports SET Status = 'Voided' WHERE Id = @id";
+                cmd.Parameters.AddWithValue("@id", incidentId);
+                cmd.ExecuteNonQuery();
+                LogAuditTrail("DELETE", "IncidentReports", incidentId, no, "Status", "", "Voided", $"Incident for Dispatch #{no} ({cause}) taken off the trip report");
+            }
+        }
+
+        public static void SaveIncidentReport(IncidentReport ir, bool notify = true)
 
         {
 
@@ -10919,7 +10974,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 bool isNew = wasNew;
 
-                EventNotificationService.Publish(isNew ? "Incident Logged" : "Incident Updated", $"Dispatch #{ir.DispatchNumber}: {ir.Cause} ({ir.DamagedQuantity} damaged crates)", ToastType.Warning);
+                if (notify) EventNotificationService.Publish(isNew ? "Incident Logged" : "Incident Updated", $"Dispatch #{ir.DispatchNumber}: {ir.Cause} ({ir.DamagedQuantity} damaged crates)", ToastType.Warning);
 
             }
 

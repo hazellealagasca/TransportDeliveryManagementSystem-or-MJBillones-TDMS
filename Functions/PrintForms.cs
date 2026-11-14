@@ -544,13 +544,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     sb.Append(SectionTitle($"Stores ({stops.Count})"));
                     sb.Append(Table(opt, new[] { ("seq", "#", "center"), ("store", "Store", ""), ("store_address", "Store address", ""), ("planned", "Planned", "num"), ("delivered", "Delivered", "num"), ("returned", "Returned", "num"), ("time", "Arrival / departure", ""), ("received", "Received by", ""), ("status", "Status", "") },
                         stops.OrderBy(s => s.StopSequence).Select(s => Row(("seq", s.StopSequence), ("store", $"<b>{Esc((MJdatabase.StoreCodeForPrint(s.StoreCode) + " " + s.Destination).Trim())}</b>{(DrList.Count(s.DrNumbers) == 0 ? "" : "<br/>" + DrList.Html(s.DrNumbers, "DR# "))}"), ("store_address", Esc(StoreAddressBook.Get(d.ClientName, s.StoreCode, s.Destination))),
-                            ("planned", $"{s.TotalCrates} (G {s.GCrate} / E {s.ECrate})"), ("delivered", $"{s.DeliveredCrates}"), ("returned", $"{s.ReturnedCrates}"), ("time", $"{s.ArrivalTime} – {s.DepartureTime}"), ("received", s.StoreManagerName), ("status", s.Status)))));
+                            ("planned", $"{s.TotalCrates} (G {s.GCrate} / E {s.ECrate})"), ("delivered", $"{s.DeliveredCrates}"), ("returned", $"{s.ReturnedCrates}"), ("time", $"{Fmt.Time(s.ArrivalTime)} – {Fmt.Time(s.DepartureTime)}"), ("received", s.StoreManagerName), ("status", s.Status)))));
                 }
                 if (opt.On("trip"))
                 {
                     sb.Append(SectionTitle("Trip report"));
                     sb.Append(trip == null ? "<p class='empty'>No trip report filed yet.</p>"
-                        : $"<table class='kv'><tr><td class='k'>Report #</td><td class='v'>{Esc(trip.TripReportNumber)}</td><td class='k'>Report date</td><td class='v'>{D(trip.ReportDate)}</td></tr><tr><td class='k'>Store arrival</td><td class='v'>{Esc(trip.ArrivalTime)}</td><td class='k'>Store departure</td><td class='v'>{Esc(trip.DepartureTime)}</td></tr><tr><td class='k'>Received by</td><td class='v'>{Esc(trip.StoreManagerName)}</td><td class='k'>Delivered / returned</td><td class='v'>{trip.DeliveredCrates} / {trip.ReturnedCrates}</td></tr><tr><td class='k'>Remarks</td><td class='v' colspan='3'>{Multi(trip.Remarks)}</td></tr></table>");
+                        : $"<table class='kv'><tr><td class='k'>Report #</td><td class='v'>{Esc(trip.TripReportNumber)}</td><td class='k'>Report date</td><td class='v'>{D(trip.ReportDate)}</td></tr><tr><td class='k'>Store arrival</td><td class='v'>{Esc(Fmt.Time(trip.ArrivalTime))}</td><td class='k'>Store departure</td><td class='v'>{Esc(Fmt.Time(trip.DepartureTime))}</td></tr><tr><td class='k'>Received by</td><td class='v'>{Esc(trip.StoreManagerName)}</td><td class='k'>Delivered / returned</td><td class='v'>{trip.DeliveredCrates} / {trip.ReturnedCrates}</td></tr><tr><td class='k'>Remarks</td><td class='v' colspan='3'>{Multi(trip.Remarks)}</td></tr></table>");
                 }
                 if (opt.On("incident"))
                 {
@@ -724,7 +724,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 new PrintField("driver", "Driver's name", d.DriverName), new PrintField("helper", "Helper's name", aides),
                 new PrintField("hauler", "Hauler", $"MJB ({plate})"), new PrintField("plate", "Plate no.", plate),
                 new PrintField("seal", "Seal no.", d.DispatchNumber), new PrintField("etd", "Std ETD", d.DepartureTime),
-                new PrintField("time_in", "Truck time in", trip?.TruckTimeIn ?? ""), new PrintField("time_out", "Truck time out", trip?.TruckTimeOut ?? ""),
+                new PrintField("time_in", "Truck time in", Fmt.Time(trip?.TruckTimeIn)), new PrintField("time_out", "Truck time out", Fmt.Time(trip?.TruckTimeOut)),
                 new PrintField("dtr_approved", "DTR approved by", trip?.DtrApprovedBy ?? ""), new PrintField("return_checked", "Return checked by", trip?.ReturnCheckedBy ?? ""),
                 new PrintField("dtr_prepared", "DTR prepared by", trip?.DtrPreparedBy ?? ""), new PrintField("dr_prepared", "DR prepared by", trip?.DrPreparedBy ?? ""),
                 new PrintField("dr_checked", "DR checked by", trip?.DrCheckedBy ?? ""), new PrintField("guard", "Guard name & sign", trip?.GuardName ?? ""),
@@ -746,7 +746,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     int Le(DispatchStop s) => s.DeliveredECrates > 0 || s.DeliveredGCrates > 0 ? s.DeliveredECrates : s.ECrate;
                     int Lg(DispatchStop s) => s.DeliveredECrates > 0 || s.DeliveredGCrates > 0 ? s.DeliveredGCrates : s.GCrate;
                     var rows = stops.Select(s => Row(("no", ++n), ("code", $"<b>{Esc(MJdatabase.StoreCodeForPrint(s.StoreCode))}</b>"), ("store", $"<b>{Esc(s.Destination)}</b>{(DrList.Count(s.DrNumbers) == 0 ? "" : "<br/>" + DrList.Html(s.DrNumbers, "DR# "))}"),
-                        ("store_address", Esc(StoreAddressBook.Get(d.ClientName, s.StoreCode, s.Destination))), ("in", s.ArrivalTime), ("out", s.DepartureTime), ("rep", s.StoreManagerName), ("le", Le(s)), ("lg", Lg(s)),
+                        ("store_address", Esc(StoreAddressBook.Get(d.ClientName, s.StoreCode, s.Destination))), ("in", Fmt.Time(s.ArrivalTime)), ("out", Fmt.Time(s.DepartureTime)), ("rep", s.StoreManagerName), ("le", Le(s)), ("lg", Lg(s)),
                         ("re", s.ReturnedECrates), ("rg", s.ReturnedGCrates), ("remarks", s.Remarks))).ToList();
                     var totals = opt.On("totals") ? new Dictionary<string, string> { ["store"] = "TOTAL", ["le"] = stops.Sum(Le).ToString(), ["lg"] = stops.Sum(Lg).ToString(), ["re"] = stops.Sum(s => s.ReturnedECrates).ToString(), ["rg"] = stops.Sum(s => s.ReturnedGCrates).ToString() } : null;
                     sb.Append(SectionTitle("Stores"));

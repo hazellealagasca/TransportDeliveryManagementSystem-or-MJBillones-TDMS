@@ -17,6 +17,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public const string AutoDispatchNumber = "Feature.AutoDispatchNumber";
         public const string SpecialTrips = "Feature.SpecialTrips";
         public const string Incidents = "Feature.Incidents";
+        /// <summary>Step 3 of the trip report (damaged or missing crates) and the incident lines in Dispatch details. The full Incident screen stays behind <see cref="Incidents"/>.</summary>
+        public const string TripIncidents = "Feature.TripIncidents";
         public const string CrewPay = "Feature.CrewPay";
         public const string BackupReminder = "Feature.BackupReminder";
         public const string ConfirmSaves = "Feature.ConfirmSaves";
@@ -35,7 +37,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public const string InvoiceFromSoa = "Feature.InvoiceFromSoa";
         private static readonly Dictionary<string, bool> Defaults = new()
         {
-            [RateMatrix] = true, [AutoDispatchNumber] = true, [SpecialTrips] = true, [Incidents] = true, [CrewPay] = true,
+            [RateMatrix] = true, [AutoDispatchNumber] = true, [SpecialTrips] = true, [Incidents] = true, [TripIncidents] = true, [CrewPay] = true,
             [BackupReminder] = true, [ConfirmSaves] = true, [QuietNotices] = true, [Toasts] = true,
             [TruckSuggestion] = true, [EmptyCrateCheck] = true, [StoreTableEditHeader] = true, [AllInOneSummary] = false, [PaymentsWorkbench] = true, [InvoiceFromSoa] = true
         };

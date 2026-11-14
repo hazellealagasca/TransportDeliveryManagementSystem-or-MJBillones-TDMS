@@ -8,7 +8,7 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.M
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
 {
     /// <summary>
-    /// Nov 10: each trip report carries its type of delivery (REF or DRY). The Statement of Account prints it for the trip
+    /// Nov 10: each trip report carries its type of delivery (REF or DRY); since Nov 14 it is hidden here and a new report is REF. The Statement of Account prints it for the trip
     /// (it is not typed again there).
     /// </summary>
     public partial class TripReportView
@@ -24,6 +24,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbTripType.SelectedIndex = 0;
             row.Controls.Add(lbl);
             row.Controls.Add(cbTripType);
+            row.Visible = false;   // Nov 14: the type of delivery is not shown on the trip report; a new report is REF (the SOA keeps its own choice)
             return row;
         }
 

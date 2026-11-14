@@ -134,7 +134,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         // ------------------------------------------------------------------ The four steps
 
-        private static readonly Regex Hhmm = new Regex(@"^([01]?\d|2[0-3]):?[0-5]\d$");
         private static bool Filled(TextBox? t) => t != null && t.Text.Trim().Length > 0;
 
         /// <summary>Step 1: every store has its time in, time out and who received the delivery.</summary>
@@ -149,17 +148,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             return true;
         }
-        /// <summary>Step 2: the truck's time in and time out at the plant gate (24-hour).</summary>
+        /// <summary>Step 2 (first part): the truck's time in and time out at the plant gate (12-hour, or an older stored HHMM).</summary>
         private bool StepGateDone() => txtTruckTimeIn != null && txtTruckTimeOut != null
-            && Hhmm.IsMatch(txtTruckTimeIn.Text.Trim()) && Hhmm.IsMatch(txtTruckTimeOut.Text.Trim());
-        /// <summary>Step 3: the people who checked, prepared and approved the trip signed it.</summary>
+            && Fmt.TryParseTime(txtTruckTimeIn.Text, out _) && Fmt.TryParseTime(txtTruckTimeOut.Text, out _);
+        /// <summary>Step 2 (second part): the people who checked, prepared and approved the trip signed it.</summary>
         private bool StepVerificationDone() => Filled(txtDtrApprovedBy) && Filled(txtDtrPreparedBy) && Filled(txtDrPreparedBy) && Filled(txtDrCheckedBy) && Filled(txtGuardName);
 
         private void UpdateTripStepper()
         {
             if (tripStepper == null) return;
             bool invoiced = isEditingExistingReport && selectedTripReport != null && RowMenu.Is(selectedTripReport.Status, TripReportStatus.Invoiced);
-            tripStepper.SetSteps(StepStoresDone(), StepGateDone(), StepVerificationDone(), invoiced);
+            tripStepper.SetSteps(StepStoresDone(), StepGateDone() && StepVerificationDone(), IncidentStepOn ? StepIncidentDone() : (bool?)null, invoiced);
         }
 
         /// <summary>Re-draws the step bar while the person types (times, names, store cells).</summary>
@@ -168,6 +167,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             WirePlantGateValidation();
             foreach (var t in new[] { txtTruckTimeIn, txtTruckTimeOut, txtDtrApprovedBy, txtDtrPreparedBy, txtDrPreparedBy, txtDrCheckedBy, txtGuardName, txtReturnCheckedBy })
                 if (t != null) t.TextChanged += (s, e) => UpdateTripStepper();
+            foreach (var t in new[] { txtIncCause, txtIncNotes })
+                if (t != null) t.TextChanged += (s, e) => UpdateTripStepper();
+            if (numIncQty != null) numIncQty.ValueChanged += (s, e) => UpdateTripStepper();
+            if (numIncCost != null) numIncCost.ValueChanged += (s, e) => UpdateTripStepper();
             if (gridStores != null)
             {
                 gridStores.CellValueChanged += (s, e) => UpdateTripStepper();
@@ -460,8 +463,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     /// <summary>The 4-step progress bar across the top of the trip report form.</summary>
     internal sealed class TripStepper : Control
     {
-        private static readonly string[] Titles = { "Store timestamps & signatures", "Gate times (time in / out)", "Verification & signatory check", "Goes to Statement of Account" };
-        private readonly bool[] done = new bool[4];
+        // Nov 14: 1 Stores & DRs, 2 Plant gate & sign-off, 3 Incident report (only while the trip-incident switch is on), then the statement.
+        private static readonly string[] AllTitles = { "Stores & DRs", "Plant gate & sign-off", "Incident report", "Goes to Statement of Account" };
+        private string[] Titles = AllTitles;
+        private bool[] done = new bool[4];
 
         public TripStepper()
         {
@@ -469,9 +474,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             BackColor = AppTheme.Surface;
         }
 
-        public void SetSteps(bool stores, bool gate, bool verification, bool invoiced)
+        /// <summary><paramref name="incident"/> is null when the incident step is switched off (the bar then has three steps).</summary>
+        public void SetSteps(bool stores, bool gate, bool? incident, bool invoiced)
         {
-            done[0] = stores; done[1] = gate; done[2] = verification; done[3] = invoiced;
+            if (incident.HasValue) { Titles = AllTitles; done = new[] { stores, gate, incident.Value, invoiced }; }
+            else { Titles = new[] { AllTitles[0], AllTitles[1], AllTitles[3] }; done = new[] { stores, gate, invoiced }; }
             Invalidate();
         }
 

@@ -270,6 +270,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnEditTripStoreTable.Click += (s, e) => OpenTripStoreTableEditor();
             pnlMultiDropHeaderBar.Controls.Add(lblMultiDropDetails, 0, 0);
             pnlMultiDropHeaderBar.Controls.Add(btnAddTripStoreRow, 1, 0);
+            btnAddTripStoreRow.Visible = false;   // Nov 14: stores come only from the dispatch
             pnlMultiDropHeaderBar.Controls.Add(btnEditTripStoreTable, 2, 0);
             btnEditTripStoreTable.Visible = false; // the free table editor would bypass the locked crate cells
             var lblStoresHint = new Label
@@ -331,8 +332,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Nov 9: shown again, read-only, so the delivered crates (E and G) are listed per store.
             gridStores.Columns.Add(Locked("colRetE", "Returned E", 80, roNumStyle, 92));
             gridStores.Columns.Add(Locked("colRetG", "Returned G", 80, roNumStyle, 92));
-            gridStores.Columns.Add(Col("colRem", "No. Drops", 66, editNumStyle, 80));
-            InputGuards.DigitsOnlyColumns(gridStores, "colRem");
+            gridStores.Columns.Add(Locked("colRem", "No. Drops", 66, roNumStyle, 80));   // Nov 14 (D6): read-only; every store is one drop
             InputGuards.PersonNameColumns(gridStores, "colRep");   // Nov 10: Received by is a person's name: letters, not numbers
             // "…" beside the DR cell opens the DR list. Added last so the other columns keep their positions.
             gridStores.Columns.Add(DrCellSupport.MakeButtonColumn("colDrBtn", Dpi(34)));
@@ -407,8 +407,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             TextBox MakeTxt(string def) => new TextBox { Text = def, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10F), Margin = new Padding(0, Dpi(2), Dpi(12), Dpi(6)) };
             txtTruckTimeIn = MakeTxt("");
             txtTruckTimeOut = MakeTxt("");
-            txtTruckTimeIn.PlaceholderText = "e.g. 2042 (24-hour)";
-            txtTruckTimeOut.PlaceholderText = "e.g. 0139 (24-hour)";
+            txtTruckTimeIn.PlaceholderText = "e.g. 08:42 PM";
+            txtTruckTimeOut.PlaceholderText = "e.g. 01:30 AM";
             txtDtrApprovedBy = MakeTxt("");
             txtReturnCheckedBy = MakeTxt("");
             txtDtrPreparedBy = MakeTxt("");
@@ -518,8 +518,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         s.StoreCode,
                         s.Destination,
                         s.DrNumbers,
-                        s.ArrivalTime,
-                        s.DepartureTime,
+                        Fmt.Time(s.ArrivalTime),
+                        Fmt.Time(s.DepartureTime),
                         s.StoreManagerName,
                         loadE,
                         loadG,
@@ -536,6 +536,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MarkDuplicateDrs(showToast: false);
                 RefreshExtraUi();
                 UpdateDeliveredCrateTotals();
+                LoadIncidentStep(d);   // Nov 14: step 3 shows this trip's saved incidents (or No)
+                CheckCrateVariance();
                 pnlMultiDropInfo.Visible = true;
                 if (tripCrateSummary != null) tripCrateSummary.Visible = true;
             }
@@ -627,11 +629,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Opens the store window for one row; returns true when the user applied changes.</summary>
         /// <summary>The store's Remarks now hold its number of drops. Older reports stored "Stop 1", "Stop 2"… there
         /// (the stop's position, not a count), so those show as blank instead of a wrong number.</summary>
-        private static string DropsFromRemarks(string? remarks)
-        {
-            string r = (remarks ?? "").Trim();
-            return System.Text.RegularExpressions.Regex.IsMatch(r, @"^\d{1,3}$") ? r : "";
-        }
+        private static string DropsFromRemarks(string? remarks) => "1";   // Nov 14 (D6): the number of drops of a store row is always 1, so the trip's drops are its store count (read-only)
         private bool OpenStoreDetails(int rowIndex)
         {
             if (gridStores == null || rowIndex < 0 || rowIndex >= gridStores.Rows.Count) return false;
@@ -669,7 +667,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (string.IsNullOrWhiteSpace(V("colLoadE"))) row.Cells["colLoadE"].Value = 0;
                 if (string.IsNullOrWhiteSpace(V("colLoadG"))) row.Cells["colLoadG"].Value = 0;
             }
-            row.Cells["colRem"].Value = dlg.Drops;
+            row.Cells["colRem"].Value = DropsFromRemarks(null);
             row.Cells["colIn"].Value = dlg.TimeIn;
             row.Cells["colOut"].Value = dlg.TimeOut;
             row.Cells["colRep"].Value = dlg.Representative;
@@ -910,8 +908,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     StoreCode = row.Cells["colCode"].Value?.ToString()?.Trim() ?? "",
                     Destination = row.Cells["colStore"].Value?.ToString()?.Trim() ?? "",
                     DrNumbers = DrList.Normalize(row.Cells["colDr"].Value?.ToString()),
-                    ArrivalTime = row.Cells["colIn"].Value?.ToString()?.Trim() ?? "",
-                    DepartureTime = row.Cells["colOut"].Value?.ToString()?.Trim() ?? "",
+                    ArrivalTime = Fmt.Time(row.Cells["colIn"].Value?.ToString()),
+                    DepartureTime = Fmt.Time(row.Cells["colOut"].Value?.ToString()),
                     StoreManagerName = rep,
                     StoreManagerLastName = sp.LastName,
                     StoreManagerFirstName = sp.FirstName,
@@ -988,52 +986,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 "No returned empty crates were entered for this trip.\n\nThe crew normally brings back the empty G- and E-crates. Enter how many came back, or click Yes if really none were returned.\n\nSave with 0 returned crates?",
                 "Returned empty crates", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
         }
+
+        /// <summary>Nov 14: when fewer crates were delivered than dispatched, step 3 says so (the old "Log incident" button is gone; the incident is entered in step 3).</summary>
         private void CheckCrateVariance()
         {
-            if (cbDelivery.SelectedIndex < 0)
-            {
-                btnLogIncident.Visible = false;
-                return;
-            }
-            string selText = cbDelivery.SelectedItem?.ToString() ?? "";
-            var selDel = allDeliveries.FirstOrDefault(del => selText.StartsWith(del.DispatchNumber + " - "));
-            if (selDel == null)
-            {
-                btnLogIncident.Visible = false;
-                return;
-            }
-
-            int dgc = (int)numDeliveredGCrates.Value;
-            int dec = (int)numDeliveredECrates.Value;
-            int totalDel = dgc + dec;
+            if (lblIncHint == null) return;
+            var selDel = cbDelivery.SelectedIndex < 0 ? null : GetSelectedDelivery();
+            if (selDel == null || selDel.Id <= 0 || !IncidentStepOn) { lblIncHint.Visible = false; return; }
+            int totalDel = (int)numDeliveredGCrates.Value + (int)numDeliveredECrates.Value;
             int totalDisp = selDel.TotalCrates > 0 ? selDel.TotalCrates : (selDel.GCrate + selDel.ECrate);
-
-            if (totalDisp > totalDel)
-            {
-                int missing = totalDisp - totalDel;
-                btnLogIncident.Text = $"⚠️ Log incident ({missing} missing crates)";
-                btnLogIncident.Visible = Features.On(Features.Incidents);
-            }
-            else
-            {
-                btnLogIncident.Visible = false;
-            }
-        }
-
-        private void BtnLogIncident_Click(object? sender, EventArgs e)
-        {
-            if (cbDelivery.SelectedIndex < 0) return;
-            string selText = cbDelivery.SelectedItem?.ToString() ?? "";
-            var selDel = allDeliveries.FirstOrDefault(del => selText.StartsWith(del.DispatchNumber + " - "));
-            if (selDel == null) return;
-
-            int dgc = (int)numDeliveredGCrates.Value;
-            int dec = (int)numDeliveredECrates.Value;
-            int totalDel = dgc + dec;
-            int totalDisp = selDel.TotalCrates > 0 ? selDel.TotalCrates : (selDel.GCrate + selDel.ECrate);
-            int missing = Math.Max(1, totalDisp - totalDel);
-
-            OnLogIncidentRequested?.Invoke(selDel.Id, selDel.DispatchNumber, missing, DateTime.Now);
+            int fewer = totalDisp - totalDel;
+            lblIncHint.Text = fewer > 0 ? $"{fewer:N0} crate{(fewer == 1 ? "" : "s")} fewer were delivered than dispatched." : "";
+            lblIncHint.Visible = lblIncHint.Text.Length > 0;
         }
 
         private void SetupGridColumns()
@@ -1079,8 +1043,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (dIdx >= 0) cbDelivery.SelectedIndex = dIdx;
                 ShowTripType(selectedTripReport);
 
-                txtArrivalTime.Text = selectedTripReport.ArrivalTime ?? "";
-                txtDepartureTime.Text = selectedTripReport.DepartureTime ?? "";
+                txtArrivalTime.Text = Fmt.Time(selectedTripReport.ArrivalTime);
+                txtDepartureTime.Text = Fmt.Time(selectedTripReport.DepartureTime);
                 numDeliveredGCrates.SetSafe(Math.Max(0, selectedTripReport.DeliveredGCrates));
                 numDeliveredECrates.SetSafe(Math.Max(0, selectedTripReport.DeliveredECrates));
                 numReturnedGCrates.SetSafe(Math.Max(0, selectedTripReport.ReturnedGCrates));
@@ -1089,8 +1053,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 txtStoreManagerFirstName.Text = selectedTripReport.StoreManagerFirstName ?? "";
                 txtStoreManagerMiddleName.Text = selectedTripReport.StoreManagerMiddleName ?? "";
                 txtRemarks.Text = selectedTripReport.Remarks;
-                if (txtTruckTimeIn != null) txtTruckTimeIn.Text = selectedTripReport.TruckTimeIn ?? "";
-                if (txtTruckTimeOut != null) txtTruckTimeOut.Text = selectedTripReport.TruckTimeOut ?? "";
+                if (txtTruckTimeIn != null) txtTruckTimeIn.Text = Fmt.Time(selectedTripReport.TruckTimeIn);
+                if (txtTruckTimeOut != null) txtTruckTimeOut.Text = Fmt.Time(selectedTripReport.TruckTimeOut);
                 if (txtDtrApprovedBy != null) txtDtrApprovedBy.Text = selectedTripReport.DtrApprovedBy ?? "";
                 if (txtReturnCheckedBy != null) txtReturnCheckedBy.Text = selectedTripReport.ReturnCheckedBy ?? "";
                 if (txtDtrPreparedBy != null) txtDtrPreparedBy.Text = selectedTripReport.DtrPreparedBy ?? "";
@@ -1144,6 +1108,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     Client = (d.ClientName ?? "").Trim(),
                     Date = d.DispatchDate
                 }).ToList();
+                PrunePickTicks();
                 RefreshPickClients();
                 cbDelivery.Items.Clear();
                 pickItemsAdded.Clear();
@@ -1355,19 +1320,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 string storeManagerName = NameHelper.FormatFullName(smLastName, smFirstName, smMiddleName);
 
-                if (!asDraft && DateTime.TryParse(txtArrivalTime.Text.Trim(), out var arrTime) && DateTime.TryParse(txtDepartureTime.Text.Trim(), out var depTime))
-                {
-                    if (depTime < arrTime)
-                    {
-                        var timePrompt = MessageBox.Show($"Store Departure Time ({txtDepartureTime.Text.Trim()}) is earlier than Store Arrival Time ({txtArrivalTime.Text.Trim()}).\n\nAre you sure this transit chronology is accurate?", "Transit Time Chronology Warning", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                        if (timePrompt != DialogResult.Yes)
-                        {
-                            txtDepartureTime.Focus();
-                            return;
-                        }
-                    }
-                }
-
+                if (!asDraft && !ConfirmStoreOrder()) return; // Nov 14: each store's time out before its time in asks "overnight trip?"
                 if (!asDraft && !ConfirmGateOrder()) return; // Nov 12
                 int dgc = (int)numDeliveredGCrates.Value;
                 int dec = (int)numDeliveredECrates.Value;
@@ -1393,8 +1346,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     DeliveryId = selDel.Id > 0 ? selDel.Id : 0,
                     SpecialTripId = selDel.Id < 0 ? -selDel.Id : 0,
                     DispatchNumber = selDel.DispatchNumber,
-                    ArrivalTime = txtArrivalTime.Text.Trim(),
-                    DepartureTime = txtDepartureTime.Text.Trim(),
+                    ArrivalTime = Fmt.Time(txtArrivalTime.Text),
+                    DepartureTime = Fmt.Time(txtDepartureTime.Text),
                     DeliveredGCrates = dgc,
                     DeliveredECrates = dec,
                     DeliveredCrates = dgc + dec,
@@ -1407,8 +1360,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     StoreManagerName = storeManagerName,
                     Remarks = txtRemarks.Text.Trim(),
                     ReportDate = DateTime.Now,
-                    TruckTimeIn = txtTruckTimeIn?.Text?.Trim() ?? "",
-                    TruckTimeOut = txtTruckTimeOut?.Text?.Trim() ?? "",
+                    TruckTimeIn = Fmt.Time(txtTruckTimeIn?.Text),
+                    TruckTimeOut = Fmt.Time(txtTruckTimeOut?.Text),
                     DtrApprovedBy = txtDtrApprovedBy?.Text?.Trim() ?? "",
                     ReturnCheckedBy = txtReturnCheckedBy?.Text?.Trim() ?? "",
                     DtrPreparedBy = txtDtrPreparedBy?.Text?.Trim() ?? "",
@@ -1423,7 +1376,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     MJdatabase.SaveDispatchStops(selDel.Id, stopsToSave);
                 }
                 MJdatabase.SaveTripReport(tr);
-                SaveTripType(tr.DeliveryId, tr.SpecialTripId);   // Nov 10: REF / DRY chosen on this trip report
+                SaveTripType(tr.DeliveryId, tr.SpecialTripId);   // Nov 14: always REF (the type of delivery is hidden here)
+                PersistTripIncidents(selDel);                    // Nov 14: step 3, the incident lines of this trip
                 MJdatabase.ClearFormDraft("TripReport", SessionContext.CurrentUsername);
                 if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
                 if (asDraft)
@@ -1434,17 +1388,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     SetFormVisibility(false);
                     return;
                 }
-                if (selDel.Id > 0 && totalDispatched > totalDelivered && Features.On(Features.Incidents))
-                {
-                    int missing = totalDispatched - totalDelivered;
-                    var promptLog = MessageBox.Show($"Trip Report completed with {missing} missing/damaged crate(s).\n\nWould you like to log an Incident & Damage Report for this delivery now?", "Log Incident Report?", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                    if (promptLog == DialogResult.Yes)
-                    {
-                        OnLogIncidentRequested?.Invoke(selDel.Id, selDel.DispatchNumber, missing, DateTime.Now);
-                        return;
-                    }
-                }
-
+                // Nov 14: no "log an incident now?" question here: the incident report is step 3 of this form.
                 ClearFields();
                 LoadData();
                 SetFormVisibility(false);
@@ -1572,19 +1516,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 string storeManagerName = NameHelper.FormatFullName(smLastName, smFirstName, smMiddleName);
 
-                if (DateTime.TryParse(txtArrivalTime.Text.Trim(), out var arrTime) && DateTime.TryParse(txtDepartureTime.Text.Trim(), out var depTime))
-                {
-                    if (depTime < arrTime)
-                    {
-                        var timePrompt = MessageBox.Show($"Store Departure Time ({txtDepartureTime.Text.Trim()}) is earlier than Store Arrival Time ({txtArrivalTime.Text.Trim()}).\n\nAre you sure this transit chronology is accurate?", "Transit Time Chronology Warning", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                        if (timePrompt != DialogResult.Yes)
-                        {
-                            txtDepartureTime.Focus();
-                            return;
-                        }
-                    }
-                }
-
+                if (!ConfirmStoreOrder()) return; // Nov 14: each store's time out before its time in asks "overnight trip?"
                 if (!ConfirmGateOrder()) return; // Nov 12
                 int dgc = (int)numDeliveredGCrates.Value;
                 int dec = (int)numDeliveredECrates.Value;
@@ -1592,8 +1524,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int rec = (int)numReturnedECrates.Value;
 
                 if (!EmptiesRecordedOrOk(rgc + rec, (int)numDeliveredGCrates.Value + (int)numDeliveredECrates.Value)) { numReturnedGCrates.Focus(); return; }
-                selectedTripReport.ArrivalTime = txtArrivalTime.Text.Trim();
-                selectedTripReport.DepartureTime = txtDepartureTime.Text.Trim();
+                selectedTripReport.ArrivalTime = Fmt.Time(txtArrivalTime.Text);
+                selectedTripReport.DepartureTime = Fmt.Time(txtDepartureTime.Text);
                 selectedTripReport.DeliveredGCrates = dgc;
                 selectedTripReport.DeliveredECrates = dec;
                 selectedTripReport.DeliveredCrates = dgc + dec;
@@ -1605,8 +1537,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedTripReport.StoreManagerMiddleName = smMiddleName;
                 selectedTripReport.StoreManagerName = storeManagerName;
                 selectedTripReport.Remarks = txtRemarks.Text.Trim();
-                selectedTripReport.TruckTimeIn = txtTruckTimeIn?.Text?.Trim() ?? "";
-                selectedTripReport.TruckTimeOut = txtTruckTimeOut?.Text?.Trim() ?? "";
+                selectedTripReport.TruckTimeIn = Fmt.Time(txtTruckTimeIn?.Text);
+                selectedTripReport.TruckTimeOut = Fmt.Time(txtTruckTimeOut?.Text);
                 selectedTripReport.DtrApprovedBy = txtDtrApprovedBy?.Text?.Trim() ?? "";
                 selectedTripReport.ReturnCheckedBy = txtReturnCheckedBy?.Text?.Trim() ?? "";
                 selectedTripReport.DtrPreparedBy = txtDtrPreparedBy?.Text?.Trim() ?? "";
@@ -1621,6 +1553,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (issueAfterUpdate) selectedTripReport.Status = TripReportStatus.Completed; // a Draft is finished here
                 MJdatabase.SaveTripReport(selectedTripReport);
                 SaveTripType(selectedTripReport.DeliveryId, selectedTripReport.SpecialTripId);
+                PersistTripIncidents(selDel);   // Nov 14: step 3
                 var issueFor = issueAfterUpdate ? selDel : null;
                 if (issueFor == null) QuietBox.Show("Trip Report updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
@@ -1883,6 +1816,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ClearExtras();                 // Nov 9: and no added dispatches are left over
             ResetPickFilter();             // Nov 9: search / client / show / sort back to their defaults
             ResetTripOverview();
+            ResetIncidentStep();           // Nov 14: step 3 back to No with nothing listed
             if (pnlMultiDropInfo != null) pnlMultiDropInfo.Visible = false;
             if (tripCrateSummary != null) tripCrateSummary.Visible = false; // shown again with the store table
         }
@@ -2074,12 +2008,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                     used.Add(row);
                     row.Cells["colDr"].Value = DrList.Normalize(f[2]);
-                    row.Cells["colIn"].Value = f[3];
-                    row.Cells["colOut"].Value = f[4];
+                    row.Cells["colIn"].Value = Fmt.Time(f[3]);
+                    row.Cells["colOut"].Value = Fmt.Time(f[4]);
                     row.Cells["colRep"].Value = f[5];
                     if (int.TryParse(f[6], out int re)) row.Cells["colRetE"].Value = Math.Max(0, re);
                     if (int.TryParse(f[7], out int rg)) row.Cells["colRetG"].Value = Math.Max(0, rg);
-                    row.Cells["colRem"].Value = f[8];
+                    row.Cells["colRem"].Value = "1";
                 }
             }
             finally { isUpdatingStoreGrid = false; }

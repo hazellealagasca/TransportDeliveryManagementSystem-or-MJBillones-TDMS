@@ -87,9 +87,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblCrateTotals.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tblCrateTotals.Controls.Add(tblDeliveredCrates, 0, 0);
             tblCrateTotals.Controls.Add(tblReturnedCrates, 1, 0);
-            btnLogIncident.Height = Dpi(40);
-            btnLogIncident.Font = new Font("Segoe UI Semibold", 9.5F);
-            var card1 = CreateSectionCard(1, "Dispatch order", "Pick the delivery this report closes out. Its route, truck and crew load automatically.",
+            var card1 = CreateSectionCard("•", "Dispatch order", "Pick the delivery this report closes out. Its route, truck and crew load automatically.",
                 lblDel, BuildPickFilterRow(), cbDelivery, BuildExtraDispatchesRow(), BuildTripOverview(), BuildTripTypeRow());
             tripCrateSummary = new TripCrateSummaryPanel();
             lblDeliveredCrateTotals = new Label
@@ -98,16 +96,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 BackColor = AppTheme.Surface, TextAlign = ContentAlignment.MiddleRight, UseMnemonic = false
             };
             UpdateDeliveredCrateTotals();
-            var card2 = CreateSectionCard(2, "Stores, times & signatures", "Each store's arrival and departure time, who received it, its DR numbers and the empties that came back.",
-                pnlMultiDropInfo, lblDeliveredCrateTotals, CreateGap(Dpi(8)), btnLogIncident, tblTimes, tblManagerNames);
+            var card2 = CreateSectionCard("1", "Stores, DRs & times", "Each store's arrival and departure time, who received it, its DR numbers and the empties that came back.",
+                pnlMultiDropInfo, lblDeliveredCrateTotals, CreateGap(Dpi(8)), tblTimes, tblManagerNames);
             _ = tblCrateTotals; // Nov 6 workflow: no delivered-crate totals or crate cards on the form (the values are still worked out)
             // Nov 6 workflow: crew pay is internal and is recorded in Resources → Crew Trip History, not on the trip report.
-            var card4 = CreateSectionCard(4, "Plant gate & sign-off", "Truck times at the plant, the people who signed, and any remarks.",
+            var card4 = CreateSectionCard("2", "Plant gate & sign-off", "Truck times at the plant, the people who signed, and any remarks.",
                 pnlTripFooter, lblRem, txtRemarks);
             tripAttachments = new AttachmentPanel("Proof of delivery (POD)") { Height = Dpi(250) };
             tripAttachments.AttachmentsChanged += (s, e) => FilterGridData();
-            var card5 = CreateSectionCard(5, "Attachments", "Proof of delivery, receipts, trip sheets and photos for this trip. Drop files in or click Add.", tripAttachments);
+            var card5 = CreateSectionCard("•", "Attachments", "Proof of delivery, receipts, trip sheets and photos for this trip. Drop files in or click Add.", tripAttachments);
+            cardIncident = CreateSectionCard("3", "Incident report", "Any damaged or missing crates on this trip? Kept for reference only: it never reaches a statement, invoice or receipt.", BuildIncidentStep());
+            Features.Bind(this, ApplyIncidentFeature, Features.TripIncidents);
             pnlFormBody.Controls.Add(card5);
+            pnlFormBody.Controls.Add(CreateSectionSpacer());
+            pnlFormBody.Controls.Add(cardIncident);
             pnlFormBody.Controls.Add(CreateSectionSpacer());
             pnlFormBody.Controls.Add(card4);
             pnlFormBody.Controls.Add(CreateSectionSpacer());
@@ -121,7 +123,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private Panel CreateGap(int h) => new Panel { Height = h, BackColor = AppTheme.Surface };
         private Panel CreateSectionSpacer() => new Panel { Dock = DockStyle.Top, Height = Dpi(16), BackColor = AppTheme.Canvas };
-        private Panel CreateSectionCard(int step, string title, string subtitle, params Control?[] contentTopToBottom)
+        private Panel CreateSectionCard(string step, string title, string subtitle, params Control?[] contentTopToBottom)
         {
             var card = new Panel
             {
@@ -154,7 +156,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var circle = new Rectangle(0, Dpi(2), d, d);
                 using (var b = new SolidBrush(AppTheme.AccentSoft)) g.FillEllipse(b, circle);
                 using (var nf = new Font("Segoe UI Semibold", 10F))
-                    TextRenderer.DrawText(g, step.ToString(), nf, circle, AppTheme.AccentText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+                    TextRenderer.DrawText(g, step, nf, circle, AppTheme.AccentText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
                 using (var tf = new Font("Segoe UI Semibold", 12F))
                     TextRenderer.DrawText(g, title, tf, new Point(d + Dpi(12), 0), AppTheme.TextPrimary, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
                 using (var sf = new Font("Segoe UI", 9F))

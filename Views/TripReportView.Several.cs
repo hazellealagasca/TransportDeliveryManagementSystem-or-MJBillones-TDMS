@@ -235,7 +235,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     int loadG = (s.DeliveredECrates > 0 || s.DeliveredGCrates > 0) ? s.DeliveredGCrates : s.GCrate;
                     int retE = (s.ReturnedECrates > 0 || s.ReturnedGCrates > 0) ? s.ReturnedECrates : loadE;
                     int retG = (s.ReturnedECrates > 0 || s.ReturnedGCrates > 0) ? s.ReturnedGCrates : loadG;
-                    int rIdx = gridStores.Rows.Add(s.StoreCode, s.Destination, s.DrNumbers, s.ArrivalTime, s.DepartureTime, s.StoreManagerName, loadE, loadG, retE, retG, DropsFromRemarks(s.Remarks));
+                    int rIdx = gridStores.Rows.Add(s.StoreCode, s.Destination, s.DrNumbers, Fmt.Time(s.ArrivalTime), Fmt.Time(s.DepartureTime), s.StoreManagerName, loadE, loadG, retE, retG, DropsFromRemarks(s.Remarks));
                     gridStores.Rows[rIdx].Tag = s;
                     StampRow(gridStores.Rows[rIdx], d);
                 }
@@ -298,6 +298,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UIThemeHelper.SetButtonRole(btnOk, "primary");
             UIThemeHelper.SetButtonRole(btnCancel, "secondary");
             void Refresh() { int n = list.CheckedIndices.Count; btnOk.Enabled = n > 0; btnOk.Text = n > 1 ? $"Add {n}" : "Add"; }
+            // Nov 14: the ticks are remembered in tickedPickIds, so they are still there after a filter, sort or refresh and the next time this window opens.
+            for (int i = 0; i < items.Count; i++) if (tickedPickIds.Contains(items[i].D.Id)) list.SetItemChecked(i, true);
+            list.ItemCheck += (s, e) => { int id = items[e.Index].D.Id; if (e.NewValue == CheckState.Checked) tickedPickIds.Add(id); else tickedPickIds.Remove(id); UpdatePickCount(lastPickMatched); };
+            Refresh();
             list.ItemCheck += (s, e) => f.BeginInvoke(new Action(Refresh));
             chkAll.CheckedChanged += (s, e) => { for (int i = 0; i < list.Items.Count; i++) list.SetItemChecked(i, chkAll.Checked); };
             footer.Controls.AddRange(new Control[] { btnOk, btnCancel, chkAll });
@@ -334,7 +338,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             + RideWarningTail + Environment.NewLine + Environment.NewLine + "File them together anyway?";
                 if (MessageBox.Show(FindForm(), text, "Check these dispatches", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
             }
-            if (!ConfirmGateOrder()) return; // Nov 12: gate time out before time in asks once
+            if (!ConfirmGateOrder() || !ConfirmStoreOrder()) return; // Nov 12/14: a time out before its time in (plant gate, each store) asks once
             gridStores.EndEdit();
 
             var plans = new List<(Delivery D, List<DispatchStop> Stops, int Dg, int De, int Rg, int Re, string Arr, string Dep, string Mgr)>();
@@ -344,8 +348,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var stops = CollectStopsFromGrid(d);
                 int De = rows.Sum(r => RowInt(r, "colLoadE")), Dg = rows.Sum(r => RowInt(r, "colLoadG"));
                 int Re = rows.Sum(r => RowInt(r, "colRetE")), Rg = rows.Sum(r => RowInt(r, "colRetG"));
-                string arr = rows.Select(r => r.Cells["colIn"].Value?.ToString()?.Trim() ?? "").FirstOrDefault(x => x.Length > 0) ?? txtArrivalTime.Text.Trim();
-                string dep = rows.Select(r => r.Cells["colOut"].Value?.ToString()?.Trim() ?? "").LastOrDefault(x => x.Length > 0) ?? txtDepartureTime.Text.Trim();
+                string arr = Fmt.Time(rows.Select(r => r.Cells["colIn"].Value?.ToString()?.Trim() ?? "").FirstOrDefault(x => x.Length > 0) ?? txtArrivalTime.Text.Trim());
+                string dep = Fmt.Time(rows.Select(r => r.Cells["colOut"].Value?.ToString()?.Trim() ?? "").LastOrDefault(x => x.Length > 0) ?? txtDepartureTime.Text.Trim());
                 string rep = rows.Select(r => r.Cells["colRep"].Value?.ToString()?.Trim() ?? "").FirstOrDefault(x => x.Length > 0) ?? "";
                 string mgr;
                 if (rep.Length > 0)
@@ -390,8 +394,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         StoreManagerName = p.Mgr,
                         Remarks = txtRemarks.Text.Trim(),
                         ReportDate = DateTime.Now,
-                        TruckTimeIn = txtTruckTimeIn?.Text?.Trim() ?? "",
-                        TruckTimeOut = txtTruckTimeOut?.Text?.Trim() ?? "",
+                        TruckTimeIn = Fmt.Time(txtTruckTimeIn?.Text),
+                        TruckTimeOut = Fmt.Time(txtTruckTimeOut?.Text),
                         DtrApprovedBy = txtDtrApprovedBy?.Text?.Trim() ?? "",
                         ReturnCheckedBy = txtReturnCheckedBy?.Text?.Trim() ?? "",
                         DtrPreparedBy = txtDtrPreparedBy?.Text?.Trim() ?? "",
@@ -417,23 +421,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             MJdatabase.ClearFormDraft("TripReport", SessionContext.CurrentUsername);
             if (pnlDraftBanner != null) pnlDraftBanner.Visible = false;
-            (Delivery D, int Missing)? incident = null;
-            if (Features.On(Features.Incidents))
-                foreach (var p in plans)
-                {
-                    int dispatched = p.D.TotalCrates > 0 ? p.D.TotalCrates : p.D.GCrate + p.D.ECrate;
-                    int missing = dispatched - (p.Dg + p.De);
-                    if (p.D.Id > 0 && missing > 0 && incident == null)
-                    {
-                        var ans = MessageBox.Show(FindForm(), $"{p.D.DispatchNumber} was completed with {missing} missing/damaged crate(s).\n\nLog an Incident & Damage Report for it now?", "Log Incident Report", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                        if (ans == DialogResult.Yes) incident = (p.D, missing);
-                    }
-                }
+            PersistTripIncidents(primary);   // Nov 14: step 3 replaces the "log an incident now?" question (the lines belong to the main dispatch)
             ClearFields();
             LoadData();
             SetFormVisibility(false);
             ToastHelper.ShowToast(this, $"{saved.Count} trip reports saved: {string.Join(", ", saved.Select(s => s.DispatchNumber))}.", ToastType.Success);
-            if (incident != null) { OnLogIncidentRequested?.Invoke(incident.Value.D.Id, incident.Value.D.DispatchNumber, incident.Value.Missing, DateTime.Now); return; }
             MainForm.Instance?.OpenBillingFromTripReports(saved);   // the same queue as "Issue Invoice (n selected)": one invoice per trip, same client
         }
     }

@@ -27,20 +27,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>A person's name on a printed form: letters, spaces, period, hyphen, apostrophe; up to 100 characters.</summary>
         public static bool SignOffNameOk(string? s) => NameRx.IsMatch(Tidy(s));
 
-        /// <summary>True when the plant gate time out (HHMM) is earlier than the time in. Equal times, blanks and bad formats are not "earlier".</summary>
+        /// <summary>
+        /// True when a time out (12-hour "08:42 PM", or an older stored 24-hour HHMM) is earlier than the time in. Equal times, blanks and
+        /// unreadable text are not "earlier". Used for the plant gate and for each store: it only raises the overnight question, never refuses.
+        /// </summary>
         public static bool GateOutBeforeIn(string? timeIn, string? timeOut)
         {
-            if (!TryHhmm(timeIn, out int a) || !TryHhmm(timeOut, out int b)) return false;
+            if (!Fmt.TryParseTime(timeIn, out var a) || !Fmt.TryParseTime(timeOut, out var b)) return false;
             return b < a;
         }
-        private static bool TryHhmm(string? t, out int minutes)
-        {
-            minutes = 0;
-            var m = Regex.Match((t ?? "").Trim(), @"^([01]\d|2[0-3])([0-5]\d)$");
-            if (!m.Success) return false;
-            minutes = int.Parse(m.Groups[1].Value) * 60 + int.Parse(m.Groups[2].Value);
-            return true;
-        }
-        public static string GateOvernightQuestion(string timeIn, string timeOut) => $"Truck left the plant at {timeOut.Trim()}, before it came in at {timeIn.Trim()}. Is this an overnight trip?";
+        /// <summary>The question asked when a time out is earlier than the time in (plant gate and each store).</summary>
+        public static string OvernightQuestion(string timeIn, string timeOut) => $"Time out ({Fmt.Time(timeOut)}) is earlier than time in ({Fmt.Time(timeIn)}). Is this an overnight trip?";
+        public static string GateOvernightQuestion(string timeIn, string timeOut) => OvernightQuestion(timeIn, timeOut);
     }
 }

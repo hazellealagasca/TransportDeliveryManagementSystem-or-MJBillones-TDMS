@@ -18,9 +18,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string DrNumbers => DrList.Join(lstDr.Items.Cast<object>().Select(o => o.ToString() ?? ""));
         public int ReturnedG => (int)numRetG.Value;
         public int ReturnedE => (int)numRetE.Value;
-        public string Drops => numDrops.Value > 0 ? ((int)numDrops.Value).ToString() : "";
-        public string TimeIn => txtIn.Text.Trim();
-        public string TimeOut => txtOut.Text.Trim();
+        /// <summary>Nov 14 (D6): a store is one drop; the number is shown but not typed.</summary>
+        public string Drops => "1";
+        public string TimeIn => Fmt.Time(txtIn.Text);
+        public string TimeOut => Fmt.Time(txtOut.Text);
         public string Representative => txtRep.Text.Trim();
 
 
@@ -210,12 +211,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 n.Enter += (s, e) => BeginInvoke(new Action(SelectAll));
                 n.MouseUp += (s, e) => { if (n.Focused && e.Button == MouseButtons.Left) SelectAll(); };
             }
-            if (int.TryParse((drops ?? "").Trim(), out int dp) && dp > 0) numDrops.SetSafe(Math.Min(999, dp));
+            numDrops.SetSafe(1); numDrops.Enabled = false;
             txtRep.Text = representative; Field(txtRep); txtRep.MaxLength = 120;
             Add2(numDrops, txtRep);
             Add2(Cap("Store in (time)"), Cap("Store out (time)"));
-            txtIn.Text = timeIn; txtOut.Text = timeOut; Field(txtIn); Field(txtOut);
-            txtIn.PlaceholderText = txtOut.PlaceholderText = "e.g. 08:00 AM";
+            txtIn.Text = Fmt.Time(timeIn); txtOut.Text = Fmt.Time(timeOut); Field(txtIn); Field(txtOut);
+            Fmt.ApplyTimeBox(txtIn); Fmt.ApplyTimeBox(txtOut);   // Nov 14: 12-hour boxes, "e.g. 08:42 PM"
             Add2(txtIn, txtOut);
 
 
@@ -328,6 +329,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 else if (storeLookup.Confirm(this, AlreadyListed) == null) return;
             }
+            foreach (var (box, nm) in new[] { (txtIn, "Store in"), (txtOut, "Store out") })
+                if (box.Text.Trim().Length > 0 && !Fmt.TryParseTime(box.Text, out _))
+                { MessageBox.Show(this, $"{nm} must be a time like 08:42 PM.", "Store details", MessageBoxButtons.OK, MessageBoxIcon.Warning); box.Focus(); return; }
             if (txtDrNew.Text.Trim().Length > 0) AddDr(); // a DR typed but not added yet is kept
             string diff = Difference();
             bool modified = ReturnedG != originalRetG || ReturnedE != originalRetE;

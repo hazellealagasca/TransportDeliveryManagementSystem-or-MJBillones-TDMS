@@ -76,7 +76,7 @@ public static partial class Checks
             if (Long("SELECT COUNT(DISTINCT TripReportNumber) FROM TripReports WHERE DeliveryId IN (@a, @b)", ("@a", a1), ("@b", a2)) != 2) problems.Add("the two reports share a number");
             if (Long("SELECT COUNT(*) FROM DispatchStops WHERE DeliveryId = @d AND ArrivalTime <> ''", ("@d", a1)) != 2) problems.Add("the main dispatch's stops did not keep their typed times");
             if (Long("SELECT COUNT(*) FROM DispatchStops WHERE DeliveryId = @d AND ArrivalTime <> ''", ("@d", a2)) != 1) problems.Add("the added dispatch's stop did not keep its typed time");
-            if (Str("SELECT ArrivalTime FROM TripReports WHERE DeliveryId = @d", ("@d", a2)) != "03:00") problems.Add("the added dispatch's report arrival is not its own first store's time");
+            if (Str("SELECT ArrivalTime FROM TripReports WHERE DeliveryId = @d", ("@d", a2)) != "03:00 AM") problems.Add("the added dispatch's report arrival is not its own first store's time");
             return "";
         });
     }

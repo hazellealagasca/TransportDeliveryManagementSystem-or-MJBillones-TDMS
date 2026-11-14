@@ -48,7 +48,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (sel != null)
                 {
                     m.Add(new SummaryMetric("Selected report", sel.TripReportNumber, SummaryTone.Purple, $"{sel.DispatchNumber} · {Fmt.Date(sel.ReportDate)}", Strong: true));
-                    m.Add(new SummaryMetric("Its status", sel.Status, SummaryTone.Teal, $"gate {(string.IsNullOrWhiteSpace(sel.TruckTimeIn) ? "—" : sel.TruckTimeIn)} – {(string.IsNullOrWhiteSpace(sel.TruckTimeOut) ? "—" : sel.TruckTimeOut)}"));
+                    m.Add(new SummaryMetric("Its status", sel.Status, SummaryTone.Teal, $"gate {(string.IsNullOrWhiteSpace(sel.TruckTimeIn) ? "—" : Fmt.Time(sel.TruckTimeIn))} – {(string.IsNullOrWhiteSpace(sel.TruckTimeOut) ? "—" : Fmt.Time(sel.TruckTimeOut))}"));
                     context = $"Selected report {sel.TripReportNumber} — dispatch {sel.DispatchNumber}   ·   Trip reports shown: {list.Count:N0}";
                 }
                 tripListSummary.SetMetrics(m, preview, context);

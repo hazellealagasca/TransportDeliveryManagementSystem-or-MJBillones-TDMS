@@ -151,6 +151,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             isBindingForm = true; pickFilterBusy = true;
             try
             {
+                PrunePickTicks();   // Nov 14: ticks survive filter / sort / refresh; only a dispatch that no longer waits loses its tick
                 string q = NormPick(txtPickSearch.Text);
                 string? client = cbPickClient.SelectedIndex > 0 ? cbPickClient.SelectedItem?.ToString() : null;
                 int show = Math.Max(0, cbPickShow.SelectedIndex), sort = Math.Max(0, cbPickSort.SelectedIndex);
@@ -180,12 +181,41 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void UpdatePickCount(int matched)
         {
             if (lblPickCount == null || lnkPickClear == null) return;
+            lastPickMatched = matched;
             bool active = PickFilterActive();
             lblPickCount.Text = pickRows.Count == 0 ? ""
                 : matched == 0 ? "No trip matches."
                 : active ? $"{matched} of {pickRows.Count} waiting"
                 : $"{pickRows.Count} waiting";
+            if (tickedPickIds.Count > 0 && pickRows.Count > 0) lblPickCount.Text += $" · {tickedPickIds.Count} ticked";
             lnkPickClear.Visible = active;
         }
+
+        // ------------------------------------------------------------------ Nov 14: ticked dispatches
+
+        /// <summary>The dispatches ticked in the waiting list (ids). They stay ticked when the search, client, show or sort changes and when the list is refreshed;
+        /// an id that is no longer waiting (its report was filed) is dropped. "Oldest first" stays the default sort.</summary>
+        private readonly HashSet<int> tickedPickIds = new HashSet<int>();
+        private int lastPickMatched;
+
+        /// <summary>Drops ticks of dispatches that no longer wait for a report.</summary>
+        private void PrunePickTicks()
+        {
+            if (tickedPickIds.Count == 0) return;
+            var waiting = new HashSet<int>(pickRows.Select(r => r.D.Id));
+            tickedPickIds.RemoveWhere(id => !waiting.Contains(id));
+        }
+
+        /// <summary>Ticks or unticks a waiting dispatch; false when it is not on the waiting list.</summary>
+        public bool TickPick(int deliveryId, bool on)
+        {
+            if (on) { if (!pickRows.Any(r => r.D.Id == deliveryId)) return false; tickedPickIds.Add(deliveryId); }
+            else tickedPickIds.Remove(deliveryId);
+            UpdatePickCount(lastPickMatched);
+            return true;
+        }
+
+        /// <summary>The ids of the ticked waiting dispatches.</summary>
+        public IReadOnlyCollection<int> TickedPicks => tickedPickIds.ToList();
     }
 }

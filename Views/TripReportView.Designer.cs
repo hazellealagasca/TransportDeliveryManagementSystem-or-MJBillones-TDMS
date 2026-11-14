@@ -57,7 +57,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.txtStoreManagerMiddleName = new System.Windows.Forms.TextBox();
             this.lblRem = new System.Windows.Forms.Label();
             this.txtRemarks = new System.Windows.Forms.TextBox();
-            this.btnLogIncident = new System.Windows.Forms.Button();
             this.btnSave = new System.Windows.Forms.Button();
             this.tblUpdateDelete = new System.Windows.Forms.TableLayoutPanel();
             this.btnUpdate = new System.Windows.Forms.Button();
@@ -503,22 +502,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.pnlRemarksSpacer.Size = new System.Drawing.Size(436, 10);
             this.pnlRemarksSpacer.TabIndex = 9;
 
-            this.btnLogIncident.BackColor = System.Drawing.Color.FromArgb(220, 38, 38);
-            this.btnLogIncident.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnLogIncident.Dock = System.Windows.Forms.DockStyle.Top;
-            this.btnLogIncident.FlatAppearance.BorderSize = 0;
-            this.btnLogIncident.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnLogIncident.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Bold);
-            this.btnLogIncident.ForeColor = System.Drawing.Color.White;
-            this.btnLogIncident.Location = new System.Drawing.Point(16, 401);
-            this.btnLogIncident.Margin = new System.Windows.Forms.Padding(0);
-            this.btnLogIncident.Name = "btnLogIncident";
-            this.btnLogIncident.Size = new System.Drawing.Size(436, 36);
-            this.btnLogIncident.TabIndex = 10;
-            this.btnLogIncident.Text = "⚠️ Log crate incident";
-            this.btnLogIncident.UseVisualStyleBackColor = false;
-            this.btnLogIncident.Visible = false;
-            this.btnLogIncident.Click += new System.EventHandler(this.BtnLogIncident_Click);
 
             this.tblUpdateDelete.ColumnCount = 2;
             this.tblUpdateDelete.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
@@ -606,7 +589,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             this.pnlFormBody.AutoScroll = true;
             this.pnlFormBody.BackColor = System.Drawing.Color.White;
-            this.pnlFormBody.Controls.Add(this.btnLogIncident);
             this.pnlFormBody.Controls.Add(this.pnlRemarksSpacer);
             this.pnlFormBody.Controls.Add(this.txtRemarks);
             this.pnlFormBody.Controls.Add(this.lblRem);
@@ -831,7 +813,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private System.Windows.Forms.TextBox txtStoreManagerMiddleName;
         private System.Windows.Forms.Label lblRem;
         private System.Windows.Forms.TextBox txtRemarks;
-        private System.Windows.Forms.Button btnLogIncident;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.TableLayoutPanel tblUpdateDelete;
         private System.Windows.Forms.Button btnUpdate;

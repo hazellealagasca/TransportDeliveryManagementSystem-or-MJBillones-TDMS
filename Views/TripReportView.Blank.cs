@@ -40,9 +40,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (txtTruckTimeIn != null && string.IsNullOrWhiteSpace(txtTruckTimeIn.Text)) list.Add(("Truck time in (plant gate) is required.", txtTruckTimeIn));
             if (txtTruckTimeOut != null && string.IsNullOrWhiteSpace(txtTruckTimeOut.Text)) list.Add(("Truck time out (plant gate) is required.", txtTruckTimeOut));
-            // Nov 10: plant gate times are 24-hour HHMM (e.g. 2042); the sign-off names are real names.
+            // Nov 14: plant gate times and store times are 12-hour (08:42 PM); an old 4-digit HHMM still reads. The sign-off names are real names.
             foreach (var (tb, nm) in new[] { (txtTruckTimeIn, "Truck time in"), (txtTruckTimeOut, "Truck time out") })
-                if (tb != null && !string.IsNullOrWhiteSpace(tb.Text) && !GateTimeOk(tb.Text)) list.Add(($"{nm} must be a 24-hour time of 4 digits, like 2042 or 0139.", tb));
+                if (tb != null && !string.IsNullOrWhiteSpace(tb.Text) && !GateTimeOk(tb.Text)) list.Add(($"{nm} must be a time like 08:42 PM.", tb));
+            if (gridStores != null)
+            {
+                foreach (var (col, nm) in new[] { ("colIn", "Time in"), ("colOut", "Time out") })
+                {
+                    var bad = gridStores.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow && !string.IsNullOrWhiteSpace(r.Cells[col].Value?.ToString()) && !Fmt.TryParseTime(r.Cells[col].Value?.ToString(), out _))
+                        .Select(r => (r.Cells["colStore"]?.Value?.ToString() ?? "").Trim()).ToList();
+                    if (bad.Count > 0) list.Add(($"{nm} must be a time like 08:42 PM. Fix it for: {string.Join(", ", bad.Select(n => n.Length > 0 ? n : "a store").Take(6))}{(bad.Count > 6 ? ", …" : "")}.", gridStores));
+                }
+            }
+            IncidentChecks(list);   // step 3: Yes needs at least one incident
             foreach (var (tb, nm) in SignOffBoxes())
                 if (tb != null && !string.IsNullOrWhiteSpace(tb.Text) && !SecurityHelper.IsValidName(tb.Text.Trim())) list.Add(($"{nm} must be a name (letters only).", tb));
             need(txtGuardName, "Guard name & sign");
@@ -71,7 +81,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return false;
         }
 
-        private static bool GateTimeOk(string t) => System.Text.RegularExpressions.Regex.IsMatch((t ?? "").Trim(), @"^([01]\d|2[0-3])[0-5]\d$");
+        private static bool GateTimeOk(string t) => Fmt.TryParseTime(t, out _);
+
+        /// <summary>Nov 14: the same overnight question for every store whose time out is earlier than its time in. Asked one store at a time; No sends the person back to that store's Time out cell.</summary>
+        private bool ConfirmStoreOrder()
+        {
+            if (gridStores == null) return true;
+            gridStores.EndEdit();
+            foreach (DataGridViewRow r in gridStores.Rows)
+            {
+                if (r.IsNewRow) continue;
+                string tin = (r.Cells["colIn"].Value?.ToString() ?? "").Trim(), tout = (r.Cells["colOut"].Value?.ToString() ?? "").Trim();
+                if (!DailyRules.GateOutBeforeIn(tin, tout)) continue;
+                string store = (r.Cells["colStore"].Value?.ToString() ?? "").Trim();
+                if (MessageBox.Show(FindForm(), DailyRules.OvernightQuestion(tin, tout), store.Length > 0 ? $"Store times · {store}" : "Store times", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes) continue;
+                try { gridStores.CurrentCell = r.Cells["colOut"]; gridStores.Focus(); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+                return false;
+            }
+            return true;
+        }
 
         private IEnumerable<(TextBox? Box, string Name)> SignOffBoxes() => new (TextBox?, string)[]
         {
@@ -83,16 +111,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void WirePlantGateValidation()
         {
             foreach (var tb in new[] { txtTruckTimeIn, txtTruckTimeOut })
-            {
-                if (tb == null) continue;
-                tb.MaxLength = 4;
-                tb.KeyPress += (s, e) => { if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar)) e.Handled = true; };
-                tb.Leave += (s, e) =>
-                {
-                    if (string.IsNullOrWhiteSpace(tb.Text)) { ValidationHelper.ClearErrors(tb); return; }
-                    ValidationHelper.ApplyValidationState(tb, GateTimeOk(tb.Text), "Type 4 digits in 24-hour time, like 2042 or 0139.");
-                };
-            }
+                if (tb != null) Fmt.ApplyTimeBox(tb);   // Nov 14: 12-hour box, shown as hh:mm AM/PM when left; "e.g. 08:42 PM"
+            if (gridStores != null) Fmt.ApplyTimeColumns(gridStores, "colIn", "colOut");
             foreach (var (tb, _) in SignOffBoxes())
             {
                 if (tb == null) continue;

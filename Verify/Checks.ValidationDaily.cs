@@ -68,7 +68,7 @@ public static partial class Checks
         if (DailyRules.GateOutBeforeIn("0800", "1700")) bad.Add("a normal day trip flagged");
         if (DailyRules.GateOutBeforeIn("0800", "0800")) bad.Add("equal times flagged");
         if (DailyRules.GateOutBeforeIn("", "0130") || DailyRules.GateOutBeforeIn("2042", "") || DailyRules.GateOutBeforeIn("99", "0130")) bad.Add("blank/bad times flagged");
-        if (DailyRules.GateOvernightQuestion("2042", "0130") != "Truck left the plant at 0130, before it came in at 2042. Is this an overnight trip?") bad.Add("question wording");
+        if (DailyRules.GateOvernightQuestion("2042", "0130") != "Time out (01:30 AM) is earlier than time in (08:42 PM). Is this an overnight trip?") bad.Add("question wording");   // Nov 14: 12-hour wording (old HHMM still read)
         if (DailyRules.Tidy("  Ana   Cruz \r\n") != "Ana Cruz") bad.Add("Tidy");
         return string.Join("; ", bad);
     }
@@ -130,7 +130,7 @@ public static partial class Checks
             var tin = FieldOf<TextBox>(view, "txtTruckTimeIn")!; var tout = FieldOf<TextBox>(view, "txtTruckTimeOut")!;
             string? Q() => (string?)T.GetMethod("GateOrderQuestion", VdF)!.Invoke(view, null);
             tin.Text = "2042"; tout.Text = "0130";
-            if (Q() != "Truck left the plant at 0130, before it came in at 2042. Is this an overnight trip?") bad.Add("question not raised: " + Q());
+            if (Q() != "Time out (01:30 AM) is earlier than time in (08:42 PM). Is this an overnight trip?") bad.Add("question not raised: " + Q());   // Nov 14: 12-hour wording; the old HHMM typed here is still read
             // not part of the required-field list (it is a confirmation, not a block)
             var list = (System.Collections.IEnumerable)T.GetMethod("BlankFormChecks", VdF)!.Invoke(view, null)!;
             foreach (var item in list) if ((item.ToString() ?? "").Contains("overnight")) bad.Add("the overnight question is in the blocking list");
