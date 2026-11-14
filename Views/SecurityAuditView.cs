@@ -180,7 +180,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridAudit.ColumnHeadersHeight = D(36);
             if (cbAuditCategory.SelectedIndex == 0)
             {
-                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Timestamp", HeaderText = "Date & time", FillWeight = 14, MinimumWidth = D(130), DefaultCellStyle = { Format = "yyyy-MM-dd HH:mm" } });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Timestamp", HeaderText = "Date & time", FillWeight = 14, MinimumWidth = D(130), DefaultCellStyle = { Format = "MM/dd/yyyy hh:mm tt" } });
                 gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Username", HeaderText = "User", FillWeight = 9, MinimumWidth = D(70) });
                 gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ActionType", HeaderText = "Action", FillWeight = 10, MinimumWidth = D(80) });
                 gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TableName", HeaderText = "Module", FillWeight = 11, MinimumWidth = D(80) });
@@ -192,7 +192,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else
             {
-                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Timestamp", HeaderText = "Date & time", FillWeight = 16, MinimumWidth = D(130), DefaultCellStyle = { Format = "yyyy-MM-dd HH:mm" } });
+                gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Timestamp", HeaderText = "Date & time", FillWeight = 16, MinimumWidth = D(130), DefaultCellStyle = { Format = "MM/dd/yyyy hh:mm tt" } });
                 gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "EventType", HeaderText = "Event", FillWeight = 16, MinimumWidth = D(110) });
                 gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Username", HeaderText = "Username", FillWeight = 14, MinimumWidth = D(90) });
                 gridAudit.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "IpOrMachine", HeaderText = "Computer", FillWeight = 14, MinimumWidth = D(90) });

@@ -242,7 +242,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (!string.IsNullOrWhiteSpace(r.Client)) yield return new ToolStripMenuItem($"Everything for {Short(r.Client, 30)}", null, (a, b) => SearchFor(r.Client));
             if (!string.IsNullOrWhiteSpace(r.Truck)) yield return new ToolStripMenuItem($"Everything with truck {Short(r.Truck.Split(' ')[0], 16)}", null, (a, b) => SearchFor(r.Truck.Split(' ')[0]));
             if (!string.IsNullOrWhiteSpace(r.Driver)) yield return new ToolStripMenuItem($"Everything with {Short(r.Driver, 24)}", null, (a, b) => SearchFor(r.Driver));
-            yield return new ToolStripMenuItem($"Everything on {r.Date:MMM d, yyyy}", null, (a, b) => { txtSearch.Clear(); searchDelay.Stop(); tabs.Selected = 0; dateChip.Range = new DateRange(r.Date.Date, r.Date.Date, "day"); });
+            yield return new ToolStripMenuItem($"Everything on {Fmt.Date(r.Date)}", null, (a, b) => { txtSearch.Clear(); searchDelay.Stop(); tabs.Selected = 0; dateChip.Range = new DateRange(r.Date.Date, r.Date.Date, "day"); });
         }
         private void SearchFor(string text) { tabs.Selected = 0; txtSearch.Text = text; searchDelay.Stop(); Render(); }
         // =====================================================================================================
@@ -428,7 +428,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     m.Add(new SummaryMetric("Its crates", sel.Crates.ToString("N0"), SummaryTone.Teal, string.IsNullOrWhiteSpace(sel.Route) ? sel.Client : sel.Route));
                     m.Add(new SummaryMetric("Its amount", sel.Amount.HasValue ? AllInOneSummaryBar.Money(sel.Amount.Value) : "—", SummaryTone.Green, string.IsNullOrWhiteSpace(sel.InvoiceNo) ? "no invoice yet" : "invoice " + sel.InvoiceNo));
                     m.Add(new SummaryMetric("Truck & crew", string.IsNullOrWhiteSpace(sel.Truck) ? "—" : sel.Truck, SummaryTone.Neutral, string.IsNullOrWhiteSpace(sel.Crew) ? "no crew yet" : sel.Crew));
-                    context = $"Selected {sel.Kind.ToLowerInvariant()} {sel.Number} — {sel.Client} · {sel.Date:MMM d, yyyy} · {sel.Status}   ·   Transactions shown: {list.Count:N0}";
+                    context = $"Selected {sel.Kind.ToLowerInvariant()} {sel.Number} — {sel.Client} · {Fmt.Date(sel.Date)} · {sel.Status}   ·   Transactions shown: {list.Count:N0}";
                     preview += $"  ·  selected {sel.Number}";
                 }
                 historySummary.SetMetrics(m, preview, context);
@@ -513,7 +513,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (x < rightEdge) TextRenderer.DrawText(g, r.Client, fNorm, new Rectangle(x, top, rightEdge - x, lineH), AppTheme.TextPrimary, one);
             // line 2: date · route · truck · crew · crates
-            var parts = new List<string> { r.Date.ToString("ddd, MMM d, yyyy") + (string.IsNullOrWhiteSpace(r.Time) ? "" : "  " + r.Time) };
+            var parts = new List<string> { Fmt.DayDate(r.Date) + (string.IsNullOrWhiteSpace(r.Time) ? "" : "  " + r.Time) };
             // Short facts first, the (often long) route last, so truck and crew are never cut off.
             if (!string.IsNullOrWhiteSpace(r.Truck)) parts.Add(r.Truck.Split('(')[0].Trim());
             if (!string.IsNullOrWhiteSpace(r.Driver)) parts.Add(r.Driver + (CountAides(r) > 0 ? $" +{CountAides(r)} aide{(CountAides(r) == 1 ? "" : "s")}" : ""));
@@ -610,7 +610,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     facts.Controls.Add(new Label { Text = v, AutoSize = true, MaximumSize = new Size(D(196), 0), Font = new Font("Segoe UI", 9.5F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, D(2), 0, D(5)), UseMnemonic = false });
                 }
                 F("Status", r.Status);
-                F("Date", r.Date.ToString("dddd, MMMM d, yyyy"));
+                F("Date", Fmt.DayDate(r.Date));
                 F("Departure", r.Time);
                 F("Route", r.Route);
                 F("Truck", r.Truck);
@@ -626,7 +626,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     F("Invoice", r.InvoiceNo);
                     F("Amount", r.Amount.HasValue ? "₱" + r.Amount.Value.ToString("N2") : "");
                     F("Statement", r.SoaNo);
-                    F("Receipt", r.ReceiptNo.Length > 0 ? r.ReceiptNo + (r.PaidOn.HasValue ? $" · paid {r.PaidOn.Value:MMM d, yyyy}" : "") + (r.Chain != null && r.Chain.PayMethod.Length > 0 ? $" · {r.Chain.PayMethod}" : "") : "");
+                    F("Receipt", r.ReceiptNo.Length > 0 ? r.ReceiptNo + (r.PaidOn.HasValue ? $" · paid {Fmt.Date(r.PaidOn.Value)}" : "") + (r.Chain != null && r.Chain.PayMethod.Length > 0 ? $" · {r.Chain.PayMethod}" : "") : "");
                 }
                 F("Remarks", r.Remarks);
                 stack.Controls.Add(facts);
@@ -755,8 +755,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             sb.AppendLine(string.Join(",", new[] { "Date", "Time", "Type", "Number", "Client", "Route / address", "Truck", "Driver", "Aides", "Crates", "Status" }.Concat(CanFin ? new[] { "Trip report", "Invoice", "Amount", "Statement", "Receipt", "Paid on" } : Array.Empty<string>())));
             foreach (var r in shown)
             {
-                var cells = new List<string> { r.Date.ToString("yyyy-MM-dd"), Q(r.Time), Q(r.Kind), Q(r.Number), Q(r.Client), Q(r.Route), Q(r.Truck), Q(r.Driver), Q(r.Aides), r.Crates.ToString(), Q(r.Status) };
-                if (CanFin) { cells.Add(Q(r.TripReportNo)); cells.Add(Q(r.InvoiceNo)); cells.Add(r.Amount.HasValue ? r.Amount.Value.ToString("0.00") : ""); cells.Add(Q(r.SoaNo)); cells.Add(Q(r.ReceiptNo)); cells.Add(r.PaidOn.HasValue ? r.PaidOn.Value.ToString("yyyy-MM-dd") : ""); }
+                var cells = new List<string> { Fmt.Date(r.Date), Q(r.Time), Q(r.Kind), Q(r.Number), Q(r.Client), Q(r.Route), Q(r.Truck), Q(r.Driver), Q(r.Aides), r.Crates.ToString(), Q(r.Status) };
+                if (CanFin) { cells.Add(Q(r.TripReportNo)); cells.Add(Q(r.InvoiceNo)); cells.Add(r.Amount.HasValue ? r.Amount.Value.ToString("0.00") : ""); cells.Add(Q(r.SoaNo)); cells.Add(Q(r.ReceiptNo)); cells.Add(r.PaidOn.HasValue ? Fmt.Date(r.PaidOn.Value) : ""); }
                 sb.AppendLine(string.Join(",", cells));
             }
             try

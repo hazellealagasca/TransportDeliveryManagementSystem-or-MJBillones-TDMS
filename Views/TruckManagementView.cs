@@ -89,6 +89,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try { DataExportHelper.ExportToCsv(gridTrucks, "Truck_Vehicles", "Registered Trucks"); }
                 catch (Exception ex) { ErrLog.Error("TruckManagementView", ex);  MessageBox.Show($"Export error: {ex.Message}", "Export Failed", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             });
+            menuActions.Items.Add("🛠 Maintenance history...", null, (s, e) => { using var hist = new Forms.TruckMaintenanceHistoryDialog(); hist.ShowDialog(FindForm()); });
             menuActions.Items.Add("🖨 Print truck report", null, BtnPrint_Click);
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
@@ -282,7 +283,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TruckType", HeaderText = "Truck Category", FillWeight = 18F, MinimumWidth = 125, ReadOnly = true });
             gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "CargoType", HeaderText = "Crate / Temp Type", FillWeight = 16F, MinimumWidth = 120, ReadOnly = true });
             gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "CapacityCrates", HeaderText = "Capacity", FillWeight = 12F, MinimumWidth = 85, ReadOnly = true });
-            gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 12F, MinimumWidth = 85, ReadOnly = true });
+            gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "StatusDisplay", HeaderText = "Status", FillWeight = 16F, MinimumWidth = 120, ReadOnly = true, DefaultCellStyle = { WrapMode = DataGridViewTriState.True } });
             gridTrucks.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Remarks", HeaderText = "Condition Remarks", FillWeight = 28F, MinimumWidth = 135, ReadOnly = true });
         }
 
@@ -539,18 +540,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string oldStatus = selectedTruck.Status ?? "";
                 bool statusChanged = !string.Equals(oldStatus.Trim(), newStatus.Trim(), StringComparison.OrdinalIgnoreCase);
                 string statusReason = "";
-                if (statusChanged && !AskStatusReason(selectedTruck, oldStatus, newStatus, out statusReason)) return;
+                DateTime? breakdownDate = null, fixDate = null;
+                if (statusChanged && !AskStatusReason(selectedTruck, oldStatus, newStatus, out statusReason, out breakdownDate, out fixDate)) return;
                 if (cbCargoType.SelectedIndex < 0) { MessageBox.Show("Please choose the crate type (Cold / Chilled, Dry Goods or Combi).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbCargoType.Focus(); return; } // Nov 6
                 capacity = MJdatabase.LockedCapacity(truckType, cbCargoType.SelectedItem?.ToString(), capacity);
                 selectedTruck.PlateNumber = plateNumber;
                 selectedTruck.TruckType = truckType;
                 selectedTruck.CapacityCrates = capacity;
-                selectedTruck.Status = cbStatus.SelectedItem?.ToString() ?? "Active";
+                selectedTruck.Status = statusChanged ? oldStatus : cbStatus.SelectedItem?.ToString() ?? "Active"; // the status itself is moved below, with its description and dates
                 selectedTruck.Remarks = txtRemarks.Text.Trim();
                 selectedTruck.CargoType = cbCargoType.SelectedItem?.ToString() ?? "Cold / Chilled";
 
                 MJdatabase.SaveTruck(selectedTruck);
-                if (statusChanged) { try { MJdatabase.LogTruckStatusChange(selectedTruck.Id, oldStatus, newStatus, statusReason); } catch (Exception lx) { ErrLog.Swallowed(lx); } }
+                if (statusChanged) { MJdatabase.ApplyTruckStatusChange(selectedTruck.Id, newStatus, statusReason, breakdownDate, fixDate); selectedTruck.Status = newStatus; }
                 QuietBox.Show($"Truck '{plateNumber}' updated successfully! Capacity: {capacity} crates.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadTrucks();
@@ -641,6 +643,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 case "CapacityCrates":
                     filtered = isSortAscending ? filtered.OrderBy(t => t.CapacityCrates).ToList() : filtered.OrderByDescending(t => t.CapacityCrates).ToList();
                     break;
+                case "StatusDisplay":
                 case "Status":
                     filtered = isSortAscending ? filtered.OrderBy(t => t.Status).ToList() : filtered.OrderByDescending(t => t.Status).ToList();
                     break;
@@ -660,6 +663,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridTrucks.SelectionChanged -= GridTrucks_SelectionChanged;
             gridTrucks.DataSource = null;
             gridTrucks.DataSource = filtered;
+            foreach (DataGridViewRow tr in gridTrucks.Rows) if (tr.DataBoundItem is Truck bt && bt.StatusDisplay.Contains('\n')) tr.Height = Math.Max(tr.Height, 46); // Under Maintenance shows its breakdown and fix dates on a second line
             lblGridHeader.Text = string.IsNullOrEmpty(q) && truckTileFilter == null
                 ? $"All trucks · {allTrucks.Count}"
                 : $"Showing {filtered.Count} of {allTrucks.Count} trucks";
@@ -851,17 +855,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
             string old = t.Status;
-            if (!AskStatusReason(t, old, status, out string reason)) return;
-            t.Status = status;
+            if (!AskStatusReason(t, old, status, out string reason, out DateTime? breakdownDate, out DateTime? fixDate)) return;
             try
             {
-                MJdatabase.SaveTruck(t);
-                try { MJdatabase.LogTruckStatusChange(t.Id, old, status, reason); } catch (Exception lx) { ErrLog.Swallowed(lx); }
+                MJdatabase.ApplyTruckStatusChange(t.Id, status, reason, breakdownDate, fixDate);
+                t.Status = status;
                 ToastHelper.ShowToast(this, $"{t.PlateNumber} is now {status}", ToastType.Success);
             }
             catch (Exception ex)
-            { ErrLog.Error("TruckManagementView", ex); 
-                t.Status = old;
+            { ErrLog.Error("TruckManagementView", ex);
                 MessageBox.Show($"Failed to update truck status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             LoadTrucks();

@@ -38,7 +38,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var hint = new Label
             {
                 Dock = DockStyle.Top, Height = D(48), Padding = new Padding(D(12), D(8), D(12), 0), ForeColor = AppTheme.TextSecondary,
-                Text = $"{trip.DispatchNumber} · {trip.DispatchDate:MMM d, yyyy} · {trip.ClientName}\nStarts from each person's daily wage and meal allowance in Crew Management. Internal record only (not billed to the client)."
+                Text = $"{trip.DispatchNumber} · {Fmt.Date(trip.DispatchDate)} · {trip.ClientName}\nStarts from each person's daily wage and meal allowance in Crew Management. Internal record only (not billed to the client)."
             };
             grid = new DataGridView
             {

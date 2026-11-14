@@ -123,8 +123,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Why a payment can't be dated <paramref name="paid"/>, or null: not in the future, and not before the invoice it pays.</summary>
         public static string? CheckPaymentDate(DateTime paid, DateTime invoiceIssued)
         {
-            if (paid.Date > DateTime.Today) return $"The payment date ({paid:MMM d, yyyy}) can't be after today.";
-            if (invoiceIssued > DateTime.MinValue && paid.Date < invoiceIssued.Date) return $"The payment date ({paid:MMM d, yyyy}) is before the invoice date ({invoiceIssued:MMM d, yyyy}).";
+            if (paid.Date > DateTime.Today) return $"The payment date ({Fmt.Date(paid)}) can't be after today.";
+            if (invoiceIssued > DateTime.MinValue && paid.Date < invoiceIssued.Date) return $"The payment date ({Fmt.Date(paid)}) is before the invoice date ({Fmt.Date(invoiceIssued)}).";
             return null;
         }
 

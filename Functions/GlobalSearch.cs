@@ -68,19 +68,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (ops)
                 {
                     foreach (var d in MJdatabase.GetDeliveries())
-                        Add("Dispatches", "🚚", $"{d.DispatchNumber} · {d.ClientName}", $"{d.DispatchDate:MMM d, yyyy} · {d.TruckInfo} · {d.DriverName} · {d.Status}",
+                        Add("Dispatches", "🚚", $"{d.DispatchNumber} · {d.ClientName}", $"{Fmt.Date(d.DispatchDate)} · {d.TruckInfo} · {d.DriverName} · {d.Status}",
                             $"{d.Destination} {d.AideNames} {d.AideName} {d.LoadingScheduleInfo} {d.CargoType}", d.DispatchDate, () => Forms.DispatchDetailsDialog.ShowFor(mf!, d));
                     foreach (var ls in MJdatabase.GetLoadingSchedules())
-                        Add("Loading schedules", "📦", $"{ls.ScheduleNumber} · {ls.ClientName}", $"{ls.ScheduleDate:MMM d, yyyy} {ls.DepartureTime} · {ls.TotalCrates} crates · {ls.Status}",
+                        Add("Loading schedules", "📦", $"{ls.ScheduleNumber} · {ls.ClientName}", $"{Fmt.Date(ls.ScheduleDate)} {ls.DepartureTime} · {ls.TotalCrates} crates · {ls.Status}",
                             $"{ls.Destination} {ls.CargoType} {ls.Remarks}", ls.ScheduleDate, () => RecordDetailsDialog.ShowDetails(mf!, ls));
                     foreach (var tr in MJdatabase.GetTripReports())
-                        Add("Trip reports", "📝", $"{tr.TripReportNumber}", $"Dispatch {tr.DispatchNumber} · {tr.ReportDate:MMM d, yyyy} · {tr.DeliveredCrates} delivered",
+                        Add("Trip reports", "📝", $"{tr.TripReportNumber}", $"Dispatch {tr.DispatchNumber} · {Fmt.Date(tr.ReportDate)} · {tr.DeliveredCrates} delivered",
                             $"{tr.DispatchNumber} {tr.StoreManagerName} {tr.Remarks} {tr.GuardName}", tr.ReportDate, () => RecordDetailsDialog.ShowDetails(mf!, tr));
                     foreach (var inc in MJdatabase.GetIncidentReports())
-                        Add("Incidents", "⚠️", $"Incident · {inc.DispatchNumber}", $"{inc.IncidentDate:MMM d, yyyy} · {inc.Cause} · {inc.Status}",
+                        Add("Incidents", "⚠️", $"Incident · {inc.DispatchNumber}", $"{Fmt.Date(inc.IncidentDate)} · {inc.Cause} · {inc.Status}",
                             $"{inc.Description}", inc.IncidentDate, () => RecordDetailsDialog.ShowDetails(mf!, inc));
                     foreach (var st in MJdatabase.GetSpecialTrips())
-                        Add("Special trips", "🌟", $"{st.OrderReference} · {st.Company}", $"{st.DispatchDate:MMM d, yyyy} · {st.TruckPlate} · {st.DriverName} · {st.Status}",
+                        Add("Special trips", "🌟", $"{st.OrderReference} · {st.Company}", $"{Fmt.Date(st.DispatchDate)} · {st.TruckPlate} · {st.DriverName} · {st.Status}",
                             $"{st.Address} {st.AideName} {st.ServiceType}", st.DispatchDate, () => mf?.NavigateToOperations("SpecialTrips"));
                 }
                 if (res)
@@ -104,10 +104,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (fin)
                 {
                     foreach (var inv in MJdatabase.GetInvoices())
-                        Add("Invoices", "🧾", $"Invoice {inv.InvoiceNumber} · {inv.ClientName}", $"{Peso(inv.NetAmount)} · {inv.Status} · due {inv.DueDate:MMM d, yyyy}",
+                        Add("Invoices", "🧾", $"Invoice {inv.InvoiceNumber} · {inv.ClientName}", $"{Peso(inv.NetAmount)} · {inv.Status} · due {Fmt.Date(inv.DueDate)}",
                             $"{inv.DispatchNumber}", inv.IssueDate, () => mf?.ShowFinanceRecords("Billing", inv.InvoiceNumber));
                     foreach (var cr in MJdatabase.GetCollectionReceipts())
-                        Add("Receipts", "💵", $"OR {cr.ReceiptNumber}", $"{Peso(cr.AmountPaid)} · {cr.PaymentMethod} · invoice {cr.InvoiceNumber} · {cr.PaymentDate:MMM d, yyyy}",
+                        Add("Receipts", "💵", $"OR {cr.ReceiptNumber}", $"{Peso(cr.AmountPaid)} · {cr.PaymentMethod} · invoice {cr.InvoiceNumber} · {Fmt.Date(cr.PaymentDate)}",
                             $"{cr.ReferenceNumber} {cr.Notes}", cr.PaymentDate, () => mf?.ShowFinanceRecords("Collections", cr.ReceiptNumber));
                     foreach (var soa in MJdatabase.GetStatementsOfAccount())
                         Add("Statements of account", "📑", $"{soa.SoaNumber} · {soa.ClientName}", $"{Peso(soa.TotalAmount)} · {soa.PeriodCovered}",

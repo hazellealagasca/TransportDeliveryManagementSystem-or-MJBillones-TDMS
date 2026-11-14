@@ -61,27 +61,27 @@ public static partial class Checks
         int r1 = Seed.TripReport(d1);
         Exec("UPDATE TripReports SET ReportDate = '2026-11-05', Status = 'Completed' WHERE Id = @i", ("@i", r1));
         string h1 = Print(SoaTypes.Normal, d1, 0);
-        if (!h1.Contains("05-Nov-2026") || h1.Contains("01-Nov-2026")) bad += "dispatch with report did not print the report date; ";
+        if (!h1.Contains("11/05/2026") || h1.Contains("11/01/2026")) bad += "dispatch with report did not print the report date; ";
         // A draft report is not a completion: the saved line date stays.
         int d2 = Seed.Delivery();
         int r2 = Seed.TripReport(d2);
         Exec("UPDATE TripReports SET ReportDate = '2026-11-06', Status = 'Draft' WHERE Id = @i", ("@i", r2));
         string h2 = Print(SoaTypes.Normal, d2, 0);
-        if (h2.Contains("06-Nov-2026") || !h2.Contains("01-Nov-2026")) bad += "draft report was treated as completed; ";
+        if (h2.Contains("11/06/2026") || !h2.Contains("11/01/2026")) bad += "draft report was treated as completed; ";
         // No report at all: the saved line date.
         string h3 = Print(SoaTypes.Normal, Seed.Delivery(), 0);
-        if (!h3.Contains("01-Nov-2026")) bad += "no report: saved date missing; ";
+        if (!h3.Contains("11/01/2026")) bad += "no report: saved date missing; ";
         // A special trip prints its trip report date.
         int s1 = Seed.SpecialTrip();
         int sr = Seed.TripReport(0, s1);
         Exec("UPDATE TripReports SET ReportDate = '2026-11-07', Status = 'Completed' WHERE Id = @i", ("@i", sr));
         string h4 = Print(SoaTypes.Special, 0, s1);
-        if (!h4.Contains("07-Nov-2026") || !h4.Contains(">Date completed<")) bad += "special trip did not print its report date; ";
+        if (!h4.Contains("11/07/2026") || !h4.Contains(">Date completed<")) bad += "special trip did not print its report date; ";
         // A special trip without a report prints the date it was marked completed.
         int s2 = Seed.SpecialTrip();
         Exec("UPDATE SpecialTrips SET CompletedAt = '2026-11-04 15:30:00' WHERE Id = @i", ("@i", s2));
         string h5 = Print(SoaTypes.Special, 0, s2);
-        if (!h5.Contains("04-Nov-2026")) bad += "special trip without report did not print CompletedAt; ";
+        if (!h5.Contains("11/04/2026")) bad += "special trip without report did not print CompletedAt; ";
         return bad;
     }
 

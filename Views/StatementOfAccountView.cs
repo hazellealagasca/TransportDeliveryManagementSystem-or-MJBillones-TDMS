@@ -113,7 +113,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (!c.Visible || c is DataGridViewButtonColumn) continue;
                     int need = TextRenderer.MeasureText(c.HeaderText ?? "", headFont).Width + Dpi(30);
                     if (c.Name == "colTripReport") need = Math.Max(need, TextRenderer.MeasureText("TRIP-20261105-022839-71078", gridItems.Font).Width + Dpi(16));
-                    if (c.Name == "colDate") need = Math.Max(need, TextRenderer.MeasureText("2026-11-05", gridItems.Font).Width + Dpi(16));
+                    if (c.Name == "colDate") need = Math.Max(need, TextRenderer.MeasureText("11/05/2026", gridItems.Font).Width + Dpi(16));
                     if (c.Name == "colPlate") need = Math.Max(need, TextRenderer.MeasureText("CCE 9458", gridItems.Font).Width + Dpi(16));
                     if (c.Name == "colAmount") need = Math.Max(need, TextRenderer.MeasureText("999,999.00", gridItems.Font).Width + Dpi(16));
                     if (c.Name == "colDr") need = Math.Max(need, TextRenderer.MeasureText("DR-000000", gridItems.Font).Width + Dpi(16));
@@ -519,14 +519,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var clientHint = new ToolTip();
             clientHint.SetToolTip(txtClientAddress, ClientProfileHint);
             clientHint.SetToolTip(txtClientTin, ClientProfileHint);
-            dtpIssueDate = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Font = new Font("Segoe UI", 10F) };
+            dtpIssueDate = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Font = new Font("Segoe UI", 10F) };
             var pnlDates = new TableLayoutPanel { Height = Dpi(30), ColumnCount = 3, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             pnlDates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             pnlDates.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Dpi(34)));
             pnlDates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            dtpPeriodFrom = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1), Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10F), Margin = new Padding(0) };
+            dtpPeriodFrom = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1), Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10F), Margin = new Padding(0) };
             var lblToWord = new Label { Text = "to", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, Font = new Font("Segoe UI", 9.5F), ForeColor = AppTheme.TextMuted };
-            dtpPeriodTo = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Value = DateTime.Today, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10F), Margin = new Padding(0) };
+            dtpPeriodTo = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Value = DateTime.Today, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10F), Margin = new Padding(0) };
             dtpPeriodFrom.ValueChanged += (s, e) => SchedulePickerRefresh();
             dtpPeriodTo.ValueChanged += (s, e) => SchedulePickerRefresh();
             pnlDates.Controls.Add(dtpPeriodFrom, 0, 0);
@@ -945,7 +945,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 // Nov 8: it still opens, read-only, with its history (the reason is shown at the top of the page).
                 var ci = MJdatabase.GetSoaCancelInfo(soa.Id);
-                if (ci.Any) why += $"\n\nCancelled{(ci.By.Length > 0 ? " by " + ci.By : "")}{(ci.At.HasValue ? " on " + ci.At.Value.ToString("MMM d, yyyy h:mm tt") : "")}." + (ci.Reason.Length > 0 ? $"\nReason: {ci.Reason}" : "");
+                if (ci.Any) why += $"\n\nCancelled{(ci.By.Length > 0 ? " by " + ci.By : "")}{(ci.At.HasValue ? " on " + Fmt.DateTimeText(ci.At.Value) : "")}." + (ci.Reason.Length > 0 ? $"\nReason: {ci.Reason}" : "");
                 selectedSoa = soa;
                 BindSoaToDrawer(soa);
                 isEditingExisting = true;
@@ -975,7 +975,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             gridSoa.Columns.Clear();
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "SoaNumber", HeaderText = "SOA Ref #", FillWeight = 110, MinimumWidth = 90, ReadOnly = true });
-            gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "IssueDate", HeaderText = "Issue Date", FillWeight = 85, MinimumWidth = 75, ReadOnly = true, DefaultCellStyle = { Format = "yyyy-MM-dd" } });
+            gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "IssueDate", HeaderText = "Issue Date", FillWeight = 85, MinimumWidth = 75, ReadOnly = true, DefaultCellStyle = { Format = "MM/dd/yyyy" } });
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ClientName", HeaderText = "Client Company", FillWeight = 145, MinimumWidth = 110, ReadOnly = true });
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "PeriodCovered", HeaderText = "Period Covered", FillWeight = 120, MinimumWidth = 95, ReadOnly = true });
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DeliveryType", HeaderText = "Type", FillWeight = 50, MinimumWidth = 40, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter } });
@@ -1001,7 +1001,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     ToastHelper.ShowToast(this, $"{soa.SoaNumber} marked as sent (PHP {soa.TotalAmount:N2}). If it changes later you will be told to resend it.", ToastType.Success);
                 }, "", !string.Equals(soa.Status, "Cancelled", StringComparison.OrdinalIgnoreCase)));
                 var stale = MJdatabase.NeedsReissue(MJdatabase.DocSoa, soa.Id, soa.TotalAmount);
-                if (stale != null) m.Items.Add(RowMenu.Item($"⚠ Changed since it was {stale.Kind.ToLowerInvariant()} ({stale.At:MMM d}, PHP {stale.Amount:N2}): reprint and resend", () => PrintOfficialSoa(soa)));
+                if (stale != null) m.Items.Add(RowMenu.Item($"⚠ Changed since it was {stale.Kind.ToLowerInvariant()} ({Fmt.Short(stale.At)}, PHP {stale.Amount:N2}): reprint and resend", () => PrintOfficialSoa(soa)));
                 m.Items.Add(RowMenu.Item(string.IsNullOrWhiteSpace(soa.SalesInvoiceNo) ? "No sales invoice linked" : $"Show sales invoice {soa.SalesInvoiceNo}", () => OpenLinkedInvoice(), "", !string.IsNullOrWhiteSpace(soa.SalesInvoiceNo)));
                 m.Items.Add(RowMenu.Item("Open client profile", () => MainForm.Instance?.OpenClientProfile(soa.ClientName), "", !string.IsNullOrWhiteSpace(soa.ClientName)));
                 m.Items.Add(RowMenu.Sep());
@@ -1356,7 +1356,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtClientTin.Text = soa.ClientTin;
             dtpIssueDate.SetSafe(soa.IssueDate);
             var period = (soa.PeriodCovered ?? "").Split(new[] { " to " }, StringSplitOptions.None);
-            if (period.Length == 2 && DateTime.TryParse(period[0].Trim(), out var pFrom) && DateTime.TryParse(period[1].Trim(), out var pTo))
+            if (period.Length == 2 && (Fmt.TryParseDate(period[0], out var pFrom) || DateTime.TryParse(period[0].Trim(), out pFrom)) && (Fmt.TryParseDate(period[1], out var pTo) || DateTime.TryParse(period[1].Trim(), out pTo)))
             {
                 dtpPeriodFrom.SetSafe(pFrom);
                 dtpPeriodTo.SetSafe(pTo);
@@ -1383,7 +1383,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridItems.Rows.Clear();
             foreach (var it in items)
             {
-                int r = gridItems.Rows.Add(it.TripNumber, it.DateReceived, it.Zone, it.DrNumbers, it.Destination, it.DeliveryType, it.PlateNumber, it.Tonnage, it.DropCount, it.Amount, it.FuelSurcharge, it.DriverHelper, it.DeliveryId > 0 ? it.DeliveryId.ToString() : "");
+                int r = gridItems.Rows.Add(it.TripNumber, Fmt.DateText(it.DateReceived), it.Zone, it.DrNumbers, it.Destination, it.DeliveryType, it.PlateNumber, it.Tonnage, it.DropCount, it.Amount, it.FuelSurcharge, it.DriverHelper, it.DeliveryId > 0 ? it.DeliveryId.ToString() : "");
                 gridItems.Rows[r].Cells["colStoreCode"].Value = it.StoreCode;
                 gridItems.Rows[r].Cells["colTripReport"].Value = it.TripReportNumber;
                 gridItems.Rows[r].Cells["colCrates"].Value = it.TotalCrates;
@@ -1563,7 +1563,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (!string.IsNullOrWhiteSpace(row.Cells[ci].Value?.ToString())) blank = false;
                 if (blank) continue;
                 int tripNo = int.TryParse(row.Cells[0].Value?.ToString(), out int t) ? t : list.Count + 1;
-                string dtRecv = row.Cells[1].Value?.ToString() ?? "";
+                string dtRecv = Fmt.StoredDate(row.Cells[1].Value?.ToString());
                 string zone = row.Cells[2].Value?.ToString() ?? "";
                 string dr = DrList.Normalize(row.Cells[3].Value?.ToString());
                 string dest = row.Cells[4].Value?.ToString() ?? "";
@@ -1680,7 +1680,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!IsLegacySoa()) RecalculateTaxes(manualOverride: false); // Nov 12: a statement saved under the old rule is re-worked by the new one on this save
                 if (!IsLegacySoa() && !UseInvoiceTotals()) return; // Nov 6: the statement's total is its invoices' total
                 var items = CollectItemsFromGrid();
-                string period = $"{dtpPeriodFrom.Value:yyyy-MM-dd} to {dtpPeriodTo.Value:yyyy-MM-dd}";
+                string period = $"{Fmt.Date(dtpPeriodFrom.Value)} to {Fmt.Date(dtpPeriodTo.Value)}";
 
                 StatementOfAccount soa = isEditingExisting && selectedSoa != null ? selectedSoa : new StatementOfAccount();
                 soa.SoaNumber = string.IsNullOrWhiteSpace(txtSoaNumber.Text) ? MJdatabase.GenerateNextSoaNumber() : txtSoaNumber.Text.Trim();
@@ -1919,7 +1919,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         var was = MJdatabase.GetIssuedInfo(MJdatabase.DocInvoice, inv.Id);
                         decimal newNet = inv.Gross - sh[k];
                         if (was != null && Math.Abs(was.Amount - newNet) > 0.004m)
-                            issuedLines.Add($"SI {inv.Number} was {was.Kind.ToLowerInvariant()} on {was.At:MMM d} at PHP {was.Amount:N2}; its new net is PHP {newNet:N2}");
+                            issuedLines.Add($"SI {inv.Number} was {was.Kind.ToLowerInvariant()} on {Fmt.Short(was.At)} at PHP {was.Amount:N2}; its new net is PHP {newNet:N2}");
                     }
                 }
                 string msg = $"You are taking {dropped.Count} trip(s) off {soa.SoaNumber}:\n\n• " + string.Join("\n• ", dropped.Take(10).Select(i => $"SI {i.Number} (PHP {i.Gross:N2})"))
@@ -2015,7 +2015,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ClientName = cbClient.Text.Trim(),
                 ClientAddress = txtClientAddress.Text.Trim(),
                 ClientTin = txtClientTin.Text.Trim(),
-                PeriodCovered = $"{dtpPeriodFrom.Value:yyyy-MM-dd} to {dtpPeriodTo.Value:yyyy-MM-dd}",
+                PeriodCovered = $"{Fmt.Date(dtpPeriodFrom.Value)} to {Fmt.Date(dtpPeriodTo.Value)}",
                 IssueDate = dtpIssueDate.Value.Date,
                 DeliveryType = cbDeliveryType.Text.Trim(),
                 TotalSalesVatInc = numTotalSales.Value,

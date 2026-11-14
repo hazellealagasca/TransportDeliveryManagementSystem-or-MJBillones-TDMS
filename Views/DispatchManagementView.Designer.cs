@@ -210,7 +210,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             dtpDispatchDate.Dock = DockStyle.Fill;
             dtpDispatchDate.Font = new Font("Segoe UI", 8.5F);
-            dtpDispatchDate.Format = DateTimePickerFormat.Short;
+            dtpDispatchDate.Format = DateTimePickerFormat.Custom;
+            dtpDispatchDate.CustomFormat = Fmt.DateFormat;
             dtpDispatchDate.Location = new Point(0, 20);
             dtpDispatchDate.Margin = new Padding(0, 0, 2, 0);
             dtpDispatchDate.Name = "dtpDispatchDate";

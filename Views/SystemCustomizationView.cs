@@ -189,7 +189,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblDate = new Label { Text = "Date format", Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, Sc(8), 0, Sc(4)) };
             cbDateFormat = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5F), Margin = new Padding(0, 0, 0, 10) };
-            cbDateFormat.Items.AddRange(new object[] { "yyyy-MM-dd (ISO Standard)", "MM/dd/yyyy (US Standard)", "dd/MM/yyyy (UK Standard)", "MMMM dd, yyyy (Long Format)" });
+            cbDateFormat.Items.AddRange(new object[] { "MM/dd/yyyy (Standard)" });
             cbDateFormat.SelectedIndex = 0;
 
             chkEnableToasts = new CheckBox
@@ -567,7 +567,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int curIdx = cbCurrency.Items.IndexOf(cur);
                 if (curIdx >= 0) cbCurrency.SelectedIndex = curIdx;
 
-                string dFmt = MJdatabase.GetSystemSetting("DateFormat", "yyyy-MM-dd (ISO Standard)");
+                string dFmt = MJdatabase.GetSystemSetting("DateFormat", "MM/dd/yyyy (Standard)");
                 int dIdx = cbDateFormat.Items.IndexOf(dFmt);
                 if (dIdx >= 0) cbDateFormat.SelectedIndex = dIdx;
 
@@ -640,7 +640,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 // "RequireCrateReturnTracking" is set in Settings → Features & Pop-ups now.
                 // "AutoTruckRecommendation" is set in Settings → Features & Pop-ups now.
                 MJdatabase.SetSystemSetting("CurrencySymbol", cbCurrency.SelectedItem?.ToString() ?? "PHP (Philippine Peso)", "Default currency representation");
-                MJdatabase.SetSystemSetting("DateFormat", cbDateFormat.SelectedItem?.ToString() ?? "yyyy-MM-dd (ISO Standard)", "Standard date format");
+                MJdatabase.SetSystemSetting("DateFormat", cbDateFormat.SelectedItem?.ToString() ?? "MM/dd/yyyy (Standard)", "Standard date format");
                 // "EnableToastPopups" is set in Settings → Features & Pop-ups now.
                 Features.Reload();
                 MJdatabase.SetSystemSetting("StartMenuCollapsed", chkStartCollapsed.Checked ? "True" : "False", "Start sidebar menu in collapsed state");

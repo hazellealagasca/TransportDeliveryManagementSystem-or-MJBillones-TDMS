@@ -47,7 +47,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var sel = gridTripReports.SelectedRows.Count == 1 ? gridTripReports.SelectedRows[0].DataBoundItem as TripReport : null;
                 if (sel != null)
                 {
-                    m.Add(new SummaryMetric("Selected report", sel.TripReportNumber, SummaryTone.Purple, $"{sel.DispatchNumber} · {sel.ReportDate:MMM d, yyyy}", Strong: true));
+                    m.Add(new SummaryMetric("Selected report", sel.TripReportNumber, SummaryTone.Purple, $"{sel.DispatchNumber} · {Fmt.Date(sel.ReportDate)}", Strong: true));
                     m.Add(new SummaryMetric("Its status", sel.Status, SummaryTone.Teal, $"gate {(string.IsNullOrWhiteSpace(sel.TruckTimeIn) ? "—" : sel.TruckTimeIn)} – {(string.IsNullOrWhiteSpace(sel.TruckTimeOut) ? "—" : sel.TruckTimeOut)}"));
                     context = $"Selected report {sel.TripReportNumber} — dispatch {sel.DispatchNumber}   ·   Trip reports shown: {list.Count:N0}";
                 }

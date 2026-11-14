@@ -119,7 +119,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string helper = d.AideDisplay;
             var sb = new StringBuilder();
             sb.AppendLine($"Dispatch No. : {d.DispatchNumber,-22} Ref No. : {refNum}");
-            sb.AppendLine($"Date         : {d.DispatchDate:MMM d, yyyy}{"",-10} Departure : {d.DepartureTime}");
+            sb.AppendLine($"Date         : {Fmt.Date(d.DispatchDate)}{"",-10} Departure : {d.DepartureTime}");
             sb.AppendLine($"Client       : {d.ClientName}");
             sb.AppendLine($"Route        : {routeTitle}   ·   Destination : {d.Destination}   ·   Stores : {storeCount}");
             sb.AppendLine($"Truck        : {plate} ({tons})   ·   Driver : {d.DriverName}   ·   Helper : {helper}");

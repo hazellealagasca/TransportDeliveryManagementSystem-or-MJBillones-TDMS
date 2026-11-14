@@ -17,7 +17,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly Truck truck;
         private readonly Action<Truck>? onEditDetails;
         private readonly ProfileHeader header = new ProfileHeader();
-        private readonly SegmentTabs tabs = new SegmentTabs("Specs", "Dispatch history", "Incident logs", "Documents & photos");
+        private readonly SegmentTabs tabs = new SegmentTabs("Specs", "Dispatch history", "Maintenance", "Incident logs", "Documents & photos");
         private readonly Panel body = new Panel { Dock = DockStyle.Fill };
         private readonly Panel[] pages = new Panel[5];
         private List<Delivery> trips = new List<Delivery>();
@@ -64,10 +64,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Controls.Add(footer);
             Controls.Add(tabs);
             Controls.Add(header);
-            tabs.Badges = new[] { 0, trips.Count, incidents.Count, DocCount() };
+            tabs.Badges = new[] { 0, trips.Count, maintenance.Count, incidents.Count, DocCount() };
             tabs.SelectedChanged += (s, e) => ShowPage(tabs.Selected);
             ShowPage(0);
-            KeyDown += (s, e) => { if (e.Control && e.KeyCode == Keys.Tab) { tabs.Selected = (tabs.Selected + (e.Shift ? 3 : 1)) % 4; e.Handled = true; } };
+            KeyDown += (s, e) => { if (e.Control && e.KeyCode == Keys.Tab) { tabs.Selected = (tabs.Selected + (e.Shift ? 4 : 1)) % 5; e.Handled = true; } };
             try { ThemeManager.StyleWindowChrome(this); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }
         private void LoadData()
@@ -94,7 +94,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (!when.HasValue) return;
                 int days = (int)(when.Value.Date - DateTime.Today).TotalDays;
-                if (days < 0) header.Chips.Add(($"{what} expired {when:MMM d, yyyy}", AppTheme.DangerSoft, AppTheme.DangerText));
+                if (days < 0) header.Chips.Add(($"{what} expired {Fmt.Date(when)}", AppTheme.DangerSoft, AppTheme.DangerText));
                 else if (days <= 30) header.Chips.Add(($"{what} due in {days} day(s)", AppTheme.WarningSoft, AppTheme.WarningText));
             }
             Due("Registration", specs.RegistrationExpiry);
@@ -119,7 +119,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void Rebuild(int page)
         {
             if (pages[page] != null) { body.Controls.Remove(pages[page]); pages[page].Dispose(); pages[page] = null!; }
-            tabs.Badges = new[] { 0, trips.Count, incidents.Count, DocCount() };
+            tabs.Badges = new[] { 0, trips.Count, maintenance.Count, incidents.Count, DocCount() };
             tabs.Invalidate();
             BuildHeader();
             ShowPage(tabs.Selected);
@@ -135,7 +135,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int completed = trips.Count(t => RowMenu.Is(t.Status, "Completed"));
             var last = trips.FirstOrDefault(t => RowMenu.Is(t.Status, "Completed", "In Transit"));
             stats.Add("Trips completed", completed.ToString("N0"), $"{trips.Count} dispatch(es) in total", AppTheme.Accent);
-            stats.Add("Last trip", last == null ? "—" : last.DispatchDate.ToString("MMM d, yyyy"), last == null ? "no trips yet" : last.DispatchNumber, AppTheme.Info);
+            stats.Add("Last trip", last == null ? "—" : Fmt.Date(last.DispatchDate), last == null ? "no trips yet" : last.DispatchNumber, AppTheme.Info);
             stats.Add("Incidents", incidents.Count.ToString("N0"), $"{incidents.Sum(i => i.DamagedQuantity):N0} damaged crate(s)", incidents.Count > 0 ? AppTheme.Danger : AppTheme.Success);
             var grid = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, BackColor = AppTheme.Canvas, Padding = new Padding(0, D(14), 0, 0) };
             grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42F));
@@ -161,7 +161,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lvHist.Columns.Add("Status", D(150));
             lvHist.Columns.Add("Reason", D(220));
             foreach (var h in history)
-                lvHist.Items.Add(new ListViewItem(new[] { h.At == DateTime.MinValue ? "—" : h.At.ToString("MMM d, yyyy"), $"{(string.IsNullOrWhiteSpace(h.OldStatus) ? "" : h.OldStatus + " → ")}{h.NewStatus}", string.IsNullOrWhiteSpace(h.Reason) ? "—" : h.Reason }) { ToolTipText = $"{h.At:MMM d, yyyy h:mm tt} by {h.By}\n{h.Reason}", ForeColor = AppTheme.TextPrimary });
+                lvHist.Items.Add(new ListViewItem(new[] { h.At == DateTime.MinValue ? "—" : Fmt.Date(h.At), $"{(string.IsNullOrWhiteSpace(h.OldStatus) ? "" : h.OldStatus + " → ")}{h.NewStatus}", string.IsNullOrWhiteSpace(h.Reason) ? "—" : h.Reason }) { ToolTipText = $"{Fmt.DateTimeText(h.At)} by {h.By}\n{h.Reason}", ForeColor = AppTheme.TextPrimary });
             if (history.Count == 0) lvHist.Items.Add(new ListViewItem(new[] { "—", "No status changes recorded yet", "" }) { ForeColor = AppTheme.TextMuted });
             var histHost = new Panel { Dock = DockStyle.Bottom, Height = D(150), BackColor = AppTheme.Canvas, Padding = new Padding(0, D(10), 0, 0) };
             histHost.Controls.Add(ProfileKit.Card(lvHist, D(8)));
@@ -233,12 +233,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static string? ExpiryNote(string what, DateTime? when, DateTime? today = null)
         {
             if (!when.HasValue || when.Value.Date >= (today ?? DateTime.Today).Date) return null;
-            return $"{what} expired on {when.Value:MMM d, yyyy}";
+            return $"{what} expired on {Fmt.Date(when.Value)}";
         }
 
         private DateTimePicker DatePicker(DateTime? value)
         {
-            var d = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", ShowCheckBox = true, Font = new Font("Segoe UI", 10F) };
+            var d = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, ShowCheckBox = true, Font = new Font("Segoe UI", 10F) };
             d.SetSafe(value ?? DateTime.Today);
             d.Checked = value.HasValue;
             return d;
@@ -280,7 +280,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.SaveTruckSpecs(updated);
                 specs = updated;
                 msg.ForeColor = AppTheme.SuccessText;
-                msg.Text = "✓ Saved " + DateTime.Now.ToString("h:mm tt");
+                msg.Text = "✓ Saved " + DateTime.Now.ToString("hh:mm tt");
                 BuildHeader();
             }
             catch (Exception ex)
@@ -304,7 +304,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     string route = t.CleanRouteDisplay;
                     if (q.Length > 0 && !new[] { t.DispatchNumber, t.ClientName, route, t.DriverName, t.AideDisplay, t.Status }.Any(x => (x ?? "").Contains(q, StringComparison.OrdinalIgnoreCase))) continue;
-                    int r = g.Rows.Add(t.DispatchDate.ToString("yyyy-MM-dd"), t.DispatchNumber, t.ClientName, route, t.DriverName, t.AideDisplay, (t.TotalCrates > 0 ? t.TotalCrates : t.GCrate + t.ECrate).ToString("N0"), t.Status);
+                    int r = g.Rows.Add(Fmt.Date(t.DispatchDate), t.DispatchNumber, t.ClientName, route, t.DriverName, t.AideDisplay, (t.TotalCrates > 0 ? t.TotalCrates : t.GCrate + t.ECrate).ToString("N0"), t.Status);
                     g.Rows[r].Tag = t;
                 }
             }
@@ -327,15 +327,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 62F));
             split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38F));
             var g = ProfileKit.Grid();
-            g.Columns.AddRange(ProfileKit.Col("Date", "Date", 70), ProfileKit.Col("Task", "Task", 150), ProfileKit.Col("Category", "Category", 75), ProfileKit.Col("Odo", "Odometer", 65, true),
-                ProfileKit.Col("Cost", "Cost", 65, true), ProfileKit.Col("Next", "Next due", 70), ProfileKit.Col("By", "Shop / by", 80));
+            g.Columns.AddRange(ProfileKit.Col("Plate", "Plate No.", 70), ProfileKit.Col("Category", "Truck category", 85), ProfileKit.Col("Crate", "Crate/Temp type", 85), ProfileKit.Col("Cap", "Capacity", 60, true),
+                ProfileKit.Col("Date", "Date of maintenance", 85), ProfileKit.Col("Type", "Type", 80), ProfileKit.Col("Task", "Description", 150), ProfileKit.Col("Next", "Est. fix date", 80));
             foreach (var m in maintenance)
             {
-                int r = g.Rows.Add(m.ServiceDate.ToString("yyyy-MM-dd"), m.Task, m.Category, m.OdometerKm > 0 ? $"{m.OdometerKm:N0}" : "—", m.Cost > 0 ? $"₱{m.Cost:N2}" : "—",
-                    m.NextDueDate?.ToString("yyyy-MM-dd") ?? "—", string.IsNullOrWhiteSpace(m.ServiceProvider) ? m.CreatedBy : m.ServiceProvider);
+                int r = g.Rows.Add(string.IsNullOrWhiteSpace(m.PlateNumber) ? truck.PlateNumber : m.PlateNumber, string.IsNullOrWhiteSpace(m.TruckCategory) ? truck.TruckType : m.TruckCategory,
+                    string.IsNullOrWhiteSpace(m.CrateTempType) ? truck.CargoType : m.CrateTempType, (m.Capacity > 0 ? m.Capacity : truck.CapacityCrates).ToString("N0"),
+                    Fmt.Date(m.ServiceDate), m.EntryType, m.Task, Fmt.Date(m.NextDueDate) is { Length: > 0 } nd ? nd : "—");
                 g.Rows[r].Tag = m;
                 if (!string.IsNullOrWhiteSpace(m.Notes)) g.Rows[r].Cells["Task"].ToolTipText = m.Notes;
-                if (m.NextDueDate.HasValue && m.NextDueDate.Value.Date < DateTime.Today) g.Rows[r].Cells["Next"].Style.ForeColor = AppTheme.DangerText;
+                if (m.EntryType == MJdatabase.TruckEntryBreakdown) g.Rows[r].Cells["Type"].Style.ForeColor = AppTheme.DangerText;
+                else if (m.EntryType == MJdatabase.TruckEntryDecommissioned) g.Rows[r].Cells["Type"].Style.ForeColor = AppTheme.TextMuted;
+                else if (m.EntryType == MJdatabase.TruckEntryBackInService) g.Rows[r].Cells["Type"].Style.ForeColor = AppTheme.SuccessText;
             }
             var leftWrap = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Canvas, Padding = new Padding(0, 0, D(10), 0) };
             leftWrap.Controls.Add(ProfileKit.Card(g, 1));
@@ -344,7 +347,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var f = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, BackColor = AppTheme.Surface, Padding = new Padding(D(4)) };
             int fw = D(300);
             var lblMode = new Label { Text = "New maintenance entry", AutoSize = true, Font = new Font("Segoe UI Semibold", 10.5F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, 0, 0, D(4)) };
-            var dtpDate = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Width = fw, Font = new Font("Segoe UI", 10F) };
+            var dtpDate = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Width = fw, Font = new Font("Segoe UI", 10F) };
             dtpDate.CapAtToday(1);
             var cbTask =new ComboBox { Width = fw, Font = new Font("Segoe UI", 10F), DropDownStyle = ComboBoxStyle.DropDown };
             ProfileKit.Suggest(cbTask, "maintenance");
@@ -357,7 +360,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             InputGuards.DigitsOnly(txtOdoM);
             var txtShop = ProfileKit.Box("Shop or mechanic"); txtShop.Width = fw; txtShop.Dock = DockStyle.None;
             ProfileKit.Suggest(txtShop, "maintenance-provider");
-            var dtpNext = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Width = fw, Font = new Font("Segoe UI", 10F), ShowCheckBox = true, Checked = false };
+            var dtpNext = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Width = fw, Font = new Font("Segoe UI", 10F), ShowCheckBox = true, Checked = false };
             var txtNotes = ProfileKit.Box("Parts used, findings…"); txtNotes.Width = fw; txtNotes.Dock = DockStyle.None;
             ProfileKit.Suggest(txtNotes, "maintenance-notes");
             cbTask.TextChanged += (s, e) =>
@@ -374,8 +377,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Button? btnVoid = null;
             void Load(TruckMaintenance? m)
             {
+                bool statusRow = m != null && m.EntryType != MJdatabase.TruckEntryService; // breakdown, decommission and back-in-service rows come from a status change and are kept as written
+                if (statusRow) m = null;
                 editing = m;
-                lblMode.Text = m == null ? "New maintenance entry" : $"Editing entry from {m.ServiceDate:MMM d, yyyy}";
+                lblMode.Text = m == null ? "New maintenance entry" : $"Editing entry from {Fmt.Date(m.ServiceDate)}";
                 dtpDate.SetSafe(m?.ServiceDate ?? DateTime.Today);
                 cbTask.Text = m?.Task ?? "";
                 cbCat.SelectedItem = m?.Category ?? "Preventive";
@@ -387,7 +392,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 dtpNext.SetSafe(m?.NextDueDate ?? DateTime.Today.AddMonths(3));
                 txtNotes.Text = m?.Notes ?? "";
                 if (btnVoid != null) btnVoid.Visible = m != null;
-                lblMsg.Text = "";
+                lblMsg.ForeColor = AppTheme.TextMuted;
+                lblMsg.Text = statusRow ? "Status-change rows are kept as written. Change the truck's status to add one." : "";
             }
             void Save()
             {
@@ -410,7 +416,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int maxOdo = Math.Max(specs.OdometerKm, maintenance.Where(m => editing == null || m.Id != editing.Id).Select(m => m.OdometerKm).DefaultIfEmpty(0).Max());
                 if (odo > 0 && odo < maxOdo && MessageBox.Show(this, $"The odometer reading ({odo:N0} km) is lower than the last recorded {maxOdo:N0} km. Save anyway?", "Odometer check", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
                 bool dupSameDay = maintenance.Any(m => (editing == null || m.Id != editing.Id) && m.ServiceDate.Date == dtpDate.Value.Date && string.Equals(m.Task, task, StringComparison.OrdinalIgnoreCase));
-                if (dupSameDay && MessageBox.Show(this, $"\"{task}\" is already logged on {dtpDate.Value:MMM d, yyyy}. Add it again?", "Already Logged", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+                if (dupSameDay && MessageBox.Show(this, $"\"{task}\" is already logged on {Fmt.Date(dtpDate.Value)}. Add it again?", "Already Logged", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
                 if (MessageBox.Show(this, editing == null ? $"Are you sure you want to add \"{task}\" to {truck.PlateNumber}'s maintenance log?" : "Are you sure you want to update this maintenance entry?", editing == null ? "Add maintenance" : "Update maintenance", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
                 var rec = editing ?? new TruckMaintenance { TruckId = truck.Id };
                 rec.ServiceDate = dtpDate.Value.Date; rec.Task = task; rec.Category = cbCat.Text; rec.OdometerKm = odo; rec.Cost = cost;
@@ -430,7 +436,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnVoid = ProfileKit.Button("Void", "danger", (s, e) =>
             {
                 if (editing == null) return;
-                if (MessageBox.Show(this, $"Are you sure you want to void \"{editing.Task}\" ({editing.ServiceDate:MMM d, yyyy})?\n\nIt's hidden from the log but kept in the audit trail.", "Void maintenance entry", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+                if (MessageBox.Show(this, $"Are you sure you want to void \"{editing.Task}\" ({Fmt.Date(editing.ServiceDate)})?\n\nIt's hidden from the log but kept in the audit trail.", "Void maintenance entry", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
                 MJdatabase.VoidTruckMaintenance(editing.Id);
                 maintenance = MJdatabase.GetTruckMaintenance(truck.Id);
                 Rebuild(2);
@@ -456,7 +462,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var page = Page();
             var panel = new AttachmentPanel("Registration / OR-CR") { Dock = DockStyle.Fill };
             panel.SetOwner("Truck", truck.Id, truck.PlateNumber);
-            panel.AttachmentsChanged += (s, e) => { tabs.Badges = new[] { 0, trips.Count, incidents.Count, panel.Items.Count }; tabs.Invalidate(); };
+            panel.AttachmentsChanged += (s, e) => { tabs.Badges = new[] { 0, trips.Count, maintenance.Count, incidents.Count, panel.Items.Count }; tabs.Invalidate(); };
             page.Controls.Add(ProfileKit.Card(panel, 1));
             page.Controls.Add(ProfileKit.Section("Documents & photos", "OR/CR, insurance, inspection photos, repair receipts · double-click to view"));
             return page;
@@ -477,7 +483,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var tripById = trips.ToDictionary(t => t.Id);
             foreach (var i in incidents)
             {
-                int r = g.Rows.Add(i.IncidentDate.ToString("yyyy-MM-dd"), i.DispatchNumber, i.Cause, i.DamagedQuantity.ToString("N0"), $"₱{i.EstimatedCost:N2}", i.ChargeableToCrew ? "Yes" : "No", i.Status);
+                int r = g.Rows.Add(Fmt.Date(i.IncidentDate), i.DispatchNumber, i.Cause, i.DamagedQuantity.ToString("N0"), $"₱{i.EstimatedCost:N2}", i.ChargeableToCrew ? "Yes" : "No", i.Status);
                 g.Rows[r].Tag = tripById.TryGetValue(i.DeliveryId, out var d) ? d : null;
                 if (!string.IsNullOrWhiteSpace(i.Description)) g.Rows[r].Cells["Cause"].ToolTipText = i.Description;
             }

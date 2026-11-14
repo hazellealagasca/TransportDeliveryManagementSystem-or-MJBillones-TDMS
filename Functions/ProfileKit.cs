@@ -104,7 +104,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (d.TotalDays < 1) return "today";
             if (d.TotalDays < 2) return "yesterday";
             if (d.TotalDays < 31) return $"{(int)d.TotalDays} days ago";
-            return t.ToString("MMM d, yyyy");
+            return Fmt.Date(t);
         }
     }
     /// <summary>Underlined tab strip used at the top of profile windows.</summary>

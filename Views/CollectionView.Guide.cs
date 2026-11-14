@@ -125,7 +125,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 bool self = selectedCollection != null && r.Id == selectedCollection.Id;
                 string val = string.IsNullOrWhiteSpace(r.ReferenceNumber) ? r.ReceiptNumber : r.ReferenceNumber;
-                yield return new LookupItem(val, $"Receipt {r.ReceiptNumber} · invoice {r.InvoiceNumber} · ₱{r.AmountPaid:N2} · {r.PaymentDate:MMM d, yyyy} · {r.PaymentMethod}",
+                yield return new LookupItem(val, $"Receipt {r.ReceiptNumber} · invoice {r.InvoiceNumber} · ₱{r.AmountPaid:N2} · {Fmt.Date(r.PaymentDate)} · {r.PaymentMethod}",
                     self ? "This receipt" : "Already recorded — opens it", self ? BadgeKind.Info : BadgeKind.Warn);
                 if (++n >= 15) yield break;
             }
@@ -192,7 +192,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 decimal due = Math.Max(0, inv.NetAmount - collPaidOthers);
                 checks.Add(new PaymentCheck(amt == due ? $"Full amount due (₱{due:N2})" : $"₱{amt:N2} is not the full amount due of ₱{due:N2}", amt == due));
                 var dateWhy = MJdatabase.CheckPaymentDate(dtpPaymentDate.Value.Date, inv.IssueDate);
-                checks.Add(new PaymentCheck(dateWhy ?? (dtpPaymentDate.Value.Date == DateTime.Today ? "Payment date is today, on or after the invoice date" : $"Payment date {dtpPaymentDate.Value:MMM d, yyyy} is on or after the invoice date"), dateWhy == null));
+                checks.Add(new PaymentCheck(dateWhy ?? (dtpPaymentDate.Value.Date == DateTime.Today ? "Payment date is today, on or after the invoice date" : $"Payment date {Fmt.Date(dtpPaymentDate.Value)} is on or after the invoice date"), dateWhy == null));
             }
             checks.Add(new PaymentCheck(amt > 0 ? "Amount is more than ₱0.00" : "Enter the amount paid", amt > 0));
             string method = cbPaymentMethod.Text.Trim();
@@ -203,7 +203,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (refNo.Length > 0)
             {
                 var dup = allReceipts.FirstOrDefault(r => (selectedCollection == null || r.Id != selectedCollection.Id) && string.Equals(r.ReferenceNumber?.Trim(), refNo, StringComparison.OrdinalIgnoreCase));
-                checks.Add(new PaymentCheck(dup == null ? "Reference no. not used before" : $"Reference {refNo} is already on receipt {dup.ReceiptNumber} ({dup.PaymentDate:MMM d, yyyy})", dup == null));
+                checks.Add(new PaymentCheck(dup == null ? "Reference no. not used before" : $"Reference {refNo} is already on receipt {dup.ReceiptNumber} ({Fmt.Date(dup.PaymentDate)})", dup == null));
             }
             return checks;
         }
@@ -217,7 +217,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             var rows = new List<(string, string)>
             {
-                ("Client", inv.ClientName ?? ""), ("Statement / invoice", inv.InvoiceNumber ?? ""), ("Invoiced", inv.IssueDate.ToString("MMM d, yyyy")), ("Due", inv.DueDate.ToString("MMM d, yyyy"))
+                ("Client", inv.ClientName ?? ""), ("Statement / invoice", inv.InvoiceNumber ?? ""), ("Invoiced", Fmt.Date(inv.IssueDate)), ("Due", Fmt.Date(inv.DueDate))
             };
             if (inv.SoaId > 0)
             {

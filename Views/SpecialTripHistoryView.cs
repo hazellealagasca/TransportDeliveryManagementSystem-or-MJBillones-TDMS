@@ -123,11 +123,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             PageKit.StyleCombo(cbStatusFilter);
             cbStatusFilter.SelectedIndexChanged += (s, e) => { if (!syncingTiles) tripTiles?.ClearSelection(); ApplyFilter(); };
             Label lblFrom = new Label { Text = "From:", AutoSize = true, Margin = new Padding(0, 8, 4, 0), Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105) };
-            dtpFrom = new DateTimePicker { Width = 110, Format = DateTimePickerFormat.Short, Value = DateTime.Today.AddDays(-60), Margin = new Padding(0, 2, 10, 0) };
+            dtpFrom = new DateTimePicker { Width = 110, Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Value = DateTime.Today.AddDays(-60), Margin = new Padding(0, 2, 10, 0) };
             dtpFrom.ValueChanged += (s, e) => ApplyFilter();
 
             Label lblTo = new Label { Text = "To:", AutoSize = true, Margin = new Padding(0, 8, 4, 0), Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105) };
-            dtpTo = new DateTimePicker { Width = 110, Format = DateTimePickerFormat.Short, Value = DateTime.Today.AddDays(30), Margin = new Padding(0, 2, 10, 0) };
+            dtpTo = new DateTimePicker { Width = 110, Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Value = DateTime.Today.AddDays(30), Margin = new Padding(0, 2, 10, 0) };
             dtpTo.ValueChanged += (s, e) => ApplyFilter();
 
             flowFilters.Controls.Add(txtSearch);
@@ -501,7 +501,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     m.Add(new SummaryMetric("Truck & driver", string.IsNullOrWhiteSpace(sel.TruckPlate) ? "—" : sel.TruckPlate, SummaryTone.Neutral, string.IsNullOrWhiteSpace(sel.DriverName) ? "no driver yet" : sel.DriverName));
                     m.Add(new SummaryMetric("Its charge", sel.TripCharge > 0 ? AllInOneSummaryBar.Money(sel.TripCharge) : "—", SummaryTone.Blue, string.IsNullOrWhiteSpace(sel.ModeOfPayment) ? "mode of payment not set" : sel.ModeOfPayment));
                     m.Add(new SummaryMetric("Its checklist", ChecklistText(sel), SummaryTone.Teal, string.IsNullOrWhiteSpace(sel.DestinationAddress) ? "no destination yet" : sel.DestinationAddress));
-                    context = $"Selected trip {sel.OrderReference} — {sel.Company} · {sel.DispatchDate:MMM d, yyyy} · {sel.Status}   ·   Special trips shown: {list.Count:N0}";
+                    context = $"Selected trip {sel.OrderReference} — {sel.Company} · {Fmt.Date(sel.DispatchDate)} · {sel.Status}   ·   Special trips shown: {list.Count:N0}";
                 }
                 specialSummary.SetMetrics(m, preview, context);
             }
@@ -531,7 +531,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 row.Tag = t;
 
                 row.Cells["colRef"].Value = t.OrderReference;
-                row.Cells["colDate"].Value = t.DispatchDate.ToString("yyyy-MM-dd");
+                row.Cells["colDate"].Value = Fmt.Date(t.DispatchDate);
                 row.Cells["colCompany"].Value = t.Company;
                 row.Cells["colAddress"].Value = !string.IsNullOrWhiteSpace(t.DestinationAddress) ? t.DestinationAddress : (!string.IsNullOrWhiteSpace(t.Address) ? t.Address + "  (client address — no destination yet)" : "—  no destination yet");
                 row.Cells["colCharge"].Value = t.TripCharge > 0 ? "₱" + t.TripCharge.ToString("N2") : "—";
@@ -583,7 +583,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (rows[0].Tag is not SpecialTrip t) return;
                 bool done = RowMenu.Is(t.Status, "Completed"), cancelled = RowMenu.Is(t.Status, "Cancelled");
-                m.Items.AddRange(RowMenu.Header($"🌟  {t.OrderReference}", $"{RowMenu.Short(t.Company, 26)} · {t.DispatchDate:MMM d} {t.DepartureTime} · {t.TruckPlate} · {t.Status}"));
+                m.Items.AddRange(RowMenu.Header($"🌟  {t.OrderReference}", $"{RowMenu.Short(t.Company, 26)} · {Fmt.Short(t.DispatchDate)} {t.DepartureTime} · {t.TruckPlate} · {t.Status}"));
                 m.Items.Add(RowMenu.Item("Open trip details", () => ShowSpecialTripDetails(t.Id), "Enter"));
                 m.Items.Add(RowMenu.Item("Edit trip", () => OpenSpecialTripDialog(t.Id)));
                 m.Items.Add(RowMenu.Good("Mark as completed", () => CompleteTrip(t), !done && !cancelled));
@@ -595,7 +595,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (lk.OnSoa) m.Items.Add(RowMenu.Item($"Show statement {lk.SoaNumber}", () => MainForm.Instance?.ShowFinanceRecords("StatementOfAccount", lk.SoaNumber)));
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.CopySub(this, ("Order reference", t.OrderReference), ("Client", t.Company), ("Address", t.Address),
-                    ("Summary", $"{t.OrderReference} — {t.Company}, {t.DispatchDate:dddd, MMMM d} at {t.DepartureTime}; truck {t.TruckPlate}, driver {t.DriverName}{(string.IsNullOrWhiteSpace(t.AideName) ? "" : ", aide " + t.AideName)}. {t.Status}.")));
+                    ("Summary", $"{t.OrderReference} — {t.Company}, {Fmt.DayShort(t.DispatchDate)} at {t.DepartureTime}; truck {t.TruckPlate}, driver {t.DriverName}{(string.IsNullOrWhiteSpace(t.AideName) ? "" : ", aide " + t.AideName)}. {t.Status}.")));
                 m.Items.Add(RowMenu.Item("Other trips for this client", () => RowMenu.Search(txtSearch, t.Company)));
                 m.Items.Add(RowMenu.ExportSub(gridSpecialTrips, "Special_Trips", "Special Trip History"));
                 m.Items.Add(RowMenu.Sep());
@@ -635,7 +635,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (trip.DispatchDate.Date > DateTime.Today)
             {
-                var early = MessageBox.Show($"Special Trip '{trip.OrderReference}' is scheduled for {trip.DispatchDate:MMMM d, yyyy}, which is still ahead.\n\nMark it completed anyway?", "Trip is in the future", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+                var early = MessageBox.Show($"Special Trip '{trip.OrderReference}' is scheduled for {Fmt.Date(trip.DispatchDate)}, which is still ahead.\n\nMark it completed anyway?", "Trip is in the future", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
                 if (early != DialogResult.Yes) return;
             }
             var dr = MessageBox.Show(
@@ -698,7 +698,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             if (r.Tag is SpecialTrip t)
                             {
                                 string flagsVal = r.Cells["colPaymentFlags"].Value?.ToString() ?? "Standard";
-                                string line = $"\"{t.OrderReference}\",\"{t.DispatchDate:yyyy-MM-dd}\",\"{t.Company}\",\"{t.Address}\",\"{t.ServiceType}\",\"{t.TruckPlate}\",\"{t.DriverName}\",\"{t.AideName}\",{t.TotalStopsCount},\"{t.Status}\",\"{flagsVal}\"";
+                                string line = $"\"{t.OrderReference}\",\"{Fmt.Date(t.DispatchDate)}\",\"{t.Company}\",\"{t.Address}\",\"{t.ServiceType}\",\"{t.TruckPlate}\",\"{t.DriverName}\",\"{t.AideName}\",{t.TotalStopsCount},\"{t.Status}\",\"{flagsVal}\"";
                                 sb.AppendLine(line);
                             }
                         }

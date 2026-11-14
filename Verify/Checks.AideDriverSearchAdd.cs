@@ -113,14 +113,14 @@ public static partial class Checks
             if (QuickAddCrewDialog.SplitTyped("Juan Santos") != ("Santos", "Juan")) bad.Add("SplitTyped 'Juan Santos'");
             if (QuickAddCrewDialog.SplitTyped("SANTOS, JUAN") != ("SANTOS", "JUAN")) bad.Add("SplitTyped comma");
             if (QuickAddCrewDialog.SplitTyped("Santos") != ("Santos", "")) bad.Add("SplitTyped one word");
-            var dup = QuickAddCrewDialog.TrySave(true, "Santos", "Maria", "", "", CrewManagementView.LicPro, DateTime.Today.AddYears(-1), DateTime.Today.AddYears(4));
+            var dup = QuickAddCrewDialog.TrySave(true, "Santos", "Maria", "", "", CrewManagementView.LicPro, DateTime.Today.AddYears(-1), DateTime.Today.AddYears(4), address: VsAddr);
             if (dup.Id != 0 || string.IsNullOrEmpty(dup.Problem)) bad.Add("duplicate name was not refused");
-            var badName = QuickAddCrewDialog.TrySave(true, "Sa1ntos", "Juan", "", "", CrewManagementView.LicPro, DateTime.Today.AddYears(-1), DateTime.Today.AddYears(4));
+            var badName = QuickAddCrewDialog.TrySave(true, "Sa1ntos", "Juan", "", "", CrewManagementView.LicPro, DateTime.Today.AddYears(-1), DateTime.Today.AddYears(4), address: VsAddr);
             if (badName.Id != 0 || string.IsNullOrEmpty(badName.Problem)) bad.Add("a name with a digit was not refused");
-            var badPhone = QuickAddCrewDialog.TrySave(true, "Santos", "Juan", "", "12", CrewManagementView.LicPro, DateTime.Today.AddYears(-1), DateTime.Today.AddYears(4));
+            var badPhone = QuickAddCrewDialog.TrySave(true, "Santos", "Juan", "", "12", CrewManagementView.LicPro, DateTime.Today.AddYears(-1), DateTime.Today.AddYears(4), address: VsAddr);
             if (badPhone.Id != 0 || badPhone.Field != "contact") bad.Add("a bad phone was not refused");
 
-            var saved = QuickAddCrewDialog.TrySave(true, "Santos", "Juan", "", "09171234567", CrewManagementView.LicPro, DateTime.Today.AddYears(-1), DateTime.Today.AddYears(4));
+            var saved = QuickAddCrewDialog.TrySave(true, "Santos", "Juan", "", "09171234567", CrewManagementView.LicPro, DateTime.Today.AddYears(-1), DateTime.Today.AddYears(4), address: VsAddr);
             if (saved.Id <= 0 || saved.Problem != null) bad.Add("new driver not saved: " + saved.Problem);
             else
             {
@@ -130,7 +130,7 @@ public static partial class Checks
                 if (driver.SelectedIndex < 0 || !driver.Items[driver.SelectedIndex]!.ToString()!.Contains("Juan")) bad.Add("new driver not selected in the Driver box: " + driver.Text);
                 if (truck.Items.Count != 1) bad.Add("the truck list changed");
             }
-            var savedAide = QuickAddCrewDialog.TrySave(false, "Garcia", "Dan", "", "");
+            var savedAide = QuickAddCrewDialog.TrySave(false, "Garcia", "Dan", "", "", address: VsAddr);
             if (savedAide.Id <= 0 || savedAide.Problem != null) bad.Add("new aide not saved: " + savedAide.Problem);
             else
             {
@@ -182,10 +182,11 @@ public static partial class Checks
                     // the license rows (driver): an expired license shows its problem inside the window
                     var all = dlg.Controls.OfType<Control>().SelectMany(Flat).ToList();
                     var pickers = all.OfType<DateTimePicker>().ToList();
-                    if (pickers.Count != 2 || all.OfType<ComboBox>().Count() != 1) bad.Add($"{file}: expected the license type and two dates, found {all.OfType<ComboBox>().Count()} lists / {pickers.Count} dates");
+                    if (pickers.Count != 2 || all.OfType<ComboBox>().Count() != 2) bad.Add($"{file}: expected the employment type, the license type and two dates, found {all.OfType<ComboBox>().Count()} lists / {pickers.Count} dates");
                     else
                     {
                         texts[3].Text = "";
+                        texts[4].Text = "Blk 1 Sample St, Tarlac City"; // Nov 14: the address is asked before the license
                         pickers[0].Value = DateTime.Today.AddYears(-6); pickers[1].Value = DateTime.Today.AddDays(-30);
                         btn.PerformClick(); Pump(200);
                         var exp = all.OfType<Label>().FirstOrDefault(l => l.Text.Contains("expired on"));
@@ -195,11 +196,12 @@ public static partial class Checks
                             if (c.Bottom > c.Parent!.ClientSize.Height || c.Right > c.Parent.ClientSize.Width) bad.Add($"{file}: '{c.Name}{c.GetType().Name}' is clipped");
                         foreach (var l in all.OfType<Label>().Where(l => l.Text.StartsWith("License")))
                             if (l.Right > l.Parent!.ClientSize.Width || l.Bottom > l.Parent.ClientSize.Height) bad.Add($"{file}: label '{l.Text}' is clipped");
-                        // Non-Professional shows the tick box inline
-                        var cbl = all.OfType<ComboBox>().First(); cbl.SelectedIndex = 1; Pump(100);
-                        var chk = all.OfType<CheckBox>().FirstOrDefault();
-                        if (chk == null || !chk.Visible) bad.Add($"{file}: the Non-Professional tick box is not shown");
-                        cbl.SelectedIndex = 0; Pump(100);
+                        // Nov 14: a driver's license list offers Professional only, and there is no Non-Professional tick box
+                        var cbl = all.OfType<ComboBox>().First(c => c.Items.Contains(CrewManagementView.LicPro));
+                        if (cbl.Items.Count != 1) bad.Add($"{file}: a driver's license list should offer Professional only, offers {cbl.Items.Count}");
+                        if (all.OfType<CheckBox>().Any()) bad.Add($"{file}: the Non-Professional tick box is still there");
+                        var emp = all.OfType<ComboBox>().First(c => c.Items.Contains("Seasonal"));
+                        if (emp.SelectedItem as string != "Regular") bad.Add($"{file}: employment type should start as Regular");
                         btn.PerformClick(); Pump(200);
                     }
                     Pump(100);

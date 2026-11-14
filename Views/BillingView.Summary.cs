@@ -60,7 +60,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (sel != null)
                 {
                     m.Add(new SummaryMetric("Selected invoice", sel.InvoiceNumber, SummaryTone.Purple, $"{sel.Status} · {sel.ClientName}", Strong: true));
-                    m.Add(new SummaryMetric("Its amount", AllInOneSummaryBar.Money(sel.NetAmount), SummaryTone.Teal, $"due {sel.DueDate:MMM d, yyyy}"));
+                    m.Add(new SummaryMetric("Its amount", AllInOneSummaryBar.Money(sel.NetAmount), SummaryTone.Teal, $"due {Fmt.Date(sel.DueDate)}"));
                     m.Add(new SummaryMetric(Paid(sel) > 0 ? "Paid in full" : "To collect in full", AllInOneSummaryBar.Money(Paid(sel) > 0 ? Paid(sel) : Balance(sel)), Paid(sel) > 0 ? SummaryTone.Green : SummaryTone.Amber, Paid(sel) > 0 ? "collected" : "one receipt for the full amount", Strong: Balance(sel) > 0));
                     context = $"Selected invoice {sel.InvoiceNumber} — {sel.ClientName} · {sel.Status}   ·   Invoices shown: {billingSummaryShown.Count:N0}";
                 }

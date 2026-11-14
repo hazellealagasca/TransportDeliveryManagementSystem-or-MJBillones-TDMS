@@ -10,18 +10,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 {
     /// <summary>
     /// Small "Add driver" / "Add aide" window opened from the Driver and Aide search boxes of the dispatch screen when the typed name is not found.
-    /// Last name, first name, optional middle name and contact number; the role is fixed. It runs the same checks as the Crew screen's add
+    /// Last name, first name, optional middle name, contact number, address and employment type (Regular or Seasonal); the role is fixed. It runs the same checks as the Crew screen's add
     /// (name standard, letters only, phone format, duplicate check) and saves the person as active and available.
     /// Problems are shown inside the window (never in a pop-up). Optional details (photo, license, wage) are filled in later on the Crew screen.
     /// </summary>
     public sealed class QuickAddCrewDialog : Form
     {
         private readonly bool driver;
-        private TextBox txtLast = null!, txtFirst = null!, txtMiddle = null!, txtContact = null!;
+        private TextBox txtLast = null!, txtFirst = null!, txtMiddle = null!, txtContact = null!, txtAddress = null!;
+        private ComboBox cbEmployment = null!;
         private Label lblProblem = null!;
         private ComboBox cbLicense = null!;
         private DateTimePicker dtpIssued = null!, dtpExpiry = null!;
-        private CheckBox chkNonPro = null!;
         private Button btnSave = null!, btnCancel = null!;
 
         /// <summary>The id of the person that was saved (0 until Save succeeded).</summary>
@@ -56,7 +56,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// Never shows a message box.
         /// </summary>
         public static (int Id, string? Problem, string Field) TrySave(bool driver, string last, string first, string middle, string contact,
-            string licenseClass = "", DateTime? licenseIssued = null, DateTime? licenseExpiry = null, bool nonProConfirmed = false)
+            string licenseClass = "", DateTime? licenseIssued = null, DateTime? licenseExpiry = null, string address = "", bool seasonal = false)
         {
             try
             {
@@ -72,11 +72,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return (0, "Please enter a valid middle name containing only letters, spaces, hyphens, and apostrophes, or leave it blank.", "middle");
                 if (contact.Length > 0 && !SecurityHelper.IsValidPhone(contact))
                     return (0, "Invalid contact number format. Please enter a valid mobile number (e.g. 09171234567).", "contact");
-                if (driver)
-                {
-                    var lp = CheckDriverLicense(licenseClass, licenseIssued, licenseExpiry, nonProConfirmed);
-                    if (lp != null) return (0, lp.Value.Message, lp.Value.Field);
-                }
+                string? addressProblem = CrewRules.CheckAddress(address);
+                if (addressProblem != null) return (0, addressProblem, "address");
+                var lp = CrewRules.CheckLicense(driver, licenseClass, licenseIssued, licenseExpiry);
+                if (lp != null) return (0, lp.Value.Message, lp.Value.Field);
                 string? duplicate = MJdatabase.ValidateDuplicateCrew(0, name, contact, null, last, first);
                 if (!string.IsNullOrEmpty(duplicate)) return (0, duplicate, "last");
                 string role = driver ? CrewManagementView.RoleDriver : CrewManagementView.RoleAide;
@@ -84,9 +83,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var crew = new Crew
                 {
                     FullName = name, LastName = last, FirstName = first, MiddleName = middle, Role = role, ContactNumber = contact,
-                    DailyWage = 0, FoodAllowance = 0, IsAvailable = true, IsActive = true, PhotoPath = ""
+                    DailyWage = 0, FoodAllowance = 0, IsAvailable = true, IsActive = true, PhotoPath = "",
+                    Address = InputRules.Tidy(address), IsSeasonal = seasonal
                 };
-                if (driver)
+                bool hasLicense = !string.IsNullOrWhiteSpace(licenseClass) && licenseClass != CrewRules.LicNone;
+                if (hasLicense)
                 {
                     // Stored the same way the Crew screen's ApplyClassification does.
                     crew.LicenseNumber = "";
@@ -105,27 +106,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>
-        /// The Crew screen's driver license rules (CrewManagementView.ValidateClassification): Professional, or Non-Professional only when confirmed;
+        /// The Crew screen's driver license rules (CrewRules.CheckLicense): a Professional license is required, with issue and expiry dates;
         /// issue date not in the future; expiry after issue, at most 10 years and at least 6 months of validity; an expired license is refused.
-        /// Returns null when fine, otherwise the problem and the field it is about (license, issued, expiry or confirm).
+        /// Returns null when fine, otherwise the problem and the field it is about (license, issued or expiry).
         /// </summary>
-        public static (string Message, string Field)? CheckDriverLicense(string? licenseClass, DateTime? issued, DateTime? expiry, bool nonProConfirmed)
-        {
-            string lc = licenseClass ?? "";
-            if (lc != CrewManagementView.LicPro && lc != CrewManagementView.LicNonPro)
-                return ("A driver must have a driver's license: choose Professional or Non-Professional.", "license");
-            if (issued == null) return ("Enter the date the license was issued.", "issued");
-            if (expiry == null) return ("Enter the license expiry date.", "expiry");
-            var iss = issued.Value.Date; var exp = expiry.Value.Date;
-            if (iss > DateTime.Today) return ("The license issue date can't be in the future.", "issued");
-            if (exp <= iss) return ("The license expiry date must be after the issue date.", "expiry");
-            if ((exp - iss).TotalDays > 366 * 10 + 3) return ("A Philippine driver's license is valid for at most 10 years. Check the dates.", "expiry");
-            if ((exp - iss).TotalDays < 180) return ("The license validity looks too short. Check the dates.", "expiry");
-            if (exp < DateTime.Today) return ($"This driver's license expired on {exp:MMM d, yyyy}. Enter the renewed license before saving.", "expiry");
-            if (lc == CrewManagementView.LicNonPro && !nonProConfirmed)
-                return ("Truck drivers normally need a Professional Driver's License. Tick the box to save this driver with a Non-Professional license anyway.", "confirm");
-            return null;
-        }
+        public static (string Message, string Field)? CheckDriverLicense(string? licenseClass, DateTime? issued, DateTime? expiry)
+            => CrewRules.CheckLicense(true, licenseClass, issued, expiry);
 
         private void Build()
         {
@@ -133,7 +119,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Text = driver ? "Add driver" : "Add aide";
             AutoScaleMode = AutoScaleMode.None;
             Font = new Font("Segoe UI", LargePrint.On ? 11F : 9.5F);
-            ClientSize = new Size(D(LargePrint.Px(560, 460)), D(LargePrint.On ? (driver ? 660 : 420) : (driver ? 560 : 360)));
+            ClientSize = new Size(D(LargePrint.Px(560, 460)), D(LargePrint.On ? (driver ? 760 : 520) : (driver ? 640 : 440)));
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false; MinimizeBox = false; ShowInTaskbar = false;
@@ -168,27 +154,30 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             lblProblem = new Label { Dock = DockStyle.Fill, ForeColor = AppTheme.DangerText, Font = new Font("Segoe UI Semibold", 9.25F), UseMnemonic = false, Margin = new Padding(0, D(4), 0, 0) };
             txtLast = Add("Last name", 0); txtFirst = Add("First name", 1); txtMiddle = Add("Middle name (optional)", 2); txtContact = Add("Contact number (optional)", 3);
-            int pr = 4;
+            txtAddress = Add("Address", 4); txtAddress.MaxLength = CrewRules.AddressMax;
+            int pr = 5;
+            cbEmployment = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, Margin = new Padding(0, D(4), 0, D(6)), Font = Font };
+            cbEmployment.Items.AddRange(new object[] { CrewRules.TypeRegular, CrewRules.TypeSeasonal });
+            cbEmployment.SelectedIndex = 0;
+            grid.RowStyles.Add(new RowStyle(SizeType.Absolute, D(LargePrint.On ? 40 : 34)));
+            grid.Controls.Add(new Label { Text = "Employment type", AutoSize = true, Margin = new Padding(0, D(9), D(8), 0), ForeColor = AppTheme.TextSecondary, UseMnemonic = false }, 0, pr);
+            grid.Controls.Add(cbEmployment, 1, pr); pr++;
             if (driver)
             {
                 int rh = D(LargePrint.On ? 40 : 34);
                 var f = new Font("Segoe UI", LargePrint.On ? 11F : 9.5F);
                 cbLicense = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, Margin = new Padding(0, D(4), 0, D(6)), Font = f };
-                cbLicense.Items.AddRange(new object[] { CrewManagementView.LicPro, CrewManagementView.LicNonPro });
+                cbLicense.Items.AddRange(new object[] { CrewRules.LicPro });
                 cbLicense.SelectedIndex = 0;
-                dtpIssued = new DateTimePicker { Dock = DockStyle.Top, Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Margin = new Padding(0, D(4), 0, D(6)), Font = f };
+                dtpIssued = new DateTimePicker { Dock = DockStyle.Top, Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Margin = new Padding(0, D(4), 0, D(6)), Font = f };
                 dtpIssued.CapAtToday();
-                dtpExpiry = new DateTimePicker { Dock = DockStyle.Top, Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Margin = new Padding(0, D(4), 0, D(6)), Font = f };
+                dtpExpiry = new DateTimePicker { Dock = DockStyle.Top, Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Margin = new Padding(0, D(4), 0, D(6)), Font = f };
                 dtpExpiry.SetSafe(DateTime.Today.AddYears(5));
-                chkNonPro = new CheckBox { Text = "Save with a Non-Professional license anyway (trucks normally need a Professional license)", AutoSize = false, Dock = DockStyle.Fill, Visible = false, Margin = new Padding(0, D(2), 0, D(2)), ForeColor = AppTheme.WarningText, UseMnemonic = false };
                 void Row(string caption, Control c) { grid.RowStyles.Add(new RowStyle(SizeType.Absolute, rh)); grid.Controls.Add(new Label { Text = caption, AutoSize = true, Margin = new Padding(0, D(9), D(8), 0), ForeColor = AppTheme.TextSecondary, UseMnemonic = false }, 0, pr); grid.Controls.Add(c, 1, pr); pr++; }
                 Row("License type", cbLicense); Row("License issued", dtpIssued); Row("License expires", dtpExpiry);
-                grid.RowStyles.Add(new RowStyle(SizeType.Absolute, D(LargePrint.On ? 64 : 44)));
-                grid.Controls.Add(chkNonPro, 0, pr); grid.SetColumnSpan(chkNonPro, 2); pr++;
-                cbLicense.SelectedIndexChanged += (s, e) => { chkNonPro.Visible = cbLicense.SelectedIndex == 1; lblProblem.Text = ""; };
+                cbLicense.SelectedIndexChanged += (s, e) => lblProblem.Text = "";
                 dtpIssued.ValueChanged += (s, e) => { dtpExpiry.SetSafe(dtpIssued.Value.Date.AddYears(5)); lblProblem.Text = ""; };
                 dtpExpiry.ValueChanged += (s, e) => lblProblem.Text = "";
-                chkNonPro.CheckedChanged += (s, e) => lblProblem.Text = "";
             }
             grid.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             grid.Controls.Add(lblProblem, 0, pr); grid.SetColumnSpan(lblProblem, 2);
@@ -199,15 +188,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void DoSave()
         {
             var (id, problem, field) = driver
-                ? TrySave(true, txtLast.Text, txtFirst.Text, txtMiddle.Text, txtContact.Text, cbLicense.Text, dtpIssued.Value.Date, dtpExpiry.Value.Date, chkNonPro.Checked)
-                : TrySave(false, txtLast.Text, txtFirst.Text, txtMiddle.Text, txtContact.Text);
+                ? TrySave(true, txtLast.Text, txtFirst.Text, txtMiddle.Text, txtContact.Text, cbLicense.Text, dtpIssued.Value.Date, dtpExpiry.Value.Date, txtAddress.Text, cbEmployment.SelectedItem as string == CrewRules.TypeSeasonal)
+                : TrySave(false, txtLast.Text, txtFirst.Text, txtMiddle.Text, txtContact.Text, address: txtAddress.Text, seasonal: cbEmployment.SelectedItem as string == CrewRules.TypeSeasonal);
             if (problem != null)
             {
                 lblProblem.Text = problem;
                 Control target = field switch
                 {
-                    "first" => txtFirst, "middle" => txtMiddle, "contact" => txtContact,
-                    "license" => cbLicense, "issued" => dtpIssued, "expiry" => dtpExpiry, "confirm" => chkNonPro,
+                    "first" => txtFirst, "middle" => txtMiddle, "contact" => txtContact, "address" => txtAddress,
+                    "license" => cbLicense, "issued" => dtpIssued, "expiry" => dtpExpiry,
                     _ => txtLast
                 };
                 target.Focus();

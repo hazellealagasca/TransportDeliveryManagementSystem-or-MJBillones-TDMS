@@ -96,7 +96,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, D(14)));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             // Header
-            header = PageKit.Header(Greeting(), $"{DateTime.Today:dddd, MMMM d, yyyy}  ·  here's how your deliveries stand");
+            header = PageKit.Header(Greeting(), $"{Fmt.DayDate(DateTime.Today)}  ·  here's how your deliveries stand");
             header.Dock = DockStyle.Fill;
             if (CanOps) header.AddActions(PageKit.Action("＋  New loading order", "primary", (s, e) =>
             {
@@ -499,7 +499,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 data = snap;
                 header.Title.Text = Greeting();
                 Render();
-                lblUpdated.Text = $"Updated {DateTime.Now:h:mm tt}";
+                lblUpdated.Text = $"Updated {DateTime.Now:hh:mm tt}";
             }
             catch (System.Exception ex) { System.Diagnostics.Debug.WriteLine($"[Dashboard] {ex.Message}"); ErrLog.Swallowed(ex); }
             finally { loading = false; }
@@ -592,26 +592,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     var dd = d;
                     var dep = Departure(d.DispatchDate, d.DepartureTime);
-                    items.Add(new ActionList.Item(AppTheme.Danger, $"{d.DispatchNumber} hasn't left yet", $"Was due {dep:MMM d, h:mm tt} · {d.ClientName} · {d.TruckInfo}", "Open", () => Forms.DispatchDetailsDialog.ShowFor(this, dd), "Dispatches", 0, dep));
+                    items.Add(new ActionList.Item(AppTheme.Danger, $"{d.DispatchNumber} hasn't left yet", $"Was due {Fmt.ShortDateTime(dep)} · {d.ClientName} · {d.TruckInfo}", "Open", () => Forms.DispatchDetailsDialog.ShowFor(this, dd), "Dispatches", 0, dep));
                 }
                 foreach (var d in dels.Where(d => RowMenu.Is(d.Status, "Delayed") || (RowMenu.Is(d.Status, "In Transit") && d.DispatchDate.Date < DateTime.Today)).OrderBy(d => d.DispatchDate).Take(10))
                 {
                     var dd = d;
-                    items.Add(new ActionList.Item(AppTheme.Warning, $"{d.DispatchNumber} is still on the road", $"Left {d.DispatchDate:MMM d} · {d.ClientName} · mark it completed once delivered", "Open", () => Forms.DispatchDetailsDialog.ShowFor(this, dd), "Dispatches", 1, d.DispatchDate));
+                    items.Add(new ActionList.Item(AppTheme.Warning, $"{d.DispatchNumber} is still on the road", $"Left {Fmt.Short(d.DispatchDate)} · {d.ClientName} · mark it completed once delivered", "Open", () => Forms.DispatchDetailsDialog.ShowFor(this, dd), "Dispatches", 1, d.DispatchDate));
                 }
                 if (needReport.Count == 1)
                 {
                     var dd = needReport[0];
-                    items.Add(new ActionList.Item(AppTheme.Warning, $"{dd.DispatchNumber} needs its trip report", $"Delivered {dd.DispatchDate:MMM d} · {dd.ClientName}", "File report", () => MainForm.Instance?.OpenTripReportForDispatch(dd), "Trip reports", 1, dd.DispatchDate));
+                    items.Add(new ActionList.Item(AppTheme.Warning, $"{dd.DispatchNumber} needs its trip report", $"Delivered {Fmt.Short(dd.DispatchDate)} · {dd.ClientName}", "File report", () => MainForm.Instance?.OpenTripReportForDispatch(dd), "Trip reports", 1, dd.DispatchDate));
                 }
                 else if (needReport.Count > 1)
-                    items.Add(new ActionList.Item(AppTheme.Warning, $"{needReport.Count} delivered trips need a trip report", $"Oldest: {needReport[0].DispatchNumber} from {needReport[0].DispatchDate:MMM d}", "File reports", () => GoOps("TripReports"), "Trip reports", 1, needReport.Min(x => x.DispatchDate), needReport.Count));
+                    items.Add(new ActionList.Item(AppTheme.Warning, $"{needReport.Count} delivered trips need a trip report", $"Oldest: {needReport[0].DispatchNumber} from {Fmt.Short(needReport[0].DispatchDate)}", "File reports", () => GoOps("TripReports"), "Trip reports", 1, needReport.Min(x => x.DispatchDate), needReport.Count));
                 var dispatchedSched = new HashSet<int>(dels.Where(d => !DispatchGate.IsCancelled(d.Status)).Select(d => d.LoadingScheduleId));
                 var undispatched = data.Schedules.Where(s => RowMenu.Is(s.Status, "Pending", "Scheduled", "Rescheduled") && !dispatchedSched.Contains(s.Id) && s.ScheduleDate.Date <= DateTime.Today.AddDays(1)).OrderBy(s => s.ScheduleDate).ToList();
                 if (undispatched.Count == 1)
                 {
                     var ls = undispatched[0];
-                    items.Add(new ActionList.Item(AppTheme.Info, $"{ls.ScheduleNumber} has no dispatch yet", $"{ls.ClientName} · {ls.ScheduleDate:ddd, MMM d} {ls.DepartureTime} · {ls.TotalCrates} crates", "Dispatch", () => MainForm.Instance?.DispatchLoadingOrder(ls), "Loading orders", 2, ls.ScheduleDate));
+                    items.Add(new ActionList.Item(AppTheme.Info, $"{ls.ScheduleNumber} has no dispatch yet", $"{ls.ClientName} · {Fmt.DayShort(ls.ScheduleDate)} {ls.DepartureTime} · {ls.TotalCrates} crates", "Dispatch", () => MainForm.Instance?.DispatchLoadingOrder(ls), "Loading orders", 2, ls.ScheduleDate));
                 }
                 else if (undispatched.Count > 1)
                     items.Add(new ActionList.Item(AppTheme.Info, $"{undispatched.Count} loading orders have no dispatch yet", $"For today and tomorrow · earliest {undispatched[0].ScheduleNumber} ({undispatched[0].ClientName})", "Dispatch", () => GoOps("Dispatch"), "Loading orders", 2, undispatched[0].ScheduleDate, undispatched.Count));
@@ -622,7 +622,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (CanFin)
             {
                 if (overdue.Count > 0)
-                    items.Add(new ActionList.Item(AppTheme.Danger, $"{overdue.Count} invoice(s) overdue", $"{Peso(overdue.Sum(Balance))} past due · oldest {overdue.Min(i => i.DueDate):MMM d} ({overdue.OrderBy(i => i.DueDate).First().ClientName})", "Collect", () => MainForm.Instance?.ShowFinanceRecords("Billing", "Overdue"), "Billing", 0, overdue.Min(i => i.DueDate), overdue.Count));
+                    items.Add(new ActionList.Item(AppTheme.Danger, $"{overdue.Count} invoice(s) overdue", $"{Peso(overdue.Sum(Balance))} past due · oldest {Fmt.Short(overdue.Min(i => i.DueDate))} ({overdue.OrderBy(i => i.DueDate).First().ClientName})", "Collect", () => MainForm.Instance?.ShowFinanceRecords("Billing", "Overdue"), "Billing", 0, overdue.Min(i => i.DueDate), overdue.Count));
                 // The same list as the Billing worklist and its tab badge (plan section 4).
                 List<WaitingTripRow> unbilled; try { unbilled = MJdatabase.GetTripsWaitingForInvoice(); } catch (Exception wx) { ErrLog.Swallowed(wx); unbilled = new List<WaitingTripRow>(); }
                 if (unbilled.Count > 0)
@@ -651,7 +651,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     bool expired = first.LicenseExpiry!.Value.Date < DateTime.Today;
                     items.Add(new ActionList.Item(expired ? AppTheme.Danger : AppTheme.Warning,
                         $"{expiring.Count} driver licence(s) expired or expiring soon",
-                        $"{string.Join(", ", expiring.Take(3).Select(c => c.FullName))} · earliest {first.LicenseExpiry:MMM d, yyyy} · expired licences can't be dispatched",
+                        $"{string.Join(", ", expiring.Take(3).Select(c => c.FullName))} · earliest {Fmt.Date(first.LicenseExpiry)} · expired licences can't be dispatched",
                         "Crew", () => MainForm.Instance?.NavigateToResources("Crew"), "Crew", expired ? 0 : 1, first.LicenseExpiry, expiring.Count));
                 }
                 if (noExpiry.Count > 0)
@@ -754,7 +754,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 foreach (var d in list)
                 {
                     var dep = Departure(d.DispatchDate, d.DepartureTime);
-                    string whenTxt = from == to ? dep.ToString("h:mm tt") : dep.ToString("ddd d · h:mm tt");
+                    string whenTxt = from == to ? dep.ToString("hh:mm tt") : dep.ToString("ddd d · hh:mm tt");
                     int i = gridOperations.Rows.Add(whenTxt, d.DispatchNumber, d.ClientName, d.CleanRouteDisplay, d.TruckInfo, d.DriverName, (d.TotalCrates > 0 ? d.TotalCrates : d.GCrate + d.ECrate).ToString("N0"), d.Status);
                     gridOperations.Rows[i].Tag = d;
                     if (DispatchGate.IsCancelled(d.Status)) gridOperations.Rows[i].DefaultCellStyle.ForeColor = AppTheme.TextMuted;
@@ -774,7 +774,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 foreach (var s in list)
                 {
                     var dep = Departure(s.ScheduleDate, s.DepartureTime);
-                    string whenTxt = from == to ? dep.ToString("h:mm tt") : dep.ToString("ddd d · h:mm tt");
+                    string whenTxt = from == to ? dep.ToString("hh:mm tt") : dep.ToString("ddd d · hh:mm tt");
                     int i = gridOperations.Rows.Add(whenTxt, s.ScheduleNumber, s.ClientName, CleanDest(s.Destination), s.CargoType, s.TotalCrates.ToString("N0"),
                         dispatchBySched.TryGetValue(s.Id, out var dn) ? dn : "—", s.Status);
                     gridOperations.Rows[i].Tag = s;
@@ -818,7 +818,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var item = rows[0].Tag;
                 if (item is Delivery d)
                 {
-                    m.Items.AddRange(RowMenu.Header($"🚚  {d.DispatchNumber}", $"{RowMenu.Short(d.ClientName, 26)} · {d.DispatchDate:MMM d} {d.DepartureTime} · {d.TruckInfo} · {d.Status}"));
+                    m.Items.AddRange(RowMenu.Header($"🚚  {d.DispatchNumber}", $"{RowMenu.Short(d.ClientName, 26)} · {Fmt.Short(d.DispatchDate)} {d.DepartureTime} · {d.TruckInfo} · {d.Status}"));
                     m.Items.Add(RowMenu.Item("Open dispatch details", () => Forms.DispatchDetailsDialog.ShowFor(this, d), "Enter"));
                     m.Items.Add(RowMenu.Item("Edit in Dispatch", () => MainForm.Instance?.EditDeliveryOrderInDispatch(d), "", CanOps && !RowMenu.Is(d.Status, "Completed", "Cancelled")));
                     if (Done(d.Status)) m.Items.Add(RowMenu.Item("Trip report", () => MainForm.Instance?.OpenTripReportForDispatch(d), "", CanOps));
@@ -829,7 +829,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else if (item is LoadingSchedule ls)
                 {
                     bool hasDispatch = data.Deliveries.Any(x => x.LoadingScheduleId == ls.Id && !DispatchGate.IsCancelled(x.Status));
-                    m.Items.AddRange(RowMenu.Header($"📦  {ls.ScheduleNumber}", $"{RowMenu.Short(ls.ClientName, 26)} · {ls.ScheduleDate:MMM d} {ls.DepartureTime} · {ls.TotalCrates} crates · {ls.Status}"));
+                    m.Items.AddRange(RowMenu.Header($"📦  {ls.ScheduleNumber}", $"{RowMenu.Short(ls.ClientName, 26)} · {Fmt.Short(ls.ScheduleDate)} {ls.DepartureTime} · {ls.TotalCrates} crates · {ls.Status}"));
                     m.Items.Add(RowMenu.Item("Open details", () => RecordDetailsDialog.ShowDetails(this, ls), "Enter"));
                     if (!hasDispatch && !RowMenu.Is(ls.Status, "Completed", "Cancelled"))
                         m.Items.Add(RowMenu.Good("Create dispatch for this order", () => MainForm.Instance?.DispatchLoadingOrder(ls), CanOps));
@@ -838,7 +838,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.ExportSub(gridOperations, scheduleTab == "Dispatches" ? "Dispatch_Schedule" : "Loading_Schedule", lblScheduleTitle.Text,
-                    () => PrintHelper.PrintGridReport(lblScheduleTitle.Text, gridOperations, $"{scope} · printed {DateTime.Now:MMM d, yyyy h:mm tt}")));
+                    () => PrintHelper.PrintGridReport(lblScheduleTitle.Text, gridOperations, $"{scope} · printed {Fmt.DateTimeText(DateTime.Now)}")));
             });
 
         }

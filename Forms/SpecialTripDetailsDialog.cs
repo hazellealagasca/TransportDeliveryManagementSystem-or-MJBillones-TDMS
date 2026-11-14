@@ -151,7 +151,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             titleRow.Controls.Add(new DispatchDetailsDialog.Pill("Special trip", AppTheme.AccentSoft, AppTheme.AccentText) { Margin = new Padding(D(6), D(10), 0, 0) });
             var lblSub = new Label
             {
-                Text = $"{trip.Company}   ·   {Dest}   ·   {trip.DispatchDate:ddd, MMM d, yyyy}  ·  {trip.DepartureTime}",
+                Text = $"{trip.Company}   ·   {Dest}   ·   {Fmt.DayDate(trip.DispatchDate)}  ·  {trip.DepartureTime}",
                 Dock = DockStyle.Fill, AutoEllipsis = true, Font = new Font("Segoe UI", 10F), ForeColor = AppTheme.TextSecondary, TextAlign = ContentAlignment.TopLeft, Margin = new Padding(D(2), D(2), 0, 0)
             };
             tips.SetToolTip(lblSub, lblSub.Text);
@@ -306,11 +306,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int days = (trip.DispatchDate.Date - DateTime.Today).Days;
             var sched = new List<(string, string, bool)>
             {
-                ("Dispatch date", trip.DispatchDate.ToString("dddd, MMMM d, yyyy"), false),
+                ("Dispatch date", Fmt.DayDate(trip.DispatchDate), false),
                 ("Departure time", string.IsNullOrWhiteSpace(trip.DepartureTime) ? "—" : trip.DepartureTime, false),
                 ("Timing", days == 0 ? "Today" : days > 0 ? $"In {days} day{(days == 1 ? "" : "s")}" : $"{-days} day{(days == -1 ? "" : "s")} ago", false),
                 ("Status", string.IsNullOrWhiteSpace(trip.Status) ? "Pending" : trip.Status, false),
-                ("Completed", trip.CompletedAt.HasValue ? trip.CompletedAt.Value.ToString("MMM d, yyyy h:mm tt") : "—", false)
+                ("Completed", trip.CompletedAt.HasValue ? Fmt.DateTimeText(trip.CompletedAt.Value) : "—", false)
             };
             var steps = new List<(string, string, bool)>();
             if (trip.WithTripReport) steps.Add(("Trip report", flow.Links.HasReport ? flow.Links.TripReportNumber : "Not filed yet", false));
@@ -451,7 +451,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (!IsActive) return;
                 if (trip.DispatchDate.Date > DateTime.Today &&
-                    MessageBox.Show(this, $"This trip is dated {trip.DispatchDate:MMMM d, yyyy}, which is still ahead. Mark it completed anyway?", "Trip is in the future", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+                    MessageBox.Show(this, $"This trip is dated {Fmt.Date(trip.DispatchDate)}, which is still ahead. Mark it completed anyway?", "Trip is in the future", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
                 if (MessageBox.Show(this, $"Mark special trip {trip.OrderReference} for {trip.Company} as completed?\n\nThe truck, driver and aides are freed. The next steps ({NextStepsText()}) open from here.",
                         "Complete trip", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
                 try
@@ -485,7 +485,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             sb.AppendLine($"SPECIAL TRIP {trip.OrderReference}  [{trip.Status}]");
             sb.AppendLine($"Client: {trip.Company}");
             sb.AppendLine($"Destination: {Dest}");
-            sb.AppendLine($"Date: {trip.DispatchDate:ddd, MMM d, yyyy} · {trip.DepartureTime}");
+            sb.AppendLine($"Date: {Fmt.DayDate(trip.DispatchDate)} · {trip.DepartureTime}");
             sb.AppendLine($"Truck: {trip.TruckPlate}");
             sb.AppendLine($"Driver: {Person(trip.DriverId, trip.DriverName)}");
             sb.AppendLine($"Aides: {trip.AideName}");

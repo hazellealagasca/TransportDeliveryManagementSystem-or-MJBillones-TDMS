@@ -86,6 +86,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             menuActions.Items.Add("💵 Crew pay summary…", null, (s, e) => { using var dlg = new Forms.CrewPaySummaryDialog(); dlg.ShowDialog(this); });
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
+            BuildCrewFilters(btnActions);
                     InitFullPageForm();
             InitListPage();
         }
@@ -152,9 +153,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit = new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to crew");
             formKit.Build(new[]
             {
-                new FullPageFormKit.Section("Employment type", "Regular crew, or seasonal / temporary.", pnlEmployment),
-                new FullPageFormKit.Section("Role & personal details", "Driver or delivery aide / helper, name and contact number.", lblRole, cbRole, lblRoleRequirements, tblNameFields, lblContact, txtContact),
-                new FullPageFormKit.Section("Driver's license", "Classification and validity only — the license number is not stored.", pnlLicense),
+                new FullPageFormKit.Section("Employment type", "Regular or seasonal crew.", pnlEmployment),
+                new FullPageFormKit.Section("Role & personal details", "Driver or delivery aide / helper, address, name and contact number.", lblRole, cbRole, lblRoleRequirements, lblAddress, txtAddress, tblNameFields, lblContact, txtContact),
+                new FullPageFormKit.Section("Driver's license", "Required for drivers (Professional). Optional for aides. Classification and validity only — the license number is not stored.", pnlLicense),
                 new FullPageFormKit.Section("Photo (optional)", "ID photo of the crew member. You can save without one.", lblPhoto, tblPhoto, pnlPhotoSpacer)
             });
             // Pay is set per trip after the trip is completed, and availability follows the trips — neither is edited here.
@@ -324,6 +325,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "CrewCode", HeaderText = "Crew ID", FillWeight = 11F, MinimumWidth = 85, ReadOnly = true });
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "FullName", HeaderText = "Full Name", FillWeight = 26F, MinimumWidth = 145, ReadOnly = true });
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Role", HeaderText = "Role", FillWeight = 16F, MinimumWidth = 110, ReadOnly = true });
+            gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "EmploymentType", HeaderText = "Employment type", FillWeight = 13F, MinimumWidth = 100, ReadOnly = true });
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ContactNumber", HeaderText = "Contact #", FillWeight = 16F, MinimumWidth = 110, ReadOnly = true });
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "LicenseDisplay", HeaderText = "Driver's license", FillWeight = 22F, MinimumWidth = 150, ReadOnly = true });
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "AvailabilityStatus", HeaderText = "Status", FillWeight = 15F, MinimumWidth = 95, ReadOnly = true });
@@ -850,7 +852,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     (!string.IsNullOrEmpty(c.AvailabilityStatus) && c.AvailabilityStatus.ToLower().Contains(q))
                 ).ToList();
 
-            filtered = filtered.Where(CrewPassesTile).ToList();
+            filtered = ApplyCrewFilters(filtered.Where(CrewPassesTile).ToList());
             UpdateCrewTiles();
             switch (currentSortColumn)
             {
@@ -869,6 +871,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 case "LicenseNumber":
                     filtered = isSortAscending ? filtered.OrderBy(c => c.LicenseNumber).ToList() : filtered.OrderByDescending(c => c.LicenseNumber).ToList();
                     break;
+                case "EmploymentType":
+                    filtered = isSortAscending ? filtered.OrderBy(c => c.EmploymentType).ThenBy(c => c.FullName).ToList() : filtered.OrderByDescending(c => c.EmploymentType).ThenBy(c => c.FullName).ToList();
+                    break;
+                case "LicenseDisplay":
+                    filtered = isSortAscending ? filtered.OrderBy(c => c.LicenseDisplay).ThenBy(c => c.FullName).ToList() : filtered.OrderByDescending(c => c.LicenseDisplay).ThenBy(c => c.FullName).ToList();
+                    break;
                 case "IsAvailable":
                     filtered = isSortAscending ? filtered.OrderByDescending(c => c.IsAvailable).ThenBy(c => c.FullName).ToList() : filtered.OrderBy(c => c.IsAvailable).ThenBy(c => c.FullName).ToList();
                     break;
@@ -886,7 +894,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridCrew.SelectionChanged -= GridCrew_SelectionChanged;
             gridCrew.DataSource = null;
             gridCrew.DataSource = filtered;
-            lblGridHeader.Text = string.IsNullOrEmpty(q) && crewTileFilter == null
+            lblGridHeader.Text = string.IsNullOrEmpty(q) && crewTileFilter == null && filtered.Count == allCrews.Count
                 ? $"All crew · {allCrews.Count}"
                 : $"Showing {filtered.Count} of {allCrews.Count} crew";
             if (pnlForm.Visible)
@@ -1004,6 +1012,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.Add(RowMenu.Danger("Delete crew member…", () => { selectedCrew = c; BtnDelete_Click(this, EventArgs.Empty); }, !onTrip));
             });
         }
+        /// <summary>Active / Inactive from the row menu. A reason is required (at most 500 characters); it is kept in the crew profile records.</summary>
         private void SetCrewStatus(Crew c, bool active)
         {
             if (!active && c.Role.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0 && MJdatabase.IsDriverOnActiveTrip(c.Id))
@@ -1011,17 +1020,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show($"{c.FullName} is assigned to an open dispatch. Complete or reassign that trip before setting them to inactive.", "Crew on a trip", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            bool wasActive = c.IsActive, wasAvail = c.IsAvailable;
-            c.IsActive = active;
-            c.IsAvailable = active;
+            string? reason = Forms.ReasonPrompt.Ask(FindForm(), active ? "Set crew member active" : "Set crew member inactive",
+                active ? $"Why is {c.FullName} being set to Active? It is kept in their profile records." : $"Why is {c.FullName} being set to Inactive? They will not be offered for trips. It is kept in their profile records.",
+                required: true, okText: active ? "Set active" : "Set inactive");
+            if (reason == null) return;
             try
             {
-                MJdatabase.SaveCrew(c);
+                MJdatabase.ChangeCrewStatus(c.Id, active, reason);
                 ToastHelper.ShowToast(this, $"{c.FullName} is now {(active ? "active" : "inactive")}", ToastType.Success);
             }
             catch (Exception ex)
-            { ErrLog.Error("CrewManagementView", ex); 
-                c.IsActive = wasActive; c.IsAvailable = wasAvail;
+            {
+                ErrLog.Error("CrewManagementView", ex);
                 MessageBox.Show($"Failed to update crew status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             LoadCrew();
@@ -1050,7 +1060,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.GetDeliveryCrewIds(d).Any(x => x.CrewId == c.Id)).ToList();
             if (trips.Count == 0)
             {
-                QuietBox.Show($"{c.FullName} has no completed trips from {from:MMM d} to {to:MMM d, yyyy}.", "No trips to pay", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"{c.FullName} has no completed trips from {Fmt.Short(from)} to {Fmt.Date(to)}.", "No trips to pay", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             PrintHelper.PrintCrewPaySlip(c, trips, from, to);

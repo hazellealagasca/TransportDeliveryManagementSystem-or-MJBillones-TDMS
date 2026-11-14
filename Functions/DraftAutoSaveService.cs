@@ -48,7 +48,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lbl = new Label
             {
-                Text = $"📝 Unsaved draft ({draftTime:MMM dd, hh:mm tt})",
+                Text = $"📝 Unsaved draft ({Fmt.ShortDateTime(draftTime)})",
                 Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
                 ForeColor = Pal.C(146, 64, 14),
                 Dock = DockStyle.Fill,

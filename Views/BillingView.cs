@@ -458,7 +458,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else MJdatabase.GetTripReportsByDelivery().TryGetValue(del.Id, out tr);
                 if (tr == null) return IsChargeableCancelled(del) ? "(Cancelled trip: it has no trip report)" : "(No completed trip report yet)";
                 string who = (tr.StoreManagerName ?? "").Trim();
-                return $"{tr.TripReportNumber} · completed {tr.ReportDate:dd-MMM-yyyy} · delivered {tr.DeliveredCrates:N0}, returned {tr.ReturnedCrates:N0}" + (who.Length > 0 ? $" · received by {who}" : "");
+                return $"{tr.TripReportNumber} · completed {Fmt.Date(tr.ReportDate)} · delivered {tr.DeliveredCrates:N0}, returned {tr.ReturnedCrates:N0}" + (who.Length > 0 ? $" · received by {who}" : "");
             }
             catch (Exception ex) { ErrLog.Swallowed(ex); return ""; }
         }
@@ -570,7 +570,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 numTotalAmount.SetSafe(Math.Min(numTotalAmount.Maximum, inv.Freight)); // Amount (freight tariff); the fuel surcharge is on top
                 numFuel.SetSafe(Math.Min(numFuel.Maximum, inv.FuelSurcharge));
                 RecalculateNet(this, EventArgs.Empty);
-                lblDueDate.Text = $"Payment Due Date (15 Days): {inv.DueDate:MM/dd/yyyy}";
+                lblDueDate.Text = $"Payment Due Date (15 Days): {Fmt.Date(inv.DueDate)}";
                 lblFormHeader.Text = $"Invoice #{inv.InvoiceNumber}";
                 ApplyTripLock(); // a saved invoice keeps its trip
                 ApplyInvoiceSource(); // a saved invoice shows the trip box, never the statement picker
@@ -689,7 +689,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var duplicateInvoice = selDel.Id > 0 ? MJdatabase.GetLiveInvoiceForTrip(selDel.Id, 0, selectedInvoice?.Id ?? 0) : null;
                 if (duplicateInvoice != null)
                 {
-                    MessageBox.Show($"INVOICE ALREADY EXISTS:\nDelivery #{selDel.DispatchNumber} has already been invoiced under {duplicateInvoice.Describe()}{(duplicateInvoice.IssueDate > DateTime.MinValue ? $" (Date: {duplicateInvoice.IssueDate:MMM dd, yyyy})" : "")}. A delivery trip can be invoiced only once.", "Invoice Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                    MessageBox.Show($"INVOICE ALREADY EXISTS:\nDelivery #{selDel.DispatchNumber} has already been invoiced under {duplicateInvoice.Describe()}{(duplicateInvoice.IssueDate > DateTime.MinValue ? $" (Date: {Fmt.Date(duplicateInvoice.IssueDate)})" : "")}. A delivery trip can be invoiced only once.", "Invoice Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                     return;
                 }
                 if (selDel.Id < 0 && MJdatabase.SpecialTripHasActiveInvoice(-selDel.Id)) { MessageBox.Show($"Special trip {selDel.DispatchNumber} already has its service invoice.", "Invoice Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop); return; }
@@ -986,7 +986,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numFuel.SetSafe(0);
             lblTariffMatch.Visible = false;
             if (cbSoa != null) { bool was = isBindingForm; isBindingForm = true; try { cbSoa.SelectedIndex = -1; chkDirectTrip.Checked = false; } finally { isBindingForm = was; } ApplyInvoiceSource(); } // Nov 10: a blank form bills a statement
-            lblDueDate.Text = $"Payment Due Date (15 Days): {DateTime.Today.AddDays(15):MM/dd/yyyy}";
+            lblDueDate.Text = $"Payment Due Date (15 Days): {Fmt.Date(DateTime.Today.AddDays(15))}";
             RecalculateNet(this, EventArgs.Empty);
             if (cbDelivery.SelectedIndex >= 0 && cbDelivery.SelectedIndex < completedDeliveries.Count)
             {
@@ -1047,7 +1047,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 bool isPaid = RowMenu.Is(inv.Status, "Paid") || (inv.NetAmount > 0 && balance <= 0);
                 bool isDraft = RowMenu.Is(inv.Status, "Draft");
                 m.Items.AddRange(RowMenu.Header($"🧾  Invoice {inv.InvoiceNumber}",
-                    $"{RowMenu.Short(inv.ClientName, 28)} · {RowMenu.Money(inv.NetAmount)} · {inv.Status} · due {inv.DueDate:MMM d}"));
+                    $"{RowMenu.Short(inv.ClientName, 28)} · {RowMenu.Money(inv.NetAmount)} · {inv.Status} · due {Fmt.Short(inv.DueDate)}"));
                 m.Items.Add(RowMenu.Item("Open details", () => RecordDetailsDialog.ShowDetails(this, inv)));
                 m.Items.Add(RowMenu.Item(isDraft ? "Complete this draft invoice" : "Edit invoice", () => { SetFormVisibility(true); cbDelivery.Focus(); }));
                 if (!isPaid && !isDraft) m.Items.Add(RowMenu.Good($"Collect payment in full ({RowMenu.Money(inv.NetAmount)})", () => OnRecordPaymentRequested?.Invoke(inv)));
@@ -1058,7 +1058,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     ToastHelper.ShowToast(this, $"Invoice {inv.InvoiceNumber} marked as sent (PHP {inv.NetAmount:N2}). If its amount changes later you will be told to resend it.", ToastType.Success);
                 }, "", !isDraft));
                 var staleInv = MJdatabase.NeedsReissue(MJdatabase.DocInvoice, inv.Id, inv.NetAmount);
-                if (staleInv != null) m.Items.Add(RowMenu.Item($"⚠ Amount changed since it was {staleInv.Kind.ToLowerInvariant()} ({staleInv.At:MMM d}, PHP {staleInv.Amount:N2}): resend", () => { }));
+                if (staleInv != null) m.Items.Add(RowMenu.Item($"⚠ Amount changed since it was {staleInv.Kind.ToLowerInvariant()} ({Fmt.Short(staleInv.At)}, PHP {staleInv.Amount:N2}): resend", () => { }));
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.Item($"Open dispatch {inv.DispatchNumber}", () => RowMenu.OpenDispatch(this, inv.DeliveryId, inv.DispatchNumber), "", inv.DeliveryId > 0 || !string.IsNullOrWhiteSpace(inv.DispatchNumber)));
                 m.Items.Add(RowMenu.Item("Open client profile", () => MainForm.Instance?.OpenClientProfile(inv.ClientName), "", !string.IsNullOrWhiteSpace(inv.ClientName)));
@@ -1070,7 +1070,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     RowMenu.Item("Whole invoice register", () => BtnPrint_Click(this, EventArgs.Empty))));
                 m.Items.Add(RowMenu.CopySub(this, ("Invoice number", inv.InvoiceNumber), ("Dispatch number", inv.DispatchNumber), ("Client", inv.ClientName),
                     ("Amount due", balance.ToString("N2")),
-                    ("Payment reminder", $"Invoice {inv.InvoiceNumber} for {inv.ClientName}: {RowMenu.Money(inv.NetAmount)}, amount due {RowMenu.Money(balance)}, due {inv.DueDate:MMMM d, yyyy}.")));
+                    ("Payment reminder", $"Invoice {inv.InvoiceNumber} for {inv.ClientName}: {RowMenu.Money(inv.NetAmount)}, amount due {RowMenu.Money(balance)}, due {Fmt.Date(inv.DueDate)}.")));
                 m.Items.Add(RowMenu.Sub("🔎  Find",
                     RowMenu.Item("Other invoices for this client", () => RowMenu.Search(txtGridSearch, inv.ClientName)),
                     RowMenu.Item("Statements of account for this client", () => FinanceHubView.Of(this)?.ShowStatements(inv.ClientName))));

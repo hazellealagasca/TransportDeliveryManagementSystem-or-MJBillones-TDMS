@@ -124,7 +124,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int failed = mySignIns.Count(a => (a.EventType == "LOGIN_FAILED" || a.EventType == "LOCKED_OUT") && a.Timestamp >= today.AddDays(-7));
             var row = new TileRow(S(10)) { Height = S(92) };
             row.Add(new StatTile("Changes today", AppTheme.Accent, todayCount == 1 ? "record you saved" : "records you saved") { Value = todayCount.ToString("N0"), Clickable = true });
-            row.Add(new StatTile("Previous sign-in", AppTheme.Info, previous == null ? "this is your first session" : Ago(previous.Timestamp)) { Value = previous == null ? "—" : previous.Timestamp.ToString("MMM d, h:mm tt"), Clickable = true });
+            row.Add(new StatTile("Previous sign-in", AppTheme.Info, previous == null ? "this is your first session" : Ago(previous.Timestamp)) { Value = previous == null ? "—" : Fmt.ShortDateTime(previous.Timestamp), Clickable = true });
             row.Add(new StatTile("Failed sign-ins", failed > 0 ? AppTheme.Danger : AppTheme.Success, "in the last 7 days") { Value = failed.ToString(), ValueColor = failed > 0 ? AppTheme.DangerText : null, Clickable = true });
             row.Add(new StatTile("Account recovery", hasRecovery ? AppTheme.Success : AppTheme.Warning, hasRecovery ? "security question is set" : "set a security question") { Value = hasRecovery ? "Ready" : "Not set", ValueColor = hasRecovery ? AppTheme.SuccessText : AppTheme.WarningText, Clickable = true });
             row.Tiles[0].Click += (s, e) => tabs.Selected = 3;
@@ -139,7 +139,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             info.Add("Role", string.IsNullOrWhiteSpace(user.Role) ? "—" : user.Role);
             info.Add("Account ID", $"#{user.Id:D4}");
             info.Add("Contact number", string.IsNullOrWhiteSpace(user.ContactNumber) ? "Not set" : user.ContactNumber, string.IsNullOrWhiteSpace(user.ContactNumber));
-            info.Add("Member since", user.CreatedAt == default ? "—" : $"{user.CreatedAt:MMMM d, yyyy}  ·  {MemberFor(user.CreatedAt)}");
+            info.Add("Member since", user.CreatedAt == default ? "—" : $"{Fmt.Date(user.CreatedAt)}  ·  {MemberFor(user.CreatedAt)}");
             page.AddRow(info, S(18));
             page.AddRow(SectionLabel("What you can open", "Access comes from your role. Ask the owner or an administrator if you need more."), S(8));
             var access = new FeedList { EmptyText = "" };
@@ -287,7 +287,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 int days = (int)(DateTime.Now - lastPasswordChange.Value).TotalDays;
                 bool old = days > 90;
-                check.Items.Add(new FeedItem(old ? "Password is getting old" : "Password", $"Last changed {lastPasswordChange.Value:MMMM d, yyyy}" + (old ? " — consider changing it." : ""), Ago(lastPasswordChange.Value), old ? AppTheme.Warning : AppTheme.Success));
+                check.Items.Add(new FeedItem(old ? "Password is getting old" : "Password", $"Last changed {Fmt.Date(lastPasswordChange.Value)}" + (old ? " — consider changing it." : ""), Ago(lastPasswordChange.Value), old ? AppTheme.Warning : AppTheme.Success));
             }
             else
                 check.Items.Add(new FeedItem("Password never changed", "It is still the one set when this account was created. Changing it is recommended.", "", AppTheme.Warning));
@@ -298,10 +298,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var lastFail = mySignIns.FirstOrDefault(a => a.EventType == "LOGIN_FAILED" || a.EventType == "LOCKED_OUT");
             check.Items.Add(failed7 == 0
                 ? new FeedItem("No failed sign-ins this week", "Nobody has entered a wrong password for your account in the last 7 days.", "", AppTheme.Success)
-                : new FeedItem($"{failed7} failed sign-in attempt{(failed7 == 1 ? "" : "s")} this week", $"Latest on {lastFail?.IpOrMachine ?? "this PC"}, {lastFail?.Timestamp:MMM d h:mm tt}. If this wasn't you, change your password.", lastFail == null ? "" : Ago(lastFail.Timestamp), AppTheme.Danger));
+                : new FeedItem($"{failed7} failed sign-in attempt{(failed7 == 1 ? "" : "s")} this week", $"Latest on {lastFail?.IpOrMachine ?? "this PC"}, {Fmt.ShortDateTime(lastFail?.Timestamp)}. If this wasn't you, change your password.", lastFail == null ? "" : Ago(lastFail.Timestamp), AppTheme.Danger));
             var current = mySignIns.FirstOrDefault(a => a.EventType == "LOGIN_SUCCESS");
             if (current != null)
-                check.Items.Add(new FeedItem("Signed in now", $"Since {current.Timestamp:MMMM d, h:mm tt} on {current.IpOrMachine}", Ago(current.Timestamp), AppTheme.Info));
+                check.Items.Add(new FeedItem("Signed in now", $"Since {Fmt.ShortDateTime(current.Timestamp)} on {current.IpOrMachine}", Ago(current.Timestamp), AppTheme.Info));
             check.FitHeight();
             page.AddRow(check, S(10));
             var bar = new Panel { Height = S(40), BackColor = AppTheme.Canvas };
@@ -322,7 +322,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 var (title, color) = LoginEvent(a.EventType);
                 string where = string.IsNullOrWhiteSpace(a.IpOrMachine) ? "" : "on " + a.IpOrMachine;
-                feed.Items.Add(new FeedItem(title, $"{a.Timestamp:ddd, MMM d yyyy · h:mm tt}  {where}", Ago(a.Timestamp), color));
+                feed.Items.Add(new FeedItem(title, $"{Fmt.DayDate(a.Timestamp)} · {a.Timestamp.ToString(Fmt.TimeFormat, System.Globalization.CultureInfo.InvariantCulture)}  {where}", Ago(a.Timestamp), color));
             }
             feed.FitHeight();
             page.AddRow(feed, 0);
@@ -366,7 +366,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     detail += (detail.Length > 0 ? " — " : "") + $"{a.FieldName}: {Short(a.OldValue)} → {Short(a.NewValue)}";
                 else if (!string.IsNullOrWhiteSpace(a.ReasonOrNotes))
                     detail += (detail.Length > 0 ? " — " : "") + a.ReasonOrNotes;
-                feed.Items.Add(new FeedItem(what, detail.Length == 0 ? a.Timestamp.ToString("MMM d, h:mm tt") : detail, Ago(a.Timestamp), ActionColor(a.ActionType)) { Tip = $"{a.Timestamp:dddd, MMMM d yyyy h:mm:ss tt}\n{detail}" });
+                feed.Items.Add(new FeedItem(what, detail.Length == 0 ? Fmt.ShortDateTime(a.Timestamp) : detail, Ago(a.Timestamp), ActionColor(a.ActionType)) { Tip = $"{a.Timestamp.ToString(Fmt.DateFormat + " hh:mm:ss tt", System.Globalization.CultureInfo.InvariantCulture)}\n{detail}" });
             }
             feed.FitHeight();
             page.AddRow(feed, 0);
@@ -482,13 +482,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static string Ago(DateTime t)
         {
             var d = DateTime.Now - t;
-            if (d.TotalSeconds < 0) return t.ToString("MMM d");
+            if (d.TotalSeconds < 0) return Fmt.Short(t);
             if (d.TotalMinutes < 1) return "just now";
             if (d.TotalMinutes < 60) return $"{(int)d.TotalMinutes} min ago";
             if (d.TotalHours < 24) return $"{(int)d.TotalHours} hr ago";
             if (d.TotalDays < 2) return "yesterday";
             if (d.TotalDays < 7) return $"{(int)d.TotalDays} days ago";
-            return t.Year == DateTime.Today.Year ? t.ToString("MMM d") : t.ToString("MMM d, yyyy");
+            return t.Year == DateTime.Today.Year ? Fmt.Short(t) : Fmt.Date(t);
         }
         private static string MemberFor(DateTime created)
         {
@@ -537,7 +537,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (SignedInAt.HasValue)
                 {
                     using var sf = new Font("Segoe UI", 8.5F);
-                    string since = $"Signed in {SignedInAt.Value:h:mm tt}" + (SignedInAt.Value.Date == DateTime.Today ? "" : $", {SignedInAt.Value:MMM d}");
+                    string since = $"Signed in {SignedInAt.Value:hh:mm tt}" + (SignedInAt.Value.Date == DateTime.Today ? "" : $", {Fmt.Short(SignedInAt.Value)}");
                     TextRenderer.DrawText(g, since, sf, new Rectangle(right - S(220), pr.Bottom + S(6), S(220), S(20)), AppTheme.TextMuted, TextFormatFlags.Right | TextFormatFlags.NoPrefix);
                 }
                 int textRight = pr.Left - S(16);

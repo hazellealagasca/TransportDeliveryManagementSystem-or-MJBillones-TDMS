@@ -26,7 +26,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             var last = MJdatabase.LastManualBackup();
             lblDbStatus.Text = $"Data folder: {AppPaths.DataRoot}\nDatabase: {MJdatabase.DbFilePath}\n" +
-                $"Last manual backup: {(last.HasValue ? last.Value.ToString("MMM d, yyyy h:mm tt") : "never")} · Automatic copies: {AppPaths.Backups}";
+                $"Last manual backup: {(last.HasValue ? Fmt.DateTimeText(last.Value) : "never")} · Automatic copies: {AppPaths.Backups}";
         }
         private void AddFolderLinks()
         {
@@ -92,7 +92,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                      : $"\n\nThe data was backed up, but the photos and documents couldn't be saved ({fileError}).";
                         MessageBox.Show("Backup created and checked. It can be restored on this or another copy of the app." + extra, "Backup Success", MessageBoxButtons.OK, files < 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
                         var lastNow = MJdatabase.LastManualBackup();
-                        lblDbStatus.Text = $"Data folder: {AppPaths.DataRoot}\nDatabase: {MJdatabase.DbFilePath}\nLast manual backup: {lastNow:MMM d, yyyy h:mm tt} · Automatic copies: {AppPaths.Backups}";
+                        lblDbStatus.Text = $"Data folder: {AppPaths.DataRoot}\nDatabase: {MJdatabase.DbFilePath}\nLast manual backup: {Fmt.DateTimeText(lastNow)} · Automatic copies: {AppPaths.Backups}";
                     }
                     else
                     {

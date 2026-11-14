@@ -86,7 +86,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (!rows.Any(r => r.Event == "Statement saved")) rows.Add((soa.IssueDate, "Statement dated", $"{soa.SoaNumber} for {soa.ClientName}", "₱" + soa.TotalAmount.ToString("N2")));
             gridSoaHistory.Rows.Clear();
             foreach (var r in rows.OrderBy(r => r.When))
-                gridSoaHistory.Rows.Add(r.When == DateTime.MinValue ? "" : (r.When.TimeOfDay == TimeSpan.Zero ? r.When.ToString("dd-MMM-yyyy") : r.When.ToString("dd-MMM-yyyy h:mm tt")), r.Event, r.Detail, r.Amount);
+                gridSoaHistory.Rows.Add(r.When == DateTime.MinValue ? "" : (r.When.TimeOfDay == TimeSpan.Zero ? Fmt.Date(r.When) : Fmt.DateTimeText(r.When)), r.Event, r.Detail, r.Amount);
             lblSoaViewOnly.Text = why + (paid > 0 ? $"\nTotal due ₱{soa.TotalAmount:N2}  ·  received ₱{paid:N2}" : "");
         }
 

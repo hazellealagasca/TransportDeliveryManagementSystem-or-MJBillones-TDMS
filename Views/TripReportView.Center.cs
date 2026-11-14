@@ -59,8 +59,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return c;
             }
             cbPeriod = Combo(130, "All time", "Today", "This week", "This month", "Last 30 days", "This year", "Custom range");
-            dtpFromF = new DateTimePicker { Width = Dc(118), Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Margin = new Padding(0, 0, Dc(4), 0), Visible = false, Value = DateTime.Today.AddDays(-30) };
-            dtpToF = new DateTimePicker { Width = Dc(118), Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Margin = new Padding(0, 0, Dc(8), 0), Visible = false };
+            dtpFromF = new DateTimePicker { Width = Dc(118), Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Margin = new Padding(0, 0, Dc(4), 0), Visible = false, Value = DateTime.Today.AddDays(-30) };
+            dtpToF = new DateTimePicker { Width = Dc(118), Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Margin = new Padding(0, 0, Dc(8), 0), Visible = false };
             dtpFromF.ValueChanged += (s, e) => { if (!applyingView) { if (dtpFromF.Value.Date > dtpToF.Value.Date) dtpToF.SetSafe(dtpFromF.Value); SaveView(); FilterGridData(); } };
             dtpToF.ValueChanged += (s, e) => { if (!applyingView) { if (dtpToF.Value.Date < dtpFromF.Value.Date) dtpFromF.SetSafe(dtpToF.Value); SaveView(); FilterGridData(); } };
             cbClientF = Combo(170, "All clients");
@@ -254,7 +254,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var m = new ContextMenuStrip();
             m.Items.Add(new ToolStripMenuItem("Completed trips without a report — pick one to start") { Enabled = false });
             foreach (var d in awaitingReport.Take(25))
-                m.Items.Add($"{d.DispatchNumber}  ·  {d.DispatchDate:MMM d}  ·  {d.ClientName}  ·  {d.DriverName}", null, (s, e) => OpenForDispatch(d.DispatchNumber));
+                m.Items.Add($"{d.DispatchNumber}  ·  {Fmt.Short(d.DispatchDate)}  ·  {d.ClientName}  ·  {d.DriverName}", null, (s, e) => OpenForDispatch(d.DispatchNumber));
             if (awaitingReport.Count > 25) m.Items.Add(new ToolStripMenuItem($"… and {awaitingReport.Count - 25} more") { Enabled = false });
             m.Show(tAwaiting!, new Point(0, tAwaiting!.Height));
         }

@@ -140,7 +140,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     historyData.Add(new {
                         Dispatch = d.DispatchNumber,
-                        Date = d.DispatchDate.ToString("yyyy-MM-dd"),
+                        Date = Fmt.Date(d.DispatchDate),
                         Driver = d.DriverName,
                         Crates = $"{d.TotalCrates} Crates",
                         Status = d.Status,
@@ -170,7 +170,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     historyData.Add(new {
                         Dispatch = d.DispatchNumber,
-                        Date = d.DispatchDate.ToString("yyyy-MM-dd"),
+                        Date = Fmt.Date(d.DispatchDate),
                         Truck = d.TruckInfo,
                         Crates = $"{d.TotalCrates} Crates",
                         Status = d.Status
@@ -197,7 +197,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 keyValues.Add(("Delivery Destination", sch.Destination));
                 keyValues.Add(("Schedule Reference Number", sch.ScheduleNumber));
-                keyValues.Add(("Scheduled Date", sch.ScheduleDate.ToString("MMMM dd, yyyy")));
+                keyValues.Add(("Scheduled Date", Fmt.Date(sch.ScheduleDate)));
                 keyValues.Add(("Target Departure Time", sch.DepartureTime));
                 keyValues.Add(("G-Crates (Goods)", $"{sch.GCrate:N0} Crates"));
                 keyValues.Add(("E-Crates (Empty)", $"{sch.ECrate:N0} Crates"));
@@ -215,7 +215,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     keyValues.Add(("Reschedule Count", $"{sch.RescheduleCount} time(s)"));
                     if (sch.OriginalScheduleDate.HasValue)
                     {
-                        keyValues.Add(("Original Scheduled Date", sch.OriginalScheduleDate.Value.ToString("MMMM dd, yyyy")));
+                        keyValues.Add(("Original Scheduled Date", Fmt.Date(sch.OriginalScheduleDate.Value)));
                     }
                     if (!string.IsNullOrWhiteSpace(sch.RescheduleReason))
                     {
@@ -235,7 +235,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     historyData.Add(new {
                         Dispatch = matchDel.DispatchNumber,
-                        Date = matchDel.DispatchDate.ToString("yyyy-MM-dd"),
+                        Date = Fmt.Date(matchDel.DispatchDate),
                         Truck = matchDel.TruckInfo,
                         Driver = matchDel.DriverName,
                         Status = matchDel.Status
@@ -279,7 +279,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     keyValues.Add(("Legacy Schedule Reference", matchSched != null ? matchSched.ScheduleNumber : $"#{del.LoadingScheduleId}"));
                 }
-                keyValues.Add(("Dispatch Date", del.DispatchDate.ToString("MMMM dd, yyyy")));
+                keyValues.Add(("Dispatch Date", Fmt.Date(del.DispatchDate)));
                 keyValues.Add(("Scheduled Departure Time", del.DepartureTime));
                 keyValues.Add(("Assigned Truck", del.TruckInfo));
                 keyValues.Add(("Assigned Driver", del.DriverName));
@@ -295,7 +295,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     keyValues.Add(("Cancellation Reason", del.CancellationReason));
                 }
                 keyValues.Add(("Linked Invoice", matchInv != null ? $"{matchInv.InvoiceNumber} ({matchInv.Status} - ₱{matchInv.NetAmount:N2})" : "Not yet billed"));
-                keyValues.Add(("Trip Completion Sign-Off", matchTrip != null ? $"Delivered by {matchTrip.StoreManagerName} on {matchTrip.ReportDate:yyyy-MM-dd}" : "Pending Trip Report"));
+                keyValues.Add(("Trip Completion Sign-Off", matchTrip != null ? $"Delivered by {matchTrip.StoreManagerName} on {Fmt.Date(matchTrip.ReportDate)}" : "Pending Trip Report"));
 
                 historyTitle = "Linked Downstream Documents & Route Stops";
                 if (del.Stops != null && del.Stops.Count > 0)
@@ -359,7 +359,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 keyValues.Add(("Assigned Truck", matchDel?.TruckInfo ?? "N/A"));
                 keyValues.Add(("Assigned Driver", matchDel?.DriverName ?? "N/A"));
                 keyValues.Add(("Assigned Helpers / Aides", matchDel != null ? (string.IsNullOrEmpty(matchDel.AideNames) ? (string.IsNullOrEmpty(matchDel.AideName) ? "None" : matchDel.AideName) : matchDel.AideNames) : "None"));
-                keyValues.Add(("Report / Audit Date", tr.ReportDate.ToString("MMMM dd, yyyy")));
+                keyValues.Add(("Report / Audit Date", Fmt.Date(tr.ReportDate)));
                 keyValues.Add(("Store Arrival Time", tr.ArrivalTime));
                 keyValues.Add(("Store Departure Time", tr.DepartureTime));
                 keyValues.Add(("Dispatched Volume", $"{totalDisp:N0} Crates"));
@@ -378,7 +378,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     historyData.Add(new {
                         Dispatch = matchDel.DispatchNumber,
-                        Date = matchDel.DispatchDate.ToString("yyyy-MM-dd"),
+                        Date = Fmt.Date(matchDel.DispatchDate),
                         Truck = matchDel.TruckInfo,
                         Driver = matchDel.DriverName,
                         Status = matchDel.Status
@@ -403,8 +403,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     keyValues.Add(("Delivery Dispatch #", inv.DispatchNumber));
                 }
                 keyValues.Add(("Client / Account Name", inv.ClientName));
-                keyValues.Add(("Invoice Date", inv.IssueDate.ToString("MMMM dd, yyyy")));
-                keyValues.Add(("Due Date", inv.DueDate.ToString("MMMM dd, yyyy")));
+                keyValues.Add(("Invoice Date", Fmt.Date(inv.IssueDate)));
+                keyValues.Add(("Due Date", Fmt.Date(inv.DueDate)));
                 if (!string.IsNullOrWhiteSpace(inv.TripReportNumber)) keyValues.Add(("Trip report #", inv.TripReportNumber));
                 keyValues.Add(("Amount (freight tariff)", $"₱{inv.Freight:N2}"));
                 keyValues.Add(("Fuel surcharge", $"₱{inv.FuelSurcharge:N2}"));
@@ -419,7 +419,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     historyData.Add(new {
                         Receipt = cr.ReceiptNumber,
-                        Date = cr.PaymentDate.ToString("yyyy-MM-dd"),
+                        Date = Fmt.Date(cr.PaymentDate),
                         Mode = cr.PaymentMethod,
                         RefNo = string.IsNullOrEmpty(cr.ReferenceNumber) ? "N/A" : cr.ReferenceNumber,
                         Amount = $"₱{cr.AmountPaid:N2}"
@@ -435,7 +435,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var matchInv = MJdatabase.GetInvoices().FirstOrDefault(i => i.Id == cr.InvoiceId || i.InvoiceNumber == cr.InvoiceNumber);
 
                 keyValues.Add(("Receipt Number (OR)", cr.ReceiptNumber));
-                keyValues.Add(("Payment Settlement Date", cr.PaymentDate.ToString("MMMM dd, yyyy")));
+                keyValues.Add(("Payment Settlement Date", Fmt.Date(cr.PaymentDate)));
                 keyValues.Add(("Payment Mode", cr.PaymentMethod));
                 keyValues.Add(("Check / Ref / Trans #", string.IsNullOrEmpty(cr.ReferenceNumber) ? "Cash / Standard" : cr.ReferenceNumber));
                 keyValues.Add(("Amount Collected", $"₱{cr.AmountPaid:N2}"));
@@ -449,7 +449,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     historyData.Add(new {
                         Invoice = matchInv.InvoiceNumber,
-                        Date = matchInv.IssueDate.ToString("yyyy-MM-dd"),
+                        Date = Fmt.Date(matchInv.IssueDate),
                         Client = matchInv.ClientName,
                         Total = $"₱{matchInv.NetAmount:N2}",
                         Status = matchInv.Status
@@ -481,7 +481,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 keyValues.Add(("Assigned Truck", matchDel?.TruckInfo ?? "N/A"));
                 keyValues.Add(("Assigned Driver", matchDel?.DriverName ?? "N/A"));
                 keyValues.Add(("Assigned Helpers / Aides", matchDel != null ? (string.IsNullOrEmpty(matchDel.AideNames) ? (string.IsNullOrEmpty(matchDel.AideName) ? "None" : matchDel.AideName) : matchDel.AideNames) : "None"));
-                keyValues.Add(("Incident Date", inc.IncidentDate.ToString("MMMM dd, yyyy")));
+                keyValues.Add(("Incident Date", Fmt.Date(inc.IncidentDate)));
                 keyValues.Add(("Damaged Crates Quantity", $"{inc.DamagedQuantity:N0} Crates"));
                 keyValues.Add(("Estimated Damage Cost", $"₱{inc.EstimatedCost:N2}"));
                 keyValues.Add(("Root Cause / Category", inc.Cause));
@@ -495,7 +495,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     historyData.Add(new {
                         Dispatch = matchDel.DispatchNumber,
-                        Date = matchDel.DispatchDate.ToString("yyyy-MM-dd"),
+                        Date = Fmt.Date(matchDel.DispatchDate),
                         Truck = matchDel.TruckInfo,
                         Driver = matchDel.DriverName,
                         Status = matchDel.Status
@@ -512,7 +512,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else if (log.ActionType.Equals("RESCHEDULE", StringComparison.OrdinalIgnoreCase)) { badgeBg = Pal.C(254, 243, 199); badgeFg = Pal.C(180, 83, 9); }
                 else { badgeBg = Pal.C(224, 231, 255); badgeFg = Pal.C(49, 46, 129); }
                 keyValues.Add(("Audit Log ID", $"#LOG-{log.Id:D6}"));
-                keyValues.Add(("Logged Timestamp", log.Timestamp.ToString("MMMM dd, yyyy HH:mm:ss")));
+                keyValues.Add(("Logged Timestamp", log.Timestamp.ToString(Fmt.DateFormat + " hh:mm:ss tt", System.Globalization.CultureInfo.InvariantCulture)));
                 keyValues.Add(("Operator Username", log.Username));
                 keyValues.Add(("Operator Role", log.UserRole));
                 keyValues.Add(("Action Executed", log.ActionType));
@@ -530,7 +530,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 foreach (var rl in relatedLogs)
                 {
                     historyData.Add(new {
-                        Timestamp = rl.Timestamp.ToString("yyyy-MM-dd HH:mm"),
+                        Timestamp = Fmt.DateTimeText(rl.Timestamp),
                         User = rl.Username,
                         Action = rl.ActionType,
                         Field = rl.FieldName,
@@ -564,14 +564,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 keyValues.Add(("Designated System Role", usr.Role));
                 keyValues.Add(("Contact Number", string.IsNullOrEmpty(usr.ContactNumber) ? "N/A" : usr.ContactNumber));
                 keyValues.Add(("Account Status", usr.IsActive ? "Active" : "Inactive"));
-                keyValues.Add(("Account Created On", usr.CreatedAt.ToString("MMMM dd, yyyy HH:mm")));
+                keyValues.Add(("Account Created On", Fmt.DateTimeText(usr.CreatedAt)));
 
                 historyTitle = $"Audit Activity for User {usr.Username}";
                 var userLogs = MJdatabase.GetAuditTrail(null, null, 30).Where(a => a.Username.Equals(usr.Username, StringComparison.OrdinalIgnoreCase)).ToList();
                 foreach (var ul in userLogs)
                 {
                     historyData.Add(new {
-                        Timestamp = ul.Timestamp.ToString("yyyy-MM-dd HH:mm"),
+                        Timestamp = Fmt.DateTimeText(ul.Timestamp),
                         Action = ul.ActionType,
                         Module = ul.TableName,
                         RefNo = ul.RecordIdentifier,
@@ -602,7 +602,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     historyData.Add(new {
                         Order = clientSched.ScheduleNumber,
-                        Date = clientSched.ScheduleDate.ToString("yyyy-MM-dd"),
+                        Date = Fmt.Date(clientSched.ScheduleDate),
                         Destination = clientSched.Destination,
                         Crates = $"{clientSched.TotalCrates} Crates",
                         Status = clientSched.Status

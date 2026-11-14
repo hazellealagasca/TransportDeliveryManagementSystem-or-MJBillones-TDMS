@@ -214,7 +214,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblInfoCurDate = new Label
             {
-                Text = $"Now scheduled: {curDate:MM/dd/yyyy} at {curTime}",
+                Text = $"Now scheduled: {Fmt.Date(curDate)} at {curTime}",
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 ForeColor = Pal.C(194, 65, 12),
                 Location = new Point(14, 82),
@@ -253,7 +253,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Location = new Point(24, 188),
                 Size = new Size(260, 28),
-                Format = DateTimePickerFormat.Short,
+                Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat,
                 Font = new Font("Segoe UI", 9.5F),
                 Value = curDate > DateTime.MinValue ? curDate : DateTime.Today
             };
@@ -626,8 +626,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string curTime = isSpecialTrip ? (specialTrip!.DepartureTime ?? "") : (delivery!.DepartureTime ?? "");
 
             string confirmMsg = $"Are you sure you want to reschedule {orderIdentifier}?\n\n" +
-                                $"From: {curDate:MM/dd/yyyy} ({curTime})\n" +
-                                $"To:   {newDate:MM/dd/yyyy} ({newTime})\n" +
+                                $"From: {Fmt.Date(curDate)} ({curTime})\n" +
+                                $"To:   {Fmt.Date(newDate)} ({newTime})\n" +
                                 $"Reason: {fullReason}";
 
             var res = MessageBox.Show(confirmMsg, "Confirm Reschedule", MessageBoxButtons.YesNo, MessageBoxIcon.Question);

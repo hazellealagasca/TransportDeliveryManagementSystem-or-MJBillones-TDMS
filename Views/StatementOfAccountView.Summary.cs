@@ -54,7 +54,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (sel != null)
                 {
                     m.Add(new SummaryMetric("Selected statement", sel.SoaNumber, SummaryTone.Purple, $"{sel.Status} · {sel.ClientName}", Strong: true));
-                    m.Add(new SummaryMetric("Its amount", AllInOneSummaryBar.Money(sel.TotalAmount), SummaryTone.Teal, string.IsNullOrWhiteSpace(sel.PeriodCovered) ? sel.IssueDate.ToString("MMM d, yyyy") : sel.PeriodCovered));
+                    m.Add(new SummaryMetric("Its amount", AllInOneSummaryBar.Money(sel.TotalAmount), SummaryTone.Teal, string.IsNullOrWhiteSpace(sel.PeriodCovered) ? Fmt.Date(sel.IssueDate) : sel.PeriodCovered));
                     m.Add(new SummaryMetric("Its sales invoice", string.IsNullOrWhiteSpace(sel.SalesInvoiceNo) ? "—" : sel.SalesInvoiceNo, SummaryTone.Neutral, string.IsNullOrWhiteSpace(sel.SalesInvoiceNo) ? "no invoice yet" : "linked invoice"));
                     context = $"Selected statement {sel.SoaNumber} — {sel.ClientName} · {sel.Status}   ·   Statements shown: {soaSummaryShown.Count:N0}";
                 }

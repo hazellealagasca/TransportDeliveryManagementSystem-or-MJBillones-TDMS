@@ -245,7 +245,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (locked.Length > 0 && !string.Equals(n, locked, StringComparison.OrdinalIgnoreCase))
                     yield return new LookupItem(n, $"Locked: this statement has trips of {locked}", "Other client", BadgeKind.Bad, Enabled: false);
                 else if (ready.TryGetValue(n, out var r))
-                    yield return new LookupItem(n, $"{r.Trips} service invoice{(r.Trips == 1 ? "" : "s")} ready · {r.From:MMM d} – {r.To:MMM d, yyyy}", $"{r.Trips} ready", BadgeKind.Good);
+                    yield return new LookupItem(n, $"{r.Trips} service invoice{(r.Trips == 1 ? "" : "s")} ready · {Fmt.Short(r.From)} – {Fmt.Date(r.To)}", $"{r.Trips} ready", BadgeKind.Good);
                 else yield return new LookupItem(n, "No service invoices ready for a statement", "Nothing ready", BadgeKind.Neutral);
             }
         }
@@ -259,7 +259,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!guideDeliveries.TryGetValue(kv.Key, out var d)) continue;
                 string tr = kv.Value.TripReportNumber ?? "";
                 if (!tr.Contains(q, StringComparison.OrdinalIgnoreCase) && !(d.DispatchNumber ?? "").Contains(q, StringComparison.OrdinalIgnoreCase)) continue;
-                string detail = $"{d.DispatchNumber} · {d.ClientName} · {d.DispatchDate:MMM d, yyyy} · {d.TruckInfo}";
+                string detail = $"{d.DispatchNumber} · {d.ClientName} · {Fmt.Date(d.DispatchDate)} · {d.TruckInfo}";
                 LookupItem it;
                 if (inTable.Contains(d.Id)) it = new LookupItem(tr, detail, "On this statement", BadgeKind.Info, false);
                 else if (!guideReported.Contains(d.Id)) it = new LookupItem(tr, detail, "Report voided", BadgeKind.Bad, false);
@@ -307,7 +307,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             checks.Add(new PaymentCheck(rows.Count == 0 ? "Add at least one completed trip report" : $"{rows.Select(r => r.Cells["colTripNo"].Value?.ToString()).Distinct().Count()} trip(s) on the statement", rows.Count > 0));
             checks.Add(new PaymentCheck(dtpPeriodTo.Value.Date >= dtpPeriodFrom.Value.Date ? "Period dates are in order" : "Period ends before it starts", dtpPeriodTo.Value.Date >= dtpPeriodFrom.Value.Date));
             bool issueOk = dtpIssueDate.Value.Date <= DateTime.Today;
-            checks.Add(new PaymentCheck(issueOk ? "Statement date is not in the future" : $"Statement date {dtpIssueDate.Value:MMM d, yyyy} is in the future", issueOk));
+            checks.Add(new PaymentCheck(issueOk ? "Statement date is not in the future" : $"Statement date {Fmt.Date(dtpIssueDate.Value)} is in the future", issueOk));
             // Every line comes from a completed trip report of this client, not billed anywhere else.
             int unlinked = 0, notDone = 0, otherClient = 0, billedElsewhere = 0, dateOrder = 0, reportBeforeDispatch = 0;
             var otherNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -343,7 +343,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 checks.Add(new PaymentCheck(notDone == 0 ? "All trips completed with a saved trip report" : $"{notDone} line(s) whose trip is not completed or whose report was voided", notDone == 0));
                 checks.Add(new PaymentCheck(otherClient == 0 ? $"All trips belong to {(client.Length > 0 ? client : "the client")}" : $"{otherClient} line(s) belong to {string.Join(", ", otherNames)} — not {client}", otherClient == 0));
                 checks.Add(new PaymentCheck(billedElsewhere == 0 ? "No trip is on another statement" : $"{billedElsewhere} line(s) already billed on another statement or invoice", billedElsewhere == 0));
-                checks.Add(new PaymentCheck(dateOrder == 0 ? "Dates in order: dispatch ≤ trip report ≤ statement date" : $"{dateOrder} trip date(s) are after the statement date ({dtpIssueDate.Value:MMM d, yyyy})", dateOrder == 0));
+                checks.Add(new PaymentCheck(dateOrder == 0 ? "Dates in order: dispatch ≤ trip report ≤ statement date" : $"{dateOrder} trip date(s) are after the statement date ({Fmt.Date(dtpIssueDate.Value)})", dateOrder == 0));
                 if (reportBeforeDispatch > 0) checks.Add(new PaymentCheck($"{reportBeforeDispatch} trip report(s) dated before their dispatch — check the report dates", true, Warning: true));
                 // Each trip priced; DRs not repeated on the statement.
                 var tripAmt = new Dictionary<string, decimal>();

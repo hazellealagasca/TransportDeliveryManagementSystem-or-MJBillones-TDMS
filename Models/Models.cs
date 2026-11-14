@@ -193,6 +193,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public bool IsAvailable { get; set; } = true;
         public bool IsActive { get; set; } = true;
         public bool IsSeasonal { get; set; } = false;
+        /// <summary>Home address of the crew member (required on new records).</summary>
+        public string Address { get; set; } = string.Empty;
+        /// <summary>"Regular" or "Seasonal" (kept in IsSeasonal).</summary>
+        public string EmploymentType => IsSeasonal ? "Seasonal" : "Regular";
         public string PhotoPath { get; set; } = string.Empty;
         public string AvailabilityStatus => !IsActive ? "Inactive" : (IsAvailable ? "Active" : "On Trip");
         public string CrewCode => $"CRW-{Id:D3}";
@@ -211,7 +215,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!HasLicense) return "None";
                 string kind = LicenseClass.StartsWith("Professional", StringComparison.OrdinalIgnoreCase) ? "Professional" : "Non-Professional";
                 if (!LicenseExpiry.HasValue) return kind + " · expiry not set";
-                return LicenseExpiry.Value.Date < DateTime.Today ? $"{kind} · EXPIRED {LicenseExpiry:MMM d, yyyy}" : $"{kind} · exp. {LicenseExpiry:MMM d, yyyy}";
+                return LicenseExpiry.Value.Date < DateTime.Today ? $"{kind} · EXPIRED {Fmt.Date(LicenseExpiry)}" : $"{kind} · exp. {Fmt.Date(LicenseExpiry)}";
             }
         }
     }
@@ -261,6 +265,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string Notes { get; set; } = string.Empty;
         public DateTime? NextDueDate { get; set; }
         public string CreatedBy { get; set; } = string.Empty;
+        /// <summary>Snapshot of the truck when the record was written.</summary>
+        public string PlateNumber { get; set; } = string.Empty;
+        public string TruckCategory { get; set; } = string.Empty;
+        public string CrateTempType { get; set; } = string.Empty;
+        public int Capacity { get; set; }
+        /// <summary>Service, Breakdown, Decommissioned or Back in service.</summary>
+        public string EntryType { get; set; } = "Service";
     }
     /// <summary>A violation, performance remark or incident note kept on a crew member's record.</summary>
     public class CrewRecord
@@ -285,6 +296,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string Status { get; set; } = "Active";
         public string Remarks { get; set; } = string.Empty;
         public string CargoType { get; set; } = "Cold / Chilled";
+        /// <summary>Set while the truck is Under Maintenance.</summary>
+        public DateTime? BreakdownDate { get; set; }
+        public DateTime? EstimatedFixDate { get; set; }
+        /// <summary>Status for lists: under maintenance shows the breakdown and expected fix dates on a second line.</summary>
+        public string StatusDisplay => string.Equals(Status, "Under Maintenance", StringComparison.OrdinalIgnoreCase) && BreakdownDate.HasValue
+            ? Status + "\nBreakdown " + Fmt.Date(BreakdownDate) + (EstimatedFixDate.HasValue ? " · fix by " + Fmt.Date(EstimatedFixDate) : "")
+            : Status;
     }
 
     public class RateMatrix

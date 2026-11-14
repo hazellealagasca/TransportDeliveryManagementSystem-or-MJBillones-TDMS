@@ -94,7 +94,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             finally { isBindingForm = was; }
             if (dropped.Count > 0)
-                ToastHelper.ShowToast(this, $"On {dtpDispatchDate.Value:MMM d}: " + string.Join("; ", dropped) + ". Pick someone else.", ToastType.Warning);
+                ToastHelper.ShowToast(this, $"On {Fmt.Short(dtpDispatchDate.Value)}: " + string.Join("; ", dropped) + ". Pick someone else.", ToastType.Warning);
         }
     }
 }

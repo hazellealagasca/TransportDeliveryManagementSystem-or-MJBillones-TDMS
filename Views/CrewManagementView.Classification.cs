@@ -17,10 +17,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     {
         public const string RoleDriver = "Driver";
         public const string RoleAide = "Delivery Aide / Helper";
-        public const string LicPro = "Professional Driver's License";
-        public const string LicNonPro = "Non-Professional Driver's License";
-        public const string LicNone = "None";
+        public const string LicPro = CrewRules.LicPro;
+        public const string LicNonPro = CrewRules.LicNonPro;
+        public const string LicNone = CrewRules.LicNone;
         private Panel pnlEmployment = null!;
+        private ComboBox cbEmployment = null!;
+        private Label lblAddress = null!;
+        private TextBox txtAddress = null!;
         private Label lblRoleRequirements = null!;
         private Panel pnlLicense = null!;
         private ComboBox cbLicenseClass = null!;
@@ -33,16 +36,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Builds the employment and license sections (called before the full-page form is assembled).</summary>
         private void InitClassification()
         {
-            // Employment type first: seasonal / temporary
-            pnlEmployment = new Panel { Height = Dp(48), BackColor = AppTheme.Surface, Margin = new Padding(0, 0, 0, Dp(2)) };
+            // Employment type first: Regular or Seasonal (the old "seasonal / temporary" tick is a dropdown now)
+            pnlEmployment = new Panel { Height = Dp(66), BackColor = AppTheme.Surface, Margin = new Padding(0, 0, 0, Dp(2)) };
             chkIsSeasonal.Parent?.Controls.Remove(chkIsSeasonal);
-            chkIsSeasonal.Text = "Seasonal / temporary crew member";
-            chkIsSeasonal.AutoSize = true;
-            chkIsSeasonal.Dock = DockStyle.Top;
-            chkIsSeasonal.Font = new Font("Segoe UI Semibold", 10F);
-            var hint = new Label { Text = "Tick for crew hired only for peak season or as a temporary replacement. Leave unticked for regular crew.", Dock = DockStyle.Top, Height = Dp(22), Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.TextMuted, Padding = new Padding(Dp(20), 0, 0, 0) };
+            chkIsSeasonal.Visible = false;
+            cbEmployment = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 10F) };
+            cbEmployment.Items.AddRange(new object[] { CrewRules.TypeRegular, CrewRules.TypeSeasonal });
+            cbEmployment.SelectedIndex = 0;
+            var hint = new Label { Text = "Seasonal is for crew hired only for peak season or as a temporary replacement.", Dock = DockStyle.Top, Height = Dp(22), Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.TextMuted };
             pnlEmployment.Controls.Add(hint);
-            pnlEmployment.Controls.Add(chkIsSeasonal);
+            pnlEmployment.Controls.Add(cbEmployment);
+            // Address (required), shown under Role in the personal details
+            lblAddress = new Label { Text = "Address *", AutoSize = true, Dock = DockStyle.Top, Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold), ForeColor = AppTheme.TextPrimary, Padding = new Padding(0, Dp(4), 0, Dp(2)) };
+            txtAddress = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 10F), MaxLength = CrewRules.AddressMax, PlaceholderText = "House no., street, barangay, city" };
+            UIThemeHelper.StyleInput(txtAddress);
+            txtAddress.TextChanged += (s, e) => { if (txtAddress.Tag as string == "InvalidInput") ValidationHelper.ApplyValidationState(txtAddress, true, ""); };
             // Pay and availability are not part of this form any more.
             chkAvailable.Visible = false;
             if (tblCheckboxes != null) tblCheckboxes.Visible = false;
@@ -65,14 +73,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tbl.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             Label L(string t) => new Label { Text = t, Dock = DockStyle.Fill, TextAlign = ContentAlignment.BottomLeft, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextSecondary };
             cbLicenseClass = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 10F), Margin = new Padding(0, 0, Dp(12), 0) };
-            cbLicenseClass.Items.AddRange(new object[] { LicPro, LicNonPro, LicNone });
-            cbLicenseClass.SelectedIndex = 2;
+            FillLicenseChoices(false, null);
             cbLicenseValidity = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 10F), Margin = new Padding(0, 0, Dp(12), 0) };
             cbLicenseValidity.Items.AddRange(new object[] { "5 years", "10 years", "Other (set expiry)" });
             cbLicenseValidity.SelectedIndex = 0;
-            dtpLicenseIssued = new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Font = new Font("Segoe UI", 10F), Margin = new Padding(0, 0, Dp(12), 0) };
+            dtpLicenseIssued = new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Font = new Font("Segoe UI", 10F), Margin = new Padding(0, 0, Dp(12), 0) };
             dtpLicenseIssued.CapAtToday();   // a license can't be issued in the future; the cap moves forward each day, even if this screen stays open overnight
-            dtpLicenseExpiry =new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Font = new Font("Segoe UI", 10F), Margin = new Padding(0, 0, Dp(12), 0) };
+            dtpLicenseExpiry =new DateTimePicker { Dock = DockStyle.Fill, Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Font = new Font("Segoe UI", 10F), Margin = new Padding(0, 0, Dp(12), 0) };
             lblLicenseStatus = new Label { Dock = DockStyle.Fill, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextMuted, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(0, Dp(4), 0, 0) };
             tbl.Controls.Add(L("License classification"), 0, 0);
             tbl.Controls.Add(L("Valid for"), 1, 0);
@@ -112,24 +119,42 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return r;
         }
         private bool IsDriverSelected => string.Equals(cbRole.Text, RoleDriver, StringComparison.OrdinalIgnoreCase);
+        /// <summary>A driver can only hold a Professional licence; an aide can hold either kind or none. A record that already has another class keeps it in the list until it is changed.</summary>
+        private void FillLicenseChoices(bool driver, string? keep)
+        {
+            string current = keep ?? (cbLicenseClass.SelectedItem as string ?? "");
+            bool was = settingLicense;
+            settingLicense = true;
+            try
+            {
+                cbLicenseClass.Items.Clear();
+                cbLicenseClass.Items.Add(LicPro);
+                if (!driver) { cbLicenseClass.Items.Add(LicNonPro); cbLicenseClass.Items.Add(LicNone); }
+                else if (current.Length > 0 && current != LicPro) cbLicenseClass.Items.Add(current);
+                int at = current.Length > 0 ? cbLicenseClass.Items.IndexOf(current) : -1;
+                cbLicenseClass.SelectedIndex = at >= 0 ? at : (driver ? 0 : cbLicenseClass.Items.IndexOf(LicNone));
+            }
+            finally { settingLicense = was; }
+        }
         private void UpdateRoleRequirements()
         {
             if (lblRoleRequirements == null) return;
             if (IsDriverSelected)
             {
-                lblRoleRequirements.Text = "Driver: needs a valid driver's license (Professional is required for trucks; Non-Professional needs your confirmation). An expired license can't be saved.";
+                lblRoleRequirements.Text = "Driver: needs a valid Professional driver's license with its issue and expiry dates. An expired license can't be saved.";
                 lblRoleRequirements.ForeColor = AppTheme.InfoText;
-                if (cbLicenseClass.SelectedIndex == 2) cbLicenseClass.SelectedIndex = 0;
+                if (!settingLicense && (cbLicenseClass.Items.Count != 1 || cbLicenseClass.SelectedItem as string != LicPro)) FillLicenseChoices(true, LicPro);
             }
             else if (cbRole.SelectedIndex >= 0)
             {
-                lblRoleRequirements.Text = "Delivery aide / helper: no license needed. If they have one, record its class and expiry so they can relieve a driver.";
+                lblRoleRequirements.Text = "Delivery aide / helper: the license is optional. If they have one, record its class and expiry so they can relieve a driver.";
                 lblRoleRequirements.ForeColor = AppTheme.TextMuted;
+                if (!settingLicense && cbLicenseClass.Items.Count < 3) FillLicenseChoices(false, null);
             }
             else lblRoleRequirements.Text = "Choose Driver or Delivery Aide / Helper.";
             UpdateLicenseStatus();
         }
-        private bool HasLicenseSelected => cbLicenseClass.SelectedIndex is 0 or 1;
+        private bool HasLicenseSelected => cbLicenseClass.SelectedItem is string s && s != LicNone;
         private void UpdateLicenseEnabled()
         {
             bool on = HasLicenseSelected;
@@ -160,7 +185,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (lblLicenseStatus == null) return;
             if (!HasLicenseSelected)
             {
-                lblLicenseStatus.Text = IsDriverSelected ? "⚠ A driver must have a license." : "No license recorded.";
+                lblLicenseStatus.Text = IsDriverSelected ? "⚠ A driver must have a Professional license." : "No license recorded.";
                 lblLicenseStatus.ForeColor = IsDriverSelected ? AppTheme.DangerText : AppTheme.TextMuted;
                 return;
             }
@@ -168,7 +193,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var exp = dtpLicenseExpiry.Value.Date;
             int days = (int)(exp - DateTime.Today).TotalDays;
             double years = (exp - issued).TotalDays / 365.25;
-            string duration = $"Valid {years:0.#} year(s) ({issued:MMM d, yyyy} – {exp:MMM d, yyyy})";
+            string duration = $"Valid {years:0.#} year(s) ({Fmt.Date(issued)} – {Fmt.Date(exp)})";
             if (exp <= issued) { lblLicenseStatus.Text = "⚠ Expiry must be after the issue date."; lblLicenseStatus.ForeColor = AppTheme.DangerText; }
             else if (years > 10.05) { lblLicenseStatus.Text = "⚠ Philippine licenses are valid for at most 10 years. " + duration; lblLicenseStatus.ForeColor = AppTheme.DangerText; }
             else if (days < 0) { lblLicenseStatus.Text = $"⚠ Expired {(-days)} day(s) ago. {duration}"; lblLicenseStatus.ForeColor = AppTheme.DangerText; }
@@ -181,8 +206,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 FillRoleChoices(c.Role);
-                chkIsSeasonal.Checked = c.IsSeasonal;
-                cbLicenseClass.SelectedIndex = !c.HasLicense ? 2 : (c.LicenseClass.StartsWith("Professional", StringComparison.OrdinalIgnoreCase) ? 0 : 1);
+                cbEmployment.SelectedItem = c.IsSeasonal ? CrewRules.TypeSeasonal : CrewRules.TypeRegular;
+                txtAddress.Text = c.Address ?? "";
+                ValidationHelper.ApplyValidationState(txtAddress, true, "");
+                FillLicenseChoices(NormalizeRole(c.Role) == RoleDriver, !c.HasLicense ? LicNone : (c.LicenseClass.StartsWith("Professional", StringComparison.OrdinalIgnoreCase) ? LicPro : LicNonPro));
                 var issued = c.LicenseIssued ?? (c.LicenseExpiry.HasValue ? c.LicenseExpiry.Value.AddYears(-5) : DateTime.Today);
                 dtpLicenseIssued.SetSafe(issued);
                 dtpLicenseExpiry.SetSafe(c.LicenseExpiry ?? dtpLicenseIssued.Value.AddYears(5));
@@ -201,8 +228,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 FillRoleChoices();
                 cbRole.SelectedIndex = -1;
-                chkIsSeasonal.Checked = false;
-                cbLicenseClass.SelectedIndex = 2;
+                cbEmployment.SelectedIndex = 0;
+                txtAddress.Text = "";
+                ValidationHelper.ApplyValidationState(txtAddress, true, "");
+                FillLicenseChoices(false, LicNone);
                 dtpLicenseIssued.SetSafe(DateTime.Today);
                 cbLicenseValidity.SelectedIndex = 0;
                 dtpLicenseExpiry.SetSafe(DateTime.Today.AddYears(5));
@@ -217,37 +246,30 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var errs = new List<string>();
             if (cbRole.SelectedIndex < 0) errs.Add("Choose a role: Driver or Delivery Aide / Helper.");
             bool driver = IsDriverSelected;
-            if (driver && !HasLicenseSelected) errs.Add("A driver must have a driver's license — choose Professional or Non-Professional.");
-            if (HasLicenseSelected)
+            if (CrewRules.CheckAddress(txtAddress.Text) is { } addressProblem)
             {
-                var issued = dtpLicenseIssued.Value.Date;
-                var exp = dtpLicenseExpiry.Value.Date;
-                if (issued > DateTime.Today) errs.Add("The license issue date can't be in the future.");
-                if (exp <= issued) errs.Add("The license expiry date must be after the issue date.");
-                else if ((exp - issued).TotalDays > 366 * 10 + 3) errs.Add("A Philippine driver's license is valid for at most 10 years — check the dates.");
-                else if ((exp - issued).TotalDays < 180) errs.Add("The license validity looks too short — check the dates.");
-                if (driver && exp < DateTime.Today) errs.Add($"This driver's license expired on {exp:MMM d, yyyy}. Update it with the renewed license before saving.");
+                errs.Add(addressProblem);
+                ValidationHelper.ApplyValidationState(txtAddress, false, addressProblem);
             }
+            if (cbRole.SelectedIndex >= 0 && CrewRules.CheckLicense(driver, cbLicenseClass.SelectedItem as string, HasLicenseSelected ? dtpLicenseIssued.Value.Date : null, HasLicenseSelected ? dtpLicenseExpiry.Value.Date : null) is { } licenseProblem)
+                errs.Add(licenseProblem.Message);
             if (errs.Count > 0)
             {
-                MessageBox.Show(FindForm(), "Please fix the following:\n\n• " + string.Join("\n• ", errs), "Role and license", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                (cbRole.SelectedIndex < 0 ? (Control)cbRole : cbLicenseClass).Focus();
+                MessageBox.Show(FindForm(), "Please fix the following:\n\n• " + string.Join("\n• ", errs), "Role, address and license", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                (cbRole.SelectedIndex < 0 ? (Control)cbRole : CrewRules.CheckAddress(txtAddress.Text) != null ? txtAddress : cbLicenseClass).Focus();
                 return false;
-            }
-            if (driver && cbLicenseClass.SelectedIndex == 1)
-            {
-                if (MessageBox.Show(FindForm(), "Truck drivers normally need a Professional Driver's License.\n\nSave this driver with a Non-Professional license anyway?", "Non-Professional license", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return false;
             }
             return true;
         }
         private void ApplyClassification(Crew c)
         {
             c.Role = cbRole.Text.Trim();
-            c.IsSeasonal = chkIsSeasonal.Checked;
+            c.IsSeasonal = cbEmployment.SelectedItem as string == CrewRules.TypeSeasonal;
+            c.Address = InputRules.Tidy(txtAddress.Text);
             c.LicenseNumber = "";
             if (HasLicenseSelected)
             {
-                c.LicenseClass = cbLicenseClass.Text;
+                c.LicenseClass = cbLicenseClass.SelectedItem as string ?? LicNone;
                 c.LicenseIssued = dtpLicenseIssued.Value.Date;
                 c.LicenseExpiry = dtpLicenseExpiry.Value.Date;
             }

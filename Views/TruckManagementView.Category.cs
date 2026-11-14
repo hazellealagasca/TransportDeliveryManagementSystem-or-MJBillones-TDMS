@@ -108,29 +108,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             return cat.CategoryName;
         }
-        /// <summary>Asks for the reason when a truck goes to maintenance or is decommissioned, and confirms reactivation.</summary>
-        private bool AskStatusReason(Truck t, string oldStatus, string newStatus, out string reason)
+        /// <summary>
+        /// Asks for the description of a status change (and, for Under Maintenance, the breakdown and estimated fix dates) with the truck status dialog,
+        /// and confirms reactivation of a decommissioned truck first. False when cancelled.
+        /// </summary>
+        private bool AskStatusReason(Truck t, string oldStatus, string newStatus, out string description, out DateTime? breakdown, out DateTime? fix)
         {
-            reason = "";
+            description = ""; breakdown = null; fix = null;
             var owner = FindForm();
-            bool toMaint = RowMenu.Is(newStatus, "Under Maintenance", "Maintenance", "Under Repair");
             bool toDecom = MJdatabase.IsDecommissioned(newStatus);
             bool fromDecom = MJdatabase.IsDecommissioned(oldStatus) && !toDecom;
-            if (toMaint || toDecom)
-            {
-                string? r = Forms.ReasonPrompt.Ask(owner, toDecom ? "Decommission truck" : "Truck under maintenance",
-                    toDecom ? $"Why is {t.PlateNumber} being decommissioned? It will no longer be offered for trips (it can be reactivated later)."
-                            : $"What maintenance is {t.PlateNumber} getting? It can't be dispatched until it is set back to Active.", required: true, okText: toDecom ? "Decommission" : "Save");
-                if (r == null) return false;
-                reason = r;
-                return true;
-            }
-            if (fromDecom)
-            {
-                if (MessageBox.Show(owner, $"Are you sure you want to reactivate {t.PlateNumber}?\n\nIt will be offered for trips again. Its decommission history is kept in the truck profile.", "Reactivate truck", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return false;
-                reason = Forms.ReasonPrompt.Ask(owner, "Reactivate truck", $"Note for reactivating {t.PlateNumber} (optional).", required: false, okText: "Reactivate") ?? "Reactivated";
-                if (reason.Length == 0) reason = "Reactivated";
-            }
+            if (fromDecom && MessageBox.Show(owner, $"Are you sure you want to reactivate {t.PlateNumber}?\n\nIt will be offered for trips again. Its decommission history is kept in the truck profile.", "Reactivate truck", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return false;
+            var r = Forms.TruckStatusChangeDialog.Ask(owner, t.PlateNumber, oldStatus, newStatus, t.BreakdownDate, t.EstimatedFixDate);
+            if (r == null) return false;
+            (description, breakdown, fix) = r.Value;
             return true;
         }
         private void ResetCategoryHint()

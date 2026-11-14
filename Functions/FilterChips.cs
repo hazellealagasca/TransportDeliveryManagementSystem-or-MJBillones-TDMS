@@ -70,17 +70,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var pr = Preset(p);
                 if (pr.SameAs(this))
                 {
-                    if (Kind == "day") return $"{p} · {f:ddd, MMM d}";
+                    if (Kind == "day") return $"{p} · {Fmt.DayShort(f)}";
                     if (Kind == "month") return $"{p} · {f:MMMM}";
                     return p;
                 }
             }
-            if (f == to) return f.Year == t.Year ? f.ToString("ddd, MMM d") : f.ToString("ddd, MMM d, yyyy");
+            if (f == to) return f.Year == t.Year ? Fmt.DayShort(f) : Fmt.DayDate(f);
             if (Kind == "month") return f.ToString("MMMM yyyy");
             if (Kind == "year") return f.Year.ToString();
-            if (f.Year == to.Year && f.Month == to.Month) return $"{f:MMM d} – {to:%d}, {to:yyyy}";
-            if (f.Year == to.Year) return $"{f:MMM d} – {to:MMM d}, {to:yyyy}";
-            return $"{f:MMM d, yyyy} – {to:MMM d, yyyy}";
+            return $"{Fmt.Date(f)} – {Fmt.Date(to)}";
         }
     }
     /// <summary>
@@ -331,7 +329,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 var a = calFrom.SelectionStart.Date; var b = range ? calTo.SelectionStart.Date : a;
                 if (b < a) (a, b) = (b, a);
-                summary.Text = range ? $"{a:ddd, MMM d, yyyy}  →  {b:ddd, MMM d, yyyy}   ({(b - a).Days + 1} day{((b - a).Days == 0 ? "" : "s")})" : a.ToString("dddd, MMMM d, yyyy");
+                summary.Text = range ? $"{Fmt.DayDate(a)}  →  {Fmt.DayDate(b)}   ({(b - a).Days + 1} day{((b - a).Days == 0 ? "" : "s")})" : Fmt.DayDate(a);
             }
             calFrom.DateChanged += (s, e) => Update();
             calTo.DateChanged += (s, e) => Update();

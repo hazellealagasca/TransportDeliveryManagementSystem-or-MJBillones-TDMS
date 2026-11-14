@@ -198,7 +198,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Size = new Size(S(132), S(150));
                 Margin = new Padding(S(4));
                 Cursor = Cursors.Hand;
-                tip.SetToolTip(this, $"{a.FileName}\n{a.Category} · {a.SizeDisplay}\nAdded {a.AddedAt:MMM d, yyyy h:mm tt} by {a.AddedBy}");
+                tip.SetToolTip(this, $"{a.FileName}\n{a.Category} · {a.SizeDisplay}\nAdded {Fmt.DateTimeText(a.AddedAt)} by {a.AddedBy}");
                 MouseEnter += (s, e) => { hover = true; Invalidate(); };
                 MouseLeave += (s, e) => { hover = false; Invalidate(); };
                 DoubleClick += (s, e) => owner.Open(a);

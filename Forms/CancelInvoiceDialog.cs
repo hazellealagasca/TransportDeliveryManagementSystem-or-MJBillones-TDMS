@@ -79,8 +79,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 grid.Columns.Add(new DataGridViewTextBoxColumn { Name = n, HeaderText = h, FillWeight = w });
             var rows = MJdatabase.GetTypingMistakeCancellations();
             foreach (var r in rows)
-                grid.Rows.Add(r.Number, r.Client, r.Net.ToString("N2"), r.CancelledBy, r.CancelledAt?.ToString("MMM d, yyyy h:mm tt") ?? "", r.Reason, r.State,
-                    r.State == "Reinstated" ? (r.ReinstatedAt?.ToString("MMM d, yyyy") ?? "") : (r.Until?.ToString("MMM d, yyyy") ?? ""));
+                grid.Rows.Add(r.Number, r.Client, r.Net.ToString("N2"), r.CancelledBy, Fmt.DateTimeText(r.CancelledAt), r.Reason, r.State,
+                    r.State == "Reinstated" ? Fmt.Date(r.ReinstatedAt) : Fmt.Date(r.Until));
             var note = new Label { Dock = DockStyle.Bottom, Height = D(34), Padding = new Padding(D(12), D(8), 0, 0), ForeColor = AppTheme.TextSecondary,
                 Text = rows.Count == 0 ? "No invoice has been cancelled as a typing mistake." : $"{rows.Count} invoice(s). Waiting = number kept for the corrected record; Expired = number now used for good." };
             Controls.Add(grid); Controls.Add(note);

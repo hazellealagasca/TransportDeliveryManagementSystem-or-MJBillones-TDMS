@@ -369,7 +369,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 sb.Append("<table class='foot' style='width:100%'><tr>");
                 sb.Append($"<td>{Multi(o.Footer)}</td>");
-                sb.Append(o.On("printed") ? $"<td style='text-align:right;white-space:nowrap'>Printed {DateTime.Now:MMM d, yyyy h:mm tt}{(CurrentUserName.Length > 0 ? " by " + Esc(CurrentUserName) : "")}</td>" : "<td></td>");
+                sb.Append(o.On("printed") ? $"<td style='text-align:right;white-space:nowrap'>Printed {Fmt.DateTimeText(DateTime.Now)}{(CurrentUserName.Length > 0 ? " by " + Esc(CurrentUserName) : "")}</td>" : "<td></td>");
                 sb.Append("</tr></table>");
             }
             sb.Append("</div>");

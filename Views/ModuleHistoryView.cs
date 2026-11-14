@@ -234,7 +234,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 HeaderText = "Date & time",
                 FillWeight = 14,
                 MinimumWidth = 125,
-                DefaultCellStyle = { Format = "yyyy-MM-dd HH:mm:ss" }
+                DefaultCellStyle = { Format = "MM/dd/yyyy hh:mm:ss tt" }
             });
 
             gridHistory.Columns.Add(new DataGridViewTextBoxColumn
@@ -397,7 +397,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (d.TotalHours < 1) return $"{(int)d.TotalMinutes} min ago";
             if (d.TotalDays < 1) return $"{(int)d.TotalHours} h ago";
             if (d.TotalDays < 30) return $"{(int)d.TotalDays} d ago";
-            return t.ToString("MMM d, yyyy");
+            return Fmt.Date(t);
         }
         private void ApplyFilter()
         {
@@ -484,7 +484,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 decimal outstanding = invoices.Sum(Balance);
                 var overdue = invoices.Where(i => Balance(i) > 0 && i.DueDate.Date < DateTime.Today).ToList();
                 var last = receipts.OrderByDescending(r => r.PaymentDate).FirstOrDefault();
-                string period = since.HasValue ? $"since {since.Value:MMM d, yyyy}" : "all time";
+                string period = since.HasValue ? $"since {Fmt.Date(since.Value)}" : "all time";
                 var m = new List<SummaryMetric>
                 {
                     new("Billed", AllInOneSummaryBar.Money(billed), SummaryTone.Blue, $"{invInPeriod.Count:N0} invoices · {period}", Strong: true),
@@ -492,7 +492,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     new("Outstanding now", AllInOneSummaryBar.Money(outstanding), SummaryTone.Amber, "all unpaid invoices", Strong: outstanding > 0),
                     new("Overdue now", overdue.Count.ToString("N0"), SummaryTone.Red, overdue.Count > 0 ? AllInOneSummaryBar.Money(overdue.Sum(Balance)) + " past due" : "none past due", Strong: overdue.Count > 0),
                     new("Statements", soaInPeriod.Count.ToString("N0"), SummaryTone.Teal, $"{AllInOneSummaryBar.Money(soaInPeriod.Sum(x => x.TotalAmount))} · {period}"),
-                    new("Last payment", last == null ? "—" : last.PaymentDate.ToString("MMM d"), SummaryTone.Neutral, last == null ? "no receipts yet" : $"{last.ReceiptNumber} · {AllInOneSummaryBar.Money(last.AmountPaid)}"),
+                    new("Last payment", last == null ? "—" : Fmt.Short(last.PaymentDate), SummaryTone.Neutral, last == null ? "no receipts yet" : $"{last.ReceiptNumber} · {AllInOneSummaryBar.Money(last.AmountPaid)}"),
                 };
                 string preview = $"{AllInOneSummaryBar.Money(collected)} collected  ·  {AllInOneSummaryBar.Money(outstanding)} outstanding  ·  {overdue.Count:N0} overdue";
                 paymentsBar.SetMetrics(m, preview, $"Payments overview ({period}; outstanding and overdue are as of today)");

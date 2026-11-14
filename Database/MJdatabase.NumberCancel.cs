@@ -65,7 +65,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     throw new InvalidOperationException($"Invoice {number} was cancelled because the paper invoice is void, so its number can never be used again and it can't be reinstated. Enter a new invoice with a new number.");
                 DateTime? until = DateTime.TryParse(r.GetString(3), CultureInfo.InvariantCulture, DateTimeStyles.None, out var u) ? u : null;
                 if (!until.HasValue || until.Value < DateTime.Now)
-                    throw new InvalidOperationException($"Invoice {number} was cancelled as a typing mistake, but the {PendingReenterDays} days to correct it ended on {until:MMM d, yyyy}. Its number is now used for good; enter a new invoice with a new number.");
+                    throw new InvalidOperationException($"Invoice {number} was cancelled as a typing mistake, but the {PendingReenterDays} days to correct it ended on {Fmt.Date(until)}. Its number is now used for good; enter a new invoice with a new number.");
                 deliveryId = r.GetInt32(4); specialTripId = r.GetInt32(5); net = Centavos(Convert.ToDecimal(r.GetValue(6)));
             }
             var live = GetLiveInvoiceForTrip(deliveryId, specialTripId, invoiceId);

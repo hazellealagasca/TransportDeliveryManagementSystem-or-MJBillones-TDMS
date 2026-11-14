@@ -1130,6 +1130,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (!firstTime) return;
             grid.SortCompare += (s, e) =>
             {
+                if (Fmt.TryParseDate(e.CellValue1?.ToString(), out DateTime day1) && Fmt.TryParseDate(e.CellValue2?.ToString(), out DateTime day2))
+                {
+                    e.SortResult = day1.CompareTo(day2);
+                    e.Handled = true;
+                    return;
+                }
                 if (e.Column.HeaderText.Contains("Time", StringComparison.OrdinalIgnoreCase) ||
                     e.Column.DataPropertyName.Contains("Time", StringComparison.OrdinalIgnoreCase))
                 {

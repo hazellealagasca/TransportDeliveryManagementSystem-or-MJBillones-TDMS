@@ -50,7 +50,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try { rows = MJdatabase.GetStatementHistory(); } catch (Exception ex) { ErrLog.Swallowed(ex); rows = new(); }
             grid.Rows.Clear();
             foreach (var r in rows)
-                grid.Rows.Add(r.Soa.SoaNumber, r.Soa.IssueDate.ToString("MMM d, yyyy"), r.Soa.ClientName, r.Soa.PeriodCovered, r.Trips, $"₱{r.Soa.TotalAmount:N2}",
+                grid.Rows.Add(r.Soa.SoaNumber, Fmt.Date(r.Soa.IssueDate), r.Soa.ClientName, r.Soa.PeriodCovered, r.Trips, $"₱{r.Soa.TotalAmount:N2}",
                     r.Invoices.Length > 0 ? r.Invoices + (r.TripsWithoutInvoice > 0 ? $"  (+{r.TripsWithoutInvoice} to invoice)" : "") : (r.TripsWithoutInvoice > 0 ? $"{r.TripsWithoutInvoice} to invoice" : ""), r.Stage);
             lblTitle.Text = $"Statement history · {rows.Count} statement{(rows.Count == 1 ? "" : "s")} (saved automatically with each statement)";
         }

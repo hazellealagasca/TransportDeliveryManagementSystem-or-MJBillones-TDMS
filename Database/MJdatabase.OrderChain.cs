@@ -43,7 +43,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (TripReportNo.Length > 0) parts.Add(TripReportNo);
             if (Invoice != null) parts.Add("SI " + Invoice.Number);
             if (SoaNumber.Length > 0) parts.Add(SoaNumber);
-            if (ReceiptNo.Length > 0) parts.Add("receipt " + ReceiptNo + (PaidOn.HasValue ? $" ({PaidOn.Value:MMM d, yyyy})" : ""));
+            if (ReceiptNo.Length > 0) parts.Add("receipt " + ReceiptNo + (PaidOn.HasValue ? $" ({Fmt.Date(PaidOn.Value)})" : ""));
             return parts.Count == 0 ? Stage : string.Join(" → ", parts);
         }
     }

@@ -210,7 +210,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     string driverHelper = $"{t.DriverName} / {t.AideName}".Trim(' ', '/');
                     string dest = string.IsNullOrWhiteSpace(t.DestinationAddress) ? t.Address : t.DestinationAddress;
                     var spInv = MJdatabase.TripInvoiceFor(invoices, 0, t.Id);
-                    int r = gridItems.Rows.Add(trip, completed.Iso(0, t.Id, t.DispatchDate.ToString("yyyy-MM-dd")), "", "", dest, "SPECIAL", plate, tonnage, Math.Max(1, t.TotalStopsCount), spInv?.Freight ?? t.TripCharge, spInv?.Fuel ?? 0m, driverHelper, "");
+                    int r = gridItems.Rows.Add(trip, Fmt.DateText(completed.Iso(0, t.Id, t.DispatchDate.ToString("yyyy-MM-dd"))), "", "", dest, "SPECIAL", plate, tonnage, Math.Max(1, t.TotalStopsCount), spInv?.Freight ?? t.TripCharge, spInv?.Fuel ?? 0m, driverHelper, "");
                     gridItems.Rows[r].Cells["colSpecialTrip"].Value = t.Id.ToString();
                     gridItems.Rows[r].Cells["colTripReport"].Value = links.TryGetValue(t.Id, out var l) && l.HasReport ? l.TripReportNumber : t.OrderReference;
                     trip++;
@@ -287,7 +287,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     dest = string.IsNullOrWhiteSpace(t.DestinationAddress) ? t.Address : t.DestinationAddress;
                 }
                 string state = pr.State switch { PickState.OnThisStatement => "✓ On this statement", PickState.NoInvoice => pr.BilledOn, _ => "Not yet" };
-                int i = gridPicker.Rows.Add(pr.State == PickState.Ready && ticked.Contains(inv.Id), inv.Number, inv.IssueDate.ToString("MMM d, yyyy"), reportNo, dispatchNo, dest, $"₱{inv.Net:N2}", state);
+                int i = gridPicker.Rows.Add(pr.State == PickState.Ready && ticked.Contains(inv.Id), inv.Number, Fmt.Date(inv.IssueDate), reportNo, dispatchNo, dest, $"₱{inv.Net:N2}", state);
                 var row = gridPicker.Rows[i];
                 row.Tag = pr;
                 if (pr.State != PickState.Ready)
@@ -331,7 +331,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     reports.TryGetValue(d.Id, out var tr);
                     var pr = new PickRow { Delivery = d, Report = tr, State = inTable.Contains(d.Id) ? PickState.OnThisStatement : PickState.Ready };
-                    int i = gridPicker.Rows.Add(pr.State == PickState.Ready && ticked.Contains(d.Id), "—", (tr != null && tr.ReportDate > DateTime.MinValue ? tr.ReportDate : d.DispatchDate).ToString("MMM d, yyyy"),
+                    int i = gridPicker.Rows.Add(pr.State == PickState.Ready && ticked.Contains(d.Id), "—", Fmt.Date((tr != null && tr.ReportDate > DateTime.MinValue ? tr.ReportDate : d.DispatchDate)),
                         tr?.TripReportNumber ?? "—", d.DispatchNumber, d.CleanRouteDisplay, "typed on the statement", pr.State == PickState.OnThisStatement ? "✓ On this statement" : "Ready");
                     var row = gridPicker.Rows[i];
                     row.Tag = pr;
@@ -392,7 +392,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void AfterLinesAdded()
         {
             var dates = gridItems.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow)
-                .Select(r => DateTime.TryParse(r.Cells["colDate"].Value?.ToString(), out var d) ? d.Date : (DateTime?)null)
+                .Select(r => (Fmt.TryParseDate(r.Cells["colDate"].Value?.ToString(), out var d) || DateTime.TryParse(r.Cells["colDate"].Value?.ToString(), out d)) ? d.Date : (DateTime?)null)
                 .Where(d => d.HasValue).Select(d => d!.Value).ToList();
             if (dates.Count > 0)
             {
@@ -482,7 +482,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     string tonnage = trk != null ? MJdatabase.TonnageLabel(trk) : "6T";
                     string driverHelper = $"{del.DriverName} / {del.AideDisplay}".Trim(' ', '/');
                     var lines = BuildTripLines(del, out int dropCount);
-                    string dateStr = completed.Iso(del.Id, 0, del.DispatchDate.ToString("yyyy-MM-dd")); // date completed (trip report date)
+                    string dateStr = Fmt.DateText(completed.Iso(del.Id, 0, del.DispatchDate.ToString("yyyy-MM-dd"))); // date completed (trip report date)
                     var tripInv = MJdatabase.TripInvoiceFor(invoices, del.Id, 0);
                     if (tripInv != null && MJdatabase.IsPreStatementInvoice(del.Id)) tripInv = null; // an unpaid invoice on no statement: its amounts are typed on the statement line
                     decimal rate = tripInv?.Freight ?? 0m, fuelAmt = tripInv?.Fuel ?? 0m;
@@ -649,7 +649,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     var tripRows = gridItems.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow && RowDeliveryId(r) == id).ToList();
                     for (int k = 0; k < tripRows.Count; k++)
                     {
-                        string wantDate = completedOn.Iso(id, 0, tripRows[k].Cells["colDate"].Value?.ToString());
+                        string wantDate = Fmt.DateText(completedOn.Iso(id, 0, Fmt.StoredDate(tripRows[k].Cells["colDate"].Value?.ToString())));
                         decimal wantAmt = k == 0 ? tripInv?.Freight ?? 0m : 0m, wantFuel = k == 0 ? tripInv?.Fuel ?? 0m : 0m;
                         decimal.TryParse(tripRows[k].Cells["colAmount"].Value?.ToString(), out var haveAmt);
                         decimal.TryParse(tripRows[k].Cells["colFuel"].Value?.ToString(), out var haveFuel);
@@ -792,7 +792,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             AddDeliveriesToStatement(new List<Delivery> { del });
             string trNo = reportsByDel.TryGetValue(del.Id, out var addedReport) ? addedReport.TripReportNumber + " · " : "";
-            lblAddDispatchResult.Text = $"Added {trNo}{del.DispatchNumber} · {del.CleanRouteDisplay} · {del.DispatchDate:MMM d}";
+            lblAddDispatchResult.Text = $"Added {trNo}{del.DispatchNumber} · {del.CleanRouteDisplay} · {Fmt.Short(del.DispatchDate)}";
             lblAddDispatchResult.ForeColor = AppTheme.SuccessText;
             txtAddDispatch.Clear();
             txtAddDispatch.Focus();

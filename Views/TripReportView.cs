@@ -467,7 +467,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string refNum = $"RCS VILLASIS{d.DispatchDate:MMddyy}-{d.Id:D3}";
                 if (lblDispatchInfoBanner != null)
                 {
-                    lblDispatchInfoBanner.Text = $"📄 Ref: {refNum}   ·   🛣️ Route: {routeTitle}   ·   📅 Date: {d.DispatchDate:dd/MM/yyyy} (leaves {d.DepartureTime})" + Environment.NewLine + $"🚚 Truck: {d.TruckInfo}   ·   👤 Driver: {d.DriverName}   ·   🤝 Aides: {d.AideDisplay}";
+                    lblDispatchInfoBanner.Text = $"📄 Ref: {refNum}   ·   🛣️ Route: {routeTitle}   ·   📅 Date: {Fmt.Date(d.DispatchDate)} (leaves {d.DepartureTime})" + Environment.NewLine + $"🚚 Truck: {d.TruckInfo}   ·   👤 Driver: {d.DriverName}   ·   🤝 Aides: {d.AideDisplay}";
                 }
                 var incidents = MJdatabase.GetIncidentReports().FindAll(ir => ir.DeliveryId == d.Id);
                 // An incident note filled in automatically for the previously picked dispatch belongs to that trip only.
@@ -1785,7 +1785,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var parts = new List<string>();
             string client = Cut(d.ClientName, 30);
             if (client.Length > 0) parts.Add(client);
-            parts.Add(d.DispatchDate.ToString("MMM d"));
+            parts.Add(Fmt.Short(d.DispatchDate));
             string route = Cut(d.CleanRouteDisplay, 38);
             parts.Add(d.Id < 0 ? "Special trip" + (route.Length > 0 ? " · " + route : "") : route);
             string driver = Cut(d.DriverName, 24);
@@ -1902,7 +1902,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try { invoice = tr.DeliveryId > 0 ? MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == tr.DeliveryId) : null; } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 bool invoiced = invoice != null;
                 m.Items.AddRange(RowMenu.Header($"📋  Trip report {tr.TripReportNumber}",
-                    $"Dispatch {tr.DispatchNumber} · {tr.ReportDate:MMM d, yyyy} · {tr.DeliveredCrates} delivered, {tr.ReturnedCrates} returned{(shortCrates > 0 ? $" · {shortCrates} unaccounted" : "")}"));
+                    $"Dispatch {tr.DispatchNumber} · {Fmt.Date(tr.ReportDate)} · {tr.DeliveredCrates} delivered, {tr.ReturnedCrates} returned{(shortCrates > 0 ? $" · {shortCrates} unaccounted" : "")}"));
                 m.Items.Add(RowMenu.Item("Edit trip report", () => OpenEditTripReport(tr), "Enter"));
                 m.Items.Add(RowMenu.Item($"Open dispatch {tr.DispatchNumber}", () => RowMenu.OpenDispatch(this, tr.DeliveryId, tr.DispatchNumber)));
                 m.Items.Add(RowMenu.Sep());

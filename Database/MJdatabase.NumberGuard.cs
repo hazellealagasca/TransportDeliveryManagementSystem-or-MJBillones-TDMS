@@ -24,7 +24,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public bool IsBurned => State == "Cancelled" || State == "Voided";
         public string Describe()
         {
-            string when = Date.HasValue ? $", {Date.Value:MMM d, yyyy}" : "";
+            string when = Date.HasValue ? $", {Fmt.Date(Date.Value)}" : "";
             return Kind switch
             {
                 NumberKind.SI => $"the service invoice {Text}{(Client.Length > 0 ? " of " + Client : "")}{when}",
@@ -64,7 +64,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string who = c.Describe();
             return c.State switch
             {
-                "Pending" => $"{NumberKey.Label(Kind)} {Text(c)} is kept for {who}, cancelled as a typing mistake. Only that record can use it again (reinstate it) until {c.ReenterUntil:MMM d, yyyy}.",
+                "Pending" => $"{NumberKey.Label(Kind)} {Text(c)} is kept for {who}, cancelled as a typing mistake. Only that record can use it again (reinstate it) until {Fmt.Date(c.ReenterUntil)}.",
                 "Cancelled" or "Voided" => $"{NumberKey.Label(Kind)} {Text(c)} was used by {who} (cancelled). A number can be used only once, even after the document is cancelled.",
                 _ => $"{NumberKey.Label(Kind)} {Text(c)} is already used by {who}. A number can be used only once."
             };

@@ -143,7 +143,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AddCol("Trip report / SI", 12); AddCol("Dispatch", 12); AddCol("Client", 24); AddCol("Completed", 10); AddCol("Invoiced", 10); AddCol("Amount", 12); AddCol("Waiting", 9);
                 foreach (var r in rows)
                 {
-                    int i = grid.Rows.Add(picked.Contains(r.InvoiceId), r.InvoiceNumber, r.TripNumber + (r.Kind == "Special" ? " (special)" : ""), r.ClientName, r.TripDate.ToString("MMM d"), r.Kind == "Special" ? r.IssueDate.ToString("MMM d") : "no invoice yet", r.Net > 0 ? $"₱{r.Net:N2}" : "typed on the statement", r.DaysWaiting == 0 ? "today" : $"{r.DaysWaiting} d");
+                    int i = grid.Rows.Add(picked.Contains(r.InvoiceId), r.InvoiceNumber, r.TripNumber + (r.Kind == "Special" ? " (special)" : ""), r.ClientName, Fmt.Short(r.TripDate), r.Kind == "Special" ? Fmt.Short(r.IssueDate) : "no invoice yet", r.Net > 0 ? $"₱{r.Net:N2}" : "typed on the statement", r.DaysWaiting == 0 ? "today" : $"{r.DaysWaiting} d");
                     grid.Rows[i].Tag = r;
                 }
                 grid.ResumeLayout();

@@ -47,14 +47,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     new("Check", AllInOneSummaryBar.Money(check), SummaryTone.Purple, "paid by check"),
                     new("Bank / online", AllInOneSummaryBar.Money(bank), SummaryTone.Amber, "transfer, deposit, e-wallet"),
                     new("Invoices paid", invoices.ToString("N0"), SummaryTone.Green, "different invoices"),
-                    new("Last payment", last == null ? "—" : last.PaymentDate.ToString("MMM d"), SummaryTone.Neutral, last == null ? "no receipts" : $"{last.ReceiptNumber} · {AllInOneSummaryBar.Money(last.AmountPaid)}"),
+                    new("Last payment", last == null ? "—" : Fmt.Short(last.PaymentDate), SummaryTone.Neutral, last == null ? "no receipts" : $"{last.ReceiptNumber} · {AllInOneSummaryBar.Money(last.AmountPaid)}"),
                 };
                 string context = $"Receipts shown: {list.Count:N0} (follows your search and filters)";
                 string preview = $"{AllInOneSummaryBar.Count(list.Count, "receipt", "receipts")}  ·  {AllInOneSummaryBar.Money(total)} collected";
                 var sel = gridCollections.SelectedRows.Count == 1 ? gridCollections.SelectedRows[0].DataBoundItem as CollectionReceipt : null;
                 if (sel != null)
                 {
-                    m.Add(new SummaryMetric("Selected receipt", sel.ReceiptNumber, SummaryTone.Purple, $"{sel.PaymentDate:MMM d, yyyy} · {sel.PaymentMethod}", Strong: true));
+                    m.Add(new SummaryMetric("Selected receipt", sel.ReceiptNumber, SummaryTone.Purple, $"{Fmt.Date(sel.PaymentDate)} · {sel.PaymentMethod}", Strong: true));
                     m.Add(new SummaryMetric("Its amount", AllInOneSummaryBar.Money(sel.AmountPaid), SummaryTone.Green, $"for invoice {sel.InvoiceNumber}"));
                     context = $"Selected receipt {sel.ReceiptNumber} — invoice {sel.InvoiceNumber}   ·   Receipts shown: {list.Count:N0}";
                 }

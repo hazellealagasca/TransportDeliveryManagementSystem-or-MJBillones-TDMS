@@ -169,7 +169,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var t = s.Totals;
             var rows = new List<(string, string)> { ("Total Sales + Fuel surcharge (VAT Inclusive)", "₱" + t.TotalSales.ToString("N2")), ("Less: VAT (12%)", "₱" + t.Vat.ToString("N2")), ("Amount: Net of VAT", "₱" + t.NetOfVat.ToString("N2")),
                 ("Less: Withholding Tax (2%)", "₱" + t.Withholding.ToString("N2")) };
-            rows.Add(("Payment due", $"{DateTime.Today.AddDays(15):MMM d, yyyy} · 15 days"));
+            rows.Add(("Payment due", $"{Fmt.Date(DateTime.Today.AddDays(15))} · 15 days"));
             billNetTape.Set("What this invoice bills", rows, "Total amount due", "₱" + t.Due.ToString("N2"), "");
         }
 

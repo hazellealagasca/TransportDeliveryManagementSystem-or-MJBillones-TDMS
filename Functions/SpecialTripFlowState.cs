@@ -59,9 +59,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bool hasReport = f.Links.HasReport;
             bool reportOk = !withReport || hasReport;
 
-            f.Steps.Add(new StFlowStep { Key = "trip", Title = "Scheduled", Status = trip.DispatchDate.ToString("MMM d"), Done = true });
+            f.Steps.Add(new StFlowStep { Key = "trip", Title = "Scheduled", Status = Fmt.Short(trip.DispatchDate), Done = true });
             f.Steps.Add(new StFlowStep { Key = "transit", Title = "In transit", Status = inTransit ? "On the road" : completed ? "Done" : "", Done = inTransit || completed });
-            f.Steps.Add(new StFlowStep { Key = "complete", Title = "Completed", Status = completed ? (trip.CompletedAt?.ToString("MMM d") ?? "Done") : cancelled ? "Cancelled" : "When the truck is back", Done = completed,
+            f.Steps.Add(new StFlowStep { Key = "complete", Title = "Completed", Status = completed ? (trip.CompletedAt.HasValue ? Fmt.Short(trip.CompletedAt.Value) : "Done") : cancelled ? "Cancelled" : "When the truck is back", Done = completed,
                 ActionKey = !completed && !cancelled ? "complete" : null, ActionText = !completed && !cancelled ? "Mark trip completed" : null });
             if (withReport)
                 f.Steps.Add(new StFlowStep { Key = "report", Title = "Trip report", Done = hasReport,
@@ -113,16 +113,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 case "transit":
                 case "complete":
                     f.Tone = days > 0 ? "warn" : "info";
-                    f.NextText = days < 0 ? $"Leaves on {trip.DispatchDate:ddd, MMM d} at {trip.DepartureTime}. Mark it completed once the truck is back."
+                    f.NextText = days < 0 ? $"Leaves on {Fmt.DayShort(trip.DispatchDate)} at {trip.DepartureTime}. Mark it completed once the truck is back."
                         : days == 0 ? $"Leaves today at {trip.DepartureTime}. Mark it completed once the truck is back."
-                        : $"Dated {trip.DispatchDate:MMM d} ({days} day{(days == 1 ? "" : "s")} ago). Mark it completed once the truck is back.";
+                        : $"Dated {Fmt.Short(trip.DispatchDate)} ({days} day{(days == 1 ? "" : "s")} ago). Mark it completed once the truck is back.";
                     f.NextActionKey = "complete"; f.NextActionText = "Mark trip completed";
                     break;
                 case "report": f.NextText = "Completed. File the trip report (stops, sign-offs, crew pay)."; break;
                 case "invoice": f.NextText = $"Ready to bill: make its service invoice in Billing and type the SI No. (trip charge PHP {trip.TripCharge:N2})."; break;
                 case "soa": f.NextText = $"SI {ti?.Number} is issued. Add it to {trip.Company}'s statement of account."; break;
                 case "receipt": f.Tone = ti != null && ti.DueDate.Date < DateTime.Today ? "warn" : "info";
-                    f.NextText = ti != null && ti.SoaId > 0 ? $"Collect {ti.SoaNumber} with one receipt for the full amount." : $"Collect SI {ti?.Number}: PHP {ti?.Net:N2}" + (ti != null && ti.DueDate.Date < DateTime.Today ? $", was due {ti.DueDate:MMM d}." : ".");
+                    f.NextText = ti != null && ti.SoaId > 0 ? $"Collect {ti.SoaNumber} with one receipt for the full amount." : $"Collect SI {ti?.Number}: PHP {ti?.Net:N2}" + (ti != null && ti.DueDate.Date < DateTime.Today ? $", was due {Fmt.Short(ti.DueDate)}." : ".");
                     break;
                 default: f.NextText = next.Status; break;
             }

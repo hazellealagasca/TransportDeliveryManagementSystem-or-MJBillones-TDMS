@@ -131,7 +131,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AddCol("Statement of Account", 15); AddCol("Service invoices", 20); AddCol("Client", 22); AddCol("Invoiced", 9); AddCol("Due date", 10, false); AddCol("Amount due", 12, true); AddCol("Status", 12);
                 foreach (var t in rows)
                 {
-                    int i = grid.Rows.Add(t.IsSoa ? t.SoaNumber : "(no statement)", string.Join(", ", t.Invoices.Select(x => x.Number)), t.Client, t.IssueDate.ToString("MMM d"), t.DueDate.ToString("MMM d, yyyy"), $"₱{t.Net:N2}", Due(t.DueDate));
+                    int i = grid.Rows.Add(t.IsSoa ? t.SoaNumber : "(no statement)", string.Join(", ", t.Invoices.Select(x => x.Number)), t.Client, Fmt.Short(t.IssueDate), Fmt.Date(t.DueDate), $"₱{t.Net:N2}", Due(t.DueDate));
                     grid.Rows[i].Tag = t;
                 }
                 grid.ResumeLayout();

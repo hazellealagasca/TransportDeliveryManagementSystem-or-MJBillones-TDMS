@@ -138,7 +138,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var rows = InvoiceTotal.Lines(amount, fuel);
             decimal? due2 = BillStatementTotalDue(SelectedBillDelivery());
             if (due2.HasValue) rows.Add(InvoiceTotal.StatementLine(due2.Value));
-            rows.Add(("Payment due", $"{due:MMM d, yyyy} · 15 days"));
+            rows.Add(("Payment due", $"{Fmt.Date(due)} · 15 days"));
             billNetTape.Set("What this invoice adds up to", rows, "", "", "");
         }
         /// <summary>The saved total due of the statement this invoice bills (a saved invoice on a statement, or a picked trip that is on one); null when it bills none.</summary>
@@ -162,12 +162,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var rows = new List<(string, string)>
             {
                 (d.Id < 0 ? "Special trip" : "Dispatch", d.DispatchNumber ?? ""), ("Client", d.ClientName ?? ""), ("Route", d.CleanRouteDisplay ?? ""),
-                ("Date", d.DispatchDate.ToString("MMM d, yyyy")), ("Crates", d.TotalCrates.ToString("N0")), ("Truck", d.TruckInfo ?? "")
+                ("Date", Fmt.Date(d.DispatchDate)), ("Crates", d.TotalCrates.ToString("N0")), ("Truck", d.TruckInfo ?? "")
             };
             if (tr != null && !string.IsNullOrWhiteSpace(tr.TripReportNumber))
             {
                 rows.Add(("Trip report", tr.TripReportNumber));
-                rows.Add(("Date completed", tr.ReportDate.ToString("dd-MMM-yyyy")));
+                rows.Add(("Date completed", Fmt.Date(tr.ReportDate)));
                 rows.Add(("Delivered / returned", $"{tr.DeliveredCrates:N0} / {tr.ReturnedCrates:N0} crates"));
                 if (!string.IsNullOrWhiteSpace(tr.StoreManagerName)) rows.Add(("Received by", tr.StoreManagerName.Trim()));
             }
@@ -251,7 +251,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (var inv in allInvoices.Where(i => (i.InvoiceNumber ?? "").Contains(q, StringComparison.OrdinalIgnoreCase)))
             {
                 var kind = RowMenu.Is(inv.Status, "Paid") ? BadgeKind.Good : RowMenu.Is(inv.Status, "Draft") ? BadgeKind.Warn : inv.DueDate.Date < DateTime.Today ? BadgeKind.Bad : BadgeKind.Info;
-                yield return new LookupItem(inv.InvoiceNumber, $"Existing · {inv.ClientName} · ₱{inv.NetAmount:N2} · {inv.IssueDate:MMM d, yyyy}{(inv.SoaId > 0 ? " · from a statement" : "")}", inv.Status, kind);
+                yield return new LookupItem(inv.InvoiceNumber, $"Existing · {inv.ClientName} · ₱{inv.NetAmount:N2} · {Fmt.Date(inv.IssueDate)}{(inv.SoaId > 0 ? " · from a statement" : "")}", inv.Status, kind);
                 if (++n >= 20) yield break;
             }
         }

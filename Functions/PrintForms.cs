@@ -18,7 +18,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static PrintOptions NewOptions(string key, string title, string subtitle = "")
             => new PrintOptions { FormKey = key, Title = title, Subtitle = subtitle, Header = DefaultHeader(), Sections = new List<PrintChoice>() };
         private static void AddCommon(PrintOptions o) => o.Sections.AddRange(CommonSections());
-        private static string D(DateTime d) => d.ToString("MMMM d, yyyy");
+        private static string D(DateTime d) => Fmt.Date(d);
         private static string Crew(Delivery d)
         {
             string aides = !string.IsNullOrWhiteSpace(d.AideNames) ? d.AideNames : d.AideName;
@@ -404,7 +404,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var completedOn = opt.On("invoices") && opt.Col("completed") ? MJdatabase.GetTripCompletedDates() : null;
                 if (opt.On("invoices"))
                     sb.Append(Table(opt, new[] { ("no", "No.", "center"), ("inv", "Invoice #", ""), ("trip_report", "Trip report #", ""), ("dispatch", "Dispatch #", ""), ("completed", "Date completed", ""), ("issued", "Issued", ""), ("due", "Due", ""), ("amount", "Amount", "num"), ("fuel", "Fuel surcharge", "num"), ("wht", "Less: withholding tax", "num"), ("net", "Total due", "num"), ("status", "Status", "") },
-                        invoices.Select(i => Row(("no", ++n), ("inv", $"<b>{Esc(i.InvoiceNumber)}</b>"), ("trip_report", Esc(i.TripReportNumber)), ("dispatch", i.DispatchNumber), ("completed", Esc(completedOn?.Text(i.DeliveryId, 0, "") ?? "")), ("issued", i.IssueDate.ToString("MM/dd/yyyy")), ("due", i.DueDate.ToString("MM/dd/yyyy")),
+                        invoices.Select(i => Row(("no", ++n), ("inv", $"<b>{Esc(i.InvoiceNumber)}</b>"), ("trip_report", Esc(i.TripReportNumber)), ("dispatch", i.DispatchNumber), ("completed", Esc(completedOn?.Text(i.DeliveryId, 0, "") ?? "")), ("issued", Fmt.Date(i.IssueDate)), ("due", Fmt.Date(i.DueDate)),
                             ("amount", i.Freight.ToString("N2")), ("fuel", i.FuelSurcharge > 0 ? i.FuelSurcharge.ToString("N2") : "-"), ("wht", i.Deductions > 0 ? "- " + i.Deductions.ToString("N2") : "-"), ("net", $"<b>{i.NetAmount:N2}</b>"), ("status", i.Status)))));
                 if (opt.On("totals"))
                     sb.Append(Summary(new[] { ("Total amount", invoices.Sum(i => i.Freight).ToString("N2")), ("Total fuel surcharge", invoices.Sum(i => i.FuelSurcharge).ToString("N2")), ("Less: withholding tax", "- " + invoices.Sum(i => i.Deductions).ToString("N2")), ("Total payable", "₱" + invoices.Sum(i => i.NetAmount).ToString("N2")) }));
@@ -423,11 +423,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var pay = trips.OrderBy(t => t.DispatchDate).Select(t => (Trip: t, Pay: MJdatabase.ResolveTripPay(crew, t, recorded))).ToList();
             decimal basePay = pay.Sum(p => p.Pay.BasePay), allow = pay.Sum(p => p.Pay.Allowance);
             decimal net = basePay + allow;
-            var o = NewOptions("PaySlip", "Crew Trip Pay Record", $"{from:MMM d} – {to:MMM d, yyyy}");
+            var o = NewOptions("PaySlip", "Crew Trip Pay Record", $"{Fmt.Short(from)} – {Fmt.Date(to)}");
             o.Fields = new List<PrintField>
             {
                 new PrintField("name", "Employee", crew.FullName), new PrintField("code", "Crew ID", crew.CrewCode),
-                new PrintField("role", "Position", crew.Role), new PrintField("period", "Pay period", $"{from:MMMM d} – {to:MMMM d, yyyy}"),
+                new PrintField("role", "Position", crew.Role), new PrintField("period", "Pay period", $"{Fmt.Short(from)} – {Fmt.Date(to)}"),
                 new PrintField("contact", "Contact no.", crew.ContactNumber, true, false), new PrintField("license", "Driver's license", crew.LicenseDisplay, true, false),
                 new PrintField("rate", "Pay per trip", Money(crew.DailyWage)), new PrintField("meal", "Meal allowance per trip", Money(crew.FoodAllowance)),
                 new PrintField("issued", "Date issued", D(DateTime.Today)), new PrintField("pay_method", "Paid via", "Cash", false, false)
@@ -446,7 +446,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     sb.Append(SectionTitle($"Trips ({pay.Count})"));
                     sb.Append(Table(opt, new[] { ("no", "No.", "center"), ("dispatch", "Dispatch #", ""), ("date", "Date", ""), ("client", "Client", ""), ("route", "Route", ""), ("crates", "Crates", "num"), ("base", "Daily wage", "num"), ("allow", "Meal allowance", "num"), ("net", "Total", "num") },
-                        pay.Select(p => Row(("no", ++n), ("dispatch", p.Trip.DispatchNumber), ("date", p.Trip.DispatchDate.ToString("MM/dd/yyyy")), ("client", p.Trip.ClientName), ("route", p.Trip.CleanRouteDisplay), ("crates", p.Trip.TotalCrates.ToString("N0")),
+                        pay.Select(p => Row(("no", ++n), ("dispatch", p.Trip.DispatchNumber), ("date", Fmt.Date(p.Trip.DispatchDate)), ("client", p.Trip.ClientName), ("route", p.Trip.CleanRouteDisplay), ("crates", p.Trip.TotalCrates.ToString("N0")),
                             ("base", p.Pay.BasePay.ToString("N2")), ("allow", p.Pay.Allowance.ToString("N2")), ("net", $"<b>{p.Pay.NetPay:N2}</b>"))),
                         new Dictionary<string, string> { ["dispatch"] = "Totals", ["crates"] = pay.Sum(p => p.Trip.TotalCrates).ToString("N0"), ["base"] = basePay.ToString("N2"), ["allow"] = allow.ToString("N2"), ["net"] = net.ToString("N2") }));
                 }
@@ -488,13 +488,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (opt.On("stats"))
                 {
                     var done = list.Where(h => DispatchGate.IsCompleted(h.Status)).ToList();
-                    sb.Append(Stats(new[] { ("Trips assigned", list.Count.ToString("N0")), ("Completed", done.Count.ToString("N0")), ("Last trip", list.Count > 0 ? list[0].DispatchDate.ToString("MMM d, yyyy") : "—") }));
+                    sb.Append(Stats(new[] { ("Trips assigned", list.Count.ToString("N0")), ("Completed", done.Count.ToString("N0")), ("Last trip", list.Count > 0 ? Fmt.Date(list[0].DispatchDate) : "—") }));
                 }
                 if (opt.On("history"))
                 {
                     sb.Append(SectionTitle("Trip history"));
                     sb.Append(Table(opt, new[] { ("dispatch", "Dispatch #", ""), ("date", "Date", ""), ("time", "Time", ""), ("client", "Client", ""), ("route", "Route", ""), ("truck", "Truck", ""), ("crates", "Crates", "num"), ("status", "Status", "") },
-                        list.Select(h => Row(("dispatch", h.DispatchNumber), ("date", h.DispatchDate.ToString("MM/dd/yyyy")), ("time", h.DepartureTime), ("client", h.ClientName), ("route", h.CleanRouteDisplay), ("truck", h.TruckInfo), ("crates", h.TotalCrates.ToString("N0")), ("status", h.Status)))));
+                        list.Select(h => Row(("dispatch", h.DispatchNumber), ("date", Fmt.Date(h.DispatchDate)), ("time", h.DepartureTime), ("client", h.ClientName), ("route", h.CleanRouteDisplay), ("truck", h.TruckInfo), ("crates", h.TotalCrates.ToString("N0")), ("status", h.Status)))));
                 }
                 return sb.ToString();
             };
@@ -645,7 +645,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             o.Orientation = "Landscape";
             o.Fields = new List<PrintField>
             {
-                new PrintField("date", "Loading date", date.ToString("dddd, MMMM d, yyyy")),
+                new PrintField("date", "Loading date", Fmt.DayDate(date)),
                 new PrintField("routes", "Routes", groups.Count.ToString()),
                 new PrintField("crates", "Total crates", $"{gE + gG:N0} (E {gE:N0} · G {gG:N0})"),
                 new PrintField("warehouse", "Warehouse / plant", "", false, false)
@@ -718,7 +718,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             o.BlankRows = 8;
             o.Fields = new List<PrintField>
             {
-                new PrintField("ref", "Ref.", trip?.TripReportNumber ?? $"{d.DispatchNumber}"), new PrintField("date", "Delivery date", d.DispatchDate.ToString("MM/dd/yyyy")),
+                new PrintField("ref", "Ref.", trip?.TripReportNumber ?? $"{d.DispatchNumber}"), new PrintField("date", "Delivery date", Fmt.Date(d.DispatchDate)),
                 new PrintField("client", "Client", d.ClientName), new PrintField("route", "Route", routeTxt),
                 new PrintField("driver", "Driver's name", d.DriverName), new PrintField("helper", "Helper's name", aides),
                 new PrintField("hauler", "Hauler", $"MJB ({plate})"), new PrintField("plate", "Plate no.", plate),

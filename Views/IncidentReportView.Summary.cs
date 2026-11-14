@@ -49,7 +49,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var sel = gridIncidents.SelectedRows.Count == 1 ? gridIncidents.SelectedRows[0].DataBoundItem as IncidentReport : null;
                 if (sel != null)
                 {
-                    m.Add(new SummaryMetric("Selected report", string.IsNullOrWhiteSpace(sel.DispatchNumber) ? $"#{sel.Id}" : sel.DispatchNumber, SummaryTone.Purple, $"{sel.Status} · {sel.IncidentDate:MMM d, yyyy}", Strong: true));
+                    m.Add(new SummaryMetric("Selected report", string.IsNullOrWhiteSpace(sel.DispatchNumber) ? $"#{sel.Id}" : sel.DispatchNumber, SummaryTone.Purple, $"{sel.Status} · {Fmt.Date(sel.IncidentDate)}", Strong: true));
                     m.Add(new SummaryMetric("Its damaged crates", sel.DamagedQuantity.ToString("N0"), SummaryTone.Red, sel.Cause));
                     m.Add(new SummaryMetric("Its cost", AllInOneSummaryBar.Money(sel.EstimatedCost), SummaryTone.Amber, sel.ChargeableToCrew ? "chargeable to crew" : "not charged to crew"));
                     context = $"Selected report for {sel.DispatchNumber} — {sel.Cause} · {sel.Status}   ·   Reports shown: {list.Count:N0}";

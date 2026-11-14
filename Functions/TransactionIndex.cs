@@ -57,7 +57,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Crates > 0 ? Crates + " crates" : "",
             Amount.HasValue ? Amount.Value.ToString("0.##", CultureInfo.InvariantCulture) + " " + Amount.Value.ToString("N2", CultureInfo.InvariantCulture) : "",
             Date.ToString("MMM d yyyy", CultureInfo.InvariantCulture), Date.ToString("MMMM d yyyy", CultureInfo.InvariantCulture),
-            Date.ToString("yyyy-MM-dd"), Date.ToString("MM/dd/yyyy"), Date.ToString("dd/MM/yyyy"), Date.ToString("dddd", CultureInfo.InvariantCulture), Time
+            Date.ToString("yyyy-MM-dd"), Fmt.Date(Date), Date.ToString("dddd", CultureInfo.InvariantCulture), Time
         }).ToLowerInvariant();
     }
     public static class TransactionIndex
@@ -115,11 +115,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             return list;
         }
-        private static readonly string[] DateFormats = { "MMM d", "MMMM d", "MMM d yyyy", "MMMM d yyyy", "MMM d, yyyy", "MMMM d, yyyy", "M/d", "M/d/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "d MMM", "d MMMM", "d MMM yyyy" };
+        private static readonly string[] DateFormats = { "MMM d", "MMMM d", "MMM d yyyy", "MMMM d yyyy", "M/d", "M/d/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "d MMM", "d MMMM", "d MMM yyyy" };
         /// <summary>"oct 5", "October 5 2026", "10/05/2026" or "2026-10-05" → that date (this year if no year is typed).</summary>
         public static DateTime? ParseDate(string text)
         {
             string t = (text ?? "").Trim();
+            t = t.Replace(",", "");
             if (t.Length < 3 || !t.Any(char.IsDigit) || t.Count(char.IsLetter) > 9) return null;
             if (DateTime.TryParseExact(t, DateFormats, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out var d)) return d.Date;
             return null;

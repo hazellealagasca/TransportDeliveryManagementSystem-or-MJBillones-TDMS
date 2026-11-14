@@ -296,7 +296,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Panel pnlDate = new Panel { Dock = DockStyle.Fill, Margin = new Padding(8, 0, 0, 10) };
             Label lblDate = new Label { Text = "Dispatch Date", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Dock = DockStyle.Top, Height = 20 };
-            dtpDispatchDate = new DateTimePicker { Dock = DockStyle.Top, Format = DateTimePickerFormat.Short, Font = new Font("Segoe UI", 9.5F), Height = 30 };
+            dtpDispatchDate = new DateTimePicker { Dock = DockStyle.Top, Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Font = new Font("Segoe UI", 9.5F), Height = 30 };
             pnlDate.Controls.Add(dtpDispatchDate);
             pnlDate.Controls.Add(lblDate);
             tblHeaderFields.Controls.Add(pnlDate, 1, 0);
@@ -1221,7 +1221,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (statusText.Equals("Completed", StringComparison.OrdinalIgnoreCase) && dtpDispatchDate.Value.Date > DateTime.Today)
             {
-                var early = MessageBox.Show($"This trip is dated {dtpDispatchDate.Value:MMMM d, yyyy}, which is still ahead. Save it as Completed anyway?", "Trip is in the future", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+                var early = MessageBox.Show($"This trip is dated {Fmt.Date(dtpDispatchDate.Value)}, which is still ahead. Save it as Completed anyway?", "Trip is in the future", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
                 if (early != DialogResult.Yes) return;
             }
             bool cancelling = statusText.Equals("Cancelled", StringComparison.OrdinalIgnoreCase);

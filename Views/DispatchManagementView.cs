@@ -3954,7 +3954,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                lblRec.Text += $" | 📅 {dtpDispatchDate.Value:MMM dd}: showing trucks & crew free that day ({bookedTrucks.Count} truck(s), {bookedCrew.Count} crew already booked).";
+                lblRec.Text += $" | 📅 {Fmt.Short(dtpDispatchDate.Value)}: showing trucks & crew free that day ({bookedTrucks.Count} truck(s), {bookedCrew.Count} crew already booked).";
 
             }
 
@@ -4723,7 +4723,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var leaves = MJdatabase.DepartureDateTime(d);
 
-            if (MessageBox.Show($"Start dispatch {d.DispatchNumber} now?\n\nIt is set to leave at {leaves:MMM d, h:mm tt}. Use this when the truck left early — the order goes In Transit and can be completed when it arrives.",
+            if (MessageBox.Show($"Start dispatch {d.DispatchNumber} now?\n\nIt is set to leave at {Fmt.ShortDateTime(leaves)}. Use this when the truck left early — the order goes In Transit and can be completed when it arrives.",
 
                     "Start trip now", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
 
@@ -4847,7 +4847,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     QuietBox.Show($"Dispatch #{d.DispatchNumber} is already {d.Status.ToLowerInvariant()}.", "Complete Order", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                else if (MessageBox.Show($"Dispatch #{d.DispatchNumber} hasn't left yet — it goes in transit automatically at {MJdatabase.DepartureDateTime(d):MMM d, h:mm tt}.\n\nDid the truck already leave? Click Yes to start the trip now.", "Not on the road yet", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                else if (MessageBox.Show($"Dispatch #{d.DispatchNumber} hasn't left yet — it goes in transit automatically at {Fmt.ShortDateTime(MJdatabase.DepartureDateTime(d))}.\n\nDid the truck already leave? Click Yes to start the trip now.", "Not on the road yet", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
 
                     StartTripNow(d);
 
@@ -4873,7 +4873,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 $"Driver:  {d.DriverName}\n" +
 
-                $"Dispatched:  {d.DispatchDate:MMM dd, yyyy} ({age})" +
+                $"Dispatched:  {Fmt.Date(d.DispatchDate)} ({age})" +
 
                 notStarted +
 
@@ -5441,7 +5441,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    var pastConfirm = MessageBox.Show($"PAST DATE NOTICE:\nThe scheduled dispatch date/time ({schedDeparture:yyyy-MM-dd hh:mm tt}) is in the past.\n\nAre you sure you want to proceed with recording this past dispatch?", "Past Schedule Notice", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    var pastConfirm = MessageBox.Show($"PAST DATE NOTICE:\nThe scheduled dispatch date/time ({Fmt.DateTimeText(schedDeparture)}) is in the past.\n\nAre you sure you want to proceed with recording this past dispatch?", "Past Schedule Notice", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
                     if (pastConfirm != DialogResult.Yes) return;
 

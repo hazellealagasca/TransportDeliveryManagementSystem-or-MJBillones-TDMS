@@ -36,7 +36,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static List<string> DifferencesBetween(Delivery main, Delivery other)
         {
             var list = new List<string>();
-            if (main.DispatchDate.Date != other.DispatchDate.Date) list.Add($"a different date ({other.DispatchDate:MMM d}, not {main.DispatchDate:MMM d})");
+            if (main.DispatchDate.Date != other.DispatchDate.Date) list.Add($"a different date ({Fmt.Short(other.DispatchDate)}, not {Fmt.Short(main.DispatchDate)})");
             bool truck = main.TruckId > 0 && other.TruckId > 0 ? main.TruckId != other.TruckId
                 : !string.Equals(TruckLabelOf(main.TruckInfo), TruckLabelOf(other.TruckInfo), StringComparison.OrdinalIgnoreCase);
             if (truck) list.Add($"a different truck ({TruckLabelOf(other.TruckInfo)}, not {TruckLabelOf(main.TruckInfo)})");
@@ -89,7 +89,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int at = 1;
             foreach (var d in extraDispatches.ToList())
             {
-                var chip = new Button { Name = "chipDispatch", Text = $"{d.DispatchNumber} · {d.DispatchDate:MMM d}  ✕", AutoSize = true, MinimumSize = new Size(0, Dpi(30)), Cursor = Cursors.Hand, Margin = new Padding(0, 0, Dpi(6), Dpi(4)), UseMnemonic = false };
+                var chip = new Button { Name = "chipDispatch", Text = $"{d.DispatchNumber} · {Fmt.Short(d.DispatchDate)}  ✕", AutoSize = true, MinimumSize = new Size(0, Dpi(30)), Cursor = Cursors.Hand, Margin = new Padding(0, 0, Dpi(6), Dpi(4)), UseMnemonic = false };
                 UIThemeHelper.SetButtonRole(chip, "secondary");
                 var captured = d;
                 chip.Click += (s, e) => RemoveExtra(captured);

@@ -46,7 +46,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Control[] BuildPaymentDateField()
         {
             lblPaymentDate = new Label { Text = "Payment date (day the money was received) *", AutoSize = true, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextSecondary, Margin = new Padding(0, 0, 0, 2) };
-            dtpPaymentDate = new DateTimePicker { Dock = DockStyle.Top, Font = new Font("Segoe UI", 10.5F), Format = DateTimePickerFormat.Long };
+            dtpPaymentDate = new DateTimePicker { Dock = DockStyle.Top, Font = new Font("Segoe UI", 10.5F), Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat };
             dtpPaymentDate.CapAtToday();
             dtpPaymentDate.SetSafe(DateTime.Today);
             dtpPaymentDate.ValueChanged += (s, e) => ScheduleCollGuide();
@@ -227,7 +227,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string self = editing ? (selectedCollection?.ReceiptNumber ?? "").Trim() : "\u0000";
                 var dup = MJdatabase.GetCollectionReceipts().FirstOrDefault(r => !string.Equals((r.ReceiptNumber ?? "").Trim(), self, StringComparison.OrdinalIgnoreCase)
                     && string.Equals(r.ReferenceNumber?.Trim(), refNum, StringComparison.OrdinalIgnoreCase));
-                if (dup != null) { valErrors.Add($"Payment reference '{refNum}' is already on receipt #{dup.ReceiptNumber} ({dup.PaymentDate:MM/dd/yyyy}). The same payment can't be recorded twice."); firstInvalid ??= txtRefNo; }
+                if (dup != null) { valErrors.Add($"Payment reference '{refNum}' is already on receipt #{dup.ReceiptNumber} ({Fmt.Date(dup.PaymentDate)}). The same payment can't be recorded twice."); firstInvalid ??= txtRefNo; }
             }
             return ValidationHelper.ShowValidationSummaryIfAny(this, valErrors, firstInvalid);
         }

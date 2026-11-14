@@ -83,8 +83,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
             var filters = new FlowLayoutPanel { Dock = DockStyle.Top, Height = D(46), Padding = new Padding(D(12), D(8), D(12), 0), BackColor = AppTheme.Canvas, WrapContents = false };
             Label L(string t) => new Label { Text = t, AutoSize = true, Margin = new Padding(0, D(6), D(6), 0), ForeColor = AppTheme.TextSecondary };
-            dtFrom = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = D(120), Value = DateTime.Today.AddMonths(-3), Margin = new Padding(0, 0, D(12), 0) };
-            dtTo = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = D(120), Value = DateTime.Today, Margin = new Padding(0, 0, D(12), 0) };
+            dtFrom = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Width = D(120), Value = DateTime.Today.AddMonths(-3), Margin = new Padding(0, 0, D(12), 0) };
+            dtTo = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Width = D(120), Value = DateTime.Today, Margin = new Padding(0, 0, D(12), 0) };
             txtSearch = new TextBox { Width = D(300), PlaceholderText = "Search client, dispatch, trip report, SOA, SI or receipt no.", Margin = new Padding(0, D(2), 0, 0) };
             filters.Controls.Add(L("Paid from")); filters.Controls.Add(dtFrom); filters.Controls.Add(L("to")); filters.Controls.Add(dtTo); filters.Controls.Add(txtSearch);
             dtFrom.ValueChanged += (s, e) => RefreshData();
@@ -179,12 +179,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string trips = string.Join("; ", tripList.Select(t => t.TripReportNo.Length > 0 ? $"{t.Number} · {t.TripReportNo}" : t.Number));
                 if (q.Length > 0 && !(Match(client) || Match(soaNo) || Match(sis) || Match(r.ReceiptNo) || Match(trips))) continue;
                 decimal amount = r.Invoices.Sum(x => x.Net);
-                int row = grid.Rows.Add(r.PaidOn.ToString("MMM d, yyyy"), r.ReceiptNo, client, soaNo, TypeOf(r), sis, trips, amount);
+                int row = grid.Rows.Add(Fmt.Date(r.PaidOn), r.ReceiptNo, client, soaNo, TypeOf(r), sis, trips, amount);
                 grid.Rows[row].Tag = i;
                 total += amount; shown++;
             }
             string twiceNote = billedTwice.Count == 0 ? "" : $"   ·   ⚠ {billedTwice.Count} trip{(billedTwice.Count == 1 ? " is" : "s are")} billed more than once: {string.Join("; ", billedTwice.Take(3).Select(d => $"{d.TripLabel} ({string.Join(" + ", d.Invoices)})"))}{(billedTwice.Count > 3 ? "…" : "")}";
-            lblSummary.Text = (shown == 0 ? $"Nothing was fully paid between {dtFrom.Value:MMM d, yyyy} and {dtTo.Value:MMM d, yyyy}." : $"{shown:N0} settled record{(shown == 1 ? "" : "s")} · PHP {total:N2} collected") + twiceNote;
+            lblSummary.Text = (shown == 0 ? $"Nothing was fully paid between {Fmt.Date(dtFrom.Value)} and {Fmt.Date(dtTo.Value)}." : $"{shown:N0} settled record{(shown == 1 ? "" : "s")} · PHP {total:N2} collected") + twiceNote;
             lblSummary.ForeColor = billedTwice.Count > 0 ? AppTheme.DangerText : AppTheme.TextSecondary;
         }
 

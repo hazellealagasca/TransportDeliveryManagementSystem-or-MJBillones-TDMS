@@ -10,7 +10,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     /// </summary>
     public static class InputRules
     {
-        private static readonly Regex EmailRx = new(@"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?)*\.[A-Za-z]{2,}$", RegexOptions.Compiled);
         private static readonly Regex PersonRx = new(@"^[\p{L} .,'\-’]+$", RegexOptions.Compiled);
 
         /// <summary>Trims and turns every run of spaces / line breaks into one space.</summary>
@@ -62,8 +61,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>name@domain.tld: no spaces, one @, a dot-separated domain ending in at least two letters.</summary>
         public static bool IsValidEmail(string? email)
         {
-            string e = (email ?? "").Trim();
-            return e.Length <= 254 && EmailRx.IsMatch(e) && !e.Contains("..");
+            return Fmt.IsValidEmail(email);
         }
 
         /// <summary>A person's name as typed in a contact-person box: letters, spaces, period, comma (for "Last, First"), hyphen and apostrophe only (no digits).</summary>

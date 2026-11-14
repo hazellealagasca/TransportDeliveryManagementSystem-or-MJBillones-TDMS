@@ -135,7 +135,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int completed = trips.Count(t => RowMenu.Is(t.Status, "Completed"));
             var last = trips.FirstOrDefault(t => RowMenu.Is(t.Status, "Completed", "In Transit"));
             stats.Add("Trips completed", completed.ToString("N0"), $"{trips.Count(t => t.DriverId == crew.Id)} as driver · {trips.Count(t => t.DriverId != crew.Id)} as aide", AppTheme.Accent);
-            stats.Add("Last trip", last == null ? "—" : last.DispatchDate.ToString("MMM d, yyyy"), last == null ? "no trips yet" : last.DispatchNumber, AppTheme.Info);
+            stats.Add("Last trip", last == null ? "—" : Fmt.Date(last.DispatchDate), last == null ? "no trips yet" : last.DispatchNumber, AppTheme.Info);
             stats.Add("Incidents", incidents.Count.ToString("N0"), "on their trips", incidents.Count > 0 ? AppTheme.Warning : AppTheme.Success);
             int viol = records.Count(r => r.Kind == "Violation");
             stats.Add("Violations", viol.ToString("N0"), "on record", viol > 0 ? AppTheme.Danger : AppTheme.Success);
@@ -157,8 +157,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Row("License classification", crew.HasLicense ? crew.LicenseClass : (crew.IsDriverRole ? "None — a driver needs a license!" : "None (not required for aides)"), !crew.HasLicense && crew.IsDriverRole ? AppTheme.DangerText : null);
             if (crew.HasLicense)
             {
-                Row("Date issued", crew.LicenseIssued?.ToString("MMMM d, yyyy") ?? "not set");
-                string exp = crew.LicenseExpiry?.ToString("MMMM d, yyyy") ?? "not set — please update";
+                Row("Date issued", crew.LicenseIssued.HasValue ? Fmt.Date(crew.LicenseIssued.Value) : "not set");
+                string exp = crew.LicenseExpiry.HasValue ? Fmt.Date(crew.LicenseExpiry.Value) : "not set — please update";
                 Color? ec = null;
                 if (crew.LicenseExpiry.HasValue)
                 {
@@ -195,7 +195,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     string truck = trucks.TryGetValue(t.TruckId, out var tr) ? tr.PlateNumber : t.TruckInfo;
                     if (q.Length > 0 && !new[] { t.DispatchNumber, t.ClientName, t.CleanRouteDisplay, truck, t.Status, RoleOn(t) }.Any(x => (x ?? "").Contains(q, StringComparison.OrdinalIgnoreCase))) continue;
-                    int r = g.Rows.Add(t.DispatchDate.ToString("yyyy-MM-dd"), t.DispatchNumber, RoleOn(t), t.ClientName, t.CleanRouteDisplay, truck, (t.TotalCrates > 0 ? t.TotalCrates : t.GCrate + t.ECrate).ToString("N0"), t.Status);
+                    int r = g.Rows.Add(Fmt.Date(t.DispatchDate), t.DispatchNumber, RoleOn(t), t.ClientName, t.CleanRouteDisplay, truck, (t.TotalCrates > 0 ? t.TotalCrates : t.GCrate + t.ECrate).ToString("N0"), t.Status);
                     g.Rows[r].Tag = t;
                 }
             }
@@ -241,7 +241,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ProfileKit.Col("Delivered", "Delivered", 55, true), ProfileKit.Col("Returned", "Returned", 55, true), ProfileKit.Col("Pct", "Delivered %", 60, true), ProfileKit.Col("Inc", "Incidents", 55, true), ProfileKit.Col("Rating", "Rating", 75));
             foreach (var r in rows)
             {
-                int i = g.Rows.Add(r.Trip.DispatchDate.ToString("yyyy-MM-dd"), r.Trip.DispatchNumber, RoleOn(r.Trip), r.Planned.ToString("N0"), r.Delivered < 0 ? "—" : r.Delivered.ToString("N0"), r.Delivered < 0 ? "—" : r.Returned.ToString("N0"),
+                int i = g.Rows.Add(Fmt.Date(r.Trip.DispatchDate), r.Trip.DispatchNumber, RoleOn(r.Trip), r.Planned.ToString("N0"), r.Delivered < 0 ? "—" : r.Delivered.ToString("N0"), r.Delivered < 0 ? "—" : r.Returned.ToString("N0"),
                     r.Pct < 0 ? "—" : $"{r.Pct:0.#}%", r.Incidents == 0 ? "0" : $"{r.Incidents} ({r.Damaged} dmg)", r.Rating);
                 g.Rows[i].Tag = r.Trip;
                 g.Rows[i].Cells["Rating"].Style.ForeColor = r.Rating == "Excellent" ? AppTheme.SuccessText : r.Rating == "Good" ? AppTheme.InfoText : r.Rating == "Needs review" ? AppTheme.DangerText : AppTheme.TextMuted;
@@ -273,7 +273,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 trucks.TryGetValue(x.Id, out var tr);
                 int r = g.Rows.Add(tr?.PlateNumber ?? x.Trips[0].TruckInfo, tr?.TruckType ?? "—", x.Trips.Count.ToString("N0"), x.Trips.Count(t => RowMenu.Is(t.Status, "Completed")).ToString("N0"),
-                    x.First.ToString("yyyy-MM-dd"), x.Last.ToString("yyyy-MM-dd"), tr?.Status ?? "—");
+                    Fmt.Date(x.First), Fmt.Date(x.Last), tr?.Status ?? "—");
                 g.Rows[r].Tag = tr;
             }
             g.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && g.Rows[e.RowIndex].Tag is Truck t) TruckProfileDialog.ShowFor(this, t); };
@@ -296,15 +296,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 items.Add((i.IncidentDate, "Incident", i.Cause, i.DispatchNumber, $"₱{i.EstimatedCost:N0}{(i.ChargeableToCrew ? " · chargeable" : "")}", $"{i.DamagedQuantity} damaged · {i.Status} · {i.Description}", i, AppTheme.WarningText));
             foreach (var r in records.Where(r => r.Kind == "Violation"))
                 items.Add((r.RecordDate, "Violation", r.Type, r.DispatchNumber, r.Severity, r.Description, r, r.Severity == "Critical" || r.Severity == "Major" ? AppTheme.DangerText : AppTheme.WarningText));
+            foreach (var r in records.Where(r => r.Kind == CrewRules.StatusChangeKind))
+                items.Add((r.RecordDate, CrewRules.StatusChangeKind, r.Type, "", "", r.Description, r, AppTheme.InfoText));
             foreach (var x in items.OrderByDescending(x => x.When))
             {
-                int row = g.Rows.Add(x.When.ToString("yyyy-MM-dd"), x.Kind, x.Type, string.IsNullOrWhiteSpace(x.Dispatch) ? "—" : x.Dispatch, x.Sev, x.Details);
+                int row = g.Rows.Add(Fmt.Date(x.When), x.Kind, x.Type, string.IsNullOrWhiteSpace(x.Dispatch) ? "—" : x.Dispatch, x.Sev, x.Details);
                 g.Rows[row].Tag = x.Tag;
                 g.Rows[row].Cells["Kind"].Style.ForeColor = x.Color;
             }
             var left = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Canvas, Padding = new Padding(0, 0, D(10), 0) };
             left.Controls.Add(ProfileKit.Card(g, 1));
-            left.Controls.Add(ProfileKit.Section("Incident & violation records", $"{incidents.Count} incident(s) on their trips · {records.Count(r => r.Kind == "Violation")} violation(s) · newest first"));
+            left.Controls.Add(ProfileKit.Section("Incident & violation records", $"{incidents.Count} incident(s) on their trips · {records.Count(r => r.Kind == "Violation")} violation(s) · {records.Count(r => r.Kind == CrewRules.StatusChangeKind)} status change(s) · newest first"));
             var right = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Canvas, Padding = new Padding(D(10), 0, 0, 0) };
             right.Controls.Add(BuildRecordPanel("Violation", "violation"));
             right.Controls.Add(ProfileKit.Section("Record a violation"));
@@ -320,7 +322,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int fw = D(290);
             var f = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, BackColor = AppTheme.Surface, Padding = new Padding(D(4)) };
             Control L(string t) => new Label { Text = t, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextSecondary, Margin = new Padding(0, D(6), 0, D(2)) };
-            var dtp = new DateTimePicker { Width = fw, Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d, yyyy", Font = new Font("Segoe UI", 10F) };
+            var dtp = new DateTimePicker { Width = fw, Format = DateTimePickerFormat.Custom, CustomFormat = Fmt.DateFormat, Font = new Font("Segoe UI", 10F) };
             dtp.CapAtToday();
             var cbType = new ComboBox { Width = fw, Font = new Font("Segoe UI", 10F), DropDownStyle = ComboBoxStyle.DropDown };
             ProfileKit.Suggest(cbType, suggestSource);
@@ -373,7 +375,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btns.Controls.Add(ProfileKit.Button("Void selected", "danger", (s, e) =>
             {
                 if (existing.SelectedItem is not RecordItem it) { lblMsg.Text = "Select an entry in the list below first."; return; }
-                if (MessageBox.Show(this, $"Are you sure you want to void \"{it.Record.Type}\" ({it.Record.RecordDate:MMM d, yyyy})?\n\nIt's hidden from the record but kept in the audit trail.", "Void " + kind.ToLowerInvariant(), MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+                if (MessageBox.Show(this, $"Are you sure you want to void \"{it.Record.Type}\" ({Fmt.Date(it.Record.RecordDate)})?\n\nIt's hidden from the record but kept in the audit trail.", "Void " + kind.ToLowerInvariant(), MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
                 MJdatabase.VoidCrewRecord(it.Record.Id);
                 records = MJdatabase.GetCrewRecords(crew.Id);
                 Rebuild(0, 2, 4);
@@ -393,7 +395,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             public readonly CrewRecord Record;
             public RecordItem(CrewRecord r) { Record = r; }
-            public override string ToString() => $"{Record.RecordDate:yyyy-MM-dd}  {Record.Type}{(string.IsNullOrWhiteSpace(Record.Severity) ? "" : $" ({Record.Severity})")}{(string.IsNullOrWhiteSpace(Record.DispatchNumber) ? "" : " · " + Record.DispatchNumber)}";
+            public override string ToString() => $"{Fmt.Date(Record.RecordDate)}  {Record.Type}{(string.IsNullOrWhiteSpace(Record.Severity) ? "" : $" ({Record.Severity})")}{(string.IsNullOrWhiteSpace(Record.DispatchNumber) ? "" : " · " + Record.DispatchNumber)}";
         }
     }
 }

@@ -246,7 +246,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numEstimatedCost.SetSafe(Math.Max(numEstimatedCost.Minimum, Math.Min(numEstimatedCost.Maximum, missingCrates * 450m)));
             txtCause.Text = "Missing / Damaged Crates from Trip Delivery";
             chkChargeable.Checked = true;
-            txtDescription.Text = $"Automated variance log: {missingCrates} crate(s) discrepancy noted on delivery {dispatchNumber} on {tripDate:MM/dd/yyyy}.";
+            txtDescription.Text = $"Automated variance log: {missingCrates} crate(s) discrepancy noted on delivery {dispatchNumber} on {Fmt.Date(tripDate)}.";
         }
 
         private void SetupGridColumns()
@@ -742,7 +742,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedIncident = inc;
                 bool resolved = RowMenu.Is(inc.Status, "Resolved", "Closed");
                 m.Items.AddRange(RowMenu.Header($"⚠️  Incident on {inc.DispatchNumber}",
-                    $"{inc.IncidentDate:MMM d, yyyy} · {RowMenu.Short(inc.Cause, 30)} · {inc.DamagedQuantity} crates · {RowMenu.Money(inc.EstimatedCost)} · {inc.Status}"));
+                    $"{Fmt.Date(inc.IncidentDate)} · {RowMenu.Short(inc.Cause, 30)} · {inc.DamagedQuantity} crates · {RowMenu.Money(inc.EstimatedCost)} · {inc.Status}"));
                 m.Items.Add(RowMenu.Item("Open details", () => RecordDetailsDialog.ShowDetails(this, inc)));
                 m.Items.Add(RowMenu.Item("Edit incident", () => { SetFormVisibility(true); txtCause.Focus(); }));
                 m.Items.Add(RowMenu.Item($"Open dispatch {inc.DispatchNumber}", () => RowMenu.OpenDispatch(this, inc.DeliveryId, inc.DispatchNumber)));
@@ -758,7 +758,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     RowMenu.Item("End-to-end delivery dossier", () => PrintSelectedDeliveryDossier()),
                     RowMenu.Item("Incident log (table)", () => BtnPrint_Click(this, EventArgs.Empty))));
                 m.Items.Add(RowMenu.CopySub(this, ("Dispatch number", inc.DispatchNumber), ("Cause", inc.Cause), ("Description", inc.Description),
-                    ("Summary", $"Incident on {inc.DispatchNumber} ({inc.IncidentDate:MMM d, yyyy}): {inc.Cause}. {inc.DamagedQuantity} crates, est. {RowMenu.Money(inc.EstimatedCost)}{(inc.ChargeableToCrew ? ", chargeable to crew" : "")}. Status: {inc.Status}.")));
+                    ("Summary", $"Incident on {inc.DispatchNumber} ({Fmt.Date(inc.IncidentDate)}): {inc.Cause}. {inc.DamagedQuantity} crates, est. {RowMenu.Money(inc.EstimatedCost)}{(inc.ChargeableToCrew ? ", chargeable to crew" : "")}. Status: {inc.Status}.")));
                 m.Items.Add(RowMenu.Item("Other incidents on this dispatch", () => RowMenu.Search(txtGridSearch, inc.DispatchNumber)));
                 m.Items.Add(RowMenu.ExportSub(gridIncidents, "Incident_Reports", "Incident and Crate Damage Logs", () => BtnPrint_Click(this, EventArgs.Empty)));
                 m.Items.Add(RowMenu.Sep());

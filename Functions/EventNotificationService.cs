@@ -91,7 +91,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (span.TotalSeconds < 60) return "Just now";
                 if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes}m ago";
                 if (span.TotalHours < 24) return $"{(int)span.TotalHours}h ago";
-                return Timestamp.ToString("MMM dd, hh:mm tt");
+                return Fmt.ShortDateTime(Timestamp);
             }
         }
 
@@ -557,7 +557,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         if (!HasRecentAlert("Trip Report Overdue", d.DispatchNumber))
                         {
-                            Publish("Trip Report Overdue", $"Dispatch #{d.DispatchNumber} ({d.TruckInfo}) departed on {d.DispatchDate:MMM dd} without a filed trip report.", ToastType.Warning, null, "Operations", "TripReports", d.DispatchNumber);
+                            Publish("Trip Report Overdue", $"Dispatch #{d.DispatchNumber} ({d.TruckInfo}) departed on {Fmt.Short(d.DispatchDate)} without a filed trip report.", ToastType.Warning, null, "Operations", "TripReports", d.DispatchNumber);
                         }
                     }
                 }

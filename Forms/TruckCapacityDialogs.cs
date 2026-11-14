@@ -30,7 +30,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Font = new Font("Segoe UI", 9.5F)
             };
             var lbl = new Label { Text = message, Dock = DockStyle.Top, Height = D(78), Padding = new Padding(D(16), D(14), D(16), 0), ForeColor = AppTheme.TextPrimary, UseMnemonic = false };
-            var txt = new TextBox { Multiline = true, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10F), PlaceholderText = required ? "Reason (required)" : "Note (optional)", MaxLength = 400 };
+            var txt = new TextBox { Multiline = true, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10F), PlaceholderText = required ? "Reason (required)" : "Note (optional)", MaxLength = 500 };
             var wrap = new Panel { Dock = DockStyle.Fill, Padding = new Padding(D(16), D(6), D(16), D(6)), BackColor = AppTheme.Surface };
             wrap.Controls.Add(txt);
             var err = new Label { Dock = DockStyle.Bottom, Height = D(24), Padding = new Padding(D(16), 0, D(16), 0), ForeColor = AppTheme.DangerText, Font = new Font("Segoe UI", 8.75F) };
@@ -42,7 +42,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UIThemeHelper.SetButtonRole(cancel, "secondary");
             ok.Click += (s, e) =>
             {
-                if (required && txt.Text.Trim().Length < 3) { err.Text = "Please type the reason (at least 3 characters)."; txt.Focus(); return; }
+                if (required && txt.Text.Trim().Length == 0) { err.Text = "Please type the reason."; txt.Focus(); return; }
                 f.DialogResult = DialogResult.OK;
             };
             bar.Controls.Add(ok);

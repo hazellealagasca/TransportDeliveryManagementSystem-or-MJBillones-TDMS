@@ -117,7 +117,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         Assigned_Truck = d.TruckInfo,
                         Driver = d.DriverName,
                         Aides = d.AideNames,
-                        Dispatch_Date = d.DispatchDate.ToString("yyyy-MM-dd"),
+                        Dispatch_Date = Fmt.Date(d.DispatchDate),
                         Departure_Time = d.DepartureTime,
                         G_Crates = d.GCrate,
                         E_Crates = d.ECrate,
@@ -155,7 +155,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         Schedule_Number = s.ScheduleNumber,
                         Client_Name = s.ClientName,
                         Destination = s.Destination,
-                        Schedule_Date = s.ScheduleDate.ToString("yyyy-MM-dd"),
+                        Schedule_Date = Fmt.Date(s.ScheduleDate),
                         Departure = s.DepartureTime,
                         G_Crates = s.GCrate,
                         E_Crates = s.ECrate,
@@ -185,7 +185,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         Trip_Report_No = t.TripReportNumber,
                         Dispatch_No = t.DispatchNumber,
-                        Report_Date = t.ReportDate.ToString("yyyy-MM-dd"),
+                        Report_Date = Fmt.Date(t.ReportDate),
                         Arrival_Time = t.ArrivalTime,
                         Departure_Time = t.DepartureTime,
                         Delivered_G = t.DeliveredGCrates,
@@ -269,8 +269,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         Invoice_Number = i.InvoiceNumber,
                         Client_Company = i.ClientName,
-                        Issue_Date = i.IssueDate.ToString("yyyy-MM-dd"),
-                        Due_Date = i.DueDate.ToString("yyyy-MM-dd"),
+                        Issue_Date = Fmt.Date(i.IssueDate),
+                        Due_Date = Fmt.Date(i.DueDate),
                         Gross_Amount = $"PHP {i.TotalAmount:N2}",
                         Deductions = $"PHP {i.Deductions:N2}",
                         Net_Amount_Due = $"PHP {i.NetAmount:N2}",
@@ -298,7 +298,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         Receipt_Number = r.ReceiptNumber,
                         Invoice_Number = r.InvoiceNumber,
-                        Payment_Date = r.PaymentDate.ToString("yyyy-MM-dd"),
+                        Payment_Date = Fmt.Date(r.PaymentDate),
                         Amount_Paid = $"PHP {r.AmountPaid:N2}",
                         Payment_Method = r.PaymentMethod,
                         Reference_Number = r.ReferenceNumber,
@@ -324,7 +324,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     var cleanIncidents = incidents.Select(i => new
                     {
                         Dispatch_Number = i.DispatchNumber,
-                        Incident_Date = i.IncidentDate.ToString("yyyy-MM-dd"),
+                        Incident_Date = Fmt.Date(i.IncidentDate),
                         Cause = i.Cause,
                         Damaged_Crates = i.DamagedQuantity,
                         Estimated_Loss = $"PHP {i.EstimatedCost:N2}",
@@ -357,7 +357,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         combinedList.Add(new SystemActivityLogItem
                         {
                             TimestampDt = a.Timestamp,
-                            Timestamp = a.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                            Timestamp = a.Timestamp.ToString(Fmt.DateFormat + " hh:mm:ss tt", System.Globalization.CultureInfo.InvariantCulture),
                             Source = "Audit Trail",
                             User_Or_Sender = a.Username,
                             Role = a.UserRole,
@@ -373,7 +373,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         combinedList.Add(new SystemActivityLogItem
                         {
                             TimestampDt = sn.Timestamp,
-                            Timestamp = sn.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                            Timestamp = sn.Timestamp.ToString(Fmt.DateFormat + " hh:mm:ss tt", System.Globalization.CultureInfo.InvariantCulture),
                             Source = "System Log",
                             User_Or_Sender = "SYSTEM",
                             Role = "Engine",

@@ -33,13 +33,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return null;
         }
 
-        /// <summary>The printed text (17-Mar-2026, like the statement sheet): the completed date, else <paramref name="fallback"/> shown the same way.</summary>
+        /// <summary>The printed text (03/17/2026, like the statement sheet): the completed date, else <paramref name="fallback"/> shown the same way.</summary>
         public string Text(int deliveryId, int specialTripId, string? fallback)
         {
             var d = Of(deliveryId, specialTripId);
-            if (d.HasValue) return d.Value.ToString("dd-MMM-yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            if (d.HasValue) return Fmt.Date(d.Value);
             string fb = (fallback ?? "").Trim();
-            return DateTime.TryParse(fb, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var p) ? p.ToString("dd-MMM-yyyy", System.Globalization.CultureInfo.InvariantCulture) : fb;
+            return DateTime.TryParse(fb, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var p) ? Fmt.Date(p) : fb;
         }
 
         /// <summary>The stored form (yyyy-MM-dd) of the completed date, else <paramref name="fallback"/> as it is.</summary>

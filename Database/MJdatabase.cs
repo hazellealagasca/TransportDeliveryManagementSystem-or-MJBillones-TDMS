@@ -1932,6 +1932,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     "ALTER TABLE Trucks ADD COLUMN InsuranceExpiry TEXT DEFAULT '';",
 
+                    "ALTER TABLE Trucks ADD COLUMN BreakdownDate TEXT DEFAULT '';",
+
+                    "ALTER TABLE Trucks ADD COLUMN EstimatedFixDate TEXT DEFAULT '';",
+
+                    "ALTER TABLE Crews ADD COLUMN Address TEXT DEFAULT '';",
+
                     "ALTER TABLE SpecialTrips ADD COLUMN AideIds TEXT DEFAULT '';",
 
                     "ALTER TABLE Clients ADD COLUMN DeactivatedAt TEXT DEFAULT '';",
@@ -4748,7 +4754,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 var cmd = conn.CreateCommand();
 
-                cmd.CommandText = "SELECT Id, FullName, Role, ContactNumber, LicenseNumber, DailyWage, FoodAllowance, IsAvailable, IsActive, IsSeasonal, PhotoPath, LastName, FirstName, MiddleName, COALESCE(LicenseClass, 'None'), COALESCE(LicenseIssued, ''), COALESCE(LicenseExpiry, '') FROM Crews ORDER BY Id DESC";
+                cmd.CommandText = "SELECT Id, FullName, Role, ContactNumber, LicenseNumber, DailyWage, FoodAllowance, IsAvailable, IsActive, IsSeasonal, PhotoPath, LastName, FirstName, MiddleName, COALESCE(LicenseClass, 'None'), COALESCE(LicenseIssued, ''), COALESCE(LicenseExpiry, ''), COALESCE(Address, '') FROM Crews ORDER BY Id DESC";
 
                 using (var reader = cmd.ExecuteReader())
 
@@ -4832,7 +4838,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             LicenseIssued = reader.FieldCount > 15 && !reader.IsDBNull(15) && DateTime.TryParse(reader.GetString(15), out var lIss) ? lIss : (DateTime?)null,
 
-                            LicenseExpiry = reader.FieldCount > 16 && !reader.IsDBNull(16) && DateTime.TryParse(reader.GetString(16), out var lExp) ? lExp : (DateTime?)null
+                            LicenseExpiry = reader.FieldCount > 16 && !reader.IsDBNull(16) && DateTime.TryParse(reader.GetString(16), out var lExp) ? lExp : (DateTime?)null,
+
+                            Address = reader.FieldCount > 17 && !reader.IsDBNull(17) ? reader.GetString(17) : ""
 
                         });
 
@@ -4880,9 +4888,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    cmd.CommandText = @"INSERT INTO Crews (FullName, Role, ContactNumber, LicenseNumber, DailyWage, FoodAllowance, IsAvailable, IsActive, IsSeasonal, PhotoPath, LastName, FirstName, MiddleName, LicenseClass, LicenseIssued, LicenseExpiry)
+                    cmd.CommandText = @"INSERT INTO Crews (FullName, Role, ContactNumber, LicenseNumber, DailyWage, FoodAllowance, IsAvailable, IsActive, IsSeasonal, PhotoPath, LastName, FirstName, MiddleName, LicenseClass, LicenseIssued, LicenseExpiry, Address)
 
-                                        VALUES (@f, @r, @c, @l, @w, @fa, @av, @ac, @s, @photo, @ln, @fn, @mn, @lc, @li, @le)";
+                                        VALUES (@f, @r, @c, @l, @w, @fa, @av, @ac, @s, @photo, @ln, @fn, @mn, @lc, @li, @le, @ad)";
 
                 }
 
@@ -4890,7 +4898,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    cmd.CommandText = @"UPDATE Crews SET FullName=@f, Role=@r, ContactNumber=@c, LicenseNumber=@l, DailyWage=@w, FoodAllowance=@fa, IsAvailable=@av, IsActive=@ac, IsSeasonal=@s, PhotoPath=@photo, LastName=@ln, FirstName=@fn, MiddleName=@mn, LicenseClass=@lc, LicenseIssued=@li, LicenseExpiry=@le WHERE Id=@id";
+                    cmd.CommandText = @"UPDATE Crews SET FullName=@f, Role=@r, ContactNumber=@c, LicenseNumber=@l, DailyWage=@w, FoodAllowance=@fa, IsAvailable=@av, IsActive=@ac, IsSeasonal=@s, PhotoPath=@photo, LastName=@ln, FirstName=@fn, MiddleName=@mn, LicenseClass=@lc, LicenseIssued=@li, LicenseExpiry=@le, Address=@ad WHERE Id=@id";
 
                     cmd.Parameters.AddWithValue("@id", crew.Id);
 
@@ -4921,6 +4929,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.Parameters.AddWithValue("@ac", crew.IsActive ? 1 : 0);
 
                 cmd.Parameters.AddWithValue("@s", crew.IsSeasonal ? 1 : 0);
+
+                cmd.Parameters.AddWithValue("@ad", InputRules.Tidy(crew.Address));
 
                 cmd.Parameters.AddWithValue("@photo", crew.PhotoPath ?? "");
 
@@ -5214,7 +5224,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 var cmd = conn.CreateCommand();
 
-                cmd.CommandText = "SELECT Id, PlateNumber, TruckType, CapacityCrates, Status, Remarks, COALESCE(CargoType, 'Cold / Chilled') FROM Trucks ORDER BY Id DESC";
+                cmd.CommandText = "SELECT Id, PlateNumber, TruckType, CapacityCrates, Status, Remarks, COALESCE(CargoType, 'Cold / Chilled'), COALESCE(BreakdownDate, ''), COALESCE(EstimatedFixDate, '') FROM Trucks ORDER BY Id DESC";
 
                 using (var reader = cmd.ExecuteReader())
 
@@ -5242,7 +5252,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             Remarks = reader.IsDBNull(5) ? "" : reader.GetString(5),
 
-                            CargoType = reader.IsDBNull(6) ? "Cold / Chilled" : reader.GetString(6)
+                            CargoType = reader.IsDBNull(6) ? "Cold / Chilled" : reader.GetString(6),
+
+                            BreakdownDate = Fmt.TryParseDate(reader.GetString(7), out var bkDate) ? bkDate : (DateTime?)null,
+
+                            EstimatedFixDate = Fmt.TryParseDate(reader.GetString(8), out var fxDate) ? fxDate : (DateTime?)null
 
                         });
 
@@ -7027,19 +7041,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             trans.Commit();
 
-                            LogAuditTrail("RESCHEDULE", "LoadingSchedules", scheduleId, schedNum, "ScheduleDate", $"{oldDateStr} {oldTimeStr}", $"{newDate:yyyy-MM-dd} {newTime}", reason);
+                            LogAuditTrail("RESCHEDULE", "LoadingSchedules", scheduleId, schedNum, "ScheduleDate", $"{oldDateStr} {oldTimeStr}", $"{Fmt.Date(newDate)} {newTime}", reason);
 
                             try
 
                             {
 
-                                EventNotificationService.Publish("Loading Rescheduled", $"Order #{schedNum} for {clientName} moved to {newDate:MMM dd, yyyy} {newTime} ({reason})", ToastType.Warning, null, "Operations", "Loading", schedNum);
+                                EventNotificationService.Publish("Loading Rescheduled", $"Order #{schedNum} for {clientName} moved to {Fmt.Date(newDate)} {newTime} ({reason})", ToastType.Warning, null, "Operations", "Loading", schedNum);
 
                             }
 
                             catch (System.Exception swx38) { ErrLog.Swallowed(swx38); }
 
-                            return (true, $"Order #{schedNum} successfully rescheduled to {newDate:MMM dd, yyyy} {newTime}.");
+                            return (true, $"Order #{schedNum} successfully rescheduled to {Fmt.Date(newDate)} {newTime}.");
 
                         }
 
@@ -7232,9 +7246,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         string updatedRemarks = string.IsNullOrWhiteSpace(oldRemarks)
 
-                            ? $"Rescheduled to {newDate:yyyy-MM-dd} {newTime} ({reason})"
+                            ? $"Rescheduled to {Fmt.Date(newDate)} {newTime} ({reason})"
 
-                            : $"{oldRemarks} | Rescheduled to {newDate:yyyy-MM-dd} {newTime} ({reason})";
+                            : $"{oldRemarks} | Rescheduled to {Fmt.Date(newDate)} {newTime} ({reason})";
 
                         using (var updateCmd = conn.CreateCommand())
                         {
@@ -7327,19 +7341,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         trans.Commit();
 
-                        LogAuditTrail("RESCHEDULE", "Deliveries", deliveryId, dspNum, "DispatchDate", $"{oldDateStr} {oldTimeStr}", $"{newDate:yyyy-MM-dd} {newTime}", reason);
+                        LogAuditTrail("RESCHEDULE", "Deliveries", deliveryId, dspNum, "DispatchDate", $"{oldDateStr} {oldTimeStr}", $"{Fmt.Date(newDate)} {newTime}", reason);
 
                         try
 
                         {
 
-                            EventNotificationService.Publish("Dispatch Rescheduled", $"Dispatch #{dspNum} for {clientName} moved to {newDate:MMM dd, yyyy} {newTime} ({reason})", ToastType.Warning, null, "Operations", "Dispatch", dspNum);
+                            EventNotificationService.Publish("Dispatch Rescheduled", $"Dispatch #{dspNum} for {clientName} moved to {Fmt.Date(newDate)} {newTime} ({reason})", ToastType.Warning, null, "Operations", "Dispatch", dspNum);
 
                         }
 
                         catch (System.Exception swx39) { ErrLog.Swallowed(swx39); }
 
-                        return (true, $"Dispatch #{dspNum} successfully rescheduled to {newDate:MMM dd, yyyy} {newTime}.");
+                        return (true, $"Dispatch #{dspNum} successfully rescheduled to {Fmt.Date(newDate)} {newTime}.");
 
                     }
 
@@ -7409,8 +7423,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         }
 
                         string updatedRemarks = string.IsNullOrWhiteSpace(trip.Remarks)
-                            ? $"Rescheduled to {newDate:yyyy-MM-dd} {newTime} ({reason})"
-                            : $"{trip.Remarks} | Rescheduled to {newDate:yyyy-MM-dd} {newTime} ({reason})";
+                            ? $"Rescheduled to {Fmt.Date(newDate)} {newTime} ({reason})"
+                            : $"{trip.Remarks} | Rescheduled to {Fmt.Date(newDate)} {newTime} ({reason})";
 
                         using (var updateCmd = conn.CreateCommand())
                         {
@@ -7460,14 +7474,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         ReconcileResourceStatuses(conn, trans);
 
                         trans.Commit();
-                        LogAuditTrail("RESCHEDULE", "SpecialTrips", tripId, trip.OrderReference, "DispatchDate", $"{trip.DispatchDate:yyyy-MM-dd} {trip.DepartureTime}", $"{newDate:yyyy-MM-dd} {newTime}", reason);
+                        LogAuditTrail("RESCHEDULE", "SpecialTrips", tripId, trip.OrderReference, "DispatchDate", $"{Fmt.Date(trip.DispatchDate)} {trip.DepartureTime}", $"{Fmt.Date(newDate)} {newTime}", reason);
                         try
                         {
-                            EventNotificationService.Publish("Special Trip Rescheduled", $"Special Trip '{trip.OrderReference}' for {trip.Company} moved to {newDate:MMM dd, yyyy} {newTime} ({reason})", ToastType.Warning, null, "Operations", "SpecialTrip", trip.OrderReference);
+                            EventNotificationService.Publish("Special Trip Rescheduled", $"Special Trip '{trip.OrderReference}' for {trip.Company} moved to {Fmt.Date(newDate)} {newTime} ({reason})", ToastType.Warning, null, "Operations", "SpecialTrip", trip.OrderReference);
                         }
                         catch (System.Exception swx40) { ErrLog.Swallowed(swx40); }
 
-                        return (true, $"Special Trip '{trip.OrderReference}' has been successfully rescheduled to {newDate:MMM dd, yyyy} at {newTime}.");
+                        return (true, $"Special Trip '{trip.OrderReference}' has been successfully rescheduled to {Fmt.Date(newDate)} at {newTime}.");
                     }
                     catch (Exception ex)
                     {
@@ -7634,7 +7648,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     foreach (var d in due)
 
-                        LogAuditTrail("AUTO_TRANSIT", "Deliveries", d.Id, d.Number, "Status", d.Prev, "In Transit", $"Departure time reached ({d.Leaves:MMM d, yyyy h:mm tt}): dispatch is now on the road");
+                        LogAuditTrail("AUTO_TRANSIT", "Deliveries", d.Id, d.Number, "Status", d.Prev, "In Transit", $"Departure time reached ({Fmt.DateTimeText(d.Leaves)}): dispatch is now on the road");
 
                 }
 
@@ -7680,7 +7694,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (d.DispatchDate.Date > DateTime.Today)
 
-                return (false, $"Dispatch #{d.DispatchNumber} is scheduled for {d.DispatchDate:MMMM d, yyyy}. Reschedule it to today first if it is leaving now.");
+                return (false, $"Dispatch #{d.DispatchNumber} is scheduled for {Fmt.Date(d.DispatchDate)}. Reschedule it to today first if it is leaving now.");
 
             using (var conn = new SqliteConnection(connectionString))
 
@@ -7698,7 +7712,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             }
 
-            LogAuditTrail("UPDATE", "Deliveries", d.Id, d.DispatchNumber, "Status", d.Status, "In Transit", $"Trip started early by {user ?? "user"} (set departure {DepartureDateTime(d):h:mm tt})");
+            LogAuditTrail("UPDATE", "Deliveries", d.Id, d.DispatchNumber, "Status", d.Status, "In Transit", $"Trip started early by {user ?? "user"} (set departure {DepartureDateTime(d):hh:mm tt})");
 
             lock (reconcileLock) lastResourceReconcile = DateTime.MinValue;
 
@@ -7824,7 +7838,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         {
 
-                            LogAuditTrail("AUTO_PAST_DUE", "LoadingSchedules", item.Id, item.SchedNum, "Status", "Pending/Rescheduled", "Past Due", $"Scheduled date ({item.SchedDate:yyyy-MM-dd}) passed without dispatch assignment: Flagged as Past Due");
+                            LogAuditTrail("AUTO_PAST_DUE", "LoadingSchedules", item.Id, item.SchedNum, "Status", "Pending/Rescheduled", "Past Due", $"Scheduled date ({Fmt.Date(item.SchedDate)}) passed without dispatch assignment: Flagged as Past Due");
 
                         }
 
@@ -7904,7 +7918,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (planned != null && planned.DispatchDate.Date > DateTime.Today)
 
-                    return (false, $"Dispatch #{planned.DispatchNumber} is scheduled for {planned.DispatchDate:MMMM d, yyyy}. It can't be marked completed before its dispatch date.");
+                    return (false, $"Dispatch #{planned.DispatchNumber} is scheduled for {Fmt.Date(planned.DispatchDate)}. It can't be marked completed before its dispatch date.");
 
                 if (planned != null && !planned.Status.Equals("In Transit", StringComparison.OrdinalIgnoreCase) && !planned.Status.Equals("Delayed", StringComparison.OrdinalIgnoreCase)
 
@@ -7912,7 +7926,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     && DepartureDateTime(planned) > DateTime.Now)
 
-                    return (false, $"Dispatch #{planned.DispatchNumber} hasn't left yet — it goes in transit automatically at {DepartureDateTime(planned):h:mm tt}.\n\nIf the truck already left, use \"Start trip now\" first, then complete it when it arrives.");
+                    return (false, $"Dispatch #{planned.DispatchNumber} hasn't left yet — it goes in transit automatically at {DepartureDateTime(planned):hh:mm tt}.\n\nIf the truck already left, use \"Start trip now\" first, then complete it when it arrives.");
 
                 using var conn = new SqliteConnection(connectionString);
 
@@ -8947,7 +8961,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         {
 
-                            return $"TRUCK DISPATCH CONFLICT:\nThe selected vehicle is already on active dispatch #{reader.GetString(0)} ({reader.GetString(1)}) for {dispatchDate:MMM dd, yyyy}.";
+                            return $"TRUCK DISPATCH CONFLICT:\nThe selected vehicle is already on active dispatch #{reader.GetString(0)} ({reader.GetString(1)}) for {Fmt.Date(dispatchDate)}.";
 
                         }
 
@@ -8981,7 +8995,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        return $"{c.Label} ASSIGNMENT CONFLICT:\nThe selected crew member is already assigned to active dispatch #{reader.GetString(0)} ({reader.GetString(1)}) for {dispatchDate:MMM dd, yyyy}.";
+                        return $"{c.Label} ASSIGNMENT CONFLICT:\nThe selected crew member is already assigned to active dispatch #{reader.GetString(0)} ({reader.GetString(1)}) for {Fmt.Date(dispatchDate)}.";
 
                     }
 
@@ -9021,7 +9035,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         {
 
-                            return $"TRUCK DISPATCH CONFLICT:\nThe selected vehicle is already booked on Special Trip {reference} for {dispatchDate:MMM dd, yyyy}.";
+                            return $"TRUCK DISPATCH CONFLICT:\nThe selected vehicle is already booked on Special Trip {reference} for {Fmt.Date(dispatchDate)}.";
 
                         }
 
@@ -9033,7 +9047,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             {
 
-                                return $"{c.Label} ASSIGNMENT CONFLICT:\nThe selected crew member is already booked on Special Trip {reference} for {dispatchDate:MMM dd, yyyy}.";
+                                return $"{c.Label} ASSIGNMENT CONFLICT:\nThe selected crew member is already booked on Special Trip {reference} for {Fmt.Date(dispatchDate)}.";
 
                             }
 
@@ -9833,9 +9847,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                LogAuditTrail("CLONE_DISPATCH", "Deliveries", cloned.Id, cloned.DispatchNumber, "Status", "", "Pending", $"Cloned future dispatch from #{src.DispatchNumber} for {targetDate:MMM dd, yyyy}");
+                LogAuditTrail("CLONE_DISPATCH", "Deliveries", cloned.Id, cloned.DispatchNumber, "Status", "", "Pending", $"Cloned future dispatch from #{src.DispatchNumber} for {Fmt.Date(targetDate)}");
 
-                return (true, $"Future Dispatch #{cloned.DispatchNumber} scheduled for {targetDate:MMM dd, yyyy} {cloned.DepartureTime}.", cloned);
+                return (true, $"Future Dispatch #{cloned.DispatchNumber} scheduled for {Fmt.Date(targetDate)} {cloned.DepartureTime}.", cloned);
 
             }
 
@@ -9923,7 +9937,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         string dt = reader.IsDBNull(2) ? "08:00 AM" : reader.GetString(2);
 
-                        return $"LOADING SCHEDULE ALREADY EXISTS:\nAn active schedule ({sn} - {status}) for '{clientName}' to '{destination}' at {dt} is already booked for {scheduleDate:MMM dd, yyyy}.\n\nIf this is a second batch/trip order for the same client today, please specify a different Departure Time.";
+                        return $"LOADING SCHEDULE ALREADY EXISTS:\nAn active schedule ({sn} - {status}) for '{clientName}' to '{destination}' at {dt} is already booked for {Fmt.Date(scheduleDate)}.\n\nIf this is a second batch/trip order for the same client today, please specify a different Departure Time.";
 
                     }
 
@@ -10831,7 +10845,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        throw new InvalidOperationException($"An incident report for dispatch with cause '{ir.Cause}' on {ir.IncidentDate:yyyy-MM-dd} is already logged.");
+                        throw new InvalidOperationException($"An incident report for dispatch with cause '{ir.Cause}' on {Fmt.Date(ir.IncidentDate)} is already logged.");
 
                     }
 
@@ -11209,7 +11223,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             ClientName = reader.GetString(2),
 
-                            PeriodCovered = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                            PeriodCovered = reader.IsDBNull(3) ? "" : Fmt.DatesIn(reader.GetString(3)),
 
                             IssueDate = issDate,
 
@@ -11301,7 +11315,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             ClientName = reader.GetString(2),
 
-                            PeriodCovered = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                            PeriodCovered = reader.IsDBNull(3) ? "" : Fmt.DatesIn(reader.GetString(3)),
 
                             IssueDate = issDate,
 

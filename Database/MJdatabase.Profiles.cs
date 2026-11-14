@@ -50,6 +50,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 CREATE TRIGGER IF NOT EXISTS trg_nodelete_TruckMaintenance BEFORE DELETE ON TruckMaintenance BEGIN SELECT RAISE(ABORT, 'Maintenance records are kept for history. Void them instead.'); END;
                 CREATE TRIGGER IF NOT EXISTS trg_nodelete_CrewRecords BEFORE DELETE ON CrewRecords BEGIN SELECT RAISE(ABORT, 'Crew records are kept for history. Void them instead.'); END;";
             cmd.ExecuteNonQuery();
+            foreach (var (table, column, ddl) in new[]
+            {
+                ("TruckMaintenance", "PlateNumber", "TEXT DEFAULT ''"), ("TruckMaintenance", "TruckCategory", "TEXT DEFAULT ''"),
+                ("TruckMaintenance", "CrateTempType", "TEXT DEFAULT ''"), ("TruckMaintenance", "Capacity", "INTEGER DEFAULT 0"),
+                ("TruckMaintenance", "EntryType", "TEXT DEFAULT 'Service'"),
+                ("Trucks", "BreakdownDate", "TEXT DEFAULT ''"), ("Trucks", "EstimatedFixDate", "TEXT DEFAULT ''"),
+                ("Crews", "Address", "TEXT DEFAULT ''")
+            })
+                AddColumnIfMissing(conn, table, column, ddl);
             profileTablesReady = true;
         }
         /// <summary>One-time: the license number is no longer kept. Existing numbers become a license class, then are erased.</summary>
@@ -137,7 +146,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             using var conn = new SqliteConnection(connectionString);
             conn.Open();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT Id, TruckId, ServiceDate, Task, Category, OdometerKm, Cost, ServiceProvider, Notes, NextDueDate, CreatedBy FROM TruckMaintenance WHERE TruckId = @t AND COALESCE(IsVoid,0) = 0 ORDER BY ServiceDate DESC, Id DESC";
+            cmd.CommandText = "SELECT Id, TruckId, ServiceDate, Task, Category, OdometerKm, Cost, ServiceProvider, Notes, NextDueDate, CreatedBy, COALESCE(PlateNumber,''), COALESCE(TruckCategory,''), COALESCE(CrateTempType,''), COALESCE(Capacity,0), COALESCE(EntryType,'Service') FROM TruckMaintenance WHERE TruckId = @t AND COALESCE(IsVoid,0) = 0 ORDER BY ServiceDate DESC, Id DESC";
             cmd.Parameters.AddWithValue("@t", truckId);
             using var r = cmd.ExecuteReader();
             while (r.Read())
@@ -145,6 +154,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 list.Add(new TruckMaintenance
                 {
                     Id = r.GetInt32(0), TruckId = r.GetInt32(1), ServiceDate = ParseDate(r.GetValue(2)) ?? DateTime.Today,
+                    PlateNumber = r.GetString(11), TruckCategory = r.GetString(12), CrateTempType = r.GetString(13), Capacity = Convert.ToInt32(r.GetValue(14)), EntryType = r.GetString(15),
                     Task = r.IsDBNull(3) ? "" : r.GetString(3), Category = r.IsDBNull(4) ? "" : r.GetString(4),
                     OdometerKm = r.IsDBNull(5) ? 0 : Convert.ToInt32(r.GetValue(5)), Cost = r.IsDBNull(6) ? 0 : Convert.ToDecimal(r.GetDouble(6)),
                     ServiceProvider = r.IsDBNull(7) ? "" : r.GetString(7), Notes = r.IsDBNull(8) ? "" : r.GetString(8),
@@ -161,7 +171,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = isNew
-                ? "INSERT INTO TruckMaintenance (TruckId, ServiceDate, Task, Category, OdometerKm, Cost, ServiceProvider, Notes, NextDueDate, CreatedBy) VALUES (@t, @d, @task, @cat, @od, @cost, @sp, @n, @next, @by)"
+                ? "INSERT INTO TruckMaintenance (TruckId, ServiceDate, Task, Category, OdometerKm, Cost, ServiceProvider, Notes, NextDueDate, CreatedBy, PlateNumber, TruckCategory, CrateTempType, Capacity, EntryType) VALUES (@t, @d, @task, @cat, @od, @cost, @sp, @n, @next, @by, @pl, @tc, @ct, @cap, @et)"
                 : "UPDATE TruckMaintenance SET ServiceDate=@d, Task=@task, Category=@cat, OdometerKm=@od, Cost=@cost, ServiceProvider=@sp, Notes=@n, NextDueDate=@next WHERE Id=@id";
             cmd.Parameters.AddWithValue("@id", m.Id);
             cmd.Parameters.AddWithValue("@t", m.TruckId);
@@ -174,11 +184,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cmd.Parameters.AddWithValue("@n", m.Notes.Trim());
             cmd.Parameters.AddWithValue("@next", m.NextDueDate?.ToString("yyyy-MM-dd") ?? "");
             cmd.Parameters.AddWithValue("@by", Who);
+            if (isNew)
+            {
+                if (string.IsNullOrWhiteSpace(m.PlateNumber)) FillTruckSnapshot(conn, m);
+                cmd.Parameters.AddWithValue("@pl", m.PlateNumber ?? "");
+                cmd.Parameters.AddWithValue("@tc", m.TruckCategory ?? "");
+                cmd.Parameters.AddWithValue("@ct", m.CrateTempType ?? "");
+                cmd.Parameters.AddWithValue("@cap", m.Capacity);
+                cmd.Parameters.AddWithValue("@et", string.IsNullOrWhiteSpace(m.EntryType) ? TruckEntryService : m.EntryType);
+            }
             cmd.ExecuteNonQuery();
             if (isNew) { using var idc = conn.CreateCommand(); idc.CommandText = "SELECT last_insert_rowid()"; m.Id = Convert.ToInt32(idc.ExecuteScalar()); }
             // Keep the truck's odometer at the highest reading recorded.
             if (m.OdometerKm > 0) { using var od = conn.CreateCommand(); od.CommandText = "UPDATE Trucks SET OdometerKm = @od WHERE Id = @t AND COALESCE(OdometerKm,0) < @od"; od.Parameters.AddWithValue("@od", m.OdometerKm); od.Parameters.AddWithValue("@t", m.TruckId); od.ExecuteNonQuery(); }
-            LogAuditTrail(isNew ? "ADD" : "UPDATE", "TruckMaintenance", m.Id, $"Truck #{m.TruckId}", "Task", "", m.Task, $"Maintenance {(isNew ? "logged" : "updated")}: {m.Task} on {m.ServiceDate:yyyy-MM-dd}");
+            LogAuditTrail(isNew ? "ADD" : "UPDATE", "TruckMaintenance", m.Id, $"Truck #{m.TruckId}", "Task", "", m.Task, $"Maintenance {(isNew ? "logged" : "updated")}: {m.Task} on {Fmt.Date(m.ServiceDate)}");
         }
         public static void VoidTruckMaintenance(int id)
         {
@@ -235,6 +254,45 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cmd.ExecuteNonQuery();
             if (isNew) { using var idc = conn.CreateCommand(); idc.CommandText = "SELECT last_insert_rowid()"; rec.Id = Convert.ToInt32(idc.ExecuteScalar()); }
             LogAuditTrail(isNew ? "ADD" : "UPDATE", "CrewRecords", rec.Id, $"Crew #{rec.CrewId}", rec.Kind, "", rec.Type, $"{rec.Kind} {(isNew ? "recorded" : "updated")}: {rec.Type}");
+        }
+        /// <summary>
+        /// Sets a crew member Active (ready for duty) or Inactive. A description is required (at most 500 characters); it is kept as a "Status change" crew record
+        /// and shown in the crew profile records. Throws InvalidOperationException with the problem when the reason is missing or too long.
+        /// </summary>
+        public static void ChangeCrewStatus(int crewId, bool active, string reason)
+        {
+            string? problem = CrewRules.CheckStatusReason(reason);
+            if (problem != null) throw new InvalidOperationException(problem);
+            EnsureProfileTables();
+            string oldText;
+            using (var conn = new SqliteConnection(connectionString))
+            {
+                conn.Open();
+                using var tx = conn.BeginTransaction();
+                using (var rd = conn.CreateCommand())
+                {
+                    rd.Transaction = tx;
+                    rd.CommandText = "SELECT COALESCE(IsActive,1), COALESCE(IsAvailable,1) FROM Crews WHERE Id = @id";
+                    rd.Parameters.AddWithValue("@id", crewId);
+                    using var r = rd.ExecuteReader();
+                    if (!r.Read()) throw new InvalidOperationException("That crew member no longer exists.");
+                    oldText = Convert.ToInt32(r.GetValue(0)) == 0 ? "Inactive" : Convert.ToInt32(r.GetValue(1)) == 0 ? "On Trip" : "Active";
+                }
+                using (var up = conn.CreateCommand())
+                {
+                    up.Transaction = tx;
+                    up.CommandText = "UPDATE Crews SET IsActive = @a, IsAvailable = @a WHERE Id = @id";
+                    up.Parameters.AddWithValue("@a", active ? 1 : 0);
+                    up.Parameters.AddWithValue("@id", crewId);
+                    up.ExecuteNonQuery();
+                }
+                tx.Commit();
+            }
+            SaveCrewRecord(new CrewRecord
+            {
+                CrewId = crewId, RecordDate = DateTime.Today, Kind = CrewRules.StatusChangeKind,
+                Type = $"{oldText} → {(active ? "Active" : "Inactive")}", Description = InputRules.Tidy(reason), Severity = ""
+            });
         }
         public static void VoidCrewRecord(int id)
         {

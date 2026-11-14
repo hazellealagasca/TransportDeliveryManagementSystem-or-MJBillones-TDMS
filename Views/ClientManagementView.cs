@@ -594,7 +594,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             RowMenu.Attach(gridTrips, (m, rows) =>
             {
                 if (rows[0].Tag is not Delivery d) return;
-                m.Items.AddRange(RowMenu.Header($"🚚  {d.DispatchNumber}", $"{d.DispatchDate:MMM d, yyyy} · {d.TotalCrates} crates · {d.TruckInfo} · {d.Status}"));
+                m.Items.AddRange(RowMenu.Header($"🚚  {d.DispatchNumber}", $"{Fmt.Date(d.DispatchDate)} · {d.TotalCrates} crates · {d.TruckInfo} · {d.Status}"));
                 m.Items.Add(RowMenu.Item("Open dispatch details", () => Forms.DispatchDetailsDialog.ShowFor(this, d)));
                 if (RowMenu.Is(d.Status, "Completed")) m.Items.Add(RowMenu.Item("Trip report", () => { if (CanLeaveWithoutLosing()) MainForm.Instance?.OpenTripReportForDispatch(d); }));
                 m.Items.Add(RowMenu.Item("Print delivery dossier", () => PrintHelper.PrintEndToEndDeliveryDossier(d.Id, d.DispatchNumber)));
@@ -622,7 +622,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             RowMenu.Attach(gridInvoices, (m, rows) =>
             {
                 if (rows[0].Tag is not Invoice inv) return;
-                m.Items.AddRange(RowMenu.Header($"🧾  Invoice {inv.InvoiceNumber}", $"{RowMenu.Money(inv.NetAmount)} · {inv.Status} · due {inv.DueDate:MMM d, yyyy}"));
+                m.Items.AddRange(RowMenu.Header($"🧾  Invoice {inv.InvoiceNumber}", $"{RowMenu.Money(inv.NetAmount)} · {inv.Status} · due {Fmt.Date(inv.DueDate)}"));
                 m.Items.Add(RowMenu.Item("Open details", () => RecordDetailsDialog.ShowDetails(this, inv)));
                 m.Items.Add(RowMenu.Item("Show in Billing", () => { if (CanLeaveWithoutLosing()) MainForm.Instance?.ShowFinanceRecords("Billing", inv.InvoiceNumber); }));
                 m.Items.Add(RowMenu.Item($"Open dispatch {inv.DispatchNumber}", () => RowMenu.OpenDispatch(this, inv.DeliveryId, inv.DispatchNumber), "", inv.DeliveryId > 0));
@@ -713,9 +713,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (since.HasValue && (DateTime.Today - since.Value.Date).TotalDays > window)
                 {
                     status = "Inactive";
-                    note = $"No orders or invoices in {(int)(DateTime.Today - since.Value.Date).TotalDays} days (last activity {since:MMM d, yyyy}; limit {window} days)";
+                    note = $"No orders or invoices in {(int)(DateTime.Today - since.Value.Date).TotalDays} days (last activity {Fmt.Date(since)}; limit {window} days)";
                 }
-                else note = since.HasValue ? $"Last activity {since:MMM d, yyyy}" : "New client — no activity yet";
+                else note = since.HasValue ? $"Last activity {Fmt.Date(since)}" : "New client — no activity yet";
                 return new ClientRow
                 {
                     Client = c,
@@ -724,7 +724,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     Contact = contact.Length == 0 ? "—" : contact,
                     Stores = stores,
                     CompletedTrips = done.Count,
-                    LastTrip = mine.Count > 0 ? mine.Max(d => d.DispatchDate).ToString("MMM d, yyyy") : "—",
+                    LastTrip = mine.Count > 0 ? Fmt.Date(mine.Max(d => d.DispatchDate)) : "—",
                     Unpaid = unpaid > 0 ? $"₱{unpaid:N2}" : "—"
                 };
             }).ToList();
@@ -912,7 +912,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             flowTripTiles.Controls.Add(Tile("Cancelled", $"{tripSum.CancelledCount:N0}", "Orders called off", tripSum.CancelledCount > 0 ? AppTheme.DangerText : (Color?)null));
             foreach (var d in trips.Take(100))
             {
-                int r = gridTrips.Rows.Add(d.DispatchDate.ToString("MMM d, yyyy"), d.DispatchNumber, d.CleanRouteDisplay, d.TruckInfo, (d.TotalCrates > 0 ? d.TotalCrates : d.GCrate + d.ECrate).ToString("N0"), d.Status);
+                int r = gridTrips.Rows.Add(Fmt.Date(d.DispatchDate), d.DispatchNumber, d.CleanRouteDisplay, d.TruckInfo, (d.TotalCrates > 0 ? d.TotalCrates : d.GCrate + d.ECrate).ToString("N0"), d.Status);
                 gridTrips.Rows[r].Tag = d;
             }
             pnlTripsHost.Height = Math.Clamp(Dpi(38) + Math.Max(3, gridTrips.Rows.Count) * Dpi(36) + Dpi(4), Dpi(150), Dpi(420));
@@ -928,7 +928,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             flowBillingTiles.Controls.Add(Tile("Overdue", $"{overdue}", overdue > 0 ? "Past their due date" : "Nothing overdue", overdue > 0 ? AppTheme.DangerText : (Color?)null));
             foreach (var inv in invoices.Take(100))
             {
-                int r = gridInvoices.Rows.Add(inv.InvoiceNumber, inv.IssueDate.ToString("MMM d, yyyy"), inv.DueDate.ToString("MMM d, yyyy"), string.IsNullOrWhiteSpace(inv.DispatchNumber) ? "—" : inv.DispatchNumber, $"₱{inv.NetAmount:N2}", inv.Status);
+                int r = gridInvoices.Rows.Add(inv.InvoiceNumber, Fmt.Date(inv.IssueDate), Fmt.Date(inv.DueDate), string.IsNullOrWhiteSpace(inv.DispatchNumber) ? "—" : inv.DispatchNumber, $"₱{inv.NetAmount:N2}", inv.Status);
                 gridInvoices.Rows[r].Tag = inv;
             }
             pnlInvoicesHost.Height = Math.Clamp(Dpi(38) + Math.Max(3, gridInvoices.Rows.Count) * Dpi(36) + Dpi(4), Dpi(150), Dpi(380));
@@ -978,7 +978,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return false;
             }
             string email = txtEmail.Text.Trim();
-            if (email.Length > 0 && !InputRules.IsValidEmail(email))
+            if (email.Length > 0 && !Fmt.IsValidEmail(email))
             {
                 MessageBox.Show("Please check the email address. It should look like name@company.com.", "Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtEmail.Focus();
@@ -1105,7 +1105,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 string? routeProblem = MJdatabase.SaveClientStore(store);
-                lblSaveState.Text = routeProblem ?? $"Store saved {DateTime.Now:h:mm tt}";
+                lblSaveState.Text = routeProblem ?? $"Store saved {DateTime.Now:hh:mm tt}";
                 lblSaveState.ForeColor = routeProblem == null ? AppTheme.SuccessText : AppTheme.WarningText;
             }
             catch (Exception ex)

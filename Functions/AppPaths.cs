@@ -118,7 +118,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try
                 {
                     File.WriteAllText(Path.Combine(ProgramFolder, "DATA_MOVED_README.txt"),
-                        $"On {DateTime.Now:MMMM d, yyyy h:mm tt} the system's data was copied to:{Environment.NewLine}{DataRoot}{Environment.NewLine}{Environment.NewLine}" +
+                        $"On {Fmt.DateTimeText(DateTime.Now)} the system's data was copied to:{Environment.NewLine}{DataRoot}{Environment.NewLine}{Environment.NewLine}" +
                         "The app now reads and saves only there. The old database and files in this folder were left untouched as an extra copy; " +
                         "they are no longer updated.");
                 }

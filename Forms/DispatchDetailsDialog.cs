@@ -81,7 +81,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             sb.AppendLine($"DISPATCH {d.DispatchNumber}  [{d.Status}]");
             if (!string.IsNullOrWhiteSpace(d.ClientName)) sb.AppendLine($"Client: {d.ClientName}");
             sb.AppendLine($"Route: {(string.IsNullOrWhiteSpace(d.Destination) ? d.CleanRouteDisplay : d.Destination)}");
-            sb.AppendLine($"Date: {d.DispatchDate:ddd, MMM d, yyyy} · {d.DepartureTime}");
+            sb.AppendLine($"Date: {Fmt.DayDate(d.DispatchDate)} · {d.DepartureTime}");
             sb.AppendLine($"Truck: {d.TruckInfo}");
             sb.AppendLine($"Driver: {Person(d.DriverId, d.DriverName)}");
             var aides = MJdatabase.GetDeliveryCrewIds(d).Where(x => x.Role == "Aide").Select(x => Person(x.CrewId, "")).Where(x => x.Length > 0).ToList();
@@ -302,7 +302,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             titleRow.Controls.Add(lblNum);
             titleRow.Controls.Add(pill);
             if (del.IsPeak) titleRow.Controls.Add(new Pill("Peak season rate", AppTheme.AccentSoft, AppTheme.AccentText) { Margin = new Padding(D(6), D(10), 0, 0) });
-            string when = $"{del.DispatchDate:ddd, MMM d, yyyy}  ·  {del.DepartureTime}";
+            string when = $"{Fmt.DayDate(del.DispatchDate)}  ·  {del.DepartureTime}";
             var lblSub = new Label
             {
                 Text = $"{clientName}   ·   {routeText}   ·   {when}",
@@ -350,11 +350,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             var steps = new List<Tracker.Step>
             {
-                new Tracker.Step("Scheduled", del.DispatchDate.ToString("MMM d"), true),
+                new Tracker.Step("Scheduled", Fmt.Short(del.DispatchDate), true),
                 new Tracker.Step("In transit", IsInTransit ? "On the road" : "", IsInTransit || IsCompleted || trip != null),
                 new Tracker.Step("Delivered", IsCompleted ? "Order complete" : "", IsCompleted),
-                new Tracker.Step("Trip report", trip != null ? trip.ReportDate.ToString("MMM d") : "", trip != null),
-                new Tracker.Step("Invoiced", invoice != null ? invoice.IssueDate.ToString("MMM d") : "", invoice != null),
+                new Tracker.Step("Trip report", trip != null ? Fmt.Short(trip.ReportDate) : "", trip != null),
+                new Tracker.Step("Invoiced", invoice != null ? Fmt.Short(invoice.IssueDate) : "", invoice != null),
                 new Tracker.Step("Paid", IsPaid ? "Settled" : "", IsPaid)
             };
             var host = new Panel { Dock = DockStyle.Top, Height = D(86), BackColor = AppTheme.Surface, Padding = new Padding(D(24), D(8), D(24), D(6)) };
@@ -376,7 +376,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             else if (IsInTransit)
             {
                 text = MJdatabase.IsAwaitingCompletion(del)
-                    ? $"On the road since {del.DispatchDate:MMM d} ({daysAgo} day{(daysAgo == 1 ? "" : "s")}). Mark it complete once the truck is back."
+                    ? $"On the road since {Fmt.Short(del.DispatchDate)} ({daysAgo} day{(daysAgo == 1 ? "" : "s")}). Mark it complete once the truck is back."
                     : "The truck is on the road. Mark the order complete when it returns.";
                 back = MJdatabase.IsAwaitingCompletion(del) ? AppTheme.WarningSoft : AppTheme.InfoSoft;
                 fore = MJdatabase.IsAwaitingCompletion(del) ? AppTheme.WarningText : AppTheme.InfoText;
@@ -385,7 +385,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             else if (IsActiveOrder)
             {
                 text = daysAgo < 0
-                    ? $"Departs in {-daysAgo} day{(daysAgo == -1 ? "" : "s")}, on {del.DispatchDate:ddd, MMM d} at {del.DepartureTime}."
+                    ? $"Departs in {-daysAgo} day{(daysAgo == -1 ? "" : "s")}, on {Fmt.DayShort(del.DispatchDate)} at {del.DepartureTime}."
                     : daysAgo == 0 ? $"Departs today at {del.DepartureTime}." : $"Was due to leave {daysAgo} day{(daysAgo == 1 ? "" : "s")} ago and hasn't been marked in transit or complete.";
                 back = AppTheme.AccentSoft; fore = AppTheme.AccentText;
                 actions.Add(ActionButton("📅  Reschedule", "secondary", RescheduleOrder));
@@ -404,7 +404,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (!IsPaid)
             {
-                text = $"Invoice {invoice.InvoiceNumber} for PHP {invoice.NetAmount:N2} is {invoice.Status.ToLowerInvariant()}" + (invoice.DueDate.Date < DateTime.Today ? $" and was due {invoice.DueDate:MMM d}." : $", due {invoice.DueDate:MMM d}.");
+                text = $"Invoice {invoice.InvoiceNumber} for PHP {invoice.NetAmount:N2} is {invoice.Status.ToLowerInvariant()}" + (invoice.DueDate.Date < DateTime.Today ? $" and was due {Fmt.Short(invoice.DueDate)}." : $", due {Fmt.Short(invoice.DueDate)}.");
                 back = invoice.DueDate.Date < DateTime.Today ? AppTheme.WarningSoft : AppTheme.InfoSoft;
                 fore = invoice.DueDate.Date < DateTime.Today ? AppTheme.WarningText : AppTheme.InfoText;
                 actions.Add(ActionButton("Open billing", "primary", () => { MainForm.Instance?.NavigateToFinance("Billing"); Close(); }));
@@ -571,14 +571,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string timing = days == 0 ? "Today" : days > 0 ? $"In {days} day{(days == 1 ? "" : "s")}" : $"{-days} day{(days == -1 ? "" : "s")} ago";
             var sched = new List<(string, string, bool)>
             {
-                ("Dispatch date", del.DispatchDate.ToString("dddd, MMMM d, yyyy"), false),
+                ("Dispatch date", Fmt.DayDate(del.DispatchDate), false),
                 ("Departure time", string.IsNullOrWhiteSpace(del.DepartureTime) ? "—" : del.DepartureTime, false),
                 ("Timing", timing, false),
                 ("Status", StatusLabel(), false)
             };
             if (schedule != null && schedule.RescheduleCount > 0)
             {
-                sched.Add(("Rescheduled", $"{schedule.RescheduleCount} time(s)" + (schedule.OriginalScheduleDate.HasValue ? $" · originally {schedule.OriginalScheduleDate.Value:MMM d, yyyy}" : ""), false));
+                sched.Add(("Rescheduled", $"{schedule.RescheduleCount} time(s)" + (schedule.OriginalScheduleDate.HasValue ? $" · originally {Fmt.Date(schedule.OriginalScheduleDate.Value)}" : ""), false));
                 if (!string.IsNullOrWhiteSpace(schedule.RescheduleReason)) sched.Add(("Reschedule reason", schedule.RescheduleReason, false));
             }
             if (IsCancelled && !string.IsNullOrWhiteSpace(del.CancellationReason)) sched.Add(("Cancellation reason", del.CancellationReason, false));
@@ -731,13 +731,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Loading schedule
             if (schedule != null)
             {
-                items.Add(DocRow("📅", $"Loading schedule  {schedule.ScheduleNumber}", $"{schedule.ScheduleDate:MMM d, yyyy} · {schedule.TotalCrates:N0} crates · {schedule.Status}",
+                items.Add(DocRow("📅", $"Loading schedule  {schedule.ScheduleNumber}", $"{Fmt.Date(schedule.ScheduleDate)} · {schedule.TotalCrates:N0} crates · {schedule.Status}",
                     ("View", "secondary", () => RecordDetailsDialog.ShowDetails(this, schedule))));
             }
             // Trip report
             if (trip != null)
             {
-                items.Add(DocRow("📝", $"Trip report  {trip.TripReportNumber}", $"Filed {trip.ReportDate:MMM d, yyyy} · delivered {trip.DeliveredCrates:N0}, returned {trip.ReturnedCrates:N0} · signed by {trip.StoreManagerName}",
+                items.Add(DocRow("📝", $"Trip report  {trip.TripReportNumber}", $"Filed {Fmt.Date(trip.ReportDate)} · delivered {trip.DeliveredCrates:N0}, returned {trip.ReturnedCrates:N0} · signed by {trip.StoreManagerName}",
                     ("Print", "secondary", () => PrintHelper.PrintOfficialTripReport(del.Id, del.DispatchNumber)),
                     ("Open", "primary", OpenTripReport)));
             }
@@ -749,7 +749,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Invoice
             if (invoice != null)
             {
-                items.Add(DocRow("💰", $"Invoice  {invoice.InvoiceNumber}", $"PHP {invoice.NetAmount:N2} · {invoice.Status} · issued {invoice.IssueDate:MMM d}, due {invoice.DueDate:MMM d, yyyy}",
+                items.Add(DocRow("💰", $"Invoice  {invoice.InvoiceNumber}", $"PHP {invoice.NetAmount:N2} · {invoice.Status} · issued {Fmt.Short(invoice.IssueDate)}, due {Fmt.Date(invoice.DueDate)}",
                     ("Open billing", "primary", () => { MainForm.Instance?.NavigateToFinance("Billing"); Close(); })));
             }
             else
@@ -767,7 +767,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 foreach (var inc in incidents)
                 {
-                    items.Add(DocRow("⚠️", $"Incident · {inc.Cause}", $"{inc.IncidentDate:MMM d, yyyy} · {inc.DamagedQuantity:N0} crates · PHP {inc.EstimatedCost:N2} · {inc.Status}" + (inc.ChargeableToCrew ? " · charged to crew" : ""),
+                    items.Add(DocRow("⚠️", $"Incident · {inc.Cause}", $"{Fmt.Date(inc.IncidentDate)} · {inc.DamagedQuantity:N0} crates · PHP {inc.EstimatedCost:N2} · {inc.Status}" + (inc.ChargeableToCrew ? " · charged to crew" : ""),
                         ("Open", "secondary", OpenIncidents)));
                 }
             }
@@ -826,7 +826,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!string.IsNullOrWhiteSpace(a.FieldName) && (!string.IsNullOrWhiteSpace(a.OldValue) || !string.IsNullOrWhiteSpace(a.NewValue)))
                     detail.Append($"{a.FieldName}: {(string.IsNullOrWhiteSpace(a.OldValue) ? "" : a.OldValue + " → ")}{a.NewValue}");
                 if (!string.IsNullOrWhiteSpace(a.ReasonOrNotes)) detail.Append((detail.Length > 0 ? "  ·  " : "") + a.ReasonOrNotes);
-                int r = g.Rows.Add(a.Timestamp.ToString("MMM d, yyyy  h:mm tt"), string.IsNullOrWhiteSpace(a.Username) ? "System" : a.Username, what, detail.ToString());
+                int r = g.Rows.Add(Fmt.DateTimeText(a.Timestamp), string.IsNullOrWhiteSpace(a.Username) ? "System" : a.Username, what, detail.ToString());
                 g.Rows[r].Cells[3].ToolTipText = detail.ToString();
             }
             host.Controls.Add(g);
@@ -885,7 +885,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnStamp.Click += (s, e) =>
             {
                 if (txtNotes == null) return;
-                string stamp = $"[{DateTime.Now:MMM d, h:mm tt} · {SessionContext.CurrentUsername}] ";
+                string stamp = $"[{Fmt.ShortDateTime(DateTime.Now)} · {SessionContext.CurrentUsername}] ";
                 txtNotes.AppendText((txtNotes.TextLength > 0 && !txtNotes.Text.EndsWith("\n") ? Environment.NewLine : "") + stamp);
                 txtNotes.Focus();
             };
@@ -897,7 +897,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     MJdatabase.UpdateDeliveryRemarks(del.Id, txtNotes.Text.Trim());
                     del.Remarks = txtNotes.Text.Trim();
                     btnSave.Enabled = false;
-                    lblState.Text = $"Saved {DateTime.Now:h:mm tt}";
+                    lblState.Text = $"Saved {DateTime.Now:hh:mm tt}";
                     RefreshParent();
                     ToastHelper.ShowToast(this, "Notes saved", ToastType.Success);
                 }
@@ -963,7 +963,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     var btnStart = MakeButton("🚚  Start trip now", "secondary", D(150));
                     btnStart.Enabled = del.DispatchDate.Date <= DateTime.Today;
                     btnStart.Click += (s, e) => StartTrip();
-                    tips.SetToolTip(btnStart, $"Goes in transit automatically at {MJdatabase.DepartureDateTime(del):MMM d, h:mm tt}. Use this if the truck left early.");
+                    tips.SetToolTip(btnStart, $"Goes in transit automatically at {Fmt.ShortDateTime(MJdatabase.DepartureDateTime(del))}. Use this if the truck left early.");
                     left.Controls.Add(btnStart);
                 }
             }
@@ -1076,12 +1076,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 RefreshParent();
                 Reload(del);
-                ToastHelper.ShowToast(this, $"Rescheduled to {dlg.RescheduledDate:MMM d}", ToastType.Success);
+                ToastHelper.ShowToast(this, $"Rescheduled to {Fmt.Short(dlg.RescheduledDate)}", ToastType.Success);
             }
         }
         private void StartTrip()
         {
-            if (MessageBox.Show(this, $"Start dispatch {del.DispatchNumber} now? It is set to leave at {MJdatabase.DepartureDateTime(del):MMM d, h:mm tt}.", "Start trip now", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            if (MessageBox.Show(this, $"Start dispatch {del.DispatchNumber} now? It is set to leave at {Fmt.ShortDateTime(MJdatabase.DepartureDateTime(del))}.", "Start trip now", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
             var (ok, message) = MJdatabase.StartTripNow(del.Id, SessionContext.CurrentUsername);
             if (!ok) { MessageBox.Show(this, message, "Start trip now", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             RefreshParent();
@@ -1174,7 +1174,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             sb.AppendLine($"DISPATCH {del.DispatchNumber}  [{StatusLabel()}]");
             sb.AppendLine($"Client: {clientName}");
             sb.AppendLine($"Route: {routeText}");
-            sb.AppendLine($"Date: {del.DispatchDate:ddd, MMM d, yyyy} · {del.DepartureTime}");
+            sb.AppendLine($"Date: {Fmt.DayDate(del.DispatchDate)} · {del.DepartureTime}");
             sb.AppendLine($"Truck: {del.TruckInfo}");
             sb.AppendLine($"Driver: {PersonLine(del.DriverName, FindCrew(del.DriverId))}");
             var aides = MJdatabase.GetDeliveryCrewIds(del).Where(x => x.Role == "Aide").Select(x => PersonLine(FindCrew(x.CrewId)?.FullName ?? "", FindCrew(x.CrewId))).Where(x => x != "—").ToList();

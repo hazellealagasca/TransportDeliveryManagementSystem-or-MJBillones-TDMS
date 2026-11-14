@@ -502,7 +502,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var cr = crs[0];
                 selectedCollection = cr;
                 m.Items.AddRange(RowMenu.Header($"💵  Receipt {cr.ReceiptNumber}",
-                    $"{RowMenu.Money(cr.AmountPaid)} · {cr.PaymentMethod}{(string.IsNullOrWhiteSpace(cr.ReferenceNumber) ? "" : " #" + cr.ReferenceNumber)} · {cr.PaymentDate:MMM d, yyyy} · invoice {cr.InvoiceNumber}"));
+                    $"{RowMenu.Money(cr.AmountPaid)} · {cr.PaymentMethod}{(string.IsNullOrWhiteSpace(cr.ReferenceNumber) ? "" : " #" + cr.ReferenceNumber)} · {Fmt.Date(cr.PaymentDate)} · invoice {cr.InvoiceNumber}"));
                 m.Items.Add(RowMenu.Item("Open details", () => RecordDetailsDialog.ShowDetails(this, cr)));
                 m.Items.Add(RowMenu.Item("Edit receipt", () => { SetFormVisibility(true); txtReceiptNo?.Focus(); }));
                 m.Items.Add(RowMenu.Good("Print official receipt (OR)", () => PrintHelper.PrintOfficialCollectionReceipt(cr)));
@@ -511,7 +511,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.Add(RowMenu.Item("Other payments for this invoice", () => RowMenu.Search(txtGridSearch, cr.InvoiceNumber), "", !string.IsNullOrWhiteSpace(cr.InvoiceNumber)));
                 m.Items.Add(RowMenu.CopySub(this, ("Receipt number", cr.ReceiptNumber), ("Invoice number", cr.InvoiceNumber), ("Reference / check #", cr.ReferenceNumber),
                     ("Amount", cr.AmountPaid.ToString("N2")),
-                    ("Summary", $"OR {cr.ReceiptNumber}: {RowMenu.Money(cr.AmountPaid)} by {cr.PaymentMethod} on {cr.PaymentDate:MMMM d, yyyy} for invoice {cr.InvoiceNumber}")));
+                    ("Summary", $"OR {cr.ReceiptNumber}: {RowMenu.Money(cr.AmountPaid)} by {cr.PaymentMethod} on {Fmt.Date(cr.PaymentDate)} for invoice {cr.InvoiceNumber}")));
                 m.Items.Add(RowMenu.ExportSub(gridCollections, "Collection_Receipts", "Collection Receipts", () => BtnPrint_Click(this, EventArgs.Empty)));
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.Danger("Void / delete receipt…", () => { selectedCollection = cr; BtnDelete_Click(this, EventArgs.Empty); }));

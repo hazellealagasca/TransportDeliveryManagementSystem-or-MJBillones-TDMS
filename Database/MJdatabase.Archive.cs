@@ -33,7 +33,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 foreach (var c in GetClients().Where(c => !c.IsActive))
-                    list.Add(new ArchivedItem { Kind = "Client", Id = c.Id, Code = "", Name = c.CompanyName, Client = c.CompanyName, ArchivedOn = c.DeactivatedAt.HasValue ? c.DeactivatedAt.Value.ToString("MMM d, yyyy") : "" });
+                    list.Add(new ArchivedItem { Kind = "Client", Id = c.Id, Code = "", Name = c.CompanyName, Client = c.CompanyName, ArchivedOn = c.DeactivatedAt.HasValue ? Fmt.Date(c.DeactivatedAt.Value) : "" });
             }
             catch (Exception ex) { ErrLog.Swallowed(ex); }
             try
@@ -50,7 +50,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 foreach (var rt in GetDeliveryRoutes(activeOnly: false).Where(x => !x.IsActive))
-                    list.Add(new ArchivedItem { Kind = "Route", Id = rt.Id, Code = rt.RouteCode, Name = rt.RouteName, Client = rt.ClientCompanyName, ArchivedOn = rt.UpdatedAt.ToString("MMM d, yyyy") });
+                    list.Add(new ArchivedItem { Kind = "Route", Id = rt.Id, Code = rt.RouteCode, Name = rt.RouteName, Client = rt.ClientCompanyName, ArchivedOn = Fmt.Date(rt.UpdatedAt) });
             }
             catch (Exception ex) { ErrLog.Swallowed(ex); }
             return list;
@@ -58,7 +58,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-        private static string FormatArchivedOn(string raw) => DateTime.TryParse(raw, out var d) ? d.ToString("MMM d, yyyy") : "";
+        private static string FormatArchivedOn(string raw) => DateTime.TryParse(raw, out var d) ? Fmt.Date(d) : "";
 
 
 

@@ -11,6 +11,8 @@ namespace TDMS.Verify;
 public static partial class Checks
 {
     private const string VsPro = CrewManagementView.LicPro, VsNonPro = CrewManagementView.LicNonPro;
+    /// <summary>Nov 14: a crew member needs an address, so every quick add in the checks passes one.</summary>
+    internal const string VsAddr = "Blk 1 Lot 2 Sample St, Tarlac City";
 
     [Check]
     public static string ValidationSetup_AddDriver_LicenseRequired_ExpiredRefused_AideNeedsNone()
@@ -20,30 +22,30 @@ public static partial class Checks
         var bad = new List<string>();
         var issued = DateTime.Today.AddYears(-1); var future = DateTime.Today.AddYears(4);
 
-        var none = QuickAddCrewDialog.TrySave(true, "Alba", "Rosa", "", "");
+        var none = QuickAddCrewDialog.TrySave(true, "Alba", "Rosa", "", "", address: VsAddr);
         if (none.Id != 0 || none.Field != "license") bad.Add($"driver without a license was not refused ({none.Problem})");
-        var expired = QuickAddCrewDialog.TrySave(true, "Alba", "Rosa", "", "", VsPro, DateTime.Today.AddYears(-6), DateTime.Today.AddDays(-10));
+        var expired = QuickAddCrewDialog.TrySave(true, "Alba", "Rosa", "", "", VsPro, DateTime.Today.AddYears(-6), DateTime.Today.AddDays(-10), address: VsAddr);
         if (expired.Id != 0 || expired.Field != "expiry" || expired.Problem == null || !expired.Problem.Contains("expired")) bad.Add($"expired license not refused ({expired.Problem})");
-        var futureIssue = QuickAddCrewDialog.TrySave(true, "Alba", "Rosa", "", "", VsPro, DateTime.Today.AddDays(5), DateTime.Today.AddYears(5));
+        var futureIssue = QuickAddCrewDialog.TrySave(true, "Alba", "Rosa", "", "", VsPro, DateTime.Today.AddDays(5), DateTime.Today.AddYears(5), address: VsAddr);
         if (futureIssue.Id != 0 || futureIssue.Field != "issued") bad.Add("a future issue date was not refused");
-        var backwards = QuickAddCrewDialog.TrySave(true, "Alba", "Rosa", "", "", VsPro, issued, issued.AddDays(-3));
+        var backwards = QuickAddCrewDialog.TrySave(true, "Alba", "Rosa", "", "", VsPro, issued, issued.AddDays(-3), address: VsAddr);
         if (backwards.Id != 0 || backwards.Field != "expiry") bad.Add("expiry before issue was not refused");
-        var tooLong = QuickAddCrewDialog.TrySave(true, "Alba", "Rosa", "", "", VsPro, DateTime.Today.AddYears(-1), DateTime.Today.AddYears(11));
+        var tooLong = QuickAddCrewDialog.TrySave(true, "Alba", "Rosa", "", "", VsPro, DateTime.Today.AddYears(-1), DateTime.Today.AddYears(11), address: VsAddr);
         if (tooLong.Id != 0) bad.Add("a license longer than 10 years was not refused");
-        var nonPro = QuickAddCrewDialog.TrySave(true, "Alba", "Rosa", "", "", VsNonPro, issued, future, nonProConfirmed: false);
-        if (nonPro.Id != 0 || nonPro.Field != "confirm") bad.Add($"Non-Professional without the tick was not refused ({nonPro.Problem})");
+        var nonPro = QuickAddCrewDialog.TrySave(true, "Alba", "Rosa", "", "", VsNonPro, issued, future, address: VsAddr);
+        if (nonPro.Id != 0 || nonPro.Field != "license") bad.Add($"a driver with a Non-Professional license was not refused ({nonPro.Problem})");
         if (Long("SELECT COUNT(*) FROM Crews WHERE LastName='Alba'") != 0) bad.Add("a refused driver was still saved");
 
-        var ok = QuickAddCrewDialog.TrySave(true, "Alba", "Rosa", "", "", VsPro, issued, future);
+        var ok = QuickAddCrewDialog.TrySave(true, "Alba", "Rosa", "", "", VsPro, issued, future, address: VsAddr);
         if (ok.Id <= 0 || ok.Problem != null) bad.Add("a driver with a valid Professional license was refused: " + ok.Problem);
         else
         {
             var c = MJdatabase.GetCrews().FirstOrDefault(x => x.Id == ok.Id);
             if (c == null || c.LicenseClass != VsPro || c.LicenseIssued?.Date != issued.Date || c.LicenseExpiry?.Date != future.Date || !c.HasLicense) bad.Add($"license not stored on the crew ({c?.LicenseClass} {c?.LicenseIssued} {c?.LicenseExpiry})");
         }
-        var ok2 = QuickAddCrewDialog.TrySave(true, "Alba", "Pedro", "", "", VsNonPro, issued, future, nonProConfirmed: true);
-        if (ok2.Id <= 0) bad.Add("Non-Professional with the tick was refused: " + ok2.Problem);
-        var aide = QuickAddCrewDialog.TrySave(false, "Alba", "Tina", "", "");
+        var ok2 = QuickAddCrewDialog.TrySave(true, "Alba", "Pedro", "", "", VsNonPro, issued, future, address: VsAddr);
+        if (ok2.Id != 0 || ok2.Field != "license") bad.Add("Nov 14: a driver can't be saved with a Non-Professional license any more: " + ok2.Problem);
+        var aide = QuickAddCrewDialog.TrySave(false, "Alba", "Tina", "", "", address: VsAddr);
         if (aide.Id <= 0 || aide.Problem != null) bad.Add("an aide without a license was refused: " + aide.Problem);
         return string.Join("; ", bad);
     }
@@ -184,7 +186,7 @@ public static partial class Checks
         MJdatabase.RunOneTimeMigrations();
         MJdatabase.EnsureCapacitySchema();
         var bad = new List<string>();
-        if (TruckProfileDialog.ExpiryNote("Registration", new DateTime(2026, 3, 5), new DateTime(2026, 11, 12)) != "Registration expired on Mar 5, 2026") bad.Add("note text");
+        if (TruckProfileDialog.ExpiryNote("Registration", new DateTime(2026, 3, 5), new DateTime(2026, 11, 12)) != "Registration expired on 03/05/2026") bad.Add("note text");
         if (TruckProfileDialog.ExpiryNote("Insurance", new DateTime(2026, 11, 12), new DateTime(2026, 11, 12)) != null) bad.Add("a date of today was called expired");
         if (TruckProfileDialog.ExpiryNote("Insurance", null) != null) bad.Add("no date gave a note");
         var t = new Truck { PlateNumber = "VSX 123", TruckType = "FORWARD 4 TONS", CapacityCrates = 120, CargoType = "Cold / Chilled", Status = "Active" };
@@ -198,7 +200,7 @@ public static partial class Checks
             dlg.Show(); Pump(300);
             var texts = AllControls(dlg).OfType<Label>().Where(l => l.Text.Contains("expired on")).Select(l => l.Text).ToList();
             TbShot(dlg, "truck_profile_expired.png");
-            if (!texts.Any(x => x.StartsWith("Registration expired on " + DateTime.Today.AddDays(-20).ToString("MMM d, yyyy")))) return "no red registration note: " + string.Join("|", texts);
+            if (!texts.Any(x => x.StartsWith("Registration expired on " + Fmt.Date(DateTime.Today.AddDays(-20))))) return "no red registration note: " + string.Join("|", texts);
             if (texts.Any(x => x.StartsWith("Insurance"))) return "insurance note shown for a valid date";
             return "";
         });
