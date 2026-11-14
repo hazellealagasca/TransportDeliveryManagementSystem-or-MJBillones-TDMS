@@ -640,7 +640,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             RowMenu.Attach(gridInvoices, (m, rows) =>
             {
                 if (rows[0].Tag is not Invoice inv) return;
-                m.Items.AddRange(RowMenu.Header($"🧾  Invoice {inv.InvoiceNumber}", $"{RowMenu.Money(inv.NetAmount)} · {inv.Status} · due {Fmt.Date(inv.DueDate)}"));
+                m.Items.AddRange(RowMenu.Header($"🧾  Invoice {inv.InvoiceNumber}", $"{RowMenu.Money(inv.NetAmount)} · {StatusText.Billing(inv.Status, inv.NetAmount)} · due {Fmt.Date(inv.DueDate)}"));
                 m.Items.Add(RowMenu.Item("Open details", () => RecordDetailsDialog.ShowDetails(this, inv)));
                 m.Items.Add(RowMenu.Item("Show in Billing", () => { if (CanLeaveWithoutLosing()) MainForm.Instance?.ShowFinanceRecords("Billing", inv.InvoiceNumber); }));
                 m.Items.Add(RowMenu.Item($"Open dispatch {inv.DispatchNumber}", () => RowMenu.OpenDispatch(this, inv.DeliveryId, inv.DispatchNumber), "", inv.DeliveryId > 0));

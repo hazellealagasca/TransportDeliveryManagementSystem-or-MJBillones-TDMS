@@ -60,12 +60,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit.AddStrip(billStrip);
             billStepper = new WorkflowStepper("Dispatch created", "Trip report completed", "Invoice filled from trip", "Review", "Validated & ready");
             billHelp = new HelpDrawer("How this works",
-                "0. New invoice bills a Statement of Account: pick the statement and its client, trips and amounts (freight, fuel, withholding, total due) fill in and are locked. Type only the Service Invoice No. One invoice bills the whole statement. Tick \"Bill one trip directly\" to use the trip form below instead.\n" +
+                "0. New service invoice bills a Statement of Account: pick the statement and its client, trips and amounts (freight, fuel, withholding, total due) fill in and are locked. Type only the Service Invoice No. One invoice bills the whole statement. Tick \"Bill one trip directly\" to use the trip form below instead.\n" +
                 "1. Only completed dispatches with a saved trip report appear in the list — the invoice is filled from the trip (client, trip report, amount from the Rate Matrix). Once the trip is picked it is fixed; Clear form frees it.\n" +
                 "2. A trip is billed once: either on a statement of account or on a direct invoice here. Trips already on a statement don't appear.\n" +
                 "3. The client is always the trip's client. The statement of account reads this invoice's amount and fuel surcharge, so type them here, once.\n" +
                 "4. If you change the amount from the Rate Matrix's figure, write the adjustment reason — it is kept with the invoice and in the audit log. There are no deductions on an invoice.\n" +
-                "5. All checks must be green before Issue invoice. Payments are then recorded in full in Collections & Receipts (no part payments).");
+                "5. All checks must be green before Issue invoice. Payments are then recorded in full in Collection Receipts (no part payments).");
             billChecklist = new ValidationChecklist();
             formKit.AddBodyTop(new Panel { Height = Dpi(8), BackColor = AppTheme.Canvas });
             formKit.AddBodyTop(billHelp);
@@ -251,7 +251,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (var inv in allInvoices.Where(i => (i.InvoiceNumber ?? "").Contains(q, StringComparison.OrdinalIgnoreCase)))
             {
                 var kind = RowMenu.Is(inv.Status, "Paid") ? BadgeKind.Good : RowMenu.Is(inv.Status, "Draft") ? BadgeKind.Warn : inv.DueDate.Date < DateTime.Today ? BadgeKind.Bad : BadgeKind.Info;
-                yield return new LookupItem(inv.InvoiceNumber, $"Existing · {inv.ClientName} · ₱{inv.NetAmount:N2} · {Fmt.Date(inv.IssueDate)}{(inv.SoaId > 0 ? " · from a statement" : "")}", inv.Status, kind);
+                yield return new LookupItem(inv.InvoiceNumber, $"Existing · {inv.ClientName} · ₱{inv.NetAmount:N2} · {Fmt.Date(inv.IssueDate)}{(inv.SoaId > 0 ? " · from a statement" : "")}", StatusText.Billing(inv.Status, inv.NetAmount), kind);
                 if (++n >= 20) yield break;
             }
         }
@@ -325,7 +325,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     // Payments are in full: once a receipt exists the amounts stay as paid (void the receipt first to change them).
                     bool unchanged = Math.Abs(numTotalAmount.Value - selectedInvoice.Freight) < 0.005m && Math.Abs(numFuel.Value - selectedInvoice.FuelSurcharge) < 0.005m;
-                    checks.Add(new PaymentCheck(unchanged ? $"Amounts stay as paid (₱{billPaid:N2} collected)" : $"₱{billPaid:N2} is already collected, so the amounts can't change — void the receipt in Collections & Receipts first", unchanged));
+                    checks.Add(new PaymentCheck(unchanged ? $"Amounts stay as paid (₱{billPaid:N2} collected)" : $"₱{billPaid:N2} is already collected, so the amounts can't change — void the receipt in Collection Receipts first", unchanged));
                 }
             }
             // Invoice number: present, unique.

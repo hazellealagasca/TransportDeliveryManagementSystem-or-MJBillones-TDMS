@@ -187,7 +187,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (inv != null)
             {
                 bool issued = !RowMenu.Is(inv.Status, "Draft") && inv.NetAmount > 0;
-                checks.Add(new PaymentCheck(issued ? "Invoice is issued with an amount" : "Invoice is still a draft without an amount — finish it in Billing first", issued));
+                checks.Add(new PaymentCheck(issued ? "Invoice is issued with an amount" : "Invoice is incomplete (no amount) — finish it in Billing first", issued));
                 // Nov 6: payments are always the full amount due (no part payments, no balance).
                 decimal due = Math.Max(0, inv.NetAmount - collPaidOthers);
                 checks.Add(new PaymentCheck(amt == due ? $"Full amount due (₱{due:N2})" : $"₱{amt:N2} is not the full amount due of ₱{due:N2}", amt == due));

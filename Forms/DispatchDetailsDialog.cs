@@ -405,7 +405,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (!IsPaid)
             {
-                text = $"Invoice {invoice.InvoiceNumber} for PHP {invoice.NetAmount:N2} is {invoice.Status.ToLowerInvariant()}" + (invoice.DueDate.Date < DateTime.Today ? $" and was due {Fmt.Short(invoice.DueDate)}." : $", due {Fmt.Short(invoice.DueDate)}.");
+                text = $"Invoice {invoice.InvoiceNumber} for PHP {invoice.NetAmount:N2} is {StatusText.Billing(invoice.Status, invoice.NetAmount).ToLowerInvariant()}" + (invoice.DueDate.Date < DateTime.Today ? $" and was due {Fmt.Short(invoice.DueDate)}." : $", due {Fmt.Short(invoice.DueDate)}.");
                 back = invoice.DueDate.Date < DateTime.Today ? AppTheme.WarningSoft : AppTheme.InfoSoft;
                 fore = invoice.DueDate.Date < DateTime.Today ? AppTheme.WarningText : AppTheme.InfoText;
                 actions.Add(ActionButton("Open billing", "primary", () => { MainForm.Instance?.NavigateToFinance("Billing"); Close(); }));
@@ -439,7 +439,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 new Tile("No. of drops", $"{storeCount}", storeCount > 1 ? "Multi-drop route" : "Single drop"),
                 new Tile("Truck load", cap > 0 ? $"{pct}%" : "—", cap > 0 ? $"{total:N0} of {cap:N0} crates" : "Truck capacity not set", pct > 100 ? AppTheme.DangerText : (Color?)null),
                 new Tile("Delivered / returned", trip != null ? $"{trip.DeliveredCrates:N0} / {trip.ReturnedCrates:N0}" : "—", trip != null ? $"Signed by {Shorten(trip.StoreManagerName, 22)}" : "No trip report yet"),
-                new Tile("Billing", invoice != null ? $"₱{invoice.NetAmount:N0}" : "—", invoice != null ? $"{invoice.InvoiceNumber} · {invoice.Status}" : "Not billed yet",
+                new Tile("Billing", invoice != null ? $"₱{invoice.NetAmount:N0}" : "—", invoice != null ? $"{invoice.InvoiceNumber} · {StatusText.Billing(invoice.Status, invoice.NetAmount)}" : "Not billed yet",
                     invoice == null ? (Color?)null : IsPaid ? AppTheme.SuccessText : AppTheme.WarningText)
             };
             var host = new Panel { Dock = DockStyle.Top, Height = D(104), BackColor = AppTheme.Canvas, Padding = new Padding(D(24), D(12), D(24), 0) };
@@ -752,7 +752,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Invoice
             if (invoice != null)
             {
-                items.Add(DocRow("💰", $"Invoice  {invoice.InvoiceNumber}", $"PHP {invoice.NetAmount:N2} · {invoice.Status} · issued {Fmt.Short(invoice.IssueDate)}, due {Fmt.Date(invoice.DueDate)}",
+                items.Add(DocRow("💰", $"Invoice  {invoice.InvoiceNumber}", $"PHP {invoice.NetAmount:N2} · {StatusText.Billing(invoice.Status, invoice.NetAmount)} · issued {Fmt.Short(invoice.IssueDate)}, due {Fmt.Date(invoice.DueDate)}",
                     ("Open billing", "primary", () => { MainForm.Instance?.NavigateToFinance("Billing"); Close(); })));
             }
             else

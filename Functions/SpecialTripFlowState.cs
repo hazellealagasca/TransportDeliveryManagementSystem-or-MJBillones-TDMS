@@ -71,7 +71,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 bool can = completed && reportOk && ti == null;
                 f.Steps.Add(new StFlowStep { Key = "invoice", Title = "Service invoice", Done = ti != null,
-                    Status = ti != null ? $"SI {ti.Number} · {ti.Status}" : can ? "Needed now (Billing)" : withReport ? "After the trip report" : "After it is completed",
+                    Status = ti != null ? $"SI {ti.Number} · {StatusText.Billing(ti.Status, ti.Net)}" : can ? "Needed now (Billing)" : withReport ? "After the trip report" : "After it is completed",
                     ActionKey = ti != null || can ? "invoice" : null, ActionText = ti != null ? "Show" : can ? "Make service invoice" : null, Number = ti?.Number });
             }
             if (withSoa)

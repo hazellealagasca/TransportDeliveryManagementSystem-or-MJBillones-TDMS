@@ -52,17 +52,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     new("Outstanding", AllInOneSummaryBar.Money(outstanding), SummaryTone.Amber, "still to collect", Strong: outstanding > 0),
                     new("Overdue", overdue.Count.ToString("N0"), SummaryTone.Red, overdue.Count > 0 ? AllInOneSummaryBar.Money(overdue.Sum(Balance)) + " past due" : "none past due", Strong: overdue.Count > 0),
                     new("Paid in full", paidCount.ToString("N0"), SummaryTone.Green, "invoices"),
-                    new("Unpaid", unpaid.ToString("N0"), SummaryTone.Purple, "invoices"),
+                    new(StatusText.Display("Unpaid"), unpaid.ToString("N0"), SummaryTone.Purple, "invoices"),
                 };
                 string context = $"Invoices shown: {billingSummaryShown.Count:N0} (follows your search and filters)";
                 string preview = $"{AllInOneSummaryBar.Count(billingSummaryShown.Count, "invoice", "invoices")}  ·  {AllInOneSummaryBar.Money(outstanding)} outstanding  ·  {overdue.Count:N0} overdue";
                 var sel = gridInvoices.SelectedRows.Count == 1 ? gridInvoices.SelectedRows[0].DataBoundItem as Invoice : null;
                 if (sel != null)
                 {
-                    m.Add(new SummaryMetric("Selected invoice", sel.InvoiceNumber, SummaryTone.Purple, $"{sel.Status} · {sel.ClientName}", Strong: true));
+                    m.Add(new SummaryMetric("Selected invoice", sel.InvoiceNumber, SummaryTone.Purple, $"{StatusText.Billing(sel.Status, sel.NetAmount)} · {sel.ClientName}", Strong: true));
                     m.Add(new SummaryMetric("Its amount", AllInOneSummaryBar.Money(sel.NetAmount), SummaryTone.Teal, $"due {Fmt.Date(sel.DueDate)}"));
                     m.Add(new SummaryMetric(Paid(sel) > 0 ? "Paid in full" : "To collect in full", AllInOneSummaryBar.Money(Paid(sel) > 0 ? Paid(sel) : Balance(sel)), Paid(sel) > 0 ? SummaryTone.Green : SummaryTone.Amber, Paid(sel) > 0 ? "collected" : "one receipt for the full amount", Strong: Balance(sel) > 0));
-                    context = $"Selected invoice {sel.InvoiceNumber} — {sel.ClientName} · {sel.Status}   ·   Invoices shown: {billingSummaryShown.Count:N0}";
+                    context = $"Selected invoice {sel.InvoiceNumber} — {sel.ClientName} · {StatusText.Billing(sel.Status, sel.NetAmount)}   ·   Invoices shown: {billingSummaryShown.Count:N0}";
                 }
                 billingSummary.SetMetrics(m, preview, context);
             }

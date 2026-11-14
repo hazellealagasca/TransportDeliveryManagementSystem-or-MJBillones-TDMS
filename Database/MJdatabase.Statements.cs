@@ -88,7 +88,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return $"Statement {soa.SoaNumber} is already cancelled.";
             int receipts = LiveReceiptCountForSoa(soa.Id);
             if (receipts > 0)
-                return $"Statement {soa.SoaNumber} has been paid ({receipts} collection receipt{(receipts == 1 ? "" : "s")}). Void the receipt first in Collections & Receipts, then cancel the statement.";
+                return $"Statement {soa.SoaNumber} has been paid ({receipts} collection receipt{(receipts == 1 ? "" : "s")}). Void the receipt first in Collection Receipts, then cancel the statement.";
             return "";
         }
 

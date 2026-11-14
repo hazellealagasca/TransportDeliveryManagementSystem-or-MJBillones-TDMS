@@ -69,7 +69,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 (FirstCaption, Money(gross), AppTheme.TextPrimary),
                 (SecondCaption ?? (Compact ? "Deductions" : "Deductions / advances"), Money(deductions), AppTheme.TextPrimary),
                 (NetCaption, Money(Math.Max(0m, net)), AppTheme.TextPrimary),
-                ("Payment", net > 0 && paid >= net ? "Paid in full" : "Unpaid", net > 0 && paid >= net ? AppTheme.SuccessText : AppTheme.WarningText),
+                ("Payment", net > 0 && paid >= net ? "Paid in full" : StatusText.Display("Unpaid"), net > 0 && paid >= net ? AppTheme.SuccessText : AppTheme.WarningText),
             };
             string vs = status.Length > 0 ? status : problems > 0 ? $"✗ {problems} to fix" : warnings > 0 ? $"⚠ {warnings} to review" : "✓ Ready to save";
             Color vc = problems > 0 ? AppTheme.DangerText : warnings > 0 ? AppTheme.WarningText : AppTheme.SuccessText;

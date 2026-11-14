@@ -213,7 +213,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             // Nov 6: only the steps ticked on the trip get a tile.
             if (trip.WithTripReport) tiles.Add(new("Trip report", flow.Links.HasReport ? "Filed" : "—", flow.Links.HasReport ? flow.Links.TripReportNumber : "Not filed yet"));
-            if (trip.WithServiceInvoice) tiles.Add(new("Service invoice", ti != null ? $"₱{ti.Net:N0}" : "—", ti != null ? $"SI {ti.Number} · {ti.Status}" : "Not made yet",
+            if (trip.WithServiceInvoice) tiles.Add(new("Service invoice", ti != null ? $"₱{ti.Net:N0}" : "—", ti != null ? $"SI {ti.Number} · {StatusText.Billing(ti.Status, ti.Net)}" : "Not made yet",
                 ti == null ? (Color?)null : ti.Open ? AppTheme.WarningText : AppTheme.SuccessText));
             if (trip.WithSOA) tiles.Add(new("Statement (SOA)", ti != null && ti.SoaId > 0 ? ti.SoaNumber : "—", ti != null && ti.SoaId > 0 ? "Service invoice is on it" : "Not on a statement yet"));
             if (trip.WithCollection) tiles.Add(new("Collection receipt", flow.Receipt != null ? $"₱{flow.Receipt.AmountPaid:N0}" : "—", flow.Receipt != null ? $"Receipt {flow.Receipt.ReceiptNumber} · {flow.Receipt.PaymentMethod}" : "No receipt yet",
@@ -314,7 +314,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             var steps = new List<(string, string, bool)>();
             if (trip.WithTripReport) steps.Add(("Trip report", flow.Links.HasReport ? flow.Links.TripReportNumber : "Not filed yet", false));
-            if (trip.WithServiceInvoice) steps.Add(("Service invoice", flow.Invoice != null ? $"SI {flow.Invoice.Number} · {flow.Invoice.Status}" : "Not made yet", false));
+            if (trip.WithServiceInvoice) steps.Add(("Service invoice", flow.Invoice != null ? $"SI {flow.Invoice.Number} · {StatusText.Billing(flow.Invoice.Status, flow.Invoice.Net)}" : "Not made yet", false));
             if (trip.WithSOA) steps.Add(("Statement (SOA)", flow.Invoice != null && flow.Invoice.SoaId > 0 ? flow.Invoice.SoaNumber : "Not on a statement yet", false));
             if (trip.WithCollection) steps.Add(("Collection receipt", flow.Receipt != null ? $"Receipt {flow.Receipt.ReceiptNumber}" : "No receipt yet", false));
             if (steps.Count == 0) steps.Add(("Next steps", "None ticked for this trip", false));

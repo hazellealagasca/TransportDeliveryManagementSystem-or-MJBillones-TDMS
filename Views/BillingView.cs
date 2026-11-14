@@ -233,7 +233,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (Features.On(Features.PaymentsWorkbench)) ApplyBillWorkbench(); // Ledger Desk layout (Settings → Features can switch it off)
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = "＋ New invoice";
+                btnToggleForm.Text = "＋ New service invoice";
                 UIThemeHelper.SetButtonRole(btnToggleForm, "primary");
             }
             gridInvoices.CellDoubleClick += (s, e) =>
@@ -251,7 +251,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (keep.Kept) { keep.Resume(this, SetFormVisibility); return; } // a kept draft comes back as it was left, never blank
             ClearFields();
             ReloadSoaChoices(); // Nov 10: the statements that can be billed now
-            lblFormHeader.Text = "New invoice";
+            lblFormHeader.Text = "New service invoice";
             SetFormVisibility(true);
         }
         // Nov 6: unsaved-typing tracking for the add / edit form (see FormGuard).
@@ -313,6 +313,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (gridInvoices.Columns[e.ColumnIndex].DataPropertyName == "Status" && e.Value != null)
             {
                 string status = e.Value.ToString() ?? "";
+                var rowInv = gridInvoices.Rows[e.RowIndex].DataBoundItem as Invoice;
+                // A leftover Draft row (old data) is read as For Collection when it has an amount, otherwise Incomplete.
+                if (status.Equals("Draft", StringComparison.OrdinalIgnoreCase)) { e.Value = StatusText.Billing(status, rowInv?.NetAmount ?? 0m); e.FormattingApplied = true; }
                 if (status.Equals("Paid", StringComparison.OrdinalIgnoreCase))
                 {
                     e.CellStyle.BackColor = Pal.C(220, 252, 231);
@@ -328,7 +331,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else if (status.Equals("Unpaid", StringComparison.OrdinalIgnoreCase) && gridInvoices.Rows[e.RowIndex].DataBoundItem is Invoice od && od.DueDate.Date < DateTime.Today)
                 {
                     // Nov 6 workflow: "Overdue" is shown from the due date; the stored status stays Unpaid until it is Paid.
-                    e.Value = "Unpaid · overdue";
+                    e.Value = StatusText.Display("Unpaid") + " · overdue";
                     e.FormattingApplied = true;
                     e.CellStyle.BackColor = Pal.C(254, 226, 226);
                     e.CellStyle.ForeColor = Pal.C(185, 28, 28);
@@ -336,6 +339,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 else if (status.Equals("Unpaid", StringComparison.OrdinalIgnoreCase))
                 {
+                    e.Value = StatusText.Display(status);
+                    e.FormattingApplied = true;
                     e.CellStyle.BackColor = Pal.C(241, 245, 249);
                     e.CellStyle.ForeColor = Pal.C(51, 65, 85);
                 }
@@ -635,19 +640,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (!pnlForm.Visible) { RefreshBillReady(); ReloadSoaChoices(); }
                 int unpaid = allInvoices.Count(i => i.Status == "Unpaid");
-                int drafts = allInvoices.Count(i => i.Status == "Draft");
+                int incomplete = allInvoices.Count(i => i.Status == "Draft" && i.NetAmount <= 0);
                 int overdue = allInvoices.Count(i => i.Status == "Unpaid" && i.DueDate.Date < DateTime.Today);
                 int paid = allInvoices.Count(i => i.Status == "Paid");
                 int cancelled = allInvoices.Count(i => i.Status == "Cancelled");
                 // Cancelled invoices are not money billed.
                 decimal totalNet = allInvoices.Where(i => i.Status != "Cancelled").Sum(i => i.NetAmount);
 
-                lblSummary.Text = $"{allInvoices.Count:N0} invoice{(allInvoices.Count == 1 ? "" : "s")}  ·  {unpaid} unpaid ({overdue} overdue)  ·  {drafts} draft  ·  {paid} paid{(cancelled > 0 ? $"  ·  {cancelled} cancelled" : "")}  ·  ₱{totalNet:N2} billed";
+                lblSummary.Text = $"{allInvoices.Count:N0} invoice{(allInvoices.Count == 1 ? "" : "s")}  ·  {unpaid} for collection ({overdue} overdue)  ·{(incomplete > 0 ? $"  {incomplete} incomplete  ·" : "")}  {paid} paid{(cancelled > 0 ? $"  ·  {cancelled} cancelled" : "")}  ·  ₱{totalNet:N2} billed";
             }
             catch (Exception ex)
             { ErrLog.Error("BillingView", ex); 
                 System.Diagnostics.Debug.WriteLine($"[BillingView] LoadData: {ex}");
-                MessageBox.Show($"Failed to load invoice billing records: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Failed to load service invoice records: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -712,7 +717,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 decimal fuel = stLine != null ? stLine.Fuel : numFuel.Value;
                 decimal total = stLine != null ? InvoiceTotal.Of(stLine.Freight, stLine.Fuel) : InvoiceTotal.Of(numTotalAmount.Value, fuel); // what the trip is billed in all: freight tariff + fuel surcharge
 
-                // Nov 6 workflow: no amount yet (no rate) is allowed; the invoice is kept as a Draft until it gets its amount.
+                // Nov 14: no draft invoices. An amount of PHP 0.00 is refused, so every saved invoice is For Collection.
+                if (total <= 0)
+                {
+                    MessageBox.Show("Enter the amount. An invoice of PHP 0.00 can't be saved.", "Amount Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    (numTotalAmount.Value <= 0 ? numTotalAmount : numFuel).Focus();
+                    return;
+                }
                 // Nov 7: no deductions on an invoice; the net due is the whole amount.
                 decimal net = total;
 
@@ -728,16 +739,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     FuelSurcharge = fuel,
                     Deductions = 0,
                     NetAmount = net,
-                    Status = total > 0 ? PayStatus.Unpaid : PayStatus.Draft
+                    Status = PayStatus.Unpaid
                 };
 
                 MJdatabase.SaveInvoice(inv, crossTypeConfirmed: billNumberGuard.CrossTypeConfirmed);
                 if (selDel.Id < 0) MJdatabase.LinkSpecialTripInvoice(inv.Id, -selDel.Id);
                 if (stLine != null) MJdatabase.ApplyStatementToNewInvoice(inv.Id, selDel.Id > 0 ? selDel.Id : 0, selDel.Id < 0 ? -selDel.Id : 0); // on the statement, with its share of the withholding
                 BillAfterSave(inv.Id, inv.InvoiceNumber);
-                if (inv.Status == PayStatus.Draft) ToastHelper.ShowToast(this, $"Invoice {inv.InvoiceNumber} saved as a draft — add its amount before it can go on a statement", ToastType.Warning);
-                else if (batchQueue.Count == 0) QuietBox.Show("Service Invoice generated and issued with 15-day credit terms!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                else ToastHelper.ShowToast(this, $"Invoice {inv.InvoiceNumber} issued (PHP {inv.NetAmount:N2})", ToastType.Success);
+                if (batchQueue.Count == 0) QuietBox.Show("Service Invoice generated and issued with 15-day credit terms!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                else ToastHelper.ShowToast(this, $"Service invoice {inv.InvoiceNumber} issued (PHP {inv.NetAmount:N2})", ToastType.Success);
                 ClearFields();
                 LoadData();
                 SetFormVisibility(false);
@@ -746,7 +756,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             catch (Exception ex)
             { ErrLog.Error("BillingView", ex); 
                 System.Diagnostics.Debug.WriteLine($"[BillingView] BtnSave_Click: {ex}");
-                MessageBox.Show($"Failed to save invoice: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Failed to save service invoice: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally { BillSaveFinished(); }
         }
@@ -792,7 +802,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 decimal fuel = numFuel.Value;
                 decimal total = InvoiceTotal.Of(numTotalAmount.Value, fuel); // freight tariff + fuel surcharge
 
-                // Nov 6 workflow: an amount of PHP 0.00 keeps (or makes) the invoice a Draft instead of being refused.
+                // Nov 14: an amount of PHP 0.00 is refused (no draft invoices).
+                if (total <= 0)
+                {
+                    MessageBox.Show("Enter the amount. An invoice of PHP 0.00 can't be saved.", "Amount Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    numTotalAmount.Focus();
+                    return;
+                }
                 // Nov 7: no deductions on an invoice; the net due is the whole amount.
                 decimal net = total;
                 decimal alreadyCollected = MJdatabase.GetTotalCollectedForInvoice(selectedInvoice.Id);
@@ -808,15 +824,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 selectedInvoice.Deductions = 0;
                 selectedInvoice.NetAmount = net;
 
-                if (total <= 0) selectedInvoice.Status = PayStatus.Draft;
-                else if (string.Equals(selectedInvoice.Status, "Draft", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(selectedInvoice.Status, "Draft", StringComparison.OrdinalIgnoreCase))
                 {
                     // A draft (e.g. from a completed special trip) becomes a real invoice once it has an amount.
                     selectedInvoice.Status = "Unpaid";
                 }
                 MJdatabase.SaveInvoice(selectedInvoice, crossTypeConfirmed: billNumberGuard.CrossTypeConfirmed);
                 BillAfterSave(selectedInvoice.Id, selectedInvoice.InvoiceNumber);
-                QuietBox.Show("Invoice updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show("Service invoice updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields();
                 LoadData();
                 SetFormVisibility(false);
@@ -824,7 +839,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             catch (Exception ex)
             { ErrLog.Error("BillingView", ex); 
                 System.Diagnostics.Debug.WriteLine($"[BillingView] BtnUpdate_Click: {ex}");
-                MessageBox.Show($"Failed to update invoice: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Failed to update service invoice: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally { BillSaveFinished(); }
         }
@@ -899,7 +914,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     (!string.IsNullOrEmpty(i.LoadingScheduleNumber) && i.LoadingScheduleNumber.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(i.DispatchNumber) && i.DispatchNumber.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(i.ClientName) && i.ClientName.ToLower().Contains(q)) ||
-                    (!string.IsNullOrEmpty(i.Status) && i.Status.ToLower().Contains(q)) ||
+                    (!string.IsNullOrEmpty(i.Status) && (i.Status.ToLower().Contains(q) || StatusText.Billing(i.Status, i.NetAmount).ToLower().Contains(q))) ||
                     (q == "overdue" && RowMenu.Is(i.Status, PayStatus.Unpaid) && i.DueDate.Date < DateTime.Today)
                 ).ToList();
 
@@ -1047,9 +1062,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 bool isPaid = RowMenu.Is(inv.Status, "Paid") || (inv.NetAmount > 0 && balance <= 0);
                 bool isDraft = RowMenu.Is(inv.Status, "Draft");
                 m.Items.AddRange(RowMenu.Header($"🧾  Invoice {inv.InvoiceNumber}",
-                    $"{RowMenu.Short(inv.ClientName, 28)} · {RowMenu.Money(inv.NetAmount)} · {inv.Status} · due {Fmt.Short(inv.DueDate)}"));
+                    $"{RowMenu.Short(inv.ClientName, 28)} · {RowMenu.Money(inv.NetAmount)} · {StatusText.Billing(inv.Status, inv.NetAmount)} · due {Fmt.Short(inv.DueDate)}"));
                 m.Items.Add(RowMenu.Item("Open details", () => RecordDetailsDialog.ShowDetails(this, inv)));
-                m.Items.Add(RowMenu.Item(isDraft ? "Complete this draft invoice" : "Edit invoice", () => { SetFormVisibility(true); cbDelivery.Focus(); }));
+                m.Items.Add(RowMenu.Item(isDraft && inv.NetAmount <= 0 ? "Complete this incomplete invoice" : "Edit invoice", () => { SetFormVisibility(true); cbDelivery.Focus(); }));
                 if (!isPaid && !isDraft) m.Items.Add(RowMenu.Good($"Collect payment in full ({RowMenu.Money(inv.NetAmount)})", () => OnRecordPaymentRequested?.Invoke(inv)));
                 if (paid > 0) m.Items.Add(RowMenu.Item($"Show payments ({RowMenu.Money(paid)} received)", () => FinanceHubView.Of(this)?.ShowCollections(inv.InvoiceNumber)));
                 m.Items.Add(RowMenu.Item("Mark as sent to client", () =>
@@ -1087,7 +1102,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             m.Items.AddRange(RowMenu.Header($"🧾  {invs.Count} invoices", $"{RowMenu.Money(total)} in total · {invs.Select(i => i.ClientName).Distinct().Count()} client(s)"));
             m.Items.Add(RowMenu.Item("Print the selected invoices (table)", () => PrintHelper.PrintSelectedOrAllGridReport("Client Service Invoices", gridInvoices, "Selected service invoices.")));
             m.Items.Add(RowMenu.Item("Copy invoice numbers", () => RowMenu.Copy(this, string.Join(", ", invs.Select(i => i.InvoiceNumber)), $"{invs.Count} invoice numbers copied")));
-            m.Items.Add(RowMenu.Item("Copy as a list with amounts", () => RowMenu.Copy(this, string.Join(Environment.NewLine, invs.Select(i => $"{i.InvoiceNumber}\t{i.ClientName}\t{i.NetAmount:N2}\t{i.Status}")), "List copied")));
+            m.Items.Add(RowMenu.Item("Copy as a list with amounts", () => RowMenu.Copy(this, string.Join(Environment.NewLine, invs.Select(i => $"{i.InvoiceNumber}\t{i.ClientName}\t{i.NetAmount:N2}\t{StatusText.Billing(i.Status, i.NetAmount)}")), "List copied")));
             m.Items.Add(RowMenu.Sep());
             m.Items.Add(RowMenu.ExportSub(gridInvoices, "Billing_Invoices", "Invoices and Accounts Receivable", () => BtnPrint_Click(this, EventArgs.Empty)));
         }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -79,6 +79,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private int Dpi(int v) => (int)Math.Round(v * DeviceDpi / 96f);
         private Panel pnlTopBar = null!;
         private Panel pnlFormActionsBar = null!;
+        private Panel pnlListActionsBar = null!;
         private FlowLayoutPanel flowFormActions = null!;
         private Panel pnlHeaderSpacer = null!;
         private Panel pnlItemsGridHost = null!;
@@ -93,6 +94,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetupContextMenu();
             LoadClients();
             LoadData();
+            MJdatabase.ClientsChanged += OnClientsChanged;   // a client saved on the Clients screen is in the list at once
+            VisibleChanged += (s, e) => { if (Visible && !IsDisposed) LoadClients(); };
             UIThemeHelper.ApplyTheme(this);
             StyleFullPageForm();
             FitItemsGridColumns();
@@ -170,7 +173,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             btnToggleForm.FlatAppearance.BorderSize = 0;
             btnToggleForm.Click += (s, e) => OpenNewStatement();
-            pnlGridActionsFlow.Controls.Add(btnToggleForm);
+            // Nov 14: "+ New statement" sits in the bottom action bar of the list, next to Print (built below).
 
             btnPrintOfficial = new Button
             {
@@ -185,7 +188,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             btnPrintOfficial.FlatAppearance.BorderSize = 0;
             btnPrintOfficial.Click += (s, e) => PrintSelectedSoa();
-            pnlGridActionsFlow.Controls.Add(btnPrintOfficial);
 
             btnExportCsv = new Button
             {
@@ -281,6 +283,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridActionsFlow.SizeChanged += (s, e) => FitTopBar();
             pnlTopBar.Resize += (s, e) => FitTopBar();
             this.Controls.Add(pnlTopBar);
+
+            // Bottom action bar of the list: Print official SOA and + New statement side by side.
+            pnlListActionsBar = new Panel { Dock = DockStyle.Bottom, Height = Dpi(52), BackColor = Pal.White, Padding = new Padding(Dpi(12), Dpi(8), Dpi(12), Dpi(8)) };
+            pnlListActionsBar.Paint += (s, e) => { using var pen = new Pen(Pal.C(226, 232, 240)); e.Graphics.DrawLine(pen, 0, 0, pnlListActionsBar.Width, 0); };
+            var flowListActions = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, BackColor = Color.Transparent };
+            flowListActions.Controls.Add(btnPrintOfficial);
+            flowListActions.Controls.Add(btnToggleForm);
+            pnlListActionsBar.Controls.Add(flowListActions);
+            this.Controls.Add(pnlListActionsBar);
 
             // Page title like the other list pages (Trucks, Crew, Order History).
             var soaHeader = PageKit.Header("Statements of Account", "A statement groups the service invoices of one client into one bill. Pick the invoices that are ready, make the statement, then collect one payment in Collections.");
@@ -595,9 +606,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bar.Controls.Add(btnBulkEdit, 2, 0);
             bar.Controls.Add(btnDeleteRow, 3, 0);
             bar.Controls.Add(btnEditSoaTable, 4, 0);
-            var btnTripPay = MakeFormButton("₱ Trip payments", "primary");
-            btnTripPay.Click += (s, e) => ShowTripPayments(auto: false);
-            bar.Controls.Add(btnTripPay, 7, 0);
             bar.Controls.Add(btnRecalc, 6, 0);
             // Go back to the dispatch behind the selected line (to check a forgotten store or a wrong amount).
             var btnOpenDispatch = MakeFormButton("🔗 Open dispatch", "secondary");
@@ -612,7 +620,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var lblItemsHint = new Label
             {
                 Height = Dpi(24),
-                Text = "Type only the number of drops, the Amount and the Fuel surcharge for each trip (or use Trip payments). Everything else comes from the trip report. The totals on the right follow as you type.",
+                Text = "Type only the Amount and the Fuel surcharge for each trip. No. of drops is the trip's store count and fills in by itself. Everything else comes from the trip report. The totals follow as you type.",
                 Font = new Font("Segoe UI", 8.75F),
                 ForeColor = AppTheme.TextMuted,
                 TextAlign = ContentAlignment.TopLeft,
@@ -688,6 +696,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridItems.Columns["colDest"]!.HeaderText = "Destination";
             gridItems.Columns["colType"]!.HeaderText = "Type of delivery";
             gridItems.Columns["colDrops"]!.HeaderText = "No. of drops";
+            gridItems.Columns["colDrops"]!.ReadOnly = true;   // Nov 14: the trip's store count, filled in automatically
             gridItems.Columns["colAmount"]!.HeaderText = "Amount";
             gridItems.Columns["colFuel"]!.HeaderText = "Fuel surcharge";
             gridItems.Columns["colDriver"]!.HeaderText = "Driver / Aide";
@@ -707,14 +716,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (e.RowIndex < 0 || e.RowIndex >= gridItems.Rows.Count) return;
                 var row = gridItems.Rows[e.RowIndex];
                 if (row.IsNewRow) return;
-                // Nov 10: drops, Amount and Fuel surcharge are typed once per trip, on the trip's first row.
+                // Nov 14: No. of drops is read-only. Amount and Fuel surcharge are typed once per trip, on the trip's first row.
+                if (gridItems.Columns[e.ColumnIndex].Name == "colDrops") { e.Cancel = true; return; }
                 if (TripFigureCols.Contains(gridItems.Columns[e.ColumnIndex].Name) && !IsFirstRowOfTrip(e.RowIndex)) { e.Cancel = true; return; }
                 bool linked = int.TryParse(row.Cells["colDeliveryId"].Value?.ToString(), out int did) && did > 0
                               || int.TryParse(row.Cells["colSpecialTrip"].Value?.ToString(), out int sid) && sid > 0;
                 if (!linked) return;
                 // Nov 9 (statement first): on a trip that has no service invoice yet, ONLY Amount and Fuel surcharge can be typed (everything else comes from the trip report).
                 string colName = gridItems.Columns[e.ColumnIndex].Name;
-                if (colName == "colDrops") return;   // Nov 10: the number of drops can be changed on the statement
+                if (colName == "colDrops") { e.Cancel = true; return; }   // Nov 14: read-only, the trip's store count
                 if (colName is "colAmount" or "colFuel")
                 {
                     try
@@ -733,12 +743,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (e.RowIndex < 0) return;
                 string col = gridItems.Columns[e.ColumnIndex].Name;
-                if (col is not ("colAmount" or "colFuel" or "colDrops")) return;
+                if (col is not ("colAmount" or "colFuel")) return;
                 string txt = (e.FormattedValue?.ToString() ?? "").Replace(",", "").Replace("₱", "").Trim();
                 if (txt.Length == 0) return;
                 if (!decimal.TryParse(txt, out var v) || v < 0)
                 {
-                    gridItems.Rows[e.RowIndex].ErrorText = col == "colDrops" ? "Drops must be a whole number of 0 or more." : "Enter an amount of 0 or more, e.g. 8500 or 8500.50";
+                    gridItems.Rows[e.RowIndex].ErrorText = "Enter an amount of 0 or more, e.g. 8500 or 8500.50";
                     e.Cancel = true;
                 }
                 else gridItems.Rows[e.RowIndex].ErrorText = "";
@@ -982,6 +992,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TotalSalesVatInc", HeaderText = "Gross Sales", FillWeight = 95, MinimumWidth = 80, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleRight, Format = "N2" } });
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TotalAmount", HeaderText = "Total Due (PHP)", FillWeight = 105, MinimumWidth = 85, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleRight, Format = "N2", Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold) } });
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "SalesInvoiceNo", HeaderText = "Service invoices", FillWeight = 80, MinimumWidth = 65, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter, Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold) } });
+            gridSoa.CellFormatting += (s, e) =>
+            {
+                if (e.RowIndex < 0 || e.ColumnIndex < 0 || gridSoa.Columns[e.ColumnIndex].DataPropertyName != "Status" || e.Value is not string st) return;
+                if (gridSoa.Rows[e.RowIndex].DataBoundItem is not StatementOfAccount row) return;
+                e.Value = StatusText.BillingText(st, row.TotalAmount); // Unpaid reads For Collection; the stored word is unchanged
+                e.FormattingApplied = true;
+            };
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 75, MinimumWidth = 60, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter } });
         }
 
@@ -992,7 +1009,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (rows[0].DataBoundItem is not StatementOfAccount soa) return;
                 selectedSoa = soa;
                 m.Items.AddRange(RowMenu.Header($"📑  Statement {soa.SoaNumber}",
-                    $"{RowMenu.Short(soa.ClientName, 28)} · {RowMenu.Money(soa.TotalAmount)} · {soa.PeriodCovered} · {soa.Status}"));
+                    $"{RowMenu.Short(soa.ClientName, 28)} · {RowMenu.Money(soa.TotalAmount)} · {soa.PeriodCovered} · {StatusText.BillingText(soa.Status, soa.TotalAmount)}"));
                 m.Items.Add(RowMenu.Item("Edit statement", () => OpenEditStatement(soa), "Enter"));
                 m.Items.Add(RowMenu.Good("Print official statement", () => PrintOfficialSoa(soa)));
                 m.Items.Add(RowMenu.Item("Mark as sent to client", () =>
@@ -1118,6 +1135,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Visible = visible;
             gridSoa.Visible = !visible;
             pnlTopBar.Visible = !visible;
+            if (pnlListActionsBar != null) pnlListActionsBar.Visible = !visible;
             tblMasterContent.ColumnStyles[0].SizeType = visible ? SizeType.Percent : SizeType.Absolute;
             tblMasterContent.ColumnStyles[0].Width = visible ? 100F : 0F;
             tblMasterContent.ColumnStyles[1].SizeType = visible ? SizeType.Absolute : SizeType.Percent;
@@ -1217,31 +1235,52 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+        /// <summary>
+        /// Nov 14: the client lists come from Master Data (active clients, by company name; Individual clients are listed under their name).
+        /// Nothing is hard-coded and nothing is pre-selected. It is read again on RefreshData, when the tab is shown, and when a client is saved.
+        /// </summary>
         private void LoadClients()
         {
-            var clients = MJdatabase.GetLookupItems("Client Company");
-            var clientSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            List<string> names;
+            try
             {
-                "MORE THAN CAKES, INC.",
-                "Millenium FoodBite Corporation",
-                "BCS Group of Company",
-                "Bestbake Incorporation",
-                "Richbake Incorporation"
-            };
-            foreach (var c in clients) clientSet.Add(c);
-
-            cbClient.Items.Clear();
-            cbFilterClient.Items.Clear();
-            cbFilterClient.Items.Add("All clients");
-            foreach (var cl in clientSet.OrderBy(x => x))
-            {
-                cbClient.Items.Add(cl);
-                cbFilterClient.Items.Add(cl);
+                names = MJdatabase.GetClients().Where(c => c.IsActive && !string.IsNullOrWhiteSpace(c.CompanyName))
+                    .Select(c => c.CompanyName.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
             }
+            catch (Exception ex) { ErrLog.Swallowed(ex); names = new List<string>(); }
 
-            cbClient.SelectedItem = "MORE THAN CAKES, INC.";
-            if (cbClient.SelectedIndex < 0 && cbClient.Items.Count > 0) cbClient.SelectedIndex = 0;
-            cbFilterClient.SelectedIndex = 0;
+            string pickedForm = cbClient.Text?.Trim() ?? "";
+            string pickedFilter = cbFilterClient.SelectedItem?.ToString() ?? "All clients";
+            bool was = isBindingForm;
+            isBindingForm = true;   // refilling the lists must not look like the user picked or cleared a client
+            try
+            {
+                cbClient.Items.Clear();
+                cbFilterClient.Items.Clear();
+                cbFilterClient.Items.Add("All clients");
+                foreach (var cl in names) { cbClient.Items.Add(cl); cbFilterClient.Items.Add(cl); }
+                // A statement already open for a client that was archived since keeps showing that client.
+                if (pickedForm.Length > 0 && !names.Contains(pickedForm, StringComparer.OrdinalIgnoreCase)) cbClient.Items.Add(pickedForm);
+                if (pickedForm.Length > 0) cbClient.SelectedItem = cbClient.Items.Cast<object>().FirstOrDefault(i => string.Equals(i.ToString(), pickedForm, StringComparison.OrdinalIgnoreCase));
+                int fi = cbFilterClient.Items.IndexOf(pickedFilter);
+                cbFilterClient.SelectedIndex = fi >= 0 ? fi : 0;
+            }
+            finally { isBindingForm = was; }
+        }
+
+        /// <summary>Puts a client's name in the client box. A name that is not in the list (a client archived or never saved in Master Data) is added, so an open or old statement still shows its client.</summary>
+        private void ShowClientName(string? name)
+        {
+            string n = (name ?? "").Trim();
+            if (n.Length > 0 && !cbClient.Items.Cast<object>().Any(i => string.Equals(i.ToString(), n, StringComparison.OrdinalIgnoreCase))) cbClient.Items.Add(n);
+            cbClient.Text = n.Length == 0 ? "" : (cbClient.Items.Cast<object>().Select(i => i.ToString() ?? "").FirstOrDefault(i => string.Equals(i, n, StringComparison.OrdinalIgnoreCase)) ?? n);
+        }
+
+        private void OnClientsChanged()
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+            if (InvokeRequired) { try { BeginInvoke(new Action(LoadClients)); } catch (Exception ex) { ErrLog.Swallowed(ex); } }
+            else LoadClients();
         }
 
         /// <summary>Nov 13: the saved statement's address and TIN are the client's profile, not what the boxes show (the boxes are the fallback only when there is no profile).</summary>
@@ -1276,6 +1315,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public void RefreshData()
         {
+            LoadClients();
             LoadData();
         }
 
@@ -1326,7 +1366,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     bool match = (soa.SoaNumber?.ToLower().Contains(q) ?? false) ||
                                  (soa.ClientName?.ToLower().Contains(q) ?? false) ||
                                  (soa.SalesInvoiceNo?.ToLower().Contains(q) ?? false) ||
-                                 (soa.PeriodCovered?.ToLower().Contains(q) ?? false);
+                                 (soa.PeriodCovered?.ToLower().Contains(q) ?? false) ||
+                                 StatusText.BillingText(soa.Status, soa.TotalAmount).ToLower().Contains(q);
                     if (!match) return false;
                 }
                 return true;
@@ -1351,7 +1392,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             isBindingForm = true;
             txtSoaNumber.Text = soa.SoaNumber;
-            cbClient.Text = soa.ClientName;
+            ShowClientName(soa.ClientName);
             txtClientAddress.Text = soa.ClientAddress;
             txtClientTin.Text = soa.ClientTin;
             dtpIssueDate.SetSafe(soa.IssueDate);
@@ -1486,6 +1527,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             isCalculatingTaxes = true;
             try
             {
+                SyncDropsToStoreCount();   // Nov 14: No. of drops is never typed; it is the trip's store count
                 if (!manualOverride)
                 {
                     decimal amountSum = 0;
@@ -1552,6 +1594,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private List<StatementOfAccountItem> CollectItemsFromGrid()
         {
+            SyncDropsToStoreCount();
             var list = new List<StatementOfAccountItem>();
             foreach (DataGridViewRow row in gridItems.Rows)
             {
@@ -1965,7 +2008,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (MJdatabase.LiveReceiptCountForSoa(soa.Id) > 0)
                 {
-                    var go = MessageBox.Show(FindForm(), why + "\n\nOpen Collections & Receipts now?", "Cancel statement", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+                    var go = MessageBox.Show(FindForm(), why + "\n\nOpen Collection Receipts now?", "Cancel statement", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
                     if (go == DialogResult.Yes) FinanceHubView.Of(this)?.ShowCollections(soa.SoaNumber);
                 }
                 else QuietBox.Show(why, "Cancel statement", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -2065,7 +2108,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         protected override void Dispose(bool disposing)
         {
-            if (disposing) DarkModeKit.StopAutoComplete(this);
+            if (disposing) { MJdatabase.ClientsChanged -= OnClientsChanged; DarkModeKit.StopAutoComplete(this); }
             DarkModeKit.RunWithoutFalseCrossThreadCheck(() => base.Dispose(disposing), nameof(StatementOfAccountView));
         }
     }

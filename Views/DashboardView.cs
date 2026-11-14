@@ -121,7 +121,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tCrew = tiles.Add(new StatTile("Available crew", AppTheme.Warning) { NavigateOnClick = CanRes, Label1 = "drivers", Label2 = "aides" });
             tCrates = new StatTile("Crates to deliver", AppTheme.Accent);
             tTrucks = new StatTile("Trucks ready", AppTheme.Success);
-            tFifth = new StatTile("Unpaid invoices", AppTheme.Danger);
+            tFifth = new StatTile("Invoices for collection", AppTheme.Danger);
             tDispatch.Click += (s, e) => { if (CanOps) GoOps("Dispatch"); };
             tCrates.Click += (s, e) => { if (CanOps) GoOps("Dispatch"); };
             tTrucks.Click += (s, e) => { if (CanRes) MainForm.Instance?.NavigateToResources("Trucks"); };
@@ -366,7 +366,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 grid.Controls.Add(Figure("Still to collect", out lblMoneyDue), 0, 0);
                 grid.Controls.Add(Figure("Overdue", out lblMoneyOverdue), 1, 0);
                 grid.Controls.Add(Figure("Collected this month", out lblMoneyCollected), 0, 1);
-                grid.Controls.Add(Figure("Draft invoices", out lblMoneyDraft), 1, 1);
+                grid.Controls.Add(Figure("For collection", out lblMoneyDraft), 1, 1);
                 moneyCard = Card("Billing", "Invoices and payments.", grid, out _, "Open ›", () => MainForm.Instance?.NavigateToFinance("Billing"));
                 stack.Add(moneyCard);
             }
@@ -633,9 +633,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     var dup = billedTwice[0];
                     items.Add(new ActionList.Item(AppTheme.Danger, $"{billedTwice.Count} trip{(billedTwice.Count == 1 ? " is" : "s are")} billed more than once", $"{dup.TripLabel}: {string.Join(" and ", dup.Invoices)}{(billedTwice.Count > 1 ? $" (+{billedTwice.Count - 1} more)" : "")} · cancel the extra invoice", "Review", () => MainForm.Instance?.ShowFinanceRecords("Billing", dup.Invoices[0]), "Billing", 0, null, billedTwice.Count));
                 }
-                int drafts = data.Invoices.Count(i => RowMenu.Is(i.Status, "Draft"));
-                if (drafts > 0)
-                    items.Add(new ActionList.Item(AppTheme.Info, $"{drafts} draft invoice(s) to finish", "From completed special trips — add the amount to issue them", "Open", () => MainForm.Instance?.ShowFinanceRecords("Billing", "Draft"), "Billing", 2, null, drafts));
             }
             if (CanRes && maint > 0)
                 items.Add(new ActionList.Item(AppTheme.TextMuted, $"{maint} truck(s) under maintenance", string.Join(", ", data.Trucks.Where(t => MJdatabase.IsTruckBlockedStatus(t.Status) && !MJdatabase.IsDecommissioned(t.Status)).Select(t => t.PlateNumber).Take(5)), "Trucks", () => MainForm.Instance?.NavigateToResources("Trucks"), "Trucks", 2, null, maint));
@@ -716,7 +713,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblMoneyOverdue.ForeColor = overdue.Count > 0 ? AppTheme.DangerText : AppTheme.TextPrimary;
                 lblMoneyCollected.Text = Peso(data.Receipts.Where(r => r.PaymentDate >= monthStart).Sum(r => r.AmountPaid));
                 lblMoneyCollected.ForeColor = AppTheme.SuccessText;
-                lblMoneyDraft.Text = data.Invoices.Count(i => RowMenu.Is(i.Status, "Draft")).ToString("N0");
+                lblMoneyDraft.Text = openInv.Count.ToString("N0");
             }
             RenderSchedule();
         }

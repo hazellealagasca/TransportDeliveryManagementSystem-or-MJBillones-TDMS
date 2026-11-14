@@ -583,7 +583,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int idx = payTargets.FindIndex(t => t.Invoices.Any(x => x.Id == inv.Id)); // on a statement: the receipt pays the whole statement
             if (idx < 0)
             {
-                QuietBox.Show($"Invoice {inv.InvoiceNumber} is already paid in full (status: {inv.Status}).", "Nothing to collect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                QuietBox.Show($"Invoice {inv.InvoiceNumber} is already paid in full (status: {StatusText.Billing(inv.Status, inv.NetAmount)}).", "Nothing to collect", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             OpenNewRecordForm();

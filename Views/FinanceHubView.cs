@@ -39,7 +39,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             // The tabs follow the work: a completed trip report is invoiced first, invoices are grouped on a statement,
             // the statement is collected with one receipt, and the settled order goes to history.
-            AddTab("StatementOfAccount", "📑  Statement of Account", () => new StatementOfAccountView());
+            AddTab("StatementOfAccount", "📑  Statement of Accounts", () => new StatementOfAccountView());
 
             AddTab("Billing", "🧾  Service Invoices", () =>
             {
@@ -52,7 +52,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return bv;
             });
 
-            AddTab("Collections", "💵  Collections & Receipts", () => new CollectionView());
+            AddTab("Collections", "💵  Collection Receipts", () => new CollectionView());
             AddTab("History", "📜  Finance History", () => new FinanceHistoryView());
         }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -431,7 +431,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (list.Count == 0 && specials.Count == 0) return;
             if (specials.Count > 0)
             {
-                if (string.IsNullOrWhiteSpace(cbClient.Text)) { cbClient.Text = specials[0].Company; AutoFillClientDetails(); }
+                if (string.IsNullOrWhiteSpace(cbClient.Text)) { ShowClientName(specials[0].Company); AutoFillClientDetails(); }
                 string owner = LinesClient();
                 if (owner.Length == 0) owner = cbClient.Text.Trim();
                 var foreign = specials.Where(t => !string.Equals(t.Company?.Trim(), owner, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -451,7 +451,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ToastHelper.ShowToast(this, $"Added {specials.Count} special trip{(specials.Count == 1 ? "" : "s")} to the statement", ToastType.Success);
             }
             btnPickAllReady.Text = "Tick all ready";
-            OfferTripPayments();   // Nov 10: the picked trip reports get their drops, Amount and Fuel surcharge in the Trip payments window
         }
         // ------------------------------------------------------------------ Adding to the statement
         private int NextTripNumber()
@@ -532,7 +531,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>
         /// The statement lines of a trip, from its trip report's Stores &amp; crates table: one line per store code (a store
         /// listed twice on the trip becomes one line with all its DRs, none dropped), in the trip's order.
-        /// <paramref name="drops"/> is the trip's drops: each store's "No. Drops" (1 when blank), added up.
+        /// <paramref name="drops"/> is the trip's drops: its number of stores.
         /// </summary>
         private static List<TripLine> BuildTripLines(Delivery del, out int drops)
         {
@@ -551,17 +550,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int delivered = st.DeliveredGCrates + st.DeliveredECrates;
                 line.Crates += delivered > 0 || st.DeliveredCrates > 0 ? Math.Max(delivered, st.DeliveredCrates) : st.GCrate + st.ECrate;
             }
-            // Drops: each store's "No. Drops" (1 when blank). A store listed again on the same trip (another DR batch at
-            // the same stop) only adds drops when a number was typed for that row.
-            drops = 0;
-            var counted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var st in stops)
-            {
-                string key = !string.IsNullOrWhiteSpace(st.StoreCode) ? "c:" + st.StoreCode.Trim() : "n:" + (st.Destination ?? "").Trim();
-                if (counted.Add(key)) drops += MJdatabase.DropsOf(st);
-                else if (int.TryParse((st.Remarks ?? "").Trim(), out int extra) && extra > 0 && extra < 1000) drops += extra;
-            }
-            if (stops.Count == 0) drops = del.TotalStopsCount > 0 ? del.TotalStopsCount : 1;
+            // Nov 14: drops = the number of stores of the trip (one line per store).
+            drops = lines.Count > 0 ? lines.Count : (del.TotalStopsCount > 0 ? del.TotalStopsCount : 1);
             return lines;
         }
         private static int RowDeliveryId(DataGridViewRow r) => int.TryParse(r.Cells["colDeliveryId"].Value?.ToString(), out int id) ? id : 0;
@@ -683,7 +673,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (string.IsNullOrWhiteSpace(cbClient.Text))
             {
                 string first = fresh.Select(d => d.ClientName).FirstOrDefault(n => !string.IsNullOrWhiteSpace(n)) ?? "";
-                if (first.Length > 0) { cbClient.Text = first; AutoFillClientDetails(); }
+                if (first.Length > 0) { ShowClientName(first); AutoFillClientDetails(); }
             }
             // Relational lock: only trips of the statement's client (and of the client already on its lines).
             string owner = LinesClient();

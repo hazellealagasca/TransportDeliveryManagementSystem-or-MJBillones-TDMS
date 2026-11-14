@@ -208,7 +208,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             isBindingForm = true;
             try
             {
-                if (clientLookup != null) clientLookup.SetTextQuietly(name); else cbClient.Text = name;
+                if (clientLookup != null) clientLookup.SetTextQuietly(name); else ShowClientName(name);
                 int i = cbClient.FindStringExact(name);
                 if (i >= 0) cbClient.SelectedIndex = i;
             }

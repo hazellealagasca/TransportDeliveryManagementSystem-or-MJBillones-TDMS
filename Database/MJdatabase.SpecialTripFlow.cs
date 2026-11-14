@@ -400,7 +400,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         notes.Add(links.IsCollected ? "Collection: paid." : $"Collection pending ({trip.ModeOfPayment}).");
                         if (before == null || !before.WithCollection)
-                            EventNotificationService.Publish("Collection Pending", $"Special trip {trip.OrderReference} for {trip.Company} ({trip.DestinationAddress}) needs its {trip.ModeOfPayment} payment recorded in Collections & Receipts.", ToastType.Info, null, "Finance", "Collections", trip.OrderReference);
+                            EventNotificationService.Publish("Collection Pending", $"Special trip {trip.OrderReference} for {trip.Company} ({trip.DestinationAddress}) needs its {trip.ModeOfPayment} payment recorded in Collection Receipts.", ToastType.Info, null, "Finance", "Collections", trip.OrderReference);
                     }
                 }
             }

@@ -12701,7 +12701,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
+        /// <summary>Raised after a client is saved, archived or restored, so screens that list clients (the Statement of Account client box) can reload them.</summary>
+        public static event Action? ClientsChanged;
+        internal static void RaiseClientsChanged()
+        {
+            try { ClientsChanged?.Invoke(); }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+        }
+
         public static void SaveClient(ClientCompany client)
+        {
+            SaveClientCore(client);
+            RaiseClientsChanged();
+        }
+
+        private static void SaveClientCore(ClientCompany client)
 
         {
 

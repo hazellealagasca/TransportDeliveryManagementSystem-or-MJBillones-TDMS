@@ -202,7 +202,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (inv.Id > 0 && GetTotalCollectedForInvoice(inv.Id) > 0
                 && (Centavos(inv.TotalAmount) != storedTotal || Centavos(inv.Deductions) != storedDed || Centavos(inv.FuelSurcharge) != storedFuel
                     || !string.Equals((inv.ClientName ?? "").Trim(), storedClient.Trim(), StringComparison.OrdinalIgnoreCase)))
-                throw new InvalidOperationException($"Invoice {storedNo} already has a collection receipt, so its amounts and client can't change. Void the receipt in Collections & Receipts first. Nothing was saved.");
+                throw new InvalidOperationException($"Invoice {storedNo} already has a collection receipt, so its amounts and client can't change. Void the receipt in Collection Receipts first. Nothing was saved.");
             return result;
         }
     }

@@ -227,6 +227,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             decimal TripAmount(List<StatementOfAccountItem> g) => InvoiceOf(g)?.Freight ?? g.Sum(x => x.Amount);
             decimal TripFuel(List<StatementOfAccountItem> g) => InvoiceOf(g)?.Fuel ?? g.Sum(x => x.FuelSurcharge);
+            // Nov 14: No. of drops is the trip's store count (its rows that carry a store or DR no.), never a typed number.
+            int TripStoreCount(List<StatementOfAccountItem> g) { int n = g.Count(x => !string.IsNullOrWhiteSpace(x.Destination) || !string.IsNullOrWhiteSpace(x.DrNumbers)); return n > 0 ? n : 1; }
             decimal amountSum = groups.Sum(TripAmount), fuelSum = groups.Sum(TripFuel);
             int crateSum = items.Sum(i => Math.Max(0, i.TotalCrates));
             // The figures of the statement (Nov 12): the ones saved with it; a statement not saved yet gets them from the one formula (SoaTotals):
@@ -312,7 +314,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                 string v = c.Key switch
                                 {
                                     "no" => n.ToString(), "trip_report" => TripReportNos(g), "crates" => g[i].TotalCrates > 0 ? g[i].TotalCrates.ToString("N0") : "-", "date" => Esc(completed!.Text(f.DeliveryId, f.SpecialTripId, f.DateReceived)), "zone" => Esc(f.Zone), "dr" => DrList.Html(g[i].DrNumbers), "code" => Esc(MJdatabase.StoreCodeForPrint(g[i].StoreCode)), "dest" => $"<b>{Esc(g[i].Destination)}</b>",
-                                    "type" => Esc(f.DeliveryType), "plate" => $"<b>{Esc(f.PlateNumber)}</b>", "tons" => Esc(f.Tonnage), "drops" => f.DropCount.ToString(),
+                                    "type" => Esc(f.DeliveryType), "plate" => $"<b>{Esc(f.PlateNumber)}</b>", "tons" => Esc(f.Tonnage), "drops" => TripStoreCount(g).ToString(),
                                     "amount" => $"<b>{TripAmount(g):N2}</b>", "fuel" => TripFuel(g) > 0 ? TripFuel(g).ToString("N2") : "-", "driver" => Esc(f.DriverHelper), _ => ""
                                 };
                                 sb.Append($"<td class='{c.Css}'{span}>{v}</td>");
@@ -388,7 +390,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 new PrintField("billed_to", "Billed to", soa.ClientName), new PrintField("soa_no", "SOA no.", soa.SoaNumber),
                 new PrintField("period", "Period covered", string.IsNullOrWhiteSpace(soa.PeriodCovered) ? "Current billing cycle" : soa.PeriodCovered), new PrintField("date", "Date", D(soa.IssueDate)),
-                new PrintField("status", "Status", soa.Status),
+                new PrintField("status", "Status", StatusText.BillingText(soa.Status, soa.TotalAmount)),
                 new PrintField("pay_instr", "Payment instructions", "Please make checks payable to M.J. BILLONES TRANSPORT SERVICE.", false, true, true)
             };
             o.Sections = new List<PrintChoice> { new("billto", "Billed-to details"), new("invoices", "Invoice table"), new("totals", "Totals"), new("pay", "Payment instructions") };
@@ -405,7 +407,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (opt.On("invoices"))
                     sb.Append(Table(opt, new[] { ("no", "No.", "center"), ("inv", "Invoice #", ""), ("trip_report", "Trip report #", ""), ("dispatch", "Dispatch #", ""), ("completed", "Date completed", ""), ("issued", "Issued", ""), ("due", "Due", ""), ("amount", "Amount", "num"), ("fuel", "Fuel surcharge", "num"), ("wht", "Less: withholding tax", "num"), ("net", "Total due", "num"), ("status", "Status", "") },
                         invoices.Select(i => Row(("no", ++n), ("inv", $"<b>{Esc(i.InvoiceNumber)}</b>"), ("trip_report", Esc(i.TripReportNumber)), ("dispatch", i.DispatchNumber), ("completed", Esc(completedOn?.Text(i.DeliveryId, 0, "") ?? "")), ("issued", Fmt.Date(i.IssueDate)), ("due", Fmt.Date(i.DueDate)),
-                            ("amount", i.Freight.ToString("N2")), ("fuel", i.FuelSurcharge > 0 ? i.FuelSurcharge.ToString("N2") : "-"), ("wht", i.Deductions > 0 ? "- " + i.Deductions.ToString("N2") : "-"), ("net", $"<b>{i.NetAmount:N2}</b>"), ("status", i.Status)))));
+                            ("amount", i.Freight.ToString("N2")), ("fuel", i.FuelSurcharge > 0 ? i.FuelSurcharge.ToString("N2") : "-"), ("wht", i.Deductions > 0 ? "- " + i.Deductions.ToString("N2") : "-"), ("net", $"<b>{i.NetAmount:N2}</b>"), ("status", StatusText.Billing(i.Status, i.NetAmount))))));
                 if (opt.On("totals"))
                     sb.Append(Summary(new[] { ("Total amount", invoices.Sum(i => i.Freight).ToString("N2")), ("Total fuel surcharge", invoices.Sum(i => i.FuelSurcharge).ToString("N2")), ("Less: withholding tax", "- " + invoices.Sum(i => i.Deductions).ToString("N2")), ("Total payable", "₱" + invoices.Sum(i => i.NetAmount).ToString("N2")) }));
                 if (opt.On("pay") && opt.FOn("pay_instr")) sb.Append($"<div class='note'><b>{Esc(opt.L("pay_instr"))}:</b> {Multi(opt.F("pay_instr"))}</div>");
@@ -562,7 +564,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     sb.Append(SectionTitle("Billing"));
                     sb.Append(inv == null ? "<p class='empty'>Not billed yet.</p>"
-                        : $"<table class='kv'><tr><td class='k'>Invoice #</td><td class='v'>{Esc(inv.InvoiceNumber)}</td><td class='k'>Status</td><td class='v'>{Esc(inv.Status)}</td></tr><tr><td class='k'>Net amount</td><td class='v'><b>{Money(inv.NetAmount)}</b></td><td class='k'>Due</td><td class='v'>{D(inv.DueDate)}</td></tr><tr><td class='k'>Amount</td><td class='v'>{Money(inv.Freight)}</td><td class='k'>Fuel surcharge</td><td class='v'>{Money(inv.FuelSurcharge)}</td></tr><tr><td class='k'>Invoice total</td><td class='v'><b>{Money(InvoiceTotal.Of(inv.Freight, inv.FuelSurcharge))}</b></td><td class='k'></td><td class='v'></td></tr><tr><td class='k'>Statement</td><td class='v'>{Esc(chain.SoaNumber.Length > 0 ? chain.SoaNumber : "—")}</td><td class='k'>Stage</td><td class='v'>{Esc(chain.Stage)}</td></tr><tr><td class='k'>Collection receipt</td><td class='v'>{Esc(chain.ReceiptNo.Length > 0 ? chain.ReceiptNo : "—")}</td><td class='k'>Paid on</td><td class='v'>{(chain.PaidOn.HasValue ? D(chain.PaidOn.Value) : "—")}</td></tr>{(chain.ReceiptNo.Length > 0 ? $"<tr><td class='k'>Payment method</td><td class='v'>{Esc(chain.PayMethod)}</td><td class='k'>Reference</td><td class='v'>{Esc(chain.PayReference.Length > 0 ? chain.PayReference : "—")}</td></tr>" : "")}</table>");
+                        : $"<table class='kv'><tr><td class='k'>Invoice #</td><td class='v'>{Esc(inv.InvoiceNumber)}</td><td class='k'>Status</td><td class='v'>{Esc(StatusText.Billing(inv.Status, inv.NetAmount))}</td></tr><tr><td class='k'>Net amount</td><td class='v'><b>{Money(inv.NetAmount)}</b></td><td class='k'>Due</td><td class='v'>{D(inv.DueDate)}</td></tr><tr><td class='k'>Amount</td><td class='v'>{Money(inv.Freight)}</td><td class='k'>Fuel surcharge</td><td class='v'>{Money(inv.FuelSurcharge)}</td></tr><tr><td class='k'>Invoice total</td><td class='v'><b>{Money(InvoiceTotal.Of(inv.Freight, inv.FuelSurcharge))}</b></td><td class='k'></td><td class='v'></td></tr><tr><td class='k'>Statement</td><td class='v'>{Esc(chain.SoaNumber.Length > 0 ? chain.SoaNumber : "—")}</td><td class='k'>Stage</td><td class='v'>{Esc(chain.Stage)}</td></tr><tr><td class='k'>Collection receipt</td><td class='v'>{Esc(chain.ReceiptNo.Length > 0 ? chain.ReceiptNo : "—")}</td><td class='k'>Paid on</td><td class='v'>{(chain.PaidOn.HasValue ? D(chain.PaidOn.Value) : "—")}</td></tr>{(chain.ReceiptNo.Length > 0 ? $"<tr><td class='k'>Payment method</td><td class='v'>{Esc(chain.PayMethod)}</td><td class='k'>Reference</td><td class='v'>{Esc(chain.PayReference.Length > 0 ? chain.PayReference : "—")}</td></tr>" : "")}</table>");
                 }
                 return sb.ToString();
             };

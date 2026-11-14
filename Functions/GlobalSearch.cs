@@ -53,9 +53,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (fin)
             {
-                Page("Service invoices", "payments finance billing", () => mf?.NavigateToFinance("Billing"));
-                Page("Collections & receipts", "payments finance collections or", () => mf?.NavigateToFinance("Collections"));
-                Page("Statements of account", "payments finance soa", () => mf?.NavigateToFinance("StatementOfAccount"));
+                Page("Statement of Accounts", "payments finance soa statements", () => mf?.NavigateToFinance("StatementOfAccount"));
+                Page("Service Invoices", "payments finance billing invoices", () => mf?.NavigateToFinance("Billing"));
+                Page("Collection Receipts", "payments finance collections or receipts", () => mf?.NavigateToFinance("Collections"));
+                Page("Finance History", "payments finance history settled", () => mf?.NavigateToFinance("History"));
             }
             if (master)
             {
@@ -104,7 +105,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (fin)
                 {
                     foreach (var inv in MJdatabase.GetInvoices())
-                        Add("Invoices", "🧾", $"Invoice {inv.InvoiceNumber} · {inv.ClientName}", $"{Peso(inv.NetAmount)} · {inv.Status} · due {Fmt.Date(inv.DueDate)}",
+                        Add("Invoices", "🧾", $"Invoice {inv.InvoiceNumber} · {inv.ClientName}", $"{Peso(inv.NetAmount)} · {StatusText.Billing(inv.Status, inv.NetAmount)} · due {Fmt.Date(inv.DueDate)}",
                             $"{inv.DispatchNumber}", inv.IssueDate, () => mf?.ShowFinanceRecords("Billing", inv.InvoiceNumber));
                     foreach (var cr in MJdatabase.GetCollectionReceipts())
                         Add("Receipts", "💵", $"OR {cr.ReceiptNumber}", $"{Peso(cr.AmountPaid)} · {cr.PaymentMethod} · invoice {cr.InvoiceNumber} · {Fmt.Date(cr.PaymentDate)}",

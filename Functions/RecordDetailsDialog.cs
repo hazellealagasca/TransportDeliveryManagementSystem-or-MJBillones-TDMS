@@ -389,10 +389,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 title = $"💰 Service Invoice: {inv.InvoiceNumber}";
                 subtitle = $"Client Delivery Statement • {inv.ClientName}";
-                statusBadge = inv.Status;
+                statusBadge = StatusText.Billing(inv.Status, inv.NetAmount);
                 if (inv.Status == "Paid") { badgeBg = Pal.C(220, 252, 231); badgeFg = Pal.C(22, 101, 52); }
                 else if (inv.Status == "Draft") { badgeBg = Pal.C(254, 243, 199); badgeFg = Pal.C(180, 83, 9); }
-                else if (inv.Status == "Unpaid" && inv.DueDate.Date < DateTime.Today) { statusBadge = "Unpaid · overdue"; badgeBg = Pal.C(254, 226, 226); badgeFg = Pal.C(185, 28, 28); }
+                else if (inv.Status == "Unpaid" && inv.DueDate.Date < DateTime.Today) { statusBadge = StatusText.Display("Unpaid") + " · overdue"; badgeBg = Pal.C(254, 226, 226); badgeFg = Pal.C(185, 28, 28); }
                 else { badgeBg = Pal.C(241, 245, 249); badgeFg = Pal.C(51, 65, 85); }
                 var matchReceipts = MJdatabase.GetCollectionReceipts().Where(c => c.InvoiceId == inv.Id).ToList();
                 decimal totalPaid = matchReceipts.Sum(c => c.AmountPaid);
@@ -412,7 +412,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (inv.SoaId > 0 && inv.Deductions > 0) keyValues.Add(("Withholding tax (its share of the statement's)", $"-₱{inv.Deductions:N2}"));
                 if (inv.SoaId > 0) keyValues.Add(("To collect (on its statement)", $"₱{inv.NetAmount:N2}"));
                 keyValues.Add(("Amount Paid", totalPaid > 0 ? $"₱{totalPaid:N2} (in full)" : "Not yet paid"));
-                keyValues.Add(("Payment Settlement Status", inv.Status));
+                keyValues.Add(("Payment Settlement Status", StatusText.Billing(inv.Status, inv.NetAmount)));
 
                 historyTitle = $"Payment Receipts Log ({matchReceipts.Count} Collections)";
                 foreach (var cr in matchReceipts.OrderByDescending(x => x.PaymentDate))

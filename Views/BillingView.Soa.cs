@@ -111,7 +111,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var s = SelectedSoa();
             if (s == null) { ScheduleBillGuide(); return; }
             var t = s.Totals;
-            lblFormHeader.Text = $"New invoice · {s.SoaNumber}";
+            lblFormHeader.Text = $"New service invoice · {s.SoaNumber}";
             if (!cbClient.Items.Contains(s.ClientName)) cbClient.Items.Add(s.ClientName);
             cbClient.SelectedItem = s.ClientName; cbClient.Text = s.ClientName;
             txtLoadingSchedule.Text = $"{s.Trips} trip{(s.Trips == 1 ? "" : "s")}" + (s.TripReports.Length > 0 ? " · " + s.TripReports : "");
@@ -198,7 +198,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             catch (Exception ex)
             {
                 ErrLog.Error("BillingView.SoaInvoice", ex);
-                MessageBox.Show(FindForm(), $"Failed to save invoice: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(FindForm(), $"Failed to save service invoice: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally { BillSaveFinished(); }
         }

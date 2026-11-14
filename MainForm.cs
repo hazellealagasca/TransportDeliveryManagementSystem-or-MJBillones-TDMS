@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -413,9 +413,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     "💰  PAYMENTS",
                     new (string, Action)[]
                     {
+                        ("📑  Statement of Accounts", () => NavigateToFinance("StatementOfAccount")),
                         ("🧾  Service Invoices", () => NavigateToFinance("Billing")),
-                        ("📑  Statement of Account", () => NavigateToFinance("StatementOfAccount")),
-                        ("💵  Collections & Receipts", () => NavigateToFinance("Collections")),
+                        ("💵  Collection Receipts", () => NavigateToFinance("Collections")),
                         ("📜  Finance History", () => NavigateToFinance("History"))
                     }
                 ),
@@ -985,7 +985,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 "   • F4  → Jump to Trip Reports & Variance\n" +
                 "   • F5  → Instant Refresh Active Data & KPI Badges\n" +
                 "   • F6  → Jump to Billing & Invoices\n" +
-                "   • F7  → Jump to Collections & Receipts\n" +
+                "   • F7  → Jump to Collection Receipts\n" +
                 "   • F8  → Jump to Settings & Administration\n" +
                 "   • ESC → Close popups & clear search dropdown\n\n" +
                 "💡 Form & Table Ergonomics:\n" +

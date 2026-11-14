@@ -44,7 +44,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     new("VAT", AllInOneSummaryBar.Money(vat), SummaryTone.Neutral, "included above"),
                     new("Withholding tax", AllInOneSummaryBar.Money(wht), SummaryTone.Neutral, "2% EWT"),
                     new("Paid", paid.ToString("N0"), SummaryTone.Green, "statements fully paid"),
-                    new("Unpaid", unpaid.ToString("N0"), SummaryTone.Amber, "awaiting the collection receipt"),
+                    new(StatusText.Display("Unpaid"), unpaid.ToString("N0"), SummaryTone.Amber, "awaiting the collection receipt"),
                     new("No invoice yet", noInvoice.ToString("N0"), SummaryTone.Red, "need a sales invoice", Strong: noInvoice > 0),
                     new("Drafts / cancelled", $"{drafts:N0} / {cancelled:N0}", SummaryTone.Purple, "not billed"),
                 };
@@ -53,10 +53,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var sel = gridSoa.SelectedRows.Count == 1 ? gridSoa.SelectedRows[0].DataBoundItem as StatementOfAccount : null;
                 if (sel != null)
                 {
-                    m.Add(new SummaryMetric("Selected statement", sel.SoaNumber, SummaryTone.Purple, $"{sel.Status} · {sel.ClientName}", Strong: true));
+                    m.Add(new SummaryMetric("Selected statement", sel.SoaNumber, SummaryTone.Purple, $"{StatusText.BillingText(sel.Status, sel.TotalAmount)} · {sel.ClientName}", Strong: true));
                     m.Add(new SummaryMetric("Its amount", AllInOneSummaryBar.Money(sel.TotalAmount), SummaryTone.Teal, string.IsNullOrWhiteSpace(sel.PeriodCovered) ? Fmt.Date(sel.IssueDate) : sel.PeriodCovered));
                     m.Add(new SummaryMetric("Its sales invoice", string.IsNullOrWhiteSpace(sel.SalesInvoiceNo) ? "—" : sel.SalesInvoiceNo, SummaryTone.Neutral, string.IsNullOrWhiteSpace(sel.SalesInvoiceNo) ? "no invoice yet" : "linked invoice"));
-                    context = $"Selected statement {sel.SoaNumber} — {sel.ClientName} · {sel.Status}   ·   Statements shown: {soaSummaryShown.Count:N0}";
+                    context = $"Selected statement {sel.SoaNumber} — {sel.ClientName} · {StatusText.BillingText(sel.Status, sel.TotalAmount)}   ·   Statements shown: {soaSummaryShown.Count:N0}";
                 }
                 soaSummary.SetMetrics(m, preview, context);
             }

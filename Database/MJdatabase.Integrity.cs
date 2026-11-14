@@ -170,7 +170,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         // Guard: money already came in on this statement's invoice. Cancelling now would leave a paid invoice with no statement.
                         string paidCount = Scalar("SELECT COUNT(*) FROM CollectionReceipts r JOIN Invoices v ON v.Id = r.InvoiceId WHERE v.SoaId = @id AND COALESCE(r.IsVoid,0) = 0");
                         if (paidCount != "" && paidCount != "0")
-                            throw new InvalidOperationException($"Statement {ident} has {paidCount} payment(s) recorded on its invoice. Void those collection receipts first (Collections & Receipts), then cancel the statement.");
+                            throw new InvalidOperationException($"Statement {ident} has {paidCount} payment(s) recorded on its invoice. Void those collection receipts first (Collection Receipts), then cancel the statement.");
                         Exec("UPDATE StatementsOfAccount SET Status = 'Cancelled' WHERE Id = @id");
                         // The statement's own invoice is cancelled with it (same transaction), so it can't be collected on or block its trips as a direct invoice.
                         // The SoaId link is kept for the history.
@@ -236,6 +236,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         // ------------------------------------------------------------------ clients
         /// <summary>Activates or deactivates a client (the soft delete for clients). Deactivated clients drop out of order pick-lists.</summary>
         public static void SetClientActive(string companyName, bool active)
+        {
+            SetClientActiveCore(companyName, active);
+            RaiseClientsChanged();
+        }
+
+        private static void SetClientActiveCore(string companyName, bool active)
         {
             if (string.IsNullOrWhiteSpace(companyName)) return;
             using (var conn = new SqliteConnection(connectionString))
