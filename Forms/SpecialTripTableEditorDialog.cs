@@ -56,11 +56,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string currentDescription,
             List<SpecialTripColumnDef> currentColumns,
             List<Dictionary<string, string>> currentRows,
-            string defaultDepTime = "08:00 AM")
+            string defaultDepTime = "")
         {
             EditedTableTitle = string.IsNullOrWhiteSpace(currentTitle) ? "Delivery Details" : currentTitle;
             EditedTableDescription = currentDescription ?? "add a line or row and column";
-            defaultDepartureTime = string.IsNullOrWhiteSpace(defaultDepTime) ? "08:00 AM" : defaultDepTime;
+            defaultDepartureTime = defaultDepTime ?? "";
 
             EditedColumns = currentColumns != null && currentColumns.Count > 0
                 ? currentColumns.Select(c => c.Clone()).ToList()

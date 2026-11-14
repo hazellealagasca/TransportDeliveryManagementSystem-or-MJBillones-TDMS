@@ -78,7 +78,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return c != null && !string.IsNullOrWhiteSpace(c.ContactNumber) ? $"{name} ({c.ContactNumber})" : name;
             }
             var sb = new StringBuilder();
-            sb.AppendLine($"DISPATCH {d.DispatchNumber}  [{d.Status}]");
+            sb.AppendLine($"DISPATCH {d.DispatchNumber}  [{StatusText.Display(d.Status)}]");
             if (!string.IsNullOrWhiteSpace(d.ClientName)) sb.AppendLine($"Client: {d.ClientName}");
             sb.AppendLine($"Route: {(string.IsNullOrWhiteSpace(d.Destination) ? d.CleanRouteDisplay : d.Destination)}");
             sb.AppendLine($"Date: {Fmt.DayDate(d.DispatchDate)} · {d.DepartureTime}");
@@ -89,6 +89,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             sb.AppendLine($"Crates: {d.TotalCrates:N0} (G {d.GCrate:N0} · E {d.ECrate:N0})");
             if (stops.Count > 0)
             {
+                sb.AppendLine($"No. of drops: {stops.Count}");
                 sb.AppendLine($"Stores ({stops.Count}):");
                 foreach (var st in stops.OrderBy(x => x.StopSequence))
                     sb.AppendLine($"{st.StopSequence}. {(string.IsNullOrWhiteSpace(st.StoreCode) ? "" : st.StoreCode + " - ")}{st.Destination}  (G {st.GCrate}, E {st.ECrate})");
@@ -244,7 +245,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private string StatusLabel()
         {
             if (IsInTransit && MJdatabase.IsAwaitingCompletion(del)) return "Awaiting completion";
-            return string.IsNullOrWhiteSpace(del.Status) ? "Scheduled" : del.Status;
+            return string.IsNullOrWhiteSpace(del.Status) ? "Scheduled" : StatusText.Display(del.Status);
         }
         private (Color back, Color fore) StatusColors()
         {
@@ -435,7 +436,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var tiles = new List<Tile>
             {
                 new Tile("Crates", $"{total:N0}", $"G {del.GCrate:N0}  ·  E {del.ECrate:N0}"),
-                new Tile("Stores", $"{storeCount}", storeCount > 1 ? "Multi-drop route" : "Single drop"),
+                new Tile("No. of drops", $"{storeCount}", storeCount > 1 ? "Multi-drop route" : "Single drop"),
                 new Tile("Truck load", cap > 0 ? $"{pct}%" : "—", cap > 0 ? $"{total:N0} of {cap:N0} crates" : "Truck capacity not set", pct > 100 ? AppTheme.DangerText : (Color?)null),
                 new Tile("Delivered / returned", trip != null ? $"{trip.DeliveredCrates:N0} / {trip.ReturnedCrates:N0}" : "—", trip != null ? $"Signed by {Shorten(trip.StoreManagerName, 22)}" : "No trip report yet"),
                 new Tile("Billing", invoice != null ? $"₱{invoice.NetAmount:N0}" : "—", invoice != null ? $"{invoice.InvoiceNumber} · {invoice.Status}" : "Not billed yet",
@@ -538,6 +539,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ("Contact number", string.IsNullOrWhiteSpace(client?.ContactNumber) ? "—" : client!.ContactNumber, true),
                 ("Route / destination", routeText, true),
                 ("Order type", stops.Count > 1 || del.IsMultiDrop ? $"Multi-drop · {Math.Max(stops.Count, del.TotalStopsCount)} stores" : "Single drop", false),
+                ("No. of drops", (stops.Count > 0 ? stops.Count : Math.Max(1, del.TotalStopsCount)).ToString(), false),
                 ("Crate type", string.IsNullOrWhiteSpace(del.CargoType) ? "—" : del.CargoType, false),
                 ("Peak Season", del.IsPeak ? "Yes — peak season rate" : "No — regular rate", false),
                 ("Loading schedule", schedule != null ? $"{schedule.ScheduleNumber} ({schedule.Status})" : (del.LoadingScheduleId > 0 ? $"#{del.LoadingScheduleId}" : "—"), true)
@@ -708,7 +710,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 g.Rows.Add(s.StopSequence, s.StoreCode, s.Destination, s.GCrate, s.ECrate, total, s.DrNumbers,
                     s.DeliveredCrates > 0 ? s.DeliveredCrates.ToString("N0") : "—",
                     s.ReturnedCrates > 0 ? s.ReturnedCrates.ToString("N0") : "—",
-                    string.IsNullOrWhiteSpace(s.Status) ? "Pending" : s.Status);
+                    string.IsNullOrWhiteSpace(s.Status) ? "Pending" : StatusText.Display(s.Status));
             }
             var foot = new Label
             {
@@ -1183,6 +1185,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             sb.AppendLine($"Crates: {del.TotalCrates:N0} (G {del.GCrate:N0} · E {del.ECrate:N0})");
             if (stops.Count > 0)
             {
+                sb.AppendLine($"No. of drops: {stops.Count}");
                 sb.AppendLine($"Stores ({stops.Count}):");
                 sb.AppendLine(StoreListText());
             }

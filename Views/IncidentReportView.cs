@@ -357,7 +357,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbDelivery.Items.Clear();
                 foreach (var d in deliveries)
                 {
-                    cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo} [{d.Status}]");
+                    cbDelivery.Items.Add($"{d.DispatchNumber} - {d.LoadingScheduleInfo} [{StatusText.Display(d.Status)}]");
                 }
                 cbDelivery.SelectedIndex = -1; // Nov 6: blank until picked
 

@@ -390,7 +390,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string ClientName { get; set; } = string.Empty;
         public string Destination { get; set; } = string.Empty;
         public DateTime ScheduleDate { get; set; } = DateTime.Now;
-        public string DepartureTime { get; set; } = "08:00 AM";
+        public string DepartureTime { get; set; } = "";
         public int GCrate { get; set; }
         public int ECrate { get; set; }
         public int TotalCrates { get; set; }
@@ -425,7 +425,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public int ECrate { get; set; }
         public int TotalCrates { get; set; }
         public DateTime DispatchDate { get; set; } = DateTime.Now;
-        public string DepartureTime { get; set; } = "08:00 AM";
+        public string DepartureTime { get; set; } = "";
         public string Status { get; set; } = "Pending";
         public string Remarks { get; set; } = string.Empty;
         public string CancellationReason { get; set; } = string.Empty;
@@ -494,7 +494,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string OrderReference { get; set; } = string.Empty;
         public DateTime DispatchDate { get; set; } = DateTime.Now;
         public string Company { get; set; } = string.Empty;
-        public string DepartureTime { get; set; } = "08:00 AM";
+        public string DepartureTime { get; set; } = "";
         public string Address { get; set; } = string.Empty;
         public string ServiceType { get; set; } = "Dedicated / Special Delivery";
         public string Status { get; set; } = "Pending";

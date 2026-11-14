@@ -281,7 +281,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
-        public AnalogClockTimePickerDialog(string initialTime = "08:00 AM")
+        public AnalogClockTimePickerDialog(string initialTime = "")
         {
             UIThemeHelper.ScaleFixedLayout(this); // fixed 100%-scale layout: grow it to the screen's scaling
             InitializeComponent();
@@ -303,9 +303,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else
             {
-                clockControl.Hour = 8;
-                clockControl.Minute = 0;
-                isAm = true;
+                // Nothing chosen yet: the clock opens at the current time; the box stays empty until the user presses OK.
+                var now = DateTime.Now;
+                int nh = now.Hour % 12 == 0 ? 12 : now.Hour % 12;
+                clockControl.Hour = nh;
+                clockControl.Minute = now.Minute;
+                isAm = now.Hour < 12;
             }
         }
 
@@ -400,39 +403,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SwitchMode(AnalogClockControl.ClockMode.Minutes);
             };
 
-            FlowLayoutPanel pnlPresets = new FlowLayoutPanel
-            {
-                Location = new Point(15, 362),
-                Size = new Size(300, 64),
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = true,
-                AutoScroll = false
-            };
-
-            string[] presets = { "06:00 AM", "08:00 AM", "10:00 AM", "01:00 PM", "04:00 PM", "08:00 PM" };
-            foreach (var pr in presets)
-            {
-                Button btnPreset = new Button
-                {
-                    Text = pr,
-                    Size = new Size(94, 28),
-                    FlatStyle = FlatStyle.Flat,
-                    BackColor = Pal.C(241, 245, 249),
-                    ForeColor = UITheme.TextPrimary,
-                    Font = new Font("Segoe UI Semibold", 8F, FontStyle.Bold),
-                    Margin = new Padding(2),
-                    Cursor = Cursors.Hand
-                };
-                btnPreset.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
-                btnPreset.Click += (s, e) =>
-                {
-                    ParseTimeString(pr);
-                    UpdateDisplayHeader();
-                    UpdateAmPmButtons();
-                };
-                pnlPresets.Controls.Add(btnPreset);
-            }
-
             Button btnCancel = new Button
             {
                 Text = "Cancel",
@@ -463,7 +433,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             this.Controls.Add(pnlHeader);
             this.Controls.Add(clockControl);
-            this.Controls.Add(pnlPresets);
             this.Controls.Add(btnCancel);
             this.Controls.Add(btnOk);
 
@@ -505,7 +474,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             off.FlatAppearance.BorderColor = AppTheme.SurfaceAlt;
         }
 
-        public static string? ShowTimePicker(IWin32Window? owner, string currentTime = "08:00 AM")
+        public static string? ShowTimePicker(IWin32Window? owner, string currentTime = "")
         {
             using (var dlg = new AnalogClockTimePickerDialog(currentTime))
             {

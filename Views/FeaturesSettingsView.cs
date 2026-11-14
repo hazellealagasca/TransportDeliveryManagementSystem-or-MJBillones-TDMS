@@ -11,7 +11,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private sealed record Option(string Key, string Title, string Description);
         private static readonly Option[] Parts =
         {
-            new(Features.AutoDispatchNumber, "Automatic dispatch numbers", "New dispatch orders get their number by themselves from the client's initials and the next free number (Red Ribbon → RR0001, RR0002…), so numbers never repeat. When off, the Dispatch # box is empty and you type your own number for each order."),
             new(Features.RateMatrix, "Rate Matrix", "Your price list by route, destination, truck type and season (Master Data → Rate Matrix). When on, loading orders and invoices suggest the rate. When off, the Rate Matrix tab is hidden and amounts are typed in by hand."),
             new(Features.SpecialTrips, "Special trips", "Trips for non-crate or specialised cargo. When off, the Special Trip tab, the “+ Special trip” button and the special-cargo choice are hidden. Past special trips stay in Order History."),
             new(Features.Incidents, "Incident & damage logs", "Records of damaged or missing crates. When off, the Incident & Damage Logs tab, the “Log incident” buttons and the question after a short trip report are hidden."),

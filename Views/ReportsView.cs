@@ -96,7 +96,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     DateTime today = DateTime.Today;
                     if (statusFilter == "Completed Only") deliveries = deliveries.Where(d => d.Status == "Completed").ToList();
                     else if (statusFilter == "Cancelled Only") deliveries = deliveries.Where(d => d.Status == "Cancelled").ToList();
-                    else if (statusFilter == "Pending / In Transit") deliveries = deliveries.Where(d => d.Status == "Pending" || d.Status == "In Transit").ToList();
+                    else if (statusFilter == "Pending / Current") deliveries = deliveries.Where(d => d.Status == "Pending" || d.Status == "In Transit").ToList();
                     else if (statusFilter == "Past Dispatches Only") deliveries = deliveries.Where(d => d.DispatchDate.Date < today || d.Status == "Completed" || d.Status == "Delivered").ToList();
                     else if (statusFilter == "Present / Active Today") deliveries = deliveries.Where(d => d.DispatchDate.Date == today || d.Status == "In Transit").ToList();
                     else if (statusFilter == "Future Scheduled Dispatches") deliveries = deliveries.Where(d => d.DispatchDate.Date > today).ToList();
@@ -123,7 +123,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         E_Crates = d.ECrate,
                         Total_Crates = d.TotalCrates,
                         Cargo_Temp = d.CargoType,
-                        Status = d.Status
+                        Status = StatusText.Display(d.Status)
                     }).ToList();
 
                     gridReport.DataSource = cleanDeliveries;
@@ -137,7 +137,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     DateTime todaySched = DateTime.Today;
                     if (statusFilter == "Completed Only") schedules = schedules.Where(s => s.Status == "Completed").ToList();
                     else if (statusFilter == "Cancelled Only") schedules = schedules.Where(s => s.Status == "Cancelled").ToList();
-                    else if (statusFilter == "Pending / In Transit") schedules = schedules.Where(s => s.Status == "Pending" || s.Status == "Assigned").ToList();
+                    else if (statusFilter == "Pending / Current") schedules = schedules.Where(s => s.Status == "Pending" || s.Status == "Assigned").ToList();
                     else if (statusFilter == "Past Dispatches Only") schedules = schedules.Where(s => s.ScheduleDate.Date < todaySched || s.Status == "Completed").ToList();
                     else if (statusFilter == "Present / Active Today") schedules = schedules.Where(s => s.ScheduleDate.Date == todaySched || s.Status == "Assigned" || s.Status == "Pending").ToList();
                     else if (statusFilter == "Future Scheduled Dispatches") schedules = schedules.Where(s => s.ScheduleDate.Date > todaySched).ToList();

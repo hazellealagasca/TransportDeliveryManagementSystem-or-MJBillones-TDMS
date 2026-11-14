@@ -273,7 +273,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Size = new Size(260, 28),
                 Font = new Font("Segoe UI", 9.5F),
                 MaxLength = 20,
-                Text = string.IsNullOrWhiteSpace(curTime) ? "08:00 AM" : curTime
+                Text = curTime
             };
 
             btnPickTime = new Button

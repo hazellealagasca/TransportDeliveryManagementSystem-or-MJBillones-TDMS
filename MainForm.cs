@@ -620,7 +620,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnKpiInTransit = new Button
             {
-                Text = "\U0001f69a 0 In Transit",
+                Text = "\U0001f69a 0 Current",
                 AutoSize = true,
                 Height = 30,
                 Margin = new Padding(0, 0, 6, 0),
@@ -779,7 +779,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     }
                     if (result.transitStarted > 0)
                     {
-                        EventNotificationService.Publish("Dispatches on the road", $"{result.transitStarted} dispatch(es) reached their departure time and are now In Transit.", ToastType.Info, this, "Operations", "Dispatch");
+                        EventNotificationService.Publish("Dispatches on the road", $"{result.transitStarted} dispatch(es) reached their departure time and are now Current.", ToastType.Info, this, "Operations", "Dispatch");
                     }
 
                     if (result.invoicesOverdue > 0)
@@ -854,7 +854,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 if (btnKpiInTransit != null)
                 {
-                    btnKpiInTransit.Text = $"\U0001f69a {lastInTransitCount} In Transit";
+                    btnKpiInTransit.Text = $"\U0001f69a {lastInTransitCount} Current";
                 }
                 if (btnKpiUnpaid != null)
                 {

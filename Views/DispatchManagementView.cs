@@ -69,6 +69,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private bool showFinished;
 
+        private static string ShowStoreAddressesKey => "DispatchShowStoreAddresses_" + (SessionContext.CurrentUsername ?? "");
+        private bool showStoreAddresses, showStoreAddressesLoaded;
+        private CheckBox? chkShowStoreAddresses;
+        private Label? lblNoOfDrops;
         private static string ShowFinishedKey => "DispatchShowFinished_" + (SessionContext.CurrentUsername ?? "");
 
         private CheckBox chkMultiDrop = null!;
@@ -1289,7 +1293,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             };
 
-            Features.Bind(txtDispatchNumber, ApplyDispatchNumberMode, Features.AutoDispatchNumber);
+            cbStatus.Format += (s, e) => { if (e.ListItem is string st) e.Value = StatusText.Display(st); };   // the list shows "Current"; SelectedItem stays "In Transit"
+            ApplyDispatchNumberMode();
 
             cbDestination.SelectedIndexChanged += (s, e) =>
             {
@@ -1430,11 +1435,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
+        /// <summary>The departure time is required and is never filled in by the system: blank or unreadable text is refused.</summary>
+        private string? DepartureTimeProblem()
+        {
+            string t = cbDepartureTime.Text.Trim();
+            if (t.Length == 0) return "Departure Time is required: pick or type the time the truck leaves.";
+            if (!TimeText.TryParse(t, out _)) return "Departure Time is not a time. Type it like 9:30 AM.";
+            return null;
+        }
+
+        /// <summary>Selects a stored status in the status list (the list shows its display text, so setting .Text would not find it).</summary>
+        private void SelectStatusInBox(string stored)
+        {
+            for (int i = 0; i < cbStatus.Items.Count; i++)
+                if (string.Equals(cbStatus.Items[i]?.ToString(), stored, StringComparison.OrdinalIgnoreCase)) { cbStatus.SelectedIndex = i; return; }
+        }
+
         private string lastAutoDispatchNumber = "";
 
         /// <summary>Settings → Features &amp; Pop-ups → "Automatic dispatch numbers".</summary>
 
-        private static bool AutoNumbers => Features.On(Features.AutoDispatchNumber);
+        private static bool AutoNumbers => true;
 
         /// <summary>With automatic numbers the box is filled by the system (read-only for new orders); without, it is typed in.</summary>
 
@@ -1446,9 +1467,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             bool newOrder = selectedDelivery == null;
 
-            txtDispatchNumber.ReadOnly = auto && newOrder;
+            txtDispatchNumber.ReadOnly = true;   // the dispatch number is generated, never typed
+            txtDispatchNumber.TabStop = false;
 
-            txtDispatchNumber.PlaceholderText = auto ? "Filled in automatically when you pick the client (e.g. Red Ribbon → RR0001)" : "Type the dispatch number, e.g. RR0001";
+            txtDispatchNumber.PlaceholderText = "Filled in automatically when you pick the client (e.g. Red Ribbon → RR0001)";
 
             if (!auto && newOrder && txtDispatchNumber.Text.Trim().Equals(lastAutoDispatchNumber, StringComparison.OrdinalIgnoreCase)) { txtDispatchNumber.Text = ""; lastAutoDispatchNumber = ""; }
 
@@ -1576,7 +1598,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             string cur = cbDepartureTime.Text;
 
-            if (string.IsNullOrWhiteSpace(cur)) cur = "08:00 AM";
+            if (string.IsNullOrWhiteSpace(cur)) cur = DateTime.Now.ToString("hh:mm tt", System.Globalization.CultureInfo.InvariantCulture);
 
 
 
@@ -1723,6 +1745,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static string NormStoreKey(string code, string name) =>
 
             $"{(code ?? "").Trim().ToUpperInvariant()}|{System.Text.RegularExpressions.Regex.Replace((name ?? "").Trim(), @"\s+", " ").ToUpperInvariant()}";
+
+        private static bool LoadShowStoreAddresses()
+        {
+            try { return string.Equals(MJdatabase.GetSystemSetting(ShowStoreAddressesKey, "False").Trim(), "True", StringComparison.OrdinalIgnoreCase); }
+            catch (Exception ex) { ErrLog.Swallowed(ex); return false; }
+        }
+
+        /// <summary>No. of drops = the number of stores on the order. It is counted here and never typed.</summary>
+        private void UpdateNoOfDrops()
+        {
+            if (lblNoOfDrops == null) return;
+            lblNoOfDrops.Text = $"No. of drops: {StoreCountForDrops()}";
+        }
+
+        private int StoreCountForDrops() => chkMultiDrop.Checked && currentStops.Count > 0 ? currentStops.Count : GetGridStoreList().Count;
 
         private List<(string Code, string Name)> GetGridStoreList()
 
@@ -2119,6 +2156,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Features.Bind(gridRouteStores, ApplyStoreEditHeaderSetting, Features.StoreTableEditHeader);
 
             pnlRouteStoresBreakdown.Controls.Add(gridRouteStores);
+            var pnlStoreOptions = new Panel { Dock = DockStyle.Top, Height = Dpi(28), BackColor = Pal.C(248, 250, 252) };
+            chkShowStoreAddresses = new CheckBox { Name = "chkShowStoreAddresses", Text = "Show store addresses", AutoSize = true, Dock = DockStyle.Left, Checked = showStoreAddresses, Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextPrimary, Cursor = Cursors.Hand };
+            chkShowStoreAddresses.CheckedChanged += (s, e) =>
+            {
+                showStoreAddresses = chkShowStoreAddresses.Checked;
+                if (gridRouteStores != null && gridRouteStores.Columns.Contains("colStoreAddress")) gridRouteStores.Columns["colStoreAddress"]!.Visible = showStoreAddresses;
+                try { MJdatabase.SetSystemSetting(ShowStoreAddressesKey, showStoreAddresses ? "True" : "False", "Dispatch: show store addresses in the stores table"); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            };
+            lblNoOfDrops = new Label { Name = "lblNoOfDrops", AutoSize = false, Width = Dpi(190), Dock = DockStyle.Right, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextSecondary, Text = "No. of drops: 0" };
+            storeTips.SetToolTip(lblNoOfDrops, "The number of stores on this order. It is counted by the system and cannot be typed.");
+            pnlStoreOptions.Controls.Add(lblNoOfDrops);
+            pnlStoreOptions.Controls.Add(chkShowStoreAddresses);
+            pnlRouteStoresBreakdown.Controls.Add(pnlStoreOptions);
+            gridRouteStores.RowsAdded += (s, e) => UpdateNoOfDrops();
+            gridRouteStores.RowsRemoved += (s, e) => UpdateNoOfDrops();
+            gridRouteStores.CellValueChanged += (s, e) => UpdateNoOfDrops();
             BuildStoreBulkBar();
             pnlRouteStoresBreakdown.Controls.Add(pnlStoreBulkBar!);
             pnlRouteStoresBreakdown.Controls.Add(lblRouteStoresHint);
@@ -2195,6 +2248,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var colType = new DataGridViewTextBoxColumn { Name = "colRowType", HeaderText = "Row Type", FillWeight = 150, MinimumWidth = Dpi(LargePrint.Px(170, 112)), ReadOnly = true };
             colType.DefaultCellStyle.Font = LargePrint.On ? LargePrint.Bold(10F, 8.25F) : new Font("Segoe UI Semibold", 8.25F);
             colType.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            colType.Visible = false;   // Row Type is hidden; the lock and colour behaviour still read it (colBaseline and the cell text stay)
             gridRouteStores.Columns.Add(colType);
             gridRouteStores.Columns.Add(new DataGridViewCheckBoxColumn { Name = "colBaseline", Visible = false, ReadOnly = true });
             foreach (var colDef in storeGridColumns)
@@ -2225,6 +2279,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 gridRouteStores.Columns.Add(col);
             }
 
+            if (!showStoreAddressesLoaded) { showStoreAddresses = LoadShowStoreAddresses(); showStoreAddressesLoaded = true; }
+
+            // "Show store addresses" tick: the address of every store, read from the client's stores. Hidden unless ticked.
+            gridRouteStores.Columns.Add(new DataGridViewTextBoxColumn { Name = "colStoreAddress", HeaderText = "Address", FillWeight = 160, MinimumWidth = 120, ReadOnly = true, SortMode = DataGridViewColumnSortMode.NotSortable, Visible = showStoreAddresses });
             var colDel = new DataGridViewButtonColumn
             {
                 Name = "colDelStore",
@@ -2435,7 +2493,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             // The table grows with its rows and the whole form scrolls (no second scrollbar inside the table).
 
-            int chrome = pnlRouteStoresBreakdown.Padding.Vertical + Dpi(46) + Dpi(22) + Dpi(12) + Dpi(LargePrint.Px(44, 38)); // + the select-all bar
+            int chrome = pnlRouteStoresBreakdown.Padding.Vertical + Dpi(46) + Dpi(22) + Dpi(12) + Dpi(LargePrint.Px(44, 38)) + Dpi(28); // + the select-all bar and the address tick row
 
             int rowH = gridRouteStores.RowTemplate.Height;
 
@@ -3277,6 +3335,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var row = gridRouteStores.Rows[e.RowIndex];
             bool locked = IsRouteStoreRow(row);
             string cn = gridRouteStores.Columns[e.ColumnIndex].Name;
+            if (cn == "colStoreAddress")
+            {
+                string aCode = gridRouteStores.Columns.Contains("colStoreCode") ? row.Cells["colStoreCode"].Value?.ToString() ?? "" : "";
+                string aName = gridRouteStores.Columns.Contains("colStoreName") ? row.Cells["colStoreName"].Value?.ToString() ?? "" : "";
+                e.Value = StoreAddressBook.Get(cbClient.Text, aCode, aName);
+                e.CellStyle.ForeColor = AppTheme.TextSecondary;
+                e.FormattingApplied = true;
+                return;
+            }
             if (cn == "colDelStore")
             {
                 // Theme-soft: added rows show a red "Remove" link-style button; route rows a muted "Remove…" (asks for a reason).
@@ -3770,6 +3837,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
             lblMultiDropSummary.Text = $"✓ {currentStops.Count} Stop(s) Configured: Total {totalAll:N0} Crates";
+            UpdateNoOfDrops();
 
             txtTotalCrates.Text = $"{totalAll:N0} Crates";
 
@@ -4031,6 +4099,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
 
                 string status = e.Value.ToString() ?? "";
+                e.Value = StatusText.Display(status);   // "In Transit" reads "Current"; the stored value is unchanged
 
                 if (gridDispatch.DataSource is IList<Delivery> boundList && e.RowIndex < boundList.Count && boundList[e.RowIndex] is Delivery rowDel && MJdatabase.IsAwaitingCompletion(rowDel))
 
@@ -4726,7 +4795,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var leaves = MJdatabase.DepartureDateTime(d);
 
-            if (MessageBox.Show($"Start dispatch {d.DispatchNumber} now?\n\nIt is set to leave at {Fmt.ShortDateTime(leaves)}. Use this when the truck left early — the order goes In Transit and can be completed when it arrives.",
+            if (MessageBox.Show($"Start dispatch {d.DispatchNumber} now?\n\nIt is set to leave at {Fmt.ShortDateTime(leaves)}. Use this when the truck left early — the order goes Current and can be completed when it arrives.",
 
                     "Start trip now", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
 
@@ -4959,7 +5028,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 selectedDelivery = d;
-                txtDispatchNumber.ReadOnly = false;
+                txtDispatchNumber.ReadOnly = true;
 
                 txtDispatchNumber.Text = selectedDelivery.DispatchNumber;
                 cbClient.Text = selectedDelivery.ClientName;
@@ -4991,8 +5060,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     dtpDispatchDate.SetSafe(selectedDelivery.DispatchDate);
                 }
-                cbDepartureTime.Text = string.IsNullOrEmpty(selectedDelivery.DepartureTime) ? "08:00 AM" : selectedDelivery.DepartureTime;
-                cbStatus.Text = string.IsNullOrEmpty(selectedDelivery.Status) ? "Scheduled" : selectedDelivery.Status;
+                cbDepartureTime.Text = selectedDelivery.DepartureTime ?? "";
+                SelectStatusInBox(string.IsNullOrEmpty(selectedDelivery.Status) ? "Scheduled" : selectedDelivery.Status);
                 numGCrate.SetSafe(Math.Max(0, selectedDelivery.GCrate));
                 numECrate.SetSafe(Math.Max(0, selectedDelivery.ECrate));
                 numCombiCold.SetSafe(Math.Min(numCombiCold.Maximum, Math.Max(0, MJdatabase.GetDeliveryCapacityInfo(selectedDelivery.Id).Cold)));
@@ -5001,7 +5070,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 PopulateRouteStoresGrid(matchedDspRoute, savedStops);
                 CalculateCratesAndRecommendation();
                 UpdateDestinationHint();
-                lblFormHeader.Text = $"Dispatch #{selectedDelivery.DispatchNumber}  ·  {(MJdatabase.IsAwaitingCompletion(selectedDelivery) ? "For Completion" : selectedDelivery.Status)}";
+                lblFormHeader.Text = $"Dispatch #{selectedDelivery.DispatchNumber}  ·  {(MJdatabase.IsAwaitingCompletion(selectedDelivery) ? "For Completion" : StatusText.Display(selectedDelivery.Status))}";
 
             }
             finally
@@ -5050,6 +5119,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (!ValidationHelper.ValidateRequiredText(txtDispatchNumber, "Order Reference / Dispatch #", valErrors)) firstInvalid ??= txtDispatchNumber;
                 else if (!DispatchNumberAllowed(txtDispatchNumber.Text)) { ValidationHelper.ApplyValidationState(txtDispatchNumber, false, DailyRules.DispatchNumberMessage); valErrors.Add(DailyRules.DispatchNumberMessage); firstInvalid ??= txtDispatchNumber; } // Nov 12
+                string? timeProblem = DepartureTimeProblem();
+                if (timeProblem != null) { ValidationHelper.ApplyValidationState(cbDepartureTime, false, timeProblem); valErrors.Add(timeProblem); firstInvalid ??= cbDepartureTime; }
                 if (!chkMultiDrop.Checked)
                 {
                     if (!ValidationHelper.ValidateRequiredCombo(cbClient, "Client Company", valErrors)) firstInvalid ??= cbClient;
@@ -5813,6 +5884,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string newStatus = cbStatus.SelectedItem?.ToString() ?? "Scheduled";
 
                 bool closingTrip = newStatus == "Cancelled" || newStatus == "Completed";
+                string? updateTimeProblem = closingTrip ? null : DepartureTimeProblem();
+                if (updateTimeProblem != null)
+                {
+                    ValidationHelper.ApplyValidationState(cbDepartureTime, false, updateTimeProblem);
+                    MessageBox.Show(updateTimeProblem, "Departure Time Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    cbDepartureTime.Focus();
+                    return;
+                }
 
                 string? conflict = closingTrip ? null : MJdatabase.ValidateDispatchConflict(selectedDelivery.Id, selTr.Id, selDr.Id, aideIdsForUpdate, dtpDispatchDate.Value);
 
@@ -6135,7 +6214,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnFilterPending = CreateSummaryPill("📋 Scheduled: 0", () => { currentStatusFilter = (currentStatusFilter == "Scheduled" || currentStatusFilter == "Pending") ? "" : "Scheduled"; FilterGridData(); UpdateSummaryButtonStyles(); });
 
-            btnFilterTransit = CreateSummaryPill("🚚 In Transit: 0", () => { currentStatusFilter = currentStatusFilter == "In Transit" ? "" : "In Transit"; FilterGridData(); UpdateSummaryButtonStyles(); });
+            btnFilterTransit = CreateSummaryPill("🚚 Current: 0", () => { currentStatusFilter = currentStatusFilter == "In Transit" ? "" : "In Transit"; FilterGridData(); UpdateSummaryButtonStyles(); });
 
             btnFilterCompleted = CreateSummaryPill("✅ Completed: 0 ➔", () => OnNavigateToCompletedRequested?.Invoke());
 
@@ -6232,7 +6311,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 btnFilterPending.Text = $"📋 Scheduled: {pending:N0}";
 
-                btnFilterTransit.Text = $"🚚 In Transit: {transit:N0}";
+                btnFilterTransit.Text = $"🚚 Current: {transit:N0}";
 
                 btnFilterCompleted.Text = $"✅ Completed: {completed:N0} ➔";
 
@@ -6246,7 +6325,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                lblSummary.Text = $"📊 Total Orders: {total:N0}  |  ⏳ Pending: {pending:N0}  |  🚚 In Transit: {transit:N0}  |  ✅ Completed: {completed:N0}  |  📦 Total Volume: {volume:N0} Crates";
+                lblSummary.Text = $"📊 Total Orders: {total:N0}  |  ⏳ Pending: {pending:N0}  |  🚚 Current: {transit:N0}  |  ✅ Completed: {completed:N0}  |  📦 Total Volume: {volume:N0} Crates";
 
             }
 
@@ -6381,7 +6460,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     (!string.IsNullOrEmpty(d.DriverName) && d.DriverName.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(d.AideNames) && d.AideNames.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(d.CargoType) && d.CargoType.ToLower().Contains(q)) ||
-                    (!string.IsNullOrEmpty(d.Status) && d.Status.ToLower().Contains(q))
+                    (!string.IsNullOrEmpty(d.Status) && (d.Status.ToLower().Contains(q) || StatusText.Display(d.Status).ToLower().Contains(q)))
                 );
 
             IEnumerable<Delivery> sorted = ApplySort(matching);

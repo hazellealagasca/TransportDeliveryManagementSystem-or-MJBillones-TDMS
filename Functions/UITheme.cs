@@ -474,11 +474,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cb.Font = UITheme.InputFont;
                 cb.ForeColor = AppTheme.TextPrimary;
                 cb.BackColor = AppTheme.InputBack;
-                if (cb.Name.Contains("Time", StringComparison.OrdinalIgnoreCase) && (cb.Items.Count == 0 || cb.Items.Count <= 7))
-                {
-                    string currentVal = cb.Text;
-                    PopulateTimeSlots(cb, 30, false, string.IsNullOrEmpty(currentVal) ? "06:00 AM" : currentVal);
-                }
+                // No time list and no default time: the system never suggests or fills in a time. The user types it or uses the clock.
                 StyleInput(cb);
             }
             else if (ctrl is DateTimePicker dtp)
@@ -1314,7 +1310,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 combo.SelectedIndex = 0;
             }
         }
-        public static string? ShowAnalogClockPicker(IWin32Window? owner, string initialTime = "08:00 AM")
+        public static string? ShowAnalogClockPicker(IWin32Window? owner, string initialTime = "")
         {
             using (var dlg = new Views.AnalogClockTimePickerDialog(initialTime))
             {
@@ -1331,7 +1327,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             button.Click += (s, e) =>
             {
                 string currentTime = targetInput.Text;
-                string? chosen = ShowAnalogClockPicker(button.FindForm(), string.IsNullOrEmpty(currentTime) ? "08:00 AM" : currentTime);
+                string? chosen = ShowAnalogClockPicker(button.FindForm(), currentTime ?? "");
                 if (!string.IsNullOrEmpty(chosen))
                 {
                     if (!targetInput.Items.Contains(chosen))
@@ -1600,7 +1596,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static void ConfigureTimePicker(DateTimePicker picker, bool use24Hour = false) => UIThemeHelper.ConfigureTimePicker(picker, use24Hour);
         public static void PopulateTimeSlots(ComboBox combo, int intervalMinutes = 30, bool use24Hour = false, string defaultSelection = "06:00 AM")
             => UIThemeHelper.PopulateTimeSlots(combo, intervalMinutes, use24Hour, defaultSelection);
-        public static string? ShowAnalogClockPicker(IWin32Window? owner, string initialTime = "08:00 AM")
+        public static string? ShowAnalogClockPicker(IWin32Window? owner, string initialTime = "")
             => UIThemeHelper.ShowAnalogClockPicker(owner, initialTime);
     }
 }

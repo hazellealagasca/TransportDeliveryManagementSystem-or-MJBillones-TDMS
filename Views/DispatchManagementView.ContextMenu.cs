@@ -99,7 +99,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try { invoice = MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == d.Id); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
             try { incidents = MJdatabase.GetIncidentReports().Count(i => i.DeliveryId == d.Id); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
             bool active = IsActiveStatus(d), completed = IsCompletedStatus(d), cancelled = IsCancelledStatus(d);
-            string status = MJdatabase.IsAwaitingCompletion(d) ? "Awaiting completion" : d.Status;
+            string status = MJdatabase.IsAwaitingCompletion(d) ? "Awaiting completion" : StatusText.Display(d.Status);
             string client = string.IsNullOrWhiteSpace(d.ClientName) ? "No client" : d.ClientName;
             m.Items.AddRange(Header(d.DispatchNumber, $"{client}  ·  {Fmt.Short(d.DispatchDate)}  ·  {status}"));
             m.Items.Add(new ToolStripSeparator());

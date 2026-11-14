@@ -750,12 +750,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     Col("Truck", "Truck", 11, 85), Col("Driver", "Driver", 14, 110), Col("Crates", "Crates", 7, 60, true), Col("Status", "Status", 11, 105));
                 var list = data.Deliveries.Where(d => d.DispatchDate.Date >= from && d.DispatchDate.Date <= to)
                     .OrderBy(d => DispatchGate.IsCancelled(d.Status) ? 1 : 0).ThenBy(d => Departure(d.DispatchDate, d.DepartureTime)).ToList();
-                if (q.Length > 0) list = list.Where(d => $"{d.DispatchNumber} {d.ClientName} {d.Destination} {d.TruckInfo} {d.DriverName} {d.AideNames} {d.Status}".ToLowerInvariant().Contains(q)).ToList();
+                if (q.Length > 0) list = list.Where(d => $"{d.DispatchNumber} {d.ClientName} {d.Destination} {d.TruckInfo} {d.DriverName} {d.AideNames} {d.Status} {StatusText.Display(d.Status)}".ToLowerInvariant().Contains(q)).ToList();
                 foreach (var d in list)
                 {
                     var dep = Departure(d.DispatchDate, d.DepartureTime);
                     string whenTxt = from == to ? dep.ToString("hh:mm tt") : dep.ToString("ddd d · hh:mm tt");
-                    int i = gridOperations.Rows.Add(whenTxt, d.DispatchNumber, d.ClientName, d.CleanRouteDisplay, d.TruckInfo, d.DriverName, (d.TotalCrates > 0 ? d.TotalCrates : d.GCrate + d.ECrate).ToString("N0"), d.Status);
+                    int i = gridOperations.Rows.Add(whenTxt, d.DispatchNumber, d.ClientName, d.CleanRouteDisplay, d.TruckInfo, d.DriverName, (d.TotalCrates > 0 ? d.TotalCrates : d.GCrate + d.ECrate).ToString("N0"), StatusText.Display(d.Status));
                     gridOperations.Rows[i].Tag = d;
                     if (DispatchGate.IsCancelled(d.Status)) gridOperations.Rows[i].DefaultCellStyle.ForeColor = AppTheme.TextMuted;
                 }
@@ -818,7 +818,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var item = rows[0].Tag;
                 if (item is Delivery d)
                 {
-                    m.Items.AddRange(RowMenu.Header($"🚚  {d.DispatchNumber}", $"{RowMenu.Short(d.ClientName, 26)} · {Fmt.Short(d.DispatchDate)} {d.DepartureTime} · {d.TruckInfo} · {d.Status}"));
+                    m.Items.AddRange(RowMenu.Header($"🚚  {d.DispatchNumber}", $"{RowMenu.Short(d.ClientName, 26)} · {Fmt.Short(d.DispatchDate)} {d.DepartureTime} · {d.TruckInfo} · {StatusText.Display(d.Status)}"));
                     m.Items.Add(RowMenu.Item("Open dispatch details", () => Forms.DispatchDetailsDialog.ShowFor(this, d), "Enter"));
                     m.Items.Add(RowMenu.Item("Edit in Dispatch", () => MainForm.Instance?.EditDeliveryOrderInDispatch(d), "", CanOps && !RowMenu.Is(d.Status, "Completed", "Cancelled")));
                     if (Done(d.Status)) m.Items.Add(RowMenu.Item("Trip report", () => MainForm.Instance?.OpenTripReportForDispatch(d), "", CanOps));

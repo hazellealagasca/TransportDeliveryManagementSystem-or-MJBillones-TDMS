@@ -198,7 +198,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var r = x.R;
                 var cells = new List<object> { x.Score == clues ? "✔ all clues" : $"{x.Score} of {clues}", Fmt.DayDate(r.Date), r.Kind, r.Number, r.Client, r.Route, r.Truck, r.Crew, r.Crates > 0 ? r.Crates.ToString("N0") : "" };
                 if (showAmount) cells.Add(r.Amount.HasValue ? "₱" + r.Amount.Value.ToString("N2") : "");
-                cells.Add(r.Status);
+                cells.Add(r.StatusShown);
                 int i = grid.Rows.Add(cells.ToArray());
                 grid.Rows[i].Tag = x;
             }

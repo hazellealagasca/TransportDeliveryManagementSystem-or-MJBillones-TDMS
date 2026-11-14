@@ -68,7 +68,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (ops)
                 {
                     foreach (var d in MJdatabase.GetDeliveries())
-                        Add("Dispatches", "🚚", $"{d.DispatchNumber} · {d.ClientName}", $"{Fmt.Date(d.DispatchDate)} · {d.TruckInfo} · {d.DriverName} · {d.Status}",
+                        Add("Dispatches", "🚚", $"{d.DispatchNumber} · {d.ClientName}", $"{Fmt.Date(d.DispatchDate)} · {d.TruckInfo} · {d.DriverName} · {StatusText.Display(d.Status)}",
                             $"{d.Destination} {d.AideNames} {d.AideName} {d.LoadingScheduleInfo} {d.CargoType}", d.DispatchDate, () => Forms.DispatchDetailsDialog.ShowFor(mf!, d));
                     foreach (var ls in MJdatabase.GetLoadingSchedules())
                         Add("Loading schedules", "📦", $"{ls.ScheduleNumber} · {ls.ClientName}", $"{Fmt.Date(ls.ScheduleDate)} {ls.DepartureTime} · {ls.TotalCrates} crates · {ls.Status}",

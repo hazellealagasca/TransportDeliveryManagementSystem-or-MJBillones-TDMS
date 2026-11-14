@@ -517,6 +517,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 new PrintField("client", "Client", d.ClientName), new PrintField("date", "Dispatch date", $"{D(d.DispatchDate)} · {d.DepartureTime}"),
                 new PrintField("route", "Route / destination", d.CleanRouteDisplay), new PrintField("schedule", "Loading order", d.LoadingScheduleInfo),
                 new PrintField("cargo", "Crate type", d.CargoType), new PrintField("priority", "Season", d.IsPeak ? "Peak season" : "Regular"),
+                new PrintField("drops", "No. of drops", (stops.Count > 0 ? stops.Count : Math.Max(1, d.TotalStopsCount)).ToString()),
                 new PrintField("truck", "Truck", d.TruckInfo), new PrintField("driver", "Driver", d.DriverName),
                 new PrintField("aides", "Aides / helpers", string.IsNullOrWhiteSpace(d.AideDisplay) ? "None" : d.AideDisplay),
                 new PrintField("remarks", "Order remarks", d.Remarks, true, !string.IsNullOrWhiteSpace(d.Remarks), true)
@@ -536,7 +537,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int deliveredTot = trip?.DeliveredCrates ?? stops.Sum(s => s.DeliveredCrates);
                 int returnedTot = trip?.ReturnedCrates ?? stops.Sum(s => s.ReturnedCrates);
                 if (opt.On("stats")) sb.Append(Stats(new[] { ("Crates loaded", d.TotalCrates.ToString("N0")), ("G-crates", d.GCrate.ToString("N0")), ("E-crates", d.ECrate.ToString("N0")), ("Delivered", deliveredTot.ToString("N0")), ("Returned", returnedTot.ToString("N0")) }));
-                if (opt.On("order")) { sb.Append(SectionTitle("Order")); sb.Append(FieldGrid(opt, 2, "dispatch_no", "status", "client", "date", "route", "schedule", "cargo", "priority", "remarks")); }
+                if (opt.On("order")) { sb.Append(SectionTitle("Order")); sb.Append(FieldGrid(opt, 2, "dispatch_no", "status", "client", "date", "route", "schedule", "cargo", "priority", "drops", "remarks")); }
                 if (opt.On("crew")) { sb.Append(SectionTitle("Truck & crew")); sb.Append(FieldGrid(opt, 2, "truck", "driver", "aides")); }
                 if (opt.On("stops") && stops.Count > 0)
                 {

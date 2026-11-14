@@ -304,7 +304,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     string route = t.CleanRouteDisplay;
                     if (q.Length > 0 && !new[] { t.DispatchNumber, t.ClientName, route, t.DriverName, t.AideDisplay, t.Status }.Any(x => (x ?? "").Contains(q, StringComparison.OrdinalIgnoreCase))) continue;
-                    int r = g.Rows.Add(Fmt.Date(t.DispatchDate), t.DispatchNumber, t.ClientName, route, t.DriverName, t.AideDisplay, (t.TotalCrates > 0 ? t.TotalCrates : t.GCrate + t.ECrate).ToString("N0"), t.Status);
+                    int r = g.Rows.Add(Fmt.Date(t.DispatchDate), t.DispatchNumber, t.ClientName, route, t.DriverName, t.AideDisplay, (t.TotalCrates > 0 ? t.TotalCrates : t.GCrate + t.ECrate).ToString("N0"), StatusText.Display(t.Status));
                     g.Rows[r].Tag = t;
                 }
             }

@@ -230,7 +230,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbDepartureTime.Dock = DockStyle.Fill;
             cbDepartureTime.Font = new Font("Segoe UI", 8.5F);
             cbDepartureTime.FormattingEnabled = true;
-            cbDepartureTime.Items.AddRange(new object[] { "06:00 AM", "08:00 AM", "10:00 AM", "01:00 PM", "04:00 PM", "08:00 PM" });
             cbDepartureTime.Location = new Point(0, 0);
             cbDepartureTime.Margin = new Padding(0, 0, 2, 0);
             cbDepartureTime.Name = "cbDepartureTime";

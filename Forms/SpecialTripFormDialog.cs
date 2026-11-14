@@ -313,8 +313,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Panel pnlDeparture = new Panel { Dock = DockStyle.Fill, Margin = new Padding(8, 0, 0, 10) };
             Label lblDep = new Label { Text = "Departure Time", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Pal.C(71, 85, 105), Dock = DockStyle.Top, Height = 20 };
             cbDepartureTime = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDown, Font = new Font("Segoe UI", 9.5F), Height = 30 };
-            string[] times = { "06:00 AM", "07:00 AM", "08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "06:00 PM", "08:00 PM", "10:00 PM" };
-            cbDepartureTime.Items.AddRange(times);
             cbDepartureTime.Text = "";
             pnlDeparture.Controls.Add(cbDepartureTime);
             pnlDeparture.Controls.Add(lblDep);

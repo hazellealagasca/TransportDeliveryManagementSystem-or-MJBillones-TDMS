@@ -128,7 +128,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             "All Statuses",
             "Completed Only",
             "Cancelled Only",
-            "Pending / In Transit",
+            "Pending / Current",
             "Past Dispatches Only",
             "Present / Active Today",
             "Future Scheduled Dispatches"});

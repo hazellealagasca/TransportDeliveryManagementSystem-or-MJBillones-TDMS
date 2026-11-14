@@ -612,7 +612,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             RowMenu.Attach(gridTrips, (m, rows) =>
             {
                 if (rows[0].Tag is not Delivery d) return;
-                m.Items.AddRange(RowMenu.Header($"🚚  {d.DispatchNumber}", $"{Fmt.Date(d.DispatchDate)} · {d.TotalCrates} crates · {d.TruckInfo} · {d.Status}"));
+                m.Items.AddRange(RowMenu.Header($"🚚  {d.DispatchNumber}", $"{Fmt.Date(d.DispatchDate)} · {d.TotalCrates} crates · {d.TruckInfo} · {StatusText.Display(d.Status)}"));
                 m.Items.Add(RowMenu.Item("Open dispatch details", () => Forms.DispatchDetailsDialog.ShowFor(this, d)));
                 if (RowMenu.Is(d.Status, "Completed")) m.Items.Add(RowMenu.Item("Trip report", () => { if (CanLeaveWithoutLosing()) MainForm.Instance?.OpenTripReportForDispatch(d); }));
                 m.Items.Add(RowMenu.Item("Print delivery dossier", () => PrintHelper.PrintEndToEndDeliveryDossier(d.Id, d.DispatchNumber)));
@@ -958,7 +958,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             flowTripTiles.Controls.Add(Tile("Cancelled", $"{tripSum.CancelledCount:N0}", "Orders called off", tripSum.CancelledCount > 0 ? AppTheme.DangerText : (Color?)null));
             foreach (var d in trips.Take(100))
             {
-                int r = gridTrips.Rows.Add(Fmt.Date(d.DispatchDate), d.DispatchNumber, d.CleanRouteDisplay, d.TruckInfo, (d.TotalCrates > 0 ? d.TotalCrates : d.GCrate + d.ECrate).ToString("N0"), d.Status);
+                int r = gridTrips.Rows.Add(Fmt.Date(d.DispatchDate), d.DispatchNumber, d.CleanRouteDisplay, d.TruckInfo, (d.TotalCrates > 0 ? d.TotalCrates : d.GCrate + d.ECrate).ToString("N0"), StatusText.Display(d.Status));
                 gridTrips.Rows[r].Tag = d;
             }
             pnlTripsHost.Height = Math.Clamp(Dpi(38) + Math.Max(3, gridTrips.Rows.Count) * Dpi(36) + Dpi(4), Dpi(150), Dpi(420));

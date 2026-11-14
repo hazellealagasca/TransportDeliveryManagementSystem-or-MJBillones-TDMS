@@ -56,11 +56,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     int sc = CratesOf(sel);
                     int stops = Math.Max(1, sel.TotalStopsCount);
-                    m.Add(new SummaryMetric("Selected order", sel.DispatchNumber, SummaryTone.Purple, $"{sel.Status} · {sel.ClientName}", Strong: true));
+                    m.Add(new SummaryMetric("Selected order", sel.DispatchNumber, SummaryTone.Purple, $"{StatusText.Display(sel.Status)} · {sel.ClientName}", Strong: true));
                     m.Add(new SummaryMetric("Its crates", sc.ToString("N0"), SummaryTone.Teal, $"G {sel.GCrate:N0} · E {sel.ECrate:N0}"));
                     m.Add(new SummaryMetric("Its stores", stops.ToString("N0"), SummaryTone.Neutral, sel.CleanRouteDisplay));
                     m.Add(new SummaryMetric("Truck & driver", string.IsNullOrWhiteSpace(sel.TruckInfo) ? "—" : sel.TruckInfo, SummaryTone.Neutral, string.IsNullOrWhiteSpace(sel.DriverName) ? "no driver yet" : sel.DriverName));
-                    context = $"Selected order {sel.DispatchNumber} — {sel.ClientName} · {Fmt.Date(sel.DispatchDate)} · {sel.Status}   ·   Orders shown: {list.Count:N0}";
+                    context = $"Selected order {sel.DispatchNumber} — {sel.ClientName} · {Fmt.Date(sel.DispatchDate)} · {StatusText.Display(sel.Status)}   ·   Orders shown: {list.Count:N0}";
                     preview += $"  ·  selected {sel.DispatchNumber}: {sc:N0} crates";
                 }
                 dispatchSummary.SetMetrics(m, preview, context);

@@ -38,6 +38,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public string Key => Kind + "|" + Number;
         public string Crew => string.Join(" · ", new[] { Driver, Aides }.Where(x => !string.IsNullOrWhiteSpace(x)));
         /// <summary>Waiting, On the road, Completed or Cancelled.</summary>
+        /// <summary>The status as people read it ("In Transit" shows as "Current"); <see cref="Status"/> keeps the stored value.</summary>
+        public string StatusShown => StatusText.Display(Status);
         public string StatusGroup
         {
             get

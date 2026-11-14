@@ -30,7 +30,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ("Active orders", ""),
             ("Awaiting completion", AwaitingCompletionFilter),
             ("Scheduled", "Scheduled"),
-            ("In Transit", "In Transit"),
+            ("Current", "In Transit"),
             ("Delayed", "Delayed"),
             ("Completed", "Completed"),
             ("Cancelled", "Cancelled"),

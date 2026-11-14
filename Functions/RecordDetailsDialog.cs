@@ -257,7 +257,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 title = $"📦 Delivery Dispatch: {del.DispatchNumber}";
                 subtitle = $"Transit Order • Client: {clientName}";
-                statusBadge = del.Status;
+                statusBadge = StatusText.Display(del.Status);
                 if (del.Status == "Completed") { badgeBg = Pal.C(220, 252, 231); badgeFg = Pal.C(22, 101, 52); }
                 else if (del.Status == "Delayed") { badgeBg = Pal.C(254, 226, 226); badgeFg = Pal.C(185, 28, 28); }
                 else if (del.Status == "In Transit") { badgeBg = Pal.C(254, 243, 199); badgeFg = Pal.C(180, 83, 9); }

@@ -1327,7 +1327,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         ScheduleDate TEXT NOT NULL,
 
-                        DepartureTime TEXT DEFAULT '08:00 AM',
+                        DepartureTime TEXT DEFAULT '',
 
                         GCrate INTEGER DEFAULT 0,
 
@@ -1854,7 +1854,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     "ALTER TABLE IncidentReports ADD COLUMN PhotoPath TEXT;",
 
-                    "ALTER TABLE LoadingSchedules ADD COLUMN DepartureTime TEXT DEFAULT '08:00 AM';",
+                    "ALTER TABLE LoadingSchedules ADD COLUMN DepartureTime TEXT DEFAULT '';",
 
                     "ALTER TABLE LoadingSchedules ADD COLUMN GCrate INTEGER DEFAULT 0;",
 
@@ -5160,7 +5160,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             DispatchDate = DateTime.TryParse(reader.GetString(10), out var dt) ? dt : DateTime.Today,
 
-                            DepartureTime = reader.IsDBNull(11) ? "08:00 AM" : reader.GetString(11),
+                            DepartureTime = reader.IsDBNull(11) ? "" : reader.GetString(11),
 
                             Status = reader.GetString(12),
 
@@ -6725,7 +6725,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             ScheduleDate = sDate,
 
-                            DepartureTime = reader.IsDBNull(5) ? "08:00 AM" : reader.GetString(5),
+                            DepartureTime = reader.IsDBNull(5) ? "" : reader.GetString(5),
 
                             GCrate = gCrate,
 
@@ -6823,7 +6823,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 cmd.Parameters.AddWithValue("@sd", ls.ScheduleDate.ToString("yyyy-MM-dd"));
 
-                cmd.Parameters.AddWithValue("@dt", Functions.TimeText.Normalize(ls.DepartureTime, "08:00 AM"));
+                cmd.Parameters.AddWithValue("@dt", Functions.TimeText.Normalize(ls.DepartureTime, ""));
 
                 cmd.Parameters.AddWithValue("@gc", ls.GCrate);
 
@@ -6925,7 +6925,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             string oldDateStr = reader.GetString(3);
 
-                            string oldTimeStr = reader.IsDBNull(4) ? "08:00 AM" : reader.GetString(4);
+                            string oldTimeStr = reader.IsDBNull(4) ? "" : reader.GetString(4);
 
                             string status = reader.IsDBNull(5) ? "Pending" : reader.GetString(5);
 
@@ -8182,7 +8182,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             DispatchDate = dDate,
 
-                            DepartureTime = reader.IsDBNull(11) ? "08:00 AM" : reader.GetString(11),
+                            DepartureTime = reader.IsDBNull(11) ? "" : reader.GetString(11),
 
                             Status = reader.IsDBNull(12) ? "Scheduled" : (reader.GetString(12) == "Pending" ? "Scheduled" : reader.GetString(12)),
 
@@ -8691,7 +8691,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         cmd.Parameters.AddWithValue("@dd", d.DispatchDate.ToString("yyyy-MM-dd"));
 
-                        cmd.Parameters.AddWithValue("@dt", Functions.TimeText.Normalize(d.DepartureTime, "08:00 AM"));
+                        cmd.Parameters.AddWithValue("@dt", Functions.TimeText.Normalize(d.DepartureTime, ""));
 
                         cmd.Parameters.AddWithValue("@s", d.Status);
 
@@ -9943,7 +9943,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         string status = reader.GetString(1);
 
-                        string dt = reader.IsDBNull(2) ? "08:00 AM" : reader.GetString(2);
+                        string dt = reader.IsDBNull(2) ? "" : reader.GetString(2);
 
                         return $"LOADING SCHEDULE ALREADY EXISTS:\nAn active schedule ({sn} - {status}) for '{clientName}' to '{destination}' at {dt} is already booked for {Fmt.Date(scheduleDate)}.\n\nIf this is a second batch/trip order for the same client today, please specify a different Departure Time.";
 
@@ -14830,7 +14830,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         OrderReference = reader["OrderReference"]?.ToString() ?? string.Empty,
                         DispatchDate = DateTime.TryParse(reader["DispatchDate"]?.ToString(), out var dt) ? dt : DateTime.Now,
                         Company = reader["Company"]?.ToString() ?? string.Empty,
-                        DepartureTime = reader["DepartureTime"]?.ToString() ?? "08:00 AM",
+                        DepartureTime = reader["DepartureTime"]?.ToString() ?? "",
                         Address = reader["Address"]?.ToString() ?? string.Empty,
                         ServiceType = reader["ServiceType"]?.ToString() ?? "Dedicated / Special Delivery",
                         Status = reader["Status"]?.ToString() ?? "Pending",
@@ -14883,7 +14883,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         OrderReference = reader["OrderReference"]?.ToString() ?? string.Empty,
                         DispatchDate = DateTime.TryParse(reader["DispatchDate"]?.ToString(), out var dt) ? dt : DateTime.Now,
                         Company = reader["Company"]?.ToString() ?? string.Empty,
-                        DepartureTime = reader["DepartureTime"]?.ToString() ?? "08:00 AM",
+                        DepartureTime = reader["DepartureTime"]?.ToString() ?? "",
                         Address = reader["Address"]?.ToString() ?? string.Empty,
                         ServiceType = reader["ServiceType"]?.ToString() ?? "Dedicated / Special Delivery",
                         Status = reader["Status"]?.ToString() ?? "Pending",

@@ -305,6 +305,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (e.RowIndex >= 0 && gridHistory.Columns[e.ColumnIndex].DataPropertyName == "Status")
                 {
                     string status = e.Value?.ToString() ?? "";
+                    e.Value = StatusText.Display(status);
                     if (string.Equals(status, "Completed", StringComparison.OrdinalIgnoreCase))
                     {
                         e.CellStyle.ForeColor = Pal.C(22, 101, 52);
