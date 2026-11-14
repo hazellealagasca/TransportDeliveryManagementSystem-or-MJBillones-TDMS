@@ -159,7 +159,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (opt.FOn("amount"))
                 {
                     sb.Append("<table style='width:100%;border-collapse:collapse;margin-top:10px'><tr>");
-                    sb.Append($"<td style='border:2px solid #000;padding:10px 12px;width:38%'><div style='font-size:.8em;font-weight:700;text-transform:uppercase'>{Esc(opt.L("amount"))}</div><div style='font-size:1.9em;font-weight:900'>{Esc(opt.F("amount"))}</div></td>");
+                    sb.Append($"<td style='border:2px solid #000;padding:10px 12px;width:38%'><div style='font-size:.8em;font-weight:700;text-transform:uppercase'>{Esc(opt.L("amount"))}</div><div class='amt-total'><strong>{Esc(opt.F("amount"))}</strong></div></td>");
                     sb.Append($"<td style='padding:10px 12px;border:1px solid #777'>{(opt.FOn("amount_words") ? $"<div style='font-size:.8em;font-weight:700;text-transform:uppercase'>{Esc(opt.L("amount_words"))}</div><div style='font-size:1.1em;font-weight:700;font-style:italic'>{Esc(opt.F("amount_words"))}</div>" : "")}</td>");
                     sb.Append("</tr></table>");
                 }
@@ -192,7 +192,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                 ("amount", Money(x.Inv?.Freight ?? x.Row.AmountPaid)), ("fuel", (x.Inv?.FuelSurcharge ?? 0) > 0 ? Money(x.Inv!.FuelSurcharge) : "-"), ("wht", (x.Inv?.Deductions ?? 0) > 0 ? "- " + Money(x.Inv!.Deductions) : "-"), ("net", Money(x.Inv?.NetAmount ?? x.Row.AmountPaid)), ("paid", $"<b>{Esc(Money(x.Row.AmountPaid))}</b>"))).ToArray()));
                 }
                 // Paid in full: the summary shows what was received, never a balance.
-                if (opt.On("totals")) sb.Append(Summary(new[] { (special ? "Special trips paid" : "Invoices paid", paidInvs.Count.ToString()), ("Amount", Money(gross)), ("Fuel surcharge", Money(fuelSum)), ("Less: withholding tax", "- " + Money(whtSum)), ("Total due", Money(net)), ("Amount received (paid in full)", Money(rcTotal)), ("Method / reference", method + (string.IsNullOrWhiteSpace(cr.ReferenceNumber) ? "" : " · " + cr.ReferenceNumber)) }));
+                if (opt.On("totals")) sb.Append(Summary(new[] { (special ? "Special trips paid" : "Invoices paid", paidInvs.Count.ToString()), ("Amount", Money(gross)), ("Fuel surcharge", Money(fuelSum)), ("Less: withholding tax", "- " + Money(whtSum)), ("Total due", Money(net)), ("Amount received (paid in full)", Money(rcTotal)), ("Method / reference", method + (string.IsNullOrWhiteSpace(cr.ReferenceNumber) ? "" : " · " + cr.ReferenceNumber)) }, "", new[] { "Total due" }, "Amount received (paid in full)", "Method / reference"));
                 sb.Append(FieldGrid(opt, 1, "remarks"));
                 if (opt.FOn("atp") && !string.IsNullOrWhiteSpace(opt.F("atp"))) sb.Append($"<div style='margin-top:10px;font-size:.78em;text-align:center;color:#333'>{Multi(opt.F("atp"))}</div>");
                 return sb.ToString();
@@ -345,7 +345,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         for (int li = 0; li < lines.Length; li++)
                         {
                             string strong = li == lines.Length - 1 ? " strong" : "";
-                            sb.Append($"<tr class='tot'><td colspan='{amtIdx}' class='lbl{strong}'>{Esc(lines[li].Label)}</td><td class='num{strong}'>{lines[li].Value:N2}</td>");
+                            sb.Append($"<tr class='tot'><td colspan='{amtIdx}' class='lbl{strong}'>{(strong.Length > 0 ? "<strong>" + Esc(lines[li].Label) + "</strong>" : Esc(lines[li].Label))}</td><td class='num{strong}'>{(strong.Length > 0 ? "<strong>" + lines[li].Value.ToString("N2") + "</strong>" : lines[li].Value.ToString("N2"))}</td>");
                             if (after > 0)
                             {
                                 if (li == 0 && fuelIdx == amtIdx + 1) { sb.Append($"<td class='num'>{fuel:N2}</td>"); if (after > 1) sb.Append($"<td colspan='{after - 1}' class='nob'></td>"); }

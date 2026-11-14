@@ -132,9 +132,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AddTabButton(flowTabs, "Features", "🔀  Features & Pop-ups", (s, e) => LoadChildView(new FeaturesSettingsView(), (Button)s!));
             if (isAdmin)
             {
-                AddTabButton(flowTabs, "SystemHistory", "📜  Change History", (s, e) => LoadChildView(new ModuleHistoryView("Change history", null, isAdminOnly: true), (Button)s!));
+                AddTabButton(flowTabs, "AuditTrail", "📜  Audit Trail", (s, e) => LoadChildView(new AuditTrailView(), (Button)s!));
                 AddTabButton(flowTabs, "Backup", "💾  Backup & Restore", (s, e) => LoadChildView(new BackupRestoreView(), (Button)s!));
-                AddTabButton(flowTabs, "Audit", "🛡️  Security Audit Logs", (s, e) => LoadChildView(new SecurityAuditView(), (Button)s!));
             }
 
             pnlContent = new Panel
@@ -179,6 +178,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public void SelectTab(string tabKey)
         {
             if (tabKey == "DispatchRules") tabKey = "Features";
+            if (tabKey == "SystemHistory" || tabKey == "Audit") tabKey = "AuditTrail"; // the old Change History / Security Audit Logs tabs are one Audit Trail now
             if (tabButtons.TryGetValue(tabKey, out var btn) && btn.Visible)
             {
                 btn.PerformClick();

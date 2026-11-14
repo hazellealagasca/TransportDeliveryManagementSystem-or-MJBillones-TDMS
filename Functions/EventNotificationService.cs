@@ -137,7 +137,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     case "trucks": return string.IsNullOrEmpty(TargetRecordId) ? "👉 View Truck Inventory" : $"👉 View Vehicle {TargetRecordId}";
                     case "crew": return string.IsNullOrEmpty(TargetRecordId) ? "👉 View Personnel Register" : $"👉 View Personnel {TargetRecordId}";
                     case "settings": return SessionContext.IsAdmin ? "👉 Open System Settings" : string.Empty;
-                    case "audit": return SessionContext.IsAdmin ? "👉 Open Security Audit Trail" : string.Empty;
+                    case "audit": return SessionContext.IsAdmin ? "👉 Open Audit Trail" : string.Empty;
                     default: return "👉 View Details";
                 }
             }

@@ -219,7 +219,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (i + c < list.Count)
                     {
                         var f = list[i + c];
-                        sb.Append($"<td class='k'>{Esc(f.Label)}</td><td class='v'>{Multi(f.Value)}</td>");
+                        sb.Append($"<td class='k'>{Esc(f.Label)}</td><td class='v{(f.Key == "reference" ? " ref" : "")}'>{Multi(f.Value)}</td>");
                     }
                     else sb.Append("<td class='k'></td><td class='v'></td>");
                 }
@@ -256,19 +256,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (totals != null)
             {
                 sb.Append("<tfoot><tr>");
-                foreach (var c in cols) sb.Append($"<td class='{c.Css}'>{(totals.TryGetValue(c.Key, out var v) ? v : "")}</td>");
+                foreach (var c in cols) sb.Append($"<td class='{c.Css}'>{(totals.TryGetValue(c.Key, out var v) && v.Length > 0 ? "<strong>" + v + "</strong>" : "")}</td>");
                 sb.Append("</tr></tfoot>");
             }
             return sb.Append("</table>").ToString();
         }
-        /// <summary>Right-aligned summary box: label/amount lines, the last one emphasised.</summary>
-        public static string Summary(IEnumerable<(string Label, string Value)> lines, string title = "")
+        /// <summary>Right-aligned summary box: label/amount lines. The last line is the final total (bold, larger) unless <paramref name="grandLabel"/> names another one.
+        /// <paramref name="boldLabels"/> are further lines printed bold; <paramref name="refLabel"/> is a reference line, printed at the receipt's one small reference size.</summary>
+        public static string Summary(IEnumerable<(string Label, string Value)> lines, string title = "", IEnumerable<string>? boldLabels = null, string? grandLabel = null, string? refLabel = null)
         {
             var list = lines.ToList();
+            var bold = new HashSet<string>(boldLabels ?? Array.Empty<string>());
             var sb = new StringBuilder("<table class='summary'>");
             if (title.Length > 0) sb.Append($"<tr><th colspan='2'>{Esc(title)}</th></tr>");
             for (int i = 0; i < list.Count; i++)
-                sb.Append($"<tr class='{(i == list.Count - 1 ? "grand" : "")}'><td>{Esc(list[i].Label)}</td><td class='num'>{Esc(list[i].Value)}</td></tr>");
+            {
+                string label = list[i].Label;
+                bool grand = grandLabel == null ? i == list.Count - 1 : label == grandLabel;
+                bool isRef = refLabel != null && label == refLabel;
+                string cls = (grand ? "grand " : "") + (isRef ? "ref" : "");
+                string l = Esc(label), v = Esc(list[i].Value);
+                if (grand || bold.Contains(label)) { l = "<strong>" + l + "</strong>"; v = "<strong>" + v + "</strong>"; }
+                sb.Append($"<tr class='{cls.Trim()}'><td>{l}</td><td class='num'>{v}</td></tr>");
+            }
             return sb.Append("</table>").ToString();
         }
         public static string Stats(IEnumerable<(string Label, string Value)> items)
@@ -276,7 +286,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var list = items.ToList();
             if (list.Count == 0) return "";
             var sb = new StringBuilder("<table class='stats'><tr>");
-            foreach (var (l, v) in list) sb.Append($"<td><div class='sv'>{Esc(v)}</div><div class='sl'>{Esc(l)}</div></td>");
+            foreach (var (l, v) in list) sb.Append($"<td><div class='sv'><strong>{Esc(v)}</strong></div><div class='sl'>{Esc(l)}</div></td>");
             return sb.Append("</tr></table>").ToString();
         }
         public static string Checks(IEnumerable<(string Label, bool Ticked)> items)
@@ -317,7 +327,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             sb.Append("table.grid.sheet { border:1px solid #000; } table.grid.sheet th { background:#fff; color:#000; font-weight:700; text-align:center; border:1px solid #000; padding:7px 6px; } table.grid.sheet th.red { color:#d00000; }");
             sb.Append("table.grid.sheet td { border:1px solid #000; text-align:center; vertical-align:middle; padding:6px 6px; } table.grid.sheet tbody tr:nth-child(even) td { background:#fff; } table.grid.sheet td.num { text-align:center !important; } table.grid.sheet tfoot td { border:1px solid #000; font-weight:400; padding:5px 8px; } table.grid.sheet tfoot tr:first-child td { border-top:2px solid #000; } table.grid.sheet tfoot td.lbl { text-align:right; } table.grid.sheet tfoot td.num { text-align:right !important; } table.grid.sheet tfoot td.strong { font-weight:800; } table.grid.sheet tfoot td.nob { border:none; background:#fff; }");
             sb.Append("table.grid tr.blank td { height:20px; background:#fff; } .num { text-align:right !important; } td.num { white-space:nowrap; } .center { text-align:center !important; } .empty { text-align:center; font-style:italic; color:#555; padding:10px; }");
-            sb.Append($"table.summary {{ border-collapse:collapse; min-width:300px; margin-left:auto; margin-top:8px; border:1.5px solid {ink}; }} table.summary th {{ background:{soft}; text-align:left; padding:5px 8px; font-size:.86em; text-transform:uppercase; }} table.summary td {{ padding:4px 8px; border-bottom:1px solid {line}; }} table.summary tr.grand td {{ font-weight:800; font-size:1.12em; border-top:2px solid {ink}; }}");
+            sb.Append($"table.summary {{ border-collapse:collapse; min-width:300px; margin-left:auto; margin-top:8px; border:1.5px solid {ink}; }} table.summary th {{ background:{soft}; text-align:left; padding:5px 8px; font-size:.86em; text-transform:uppercase; }} table.summary td {{ padding:4px 8px; border-bottom:1px solid {line}; }} table.summary tr.grand td {{ font-weight:800; font-size:1.12em; border-top:2px solid {ink}; }} strong, b, .strong {{ font-weight:800; }}");
+            // Collection receipt: the amount box is the largest figure; the reference / check no. (field and summary line) is one small size, never above it.
+            sb.Append(".amt-total { font-size:1.9em; font-weight:900; } td.ref, table.summary tr.ref td { font-size:1em; font-weight:600; }");
             sb.Append($"table.stats {{ width:100%; border-collapse:separate; border-spacing:6px 0; margin:6px -6px; }} table.stats td {{ border:1.5px solid {ink}; text-align:center; padding:6px; }} .sv {{ font-size:1.35em; font-weight:800; }} .sl {{ font-size:.78em; text-transform:uppercase; font-weight:700; color:#333; }}");
             sb.Append($".note {{ border:1px solid {line}; background:{soft}; padding:6px 9px; margin-top:12px; font-size:.92em; }} .chk {{ white-space:nowrap; font-weight:600; }}");
             sb.Append(".sigs { width:100%; border-collapse:separate; border-spacing:18px 0; margin:34px -18px 0 -18px; page-break-inside:avoid; } .sigs td { vertical-align:bottom; text-align:center; width:25%; }");
