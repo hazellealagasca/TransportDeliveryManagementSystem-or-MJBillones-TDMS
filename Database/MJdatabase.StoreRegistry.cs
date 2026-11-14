@@ -78,7 +78,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string cleanCode = CleanStoreCode(code), cleanName = CleanStoreText(name), label = CleanStoreText(routeLabel);
             if (client.Length == 0) return "Choose the client company first.";
             // Rule 16c: the route is optional; a store can be registered to the client's pool first and put on routes later.
-            if (cleanCode.Length == 0) return "Enter the store code (letters, numbers and hyphens).";
+            // Nov 14: the code may be left blank; one is made on save (see GenerateStoreCode).
             if (cleanName.Length == 0) return "Enter the store name.";
             if (cleanName.Length > StoreNameMaxLength) return $"The store name is too long (at most {StoreNameMaxLength} characters).";
             if (label.Length == 0)
@@ -119,8 +119,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (route == null) return RegisterCompanyStore(client, code, name, address); // no route chosen: company store pool only (rule 16c)
             client = CleanStoreText(client);
             string cleanCode = CleanStoreCode(code), cleanName = CleanStoreText(name), label = RouteLabel(route);
+            bool generated = cleanCode.Length == 0;
+            if (generated) cleanCode = GenerateStoreCode(client);
             int clientId = GetClientByCompanyName(client)?.Id ?? 0;
-            var store = new ClientStore { ClientId = clientId, ClientCompanyName = client, StoreCode = cleanCode, StoreName = cleanName, DestinationRoute = label, Address = CleanStoreText(address) };
+            var store = new ClientStore { ClientId = clientId, ClientCompanyName = client, StoreCode = cleanCode, StoreName = cleanName, DestinationRoute = label, Address = CleanStoreText(address), IsGeneratedCode = generated };
             using (var conn = new SqliteConnection(connectionString))
             {
                 conn.Open();
@@ -129,18 +131,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (refused != null) throw new InvalidOperationException(refused); // nothing written; the transaction rolls back
                 using var ins = conn.CreateCommand();
                 ins.Transaction = tx;
-                ins.CommandText = @"INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson, Address)
-                                    VALUES (@cid, @cl, @sc, @sn, @dr, '', @addr); SELECT last_insert_rowid();";
+                ins.CommandText = @"INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson, Address, IsGeneratedCode)
+                                    VALUES (@cid, @cl, @sc, @sn, @dr, '', @addr, @gen); SELECT last_insert_rowid();";
                 ins.Parameters.AddWithValue("@cid", clientId);
                 ins.Parameters.AddWithValue("@cl", client);
                 ins.Parameters.AddWithValue("@sc", cleanCode);
                 ins.Parameters.AddWithValue("@sn", cleanName);
                 ins.Parameters.AddWithValue("@dr", label);
                 ins.Parameters.AddWithValue("@addr", store.Address);
+                ins.Parameters.AddWithValue("@gen", generated ? 1 : 0);
                 store.Id = Convert.ToInt32(ins.ExecuteScalar() ?? 0);
                 WriteRoutePlaces(route.Id, places, conn, tx);
                 tx.Commit();
             }
+            InvalidateGeneratedCodes();
             try { RecomputeStoreRouteLabels(client); } catch (Exception rex) { ErrLog.Swallowed(rex); }
             try { LogAuditTrail("UPDATE", "DeliveryRoutes", route.Id, route.RouteCode, "ConnectedPlaces", null, null, $"Added store {PlaceFor(store)} to route {route.RouteCode}"); }
             catch (Exception ex) { ErrLog.Swallowed(ex); }

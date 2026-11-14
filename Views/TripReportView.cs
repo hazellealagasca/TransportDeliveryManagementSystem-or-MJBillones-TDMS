@@ -318,6 +318,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             { var c = Col(name, header, weight, style, min); c.ReadOnly = true; return c; }
             gridStores.Columns.Add(Locked("colCode", "Code", 64, roStyle, 64));
             gridStores.Columns["colCode"]!.DefaultCellStyle.Font = new Font("Segoe UI Semibold", 9F);
+            GeneratedCodeDisplay.Attach(gridStores, "colCode");
             gridStores.Columns.Add(Locked("colStore", "Store name (click)", 150, linkStyle, 110));
             gridStores.Columns.Add(Col("colDr", "DR #s", 110, editStyle, 96));
             gridStores.Columns.Add(Col("colIn", "Time in", 66, editStyle, 66));
@@ -505,6 +506,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ShowTripOverview(d, refNum, routeTitle, stops.Count, incidents.Count > 0 ? string.Join(" | ", incidents.Select(i => $"{i.Cause}: {i.DamagedQuantity} damaged crates")) : "");
                 lblMultiDropDetails.Text = $"🏪 Stores for this trip  ·  {routeTitle} ({stops.Count} stores)";
                 storesTitleSingle = lblMultiDropDetails.Text;
+                try { bool recipientTrip = MJdatabase.IsIndividualClient(d.ClientName); gridStores.Columns["colCode"]!.HeaderText = recipientTrip ? "Recipient code" : "Code"; gridStores.Columns["colStore"]!.HeaderText = recipientTrip ? "Recipient (click)" : "Store name (click)"; } catch (Exception ex) { ErrLog.Swallowed(ex); }   // Nov 14: an Individual client's one store reads "Recipient"
                 foreach (var s in stops)
                 {
                     int loadE = (s.DeliveredECrates > 0 || s.DeliveredGCrates > 0) ? s.DeliveredECrates : s.ECrate;

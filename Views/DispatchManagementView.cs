@@ -1270,6 +1270,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     ShowStoreWarning(null);
 
+                    ApplyIndividualClient(cl, fillStore: true);   // Nov 14: an Individual client gets its one store (the recipient)
+
                     storeGuard?.RevalidateAll(showToast: true);
 
                 }
@@ -1279,7 +1281,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                clientStrip?.ShowFor(cbClient.Text); AutoFillDispatchNumber();
+                clientStrip?.ShowFor(cbClient.Text); AutoFillDispatchNumber(); ApplyIndividualClient(cbClient.Text.Trim(), fillStore: false);
 
                 // Client box emptied: there is nothing to check the store rows against, so their marks are cleared.
 
@@ -2054,6 +2056,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 () => cbClient.Text, () => storeListRoute != null ? $"{storeListRoute.RouteCode} - {storeListRoute.RouteName}" : cbDestination.Text, ShowStoreWarning);
 
             StoreAddressBook.AttachTips(gridRouteStores, () => cbClient.Text, "colStoreCode", "colStoreName"); // hover a store to see its address
+            GeneratedCodeDisplay.Attach(gridRouteStores, "colStoreCode"); // a code the system made shows as (no code); the cell being edited shows the real code
             storeGuard.RowHasData = row => CratesOf(row) > 0;
             storeGuard.UseOrderRoute = true;
             VisibleChanged += (s, e) => SetFullScreen(Visible && pnlForm.Visible); // leaving the page ends full screen // Nov 6: every row shows the route picked in Delivery Route; the store list has no Route column

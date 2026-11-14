@@ -67,7 +67,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             routeRow.Controls.Add(btnNewRoute, 1, 0);
             root.Controls.Add(routeRow);
 
-            root.Controls.Add(Cap($"Store code *  (letters, numbers, hyphens; up to {MJdatabase.StoreCodeMaxLength})"));
+            root.Controls.Add(Cap($"Store code (optional: left blank, one is made and shows as {MJdatabase.NoCodeText}; letters, numbers, hyphens; up to {MJdatabase.StoreCodeMaxLength})"));
             Field(txtCode);
             txtCode.CharacterCasing = CharacterCasing.Upper;
             txtCode.MaxLength = MJdatabase.StoreCodeMaxLength;

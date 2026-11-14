@@ -86,7 +86,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             client = CleanStoreText(client);
             string cleanCode = CleanStoreCode(code), cleanName = CleanStoreText(name);
             if (client.Length == 0) return "Choose the client company first.";
-            if (cleanCode.Length == 0 && !(partial && CleanStoreText(code).Length == 0)) return "Enter the store code (letters, numbers and hyphens).";
+            // Nov 14: the code may be left blank; one is made on save (see GenerateStoreCode).
             if (cleanName.Length == 0 && !partial) return "Enter the store name.";
             if (cleanName.Length > StoreNameMaxLength) return $"The store name is too long (at most {StoreNameMaxLength} characters).";
             if (cleanCode.Length > 0)
@@ -143,27 +143,30 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>Tab 1 quick entry: adds a store to the client's pool (no route needed). Throws with a readable message.</summary>
-        public static ClientStore RegisterCompanyStore(string client, string code, string name, string address = "")
+        public static ClientStore RegisterCompanyStore(string client, string code, string name, string address = "", bool generated = false)
         {
             string? problem = CheckCompanyStore(client, code, name);
             if (problem != null) throw new InvalidOperationException(problem);
             client = CleanStoreText(client);
             string cleanCode = CleanStoreCode(code), cleanName = CleanStoreText(name);
+            if (cleanCode.Length == 0) { cleanCode = GenerateStoreCode(client); generated = true; }
             int clientId = GetClientByCompanyName(client)?.Id ?? 0;
-            var store = new ClientStore { ClientId = clientId, ClientCompanyName = client, StoreCode = cleanCode, StoreName = cleanName, DestinationRoute = "", Address = CleanStoreText(address) };
+            var store = new ClientStore { ClientId = clientId, ClientCompanyName = client, StoreCode = cleanCode, StoreName = cleanName, DestinationRoute = "", Address = CleanStoreText(address), IsGeneratedCode = generated };
             using (var conn = new SqliteConnection(connectionString))
             {
                 conn.Open();
                 using var ins = conn.CreateCommand();
-                ins.CommandText = @"INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson, Address)
-                                    VALUES (@cid, @cl, @sc, @sn, '', '', @addr); SELECT last_insert_rowid();";
+                ins.CommandText = @"INSERT INTO ClientStores (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson, Address, IsGeneratedCode)
+                                    VALUES (@cid, @cl, @sc, @sn, '', '', @addr, @gen); SELECT last_insert_rowid();";
                 ins.Parameters.AddWithValue("@cid", clientId);
                 ins.Parameters.AddWithValue("@cl", client);
                 ins.Parameters.AddWithValue("@sc", cleanCode);
                 ins.Parameters.AddWithValue("@sn", cleanName);
                 ins.Parameters.AddWithValue("@addr", store.Address);
+                ins.Parameters.AddWithValue("@gen", generated ? 1 : 0);
                 store.Id = Convert.ToInt32(ins.ExecuteScalar() ?? 0);
             }
+            InvalidateGeneratedCodes();
             try { LogAuditTrail("ADD", "ClientStores", store.Id, $"{cleanCode} - {cleanName}", null, null, null, $"Added store {cleanCode} - {cleanName} to {client}'s stores"); } catch (Exception ex) { ErrLog.Swallowed(ex); }
             AppEvents.Raise(AppDataKind.Stores);
             return store;

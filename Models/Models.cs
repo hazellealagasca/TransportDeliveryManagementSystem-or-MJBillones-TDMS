@@ -333,10 +333,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public bool IsActive { get; set; } = true;
         public DateTime? DeactivatedAt { get; set; }
         public DateTime? CreatedAt { get; set; }
+        /// <summary>Corporate (a company: every detail required) or Individual (a person: one automatic recipient store).</summary>
+        public string ClientType { get; set; } = ClientTypes.Corporate;
+        public bool IsIndividual => string.Equals(ClientType, ClientTypes.Individual, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>The two client types stored in <c>Clients.ClientType</c>.</summary>
+    public static class ClientTypes
+    {
+        public const string Corporate = "Corporate";
+        public const string Individual = "Individual";
     }
 
     public class ClientStore
     {
+        /// <summary>True when the code was made by the system (the store was saved with the code left blank). It shows as "(no code)" and prints blank.</summary>
+        public bool IsGeneratedCode { get; set; }
         public int Id { get; set; }
         public int ClientId { get; set; }
         public string ClientCompanyName { get; set; } = string.Empty;

@@ -60,7 +60,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // ---- page 1: quick-entry bar + the existing store table
             page1 = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Surface };
             var quick = new FlowLayoutPanel { Dock = DockStyle.Top, Height = D(LargePrint.Px(58, 44)), WrapContents = false, BackColor = AppTheme.SurfaceAlt, Padding = new Padding(D(8), D(8), D(8), D(6)) };
-            txtCode = Entry("Store Code", 170, upper: true);
+            txtCode = Entry("Store Code (optional)", 170, upper: true);
             txtName = Entry("Store Name", 260, upper: false);
             txtAddress = Entry("Store address", 300, upper: false);
             txtAddress.MaxLength = 200;
@@ -135,6 +135,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridAssign.CellValueChanged += (s, e) => { if (!binding && e.RowIndex >= 0 && gridAssign.Columns[e.ColumnIndex].Name == "colOn") ToggleStore(e.RowIndex); };
             gridAssign.CellFormatting += (s, e) =>
             {
+                if (e.RowIndex >= 0 && gridAssign.Columns[e.ColumnIndex].Name == "colCode" && (e.Value?.ToString() ?? "") == MJdatabase.NoCodeText) { e.CellStyle.ForeColor = AppTheme.TextMuted; return; }
                 if (e.RowIndex < 0 || gridAssign.Columns[e.ColumnIndex].Name != "colTag") return;
                 bool on = (e.Value?.ToString() ?? "").StartsWith("✔");
                 e.CellStyle.BackColor = on ? AppTheme.SuccessSoft : AppTheme.SurfaceAlt;
@@ -246,7 +247,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 b.ForeColor = on ? AppTheme.AccentText : AppTheme.TextSecondary;
                 b.Invalidate();
             }
-            lblMsg.Text = n == 1 ? "Type a store code and name (address if you have it), then press Enter. Stores are not tied to a route here." : "Pick a route on the left, then tick the stores it serves. " + (client().Length > 0 && !isPending() && MJdatabase.GetOneRoutePerStore(client()) ? "Each store can be on only one of this client's routes." : "A store can be on any of this client's routes.");
+            lblMsg.Text = n == 1 ? "Type the store name (the code and the address are optional), then press Enter. A blank code is made for you and shows as (no code). Stores are not tied to a route here." : "Pick a route on the left, then tick the stores it serves. " + (client().Length > 0 && !isPending() && MJdatabase.GetOneRoutePerStore(client()) ? "Each store can be on only one of this client's routes." : "A store can be on any of this client's routes.");
             lblMsg.ForeColor = AppTheme.TextSecondary;
             if (n == 2) LoadRoutes();
         }
@@ -269,7 +270,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var st = MJdatabase.RegisterCompanyStore(c, txtCode.Text, txtName.Text, txtAddress.Text);
                 txtCode.Clear(); txtName.Clear(); txtAddress.Clear(); txtCode.Focus(); // clearing runs the live check, so say the result after it
                 Outline(null);
-                Say($"✔ Added {st.StoreCode} – {st.StoreName} to {c}'s stores.", false);
+                Say(st.IsGeneratedCode ? $"✔ Added {st.StoreName} to {c}'s stores (no code typed, so one was made: it shows as {MJdatabase.NoCodeText})." : $"✔ Added {st.StoreCode} – {st.StoreName} to {c}'s stores.", false);
                 reloadStores();
             }
             catch (InvalidOperationException ex) { Say("✕ " + ex.Message, true); }
@@ -318,9 +319,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private TextBox StoreProblemBox(string problem)
         {
             string code = MJdatabase.CleanStoreCode(txtCode.Text);
-            if (code.Length == 0) return txtCode;
             if (MJdatabase.CleanStoreText(txtName.Text).Length == 0) return txtName;
-            return problem.Contains("store code " + code) ? txtCode : txtName;
+            return code.Length > 0 && problem.Contains("store code " + code) ? txtCode : txtName;
         }
 
         private TextBox RouteProblemBox(string code, string name, string problem)
@@ -509,7 +509,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             string also = x.OtherRoutes.Count > 0 ? "Also on " + string.Join(", ", x.OtherRoutes) : "";
             string tag = x.OnThisRoute ? (also.Length > 0 ? "✔ On this route · " + also : "✔ On this route") : (also.Length > 0 ? also : "Available");
-            int i = gridAssign.Rows.Add(x.OnThisRoute, x.Store.StoreCode, x.Store.StoreName, tag);
+            int i = gridAssign.Rows.Add(x.OnThisRoute, MJdatabase.StoreCodeForScreen(x.Store), x.Store.StoreName, tag);
             gridAssign.Rows[i].Tag = x.Store;
             gridAssign.Rows[i].Height = gridAssign.RowTemplate.Height;
         }

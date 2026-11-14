@@ -303,7 +303,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (dlg.ShowDialog(grid.FindForm()) != DialogResult.OK || dlg.RegisteredStore == null) { FocusCell(row, colName); return; }
                     Refresh();
                     store = Stores().FirstOrDefault(s => s.Id == dlg.RegisteredStore.Id) ?? dlg.RegisteredStore;
-                    try { ToastHelper.ShowToast(grid.FindForm() ?? (Control)grid, $"Store {store.StoreCode} - {store.StoreName} registered for {c}.", ToastType.Success); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+                    try { ToastHelper.ShowToast(grid.FindForm() ?? (Control)grid, store.IsGeneratedCode ? $"Store {store.StoreName} registered for {c}." : $"Store {store.StoreCode} - {store.StoreName} registered for {c}.", ToastType.Success); } catch (Exception ex) { ErrLog.Swallowed(ex); }
                 }
                 else store = chk.Store!;
             }

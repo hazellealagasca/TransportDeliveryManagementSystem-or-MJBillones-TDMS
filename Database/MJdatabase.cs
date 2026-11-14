@@ -1964,6 +1964,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     "ALTER TABLE ClientStores ADD COLUMN Address TEXT DEFAULT '';",
 
+                    "ALTER TABLE ClientStores ADD COLUMN IsGeneratedCode INTEGER DEFAULT 0;",
+
+                    "ALTER TABLE Clients ADD COLUMN ClientType TEXT DEFAULT 'Corporate';",
+
                     "CREATE TABLE IF NOT EXISTS ClientStores (Id INTEGER PRIMARY KEY AUTOINCREMENT, ClientId INTEGER NOT NULL DEFAULT 0, ClientCompanyName TEXT NOT NULL DEFAULT '', StoreCode TEXT NOT NULL DEFAULT '', StoreName TEXT NOT NULL DEFAULT '', DestinationRoute TEXT NOT NULL DEFAULT '', CreatedAt TEXT DEFAULT CURRENT_TIMESTAMP);",
 
                     "ALTER TABLE TripReports ADD COLUMN StoreManagerLastName TEXT DEFAULT '';",
@@ -9385,7 +9389,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                var (code, name) = DeliveryRoute.SplitStoreCodeAndName(string.IsNullOrWhiteSpace(d.Destination) ? d.LoadingScheduleInfo : d.Destination);
+                // Nov 14: an Individual client's order goes to its one store (the recipient), whatever the destination text says.
+                var recipient = GetIndividualStore(d.ClientName);
+                var (code, name) = recipient != null
+                    ? (recipient.StoreCode, recipient.StoreName)
+                    : DeliveryRoute.SplitStoreCodeAndName(string.IsNullOrWhiteSpace(d.Destination) ? d.LoadingScheduleInfo : d.Destination);
 
                 built.Add(new DispatchStop
 
@@ -12426,7 +12434,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 var cmd = conn.CreateCommand();
 
-                cmd.CommandText = "SELECT Id, CompanyName, ContactPerson, ContactNumber, Address, Email, LastName, FirstName, MiddleName, TIN, COALESCE(ExtraFieldsJson, ''), COALESCE(IsActive, 1), COALESCE(DeactivatedAt, ''), COALESCE(CreatedAt, '') FROM Clients ORDER BY CompanyName ASC";
+                cmd.CommandText = "SELECT Id, CompanyName, ContactPerson, ContactNumber, Address, Email, LastName, FirstName, MiddleName, TIN, COALESCE(ExtraFieldsJson, ''), COALESCE(IsActive, 1), COALESCE(DeactivatedAt, ''), COALESCE(CreatedAt, ''), COALESCE(ClientType, 'Corporate') FROM Clients ORDER BY CompanyName ASC";
 
                 using (var reader = cmd.ExecuteReader())
 
@@ -12496,7 +12504,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             DeactivatedAt = reader.FieldCount > 12 && !reader.IsDBNull(12) && DateTime.TryParse(reader.GetValue(12)?.ToString(), out var dAt) ? dAt : (DateTime?)null,
 
-                            CreatedAt = reader.FieldCount > 13 && !reader.IsDBNull(13) && DateTime.TryParse(reader.GetValue(13)?.ToString(), out var cAt) ? cAt : (DateTime?)null
+                            CreatedAt = reader.FieldCount > 13 && !reader.IsDBNull(13) && DateTime.TryParse(reader.GetValue(13)?.ToString(), out var cAt) ? cAt : (DateTime?)null,
+
+                            ClientType = reader.FieldCount > 14 && !reader.IsDBNull(14) && reader.GetString(14).Trim().Length > 0 ? reader.GetString(14).Trim() : ClientTypes.Corporate
 
                         });
 
@@ -12548,7 +12558,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 var cmd = conn.CreateCommand();
 
-                cmd.CommandText = "SELECT Id, CompanyName, ContactPerson, ContactNumber, Address, Email, LastName, FirstName, MiddleName, TIN, COALESCE(ExtraFieldsJson, ''), COALESCE(IsActive, 1), COALESCE(DeactivatedAt, ''), COALESCE(CreatedAt, '') FROM Clients WHERE LOWER(TRIM(CompanyName)) = LOWER(TRIM(@name)) LIMIT 1";
+                cmd.CommandText = "SELECT Id, CompanyName, ContactPerson, ContactNumber, Address, Email, LastName, FirstName, MiddleName, TIN, COALESCE(ExtraFieldsJson, ''), COALESCE(IsActive, 1), COALESCE(DeactivatedAt, ''), COALESCE(CreatedAt, ''), COALESCE(ClientType, 'Corporate') FROM Clients WHERE LOWER(TRIM(CompanyName)) = LOWER(TRIM(@name)) LIMIT 1";
 
                 cmd.Parameters.AddWithValue("@name", companyName.Trim());
 
@@ -12620,7 +12630,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             DeactivatedAt = reader.FieldCount > 12 && !reader.IsDBNull(12) && DateTime.TryParse(reader.GetValue(12)?.ToString(), out var dAt) ? dAt : (DateTime?)null,
 
-                            CreatedAt = reader.FieldCount > 13 && !reader.IsDBNull(13) && DateTime.TryParse(reader.GetValue(13)?.ToString(), out var cAt) ? cAt : (DateTime?)null
+                            CreatedAt = reader.FieldCount > 13 && !reader.IsDBNull(13) && DateTime.TryParse(reader.GetValue(13)?.ToString(), out var cAt) ? cAt : (DateTime?)null,
+
+                            ClientType = reader.FieldCount > 14 && !reader.IsDBNull(14) && reader.GetString(14).Trim().Length > 0 ? reader.GetString(14).Trim() : ClientTypes.Corporate
 
                         };
 
@@ -12660,9 +12672,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 cmd.CommandText = @"
 
-                    INSERT INTO Clients (CompanyName, ContactPerson, ContactNumber, Address, Email, LastName, FirstName, MiddleName, TIN, ExtraFieldsJson, IsActive, CreatedAt)
+                    INSERT INTO Clients (CompanyName, ContactPerson, ContactNumber, Address, Email, LastName, FirstName, MiddleName, TIN, ExtraFieldsJson, IsActive, CreatedAt, ClientType)
 
-                    VALUES (@name, @person, @contact, @addr, @email, @ln, @fn, @mn, @tin, @extra, 1, datetime('now','localtime'))
+                    VALUES (@name, @person, @contact, @addr, @email, @ln, @fn, @mn, @tin, @extra, 1, datetime('now','localtime'), @ctype)
 
                     ON CONFLICT(CompanyName) DO UPDATE SET
 
@@ -12681,6 +12693,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         MiddleName = @mn,
 
                         TIN = @tin,
+
+                        ClientType = @ctype,
 
                         ExtraFieldsJson = CASE WHEN @extra = '' THEN COALESCE(ExtraFieldsJson, '') ELSE @extra END;
 
@@ -12704,11 +12718,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 cmd.Parameters.AddWithValue("@tin", (client.TIN ?? "").Trim());
 
+                cmd.Parameters.AddWithValue("@ctype", client.IsIndividual ? ClientTypes.Individual : ClientTypes.Corporate);
+
                 cmd.Parameters.AddWithValue("@extra", client.ExtraFieldsJson ?? "");
 
                 cmd.ExecuteNonQuery();
 
             }
+
+            if (client.IsIndividual) EnsureIndividualStore(name, client.Address ?? "");
 
             SaveLookupItem("Client Company", name);
 
@@ -12738,7 +12756,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 conn.Open();
                 var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT Id, ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, CreatedAt, COALESCE(ExtraFieldsJson, ''), COALESCE(Address, '') FROM ClientStores WHERE LOWER(TRIM(ClientCompanyName)) = LOWER(TRIM(@cl)) " + (includeArchived ? "" : " AND COALESCE(IsArchived, 0) = 0") + " ORDER BY StoreCode ASC";
+                cmd.CommandText = "SELECT Id, ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, CreatedAt, COALESCE(ExtraFieldsJson, ''), COALESCE(Address, ''), COALESCE(IsGeneratedCode, 0) FROM ClientStores WHERE LOWER(TRIM(ClientCompanyName)) = LOWER(TRIM(@cl)) " + (includeArchived ? "" : " AND COALESCE(IsArchived, 0) = 0") + " ORDER BY StoreCode ASC";
 
                 cmd.Parameters.AddWithValue("@cl", clientName.Trim());
                 using (var reader = cmd.ExecuteReader())
@@ -12757,7 +12775,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             ExtraFieldsJson = reader.FieldCount > 7 && !reader.IsDBNull(7) ? reader.GetString(7) : "",
 
-                            Address = reader.FieldCount > 8 && !reader.IsDBNull(8) ? reader.GetString(8) : ""
+                            Address = reader.FieldCount > 8 && !reader.IsDBNull(8) ? reader.GetString(8) : "",
+
+                            IsGeneratedCode = reader.FieldCount > 9 && !reader.IsDBNull(9) && Convert.ToInt64(reader.GetValue(9)) != 0
 
                         });
                     }
@@ -12775,11 +12795,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static string? SaveClientStore(ClientStore store)
         {
             if (store == null || string.IsNullOrWhiteSpace(store.StoreName)) return null;
+            var old = store.Id > 0 ? GetClientStoreById(store.Id) : null;
+            ResolveStoreCodeForSave(store, old);
             if (!string.IsNullOrWhiteSpace(store.StoreCode) && IsStoreCodeTaken(store.ClientCompanyName, store.StoreCode, store.Id))
 
                 throw new InvalidOperationException($"Store code \"{store.StoreCode.Trim()}\" is already used by another store of {store.ClientCompanyName}. Each store needs its own code.");
 
-            var old = store.Id > 0 ? GetClientStoreById(store.Id) : null;
+            // (the previous version of the store was read above, before its code was settled)
 
             using (var conn = new SqliteConnection(connectionString))
             {
@@ -12795,7 +12817,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         ExtraFieldsJson = @extra,
 
-                        Address = @addr
+                        Address = @addr,
+
+                        IsGeneratedCode = @gen
 
                         WHERE Id = @id";
                     cmd.Parameters.AddWithValue("@id", store.Id);
@@ -12803,9 +12827,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 else
                 {
                     cmd.CommandText = @"INSERT INTO ClientStores 
-                        (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson, Address)
+                        (ClientId, ClientCompanyName, StoreCode, StoreName, DestinationRoute, ExtraFieldsJson, Address, IsGeneratedCode)
 
-                        VALUES (@cid, @cl, @sc, @sn, @dr, @extra, @addr);
+                        VALUES (@cid, @cl, @sc, @sn, @dr, @extra, @addr, @gen);
 
                         SELECT last_insert_rowid();";
 
@@ -12817,12 +12841,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.Parameters.AddWithValue("@dr", (store.DestinationRoute ?? "").Trim());
                 cmd.Parameters.AddWithValue("@extra", store.ExtraFieldsJson ?? "");
                 cmd.Parameters.AddWithValue("@addr", CleanStoreText(store.Address));
+                cmd.Parameters.AddWithValue("@gen", store.IsGeneratedCode ? 1 : 0);
 
                 if (store.Id > 0) cmd.ExecuteNonQuery();
 
                 else store.Id = Convert.ToInt32(cmd.ExecuteScalar() ?? 0);
 
             }
+            InvalidateGeneratedCodes();
             // Keep the routes' store lists in step with the client's stores. Each step is tried on its own, so one failure does not
             // skip the others: a store moved to another route leaves the old one (its old client's route, its old entry); a renamed or
             // re-coded store keeps its own place on every route it is on; and it is put on its route (SetStoreOnRoute).
@@ -12889,7 +12915,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             using var cmd = conn.CreateCommand();
 
-            cmd.CommandText = "SELECT Id, ClientId, COALESCE(ClientCompanyName,''), COALESCE(StoreCode,''), COALESCE(StoreName,''), COALESCE(DestinationRoute,''), COALESCE(Address,'') FROM ClientStores WHERE Id = @id";
+            cmd.CommandText = "SELECT Id, ClientId, COALESCE(ClientCompanyName,''), COALESCE(StoreCode,''), COALESCE(StoreName,''), COALESCE(DestinationRoute,''), COALESCE(Address,''), COALESCE(IsGeneratedCode,0) FROM ClientStores WHERE Id = @id";
 
             cmd.Parameters.AddWithValue("@id", id);
 
@@ -12897,7 +12923,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (!r.Read()) return null;
 
-            return new ClientStore { Id = r.GetInt32(0), ClientId = r.IsDBNull(1) ? 0 : r.GetInt32(1), ClientCompanyName = r.GetString(2), StoreCode = r.GetString(3), StoreName = r.GetString(4), DestinationRoute = r.GetString(5), Address = r.GetString(6) };
+            return new ClientStore { Id = r.GetInt32(0), ClientId = r.IsDBNull(1) ? 0 : r.GetInt32(1), ClientCompanyName = r.GetString(2), StoreCode = r.GetString(3), StoreName = r.GetString(4), DestinationRoute = r.GetString(5), Address = r.GetString(6), IsGeneratedCode = r.GetInt64(7) != 0 };
 
         }
 

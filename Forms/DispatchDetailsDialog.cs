@@ -697,6 +697,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             g.Columns.Add("c8", "Delivered");
             g.Columns.Add("c9", "Returned");
             g.Columns.Add("c10", "Status");
+            GeneratedCodeDisplay.Attach(g, "c2");
             int[] weights = { 34, 70, 200, 70, 70, 64, 110, 76, 76, 84 };
             for (int i = 0; i < weights.Length; i++) g.Columns[i].FillWeight = weights[i];
             foreach (var i in new[] { 0, 3, 4, 5, 7, 8 }) g.Columns[i].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;

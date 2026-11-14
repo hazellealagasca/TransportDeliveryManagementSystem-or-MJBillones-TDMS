@@ -22,6 +22,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly List<(string Code, string Name)> pendingStores = new();
         /// <summary>The address typed for each unsaved store, by store code (kept beside the (code, name) list that the route code reads).</summary>
         private readonly Dictionary<string, string> pendingAddress = new(StringComparer.OrdinalIgnoreCase);
+        /// <summary>The unsaved stores whose code was left blank: the code in the list is one made for them (it shows as "(no code)").</summary>
+        private readonly HashSet<string> pendingGenerated = new(StringComparer.OrdinalIgnoreCase);
+        private Func<string> pendingClientName = () => "";
+        /// <summary>The company name typed so far on the new client form; its first 3 letters start a store code made for a blank one.</summary>
+        public void SetPendingNameSource(Func<string> typedName) => pendingClientName = typedName ?? (() => "");
         private readonly List<PendingRoute> pendingRoutes = new();
         private DataGridView pendingGrid = null!;
         private Control storesGridCtl = null!;
@@ -39,11 +44,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pendingGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "colAddress", HeaderText = "Address", FillWeight = 140, ReadOnly = true });
             pendingGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "colState", HeaderText = "", FillWeight = 70, ReadOnly = true });
             pendingGrid.Columns.Add(new DataGridViewButtonColumn { Name = "colRemove", HeaderText = "", Text = "Remove", UseColumnTextForButtonValue = true, FillWeight = 40 });
+            pendingGrid.CellFormatting += (s, e) =>
+            {
+                if (e.RowIndex >= 0 && pendingGrid.Columns[e.ColumnIndex].Name == "colCode" && (e.Value?.ToString() ?? "") == MJdatabase.NoCodeText) e.CellStyle.ForeColor = AppTheme.TextMuted;
+            };
             pendingGrid.CellContentClick += (s, e) =>
             {
                 if (e.RowIndex < 0 || pendingGrid.Columns[e.ColumnIndex].Name != "colRemove" || e.RowIndex >= pendingStores.Count) return;
                 var (code, _) = pendingStores[e.RowIndex];
-                pendingStores.RemoveAt(e.RowIndex); pendingAddress.Remove(code);
+                pendingStores.RemoveAt(e.RowIndex); pendingAddress.Remove(code); pendingGenerated.Remove(code);
                 foreach (var r in pendingRoutes) r.Stores.Remove(code);
                 RenderPendingStores();
                 PendingChanged?.Invoke();
@@ -56,7 +65,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void ApplyPendingMode()
         {
             bool pending = isPending();
-            if (!pending) { pendingStores.Clear(); pendingAddress.Clear(); pendingRoutes.Clear(); }
+            if (!pending) { pendingStores.Clear(); pendingAddress.Clear(); pendingGenerated.Clear(); pendingRoutes.Clear(); }
             if (pendingGrid != null) pendingGrid.Visible = pending;
             if (storesGridCtl != null) storesGridCtl.Visible = !pending;
             if (pending) RenderPendingStores();
@@ -64,7 +73,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Forgets the unsaved stores and routes (a new client form was opened or left).</summary>
         public void ClearPending()
         {
-            pendingStores.Clear(); pendingAddress.Clear();
+            pendingStores.Clear(); pendingAddress.Clear(); pendingGenerated.Clear();
             pendingRoutes.Clear();
             ApplyPendingMode();
             if (page2.Visible) LoadRoutes();
@@ -76,7 +85,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pendingGrid.Rows.Clear();
             foreach (var (code, name) in pendingStores)
             {
-                int i = pendingGrid.Rows.Add(code, name, pendingAddress.TryGetValue(code, out var addr) ? addr : "", PendingRouteModel.StateText(PendingRouteModel.RoutesHoldingStore(PendingRouteSets(), code)));
+                int i = pendingGrid.Rows.Add(pendingGenerated.Contains(code) ? MJdatabase.NoCodeText : code, name,pendingAddress.TryGetValue(code, out var addr) ? addr : "", PendingRouteModel.StateText(PendingRouteModel.RoutesHoldingStore(PendingRouteSets(), code)));
                 pendingGrid.Rows[i].Height = pendingGrid.RowTemplate.Height;
             }
         }
@@ -88,10 +97,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void AddPendingStore()
         {
             string code = MJdatabase.CleanStoreCode(txtCode.Text), name = MJdatabase.CleanStoreText(txtName.Text);
-            if (code.Length == 0) { Say("✕ Enter the store code (letters, numbers and hyphens).", true); txtCode.Focus(); return; }
             if (name.Length == 0) { Say("✕ Enter the store name.", true); txtName.Focus(); return; }
             string address = MJdatabase.CleanStoreText(txtAddress.Text);
             if (name.Length > MJdatabase.StoreNameMaxLength) { Say($"✕ The store name is too long (at most {MJdatabase.StoreNameMaxLength} characters).", true); return; }
+            bool generated = code.Length == 0;
+            if (generated)
+            {
+                // blank code: one is made now (it is the real code when the client is saved), from the company name typed so far
+                try { code = MJdatabase.GenerateStoreCode(pendingClientName(), pendingStores.Select(p => p.Code)); }
+                catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.AddPendingStore", ex); Say("✕ Couldn't make a store code: " + ex.Message, true); return; }
+            }
             if (pendingStores.Any(p => string.Equals(p.Code, code, StringComparison.OrdinalIgnoreCase))) { Say($"✕ Store code {code} is already in this list.", true); return; }
             if (pendingStores.Any(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))) { Say($"✕ \"{name}\" is already in this list.", true); return; }
             try
@@ -102,8 +117,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (problem != null) { Say("✕ " + problem, true); return; }
             }
             catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.AddPendingStore", ex); Say("✕ Couldn't check the store: " + ex.Message, true); return; }
-            pendingStores.Add((code, name)); pendingAddress[code] = address;
-            Say($"✔ {code} – {name} added. It is saved together with the client when you click Create client.", false);
+            pendingStores.Add((code, name)); pendingAddress[code] = address; if (generated) pendingGenerated.Add(code);
+            Say(generated ? $"✔ {name} added (no code typed: one is made when the client is saved). It is saved together with the client when you click Create client." : $"✔ {code} – {name} added. It is saved together with the client when you click Create client.", false);
             txtCode.Clear(); txtName.Clear(); txtAddress.Clear(); txtCode.Focus();
             RenderPendingStores();
             PendingChanged?.Invoke();
@@ -167,7 +182,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     var others = r == null ? holding : holding.Where(h => !string.Equals(h, r.Code, StringComparison.OrdinalIgnoreCase)).ToList();
                     string state = on ? (others.Count > 0 ? $"✔ On this route · also on {string.Join(", ", others)}" : "✔ On this route")
                         : others.Count > 0 ? $"Also on {string.Join(", ", others)}" : "Available";
-                    int i = gridAssign.Rows.Add(on, code, name, state);
+                    int i = gridAssign.Rows.Add(on, pendingGenerated.Contains(code) ? MJdatabase.NoCodeText : code, name, state);
                     gridAssign.Rows[i].Tag = code;
                     gridAssign.Rows[i].Height = gridAssign.RowTemplate.Height;
                 }
@@ -194,7 +209,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var errors = new List<string>();
             foreach (var (code, name) in pendingStores)
             {
-                try { MJdatabase.RegisterCompanyStore(clientName, code, name, pendingAddress.TryGetValue(code, out var addr) ? addr : ""); }
+                try { MJdatabase.RegisterCompanyStore(clientName, code, name, pendingAddress.TryGetValue(code, out var addr) ? addr : "", pendingGenerated.Contains(code)); }
                 catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.SavePending.Store", ex); errors.Add($"Store {code} – {name}: {ex.Message}"); }
             }
             var saved = MJdatabase.GetClientStores(clientName);
@@ -210,7 +225,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.SavePending.Route", ex); errors.Add($"Route {pr.Code} – {pr.Name}: {MJdatabase.PlainDbError(ex)}"); }
             }
-            pendingStores.Clear(); pendingAddress.Clear();
+            pendingStores.Clear(); pendingAddress.Clear(); pendingGenerated.Clear();
             pendingRoutes.Clear();
             try { AppEvents.Raise(AppDataKind.Stores); AppEvents.Raise(AppDataKind.Routes); } catch (Exception ex) { ErrLog.Swallowed(ex); }
             return errors.Count == 0 ? null : string.Join("\n", errors);

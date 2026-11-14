@@ -1651,7 +1651,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     var profile = ClientProfileDetails(cbClient.Text);
                     string tin = new string((profile.Found ? profile.Tin : txtClientTin.Text).Where(char.IsDigit).ToArray());
-                    if (tin.Length != 9 && tin.Length != 12)
+                    if (!MJdatabase.IsIndividualClient(cbClient.Text) && tin.Length != 9 && tin.Length != 12)   // Nov 14: the TIN is required for Corporate clients only
                     {
                         MessageBox.Show(FindForm(), tin.Length == 0 ? "The client's TIN is required on a statement. It comes from the client's profile: add it in Master Data › Clients (edit the client), then pick the client again." : "The TIN should have 9 digits (or 12 with the branch code), e.g. 006-896-371-000.", "Client TIN required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         txtClientTin.Focus();

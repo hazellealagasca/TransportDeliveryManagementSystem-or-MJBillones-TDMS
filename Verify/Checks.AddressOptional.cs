@@ -6,8 +6,11 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.V
 
 namespace TDMS.Verify;
 
-/// <summary>Nov 12: the head office address is optional. A client with a blank address saves through the Clients screen's own save path,
-/// the Settings label has no "*", and the receipt and statement print with an empty address (no dash, no error).</summary>
+/// <summary>
+/// Nov 14 (reverses Nov 12 for corporate clients): a corporate client needs its address, so the Clients screen refuses one without it and the
+/// label no longer says optional. The business address in Settings stays optional (no "*"). A client saved earlier with a blank address
+/// (the old rule) still prints a receipt and a statement with an empty address (no dash, no error).
+/// </summary>
 public static partial class Checks
 {
     private static IEnumerable<Control> AllControls(Control root) { foreach (Control c in root.Controls) { yield return c; foreach (var d in AllControls(c)) yield return d; } }
@@ -22,6 +25,7 @@ public static partial class Checks
         {
             const BindingFlags F = BindingFlags.Instance | BindingFlags.NonPublic;
             var msgs = new List<string>();
+            using (var boxes = new VdBoxes())
             using (var view = new ClientManagementView())
             {
                 var vt = typeof(ClientManagementView);
@@ -29,10 +33,18 @@ public static partial class Checks
                 vt.GetField("isNewClient", F)!.SetValue(view, true);
                 vt.GetField("selectedClient", F)!.SetValue(view, null);
                 Set("txtClientName", name); Set("txtClientTin", "006-896-371-000"); Set("txtClientAddress", "   ");
-                Set("txtContactPerson", "Juan Dela Cruz"); Set("txtContactNumber", "09171234567");
-                bool ok = (bool)vt.GetMethod("SaveClient", F, null, new[] { typeof(bool) }, null)!.Invoke(view, new object[] { false })!;
-                if (!ok) msgs.Add("the Clients screen refused a client with a blank address");
-                if (!AllControls(view).OfType<Label>().Any(l => l.Text.Contains("Address (optional)"))) msgs.Add("the client Address label does not say optional");
+                Set("txtContactPerson", "Juan Dela Cruz"); Set("txtContactNumber", "09171234567"); Set("txtEmail", "billing@blankaddr.co");
+                var save = vt.GetMethod("SaveClient", F, null, new[] { typeof(bool) }, null)!;
+                bool ok = (bool)save.Invoke(view, new object[] { false })!;
+                if (ok) msgs.Add("the Clients screen saved a corporate client with a blank address");
+                if (!boxes.Boxes.Any(b => b.Contains("Address"))) msgs.Add("the refusal did not name the Address: " + string.Join(" / ", boxes.Boxes));
+                if (MJdatabase.GetClients().Any(c => c.CompanyName == name)) msgs.Add("a corporate client without an address was written to the database");
+                var addrLabels = AllControls(view).OfType<Label>().Where(l => l.Text.StartsWith("Address")).ToList();
+                if (addrLabels.Count == 0) msgs.Add("the client Address label was not found");
+                if (addrLabels.Any(l => l.Text.Contains("optional"))) msgs.Add("the client Address label still says optional");
+                Set("txtClientAddress", "BCS Cmpd., Alcantara St., Vigan City");
+                ok = (bool)save.Invoke(view, new object[] { false })!;
+                if (!ok) msgs.Add("the Clients screen refused a corporate client with every detail: " + string.Join(" / ", boxes.Boxes));
             }
             using (var view = new SystemCustomizationView())
             {
@@ -46,9 +58,11 @@ public static partial class Checks
         if (ui.Length > 0) bad.Add(ui);
         var saved = MJdatabase.GetClients().FirstOrDefault(c => c.CompanyName == name);
         if (saved == null) { bad.Add("client not saved"); return string.Join("; ", bad); }
-        if (saved.Address != "") bad.Add("saved address is '" + saved.Address + "'");
+        if (saved.Address != "BCS Cmpd., Alcantara St., Vigan City") bad.Add("saved address is '" + saved.Address + "'");
+        if (saved.ClientType != ClientTypes.Corporate) bad.Add("saved client type is '" + saved.ClientType + "'");
 
-        // Receipt and statement for that client.
+        // A client saved under the old rule (no address) still prints without a dash or an error.
+        Exec("UPDATE Clients SET Address = '' WHERE CompanyName = @n", ("@n", name));
         int soaId = Seed.Soa(client: name, status: PayStatus.Unpaid, total: 600m);
         foreach (var a in new[] { 100m, 200m, 300m }) Seed.Invoice(Seed.Delivery(client: name), a, PayStatus.Unpaid, client: name, soaId: soaId);
         var rows = MJdatabase.SaveOneReceipt("0150", TargetFor(soaId), "Cash", "", "");

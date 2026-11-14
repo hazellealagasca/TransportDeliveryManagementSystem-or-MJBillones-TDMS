@@ -155,7 +155,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             def.Body = opt =>
             {
                 var sb = new StringBuilder();
-                sb.Append(FieldGrid(opt, 2, "receipt_no", "date", "received_from", "client_tin", "address", "for"));
+                sb.Append(FieldGrid(opt, 2, new[] { "receipt_no", "date", "received_from", "client_tin", "address", "for" }.Where(k => k != "client_tin" || !(client?.IsIndividual == true && string.IsNullOrWhiteSpace(client.TIN))).ToArray())); // Nov 14: an Individual client without a TIN prints no TIN line
                 if (opt.FOn("amount"))
                 {
                     sb.Append("<table style='width:100%;border-collapse:collapse;margin-top:10px'><tr>");
@@ -275,7 +275,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             def.Body = opt =>
             {
                 var sb = new StringBuilder();
-                if (opt.On("billto")) sb.Append(FieldGrid(opt, 2, "billed_to", "soa_no", "client_address", "date", "client_tin", "period", "type", "si_no"));
+                if (opt.On("billto")) sb.Append(FieldGrid(opt, 2, new[] { "billed_to", "soa_no", "client_address", "date", "client_tin", "period", "type", "si_no" }.Where(k => k != "client_tin" || !(string.IsNullOrWhiteSpace(soa.ClientTin) && MJdatabase.IsIndividualClient(soa.ClientName))).ToArray())); // Nov 14: an Individual client without a TIN prints no TIN line
                 bool sheetBlock = false;
                 if (opt.On("trips"))
                 {
@@ -311,7 +311,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                 string span = c.PerTrip && g.Count > 1 ? $" rowspan='{g.Count}'" : "";
                                 string v = c.Key switch
                                 {
-                                    "no" => n.ToString(), "trip_report" => TripReportNos(g), "crates" => g[i].TotalCrates > 0 ? g[i].TotalCrates.ToString("N0") : "-", "date" => Esc(completed!.Text(f.DeliveryId, f.SpecialTripId, f.DateReceived)), "zone" => Esc(f.Zone), "dr" => DrList.Html(g[i].DrNumbers), "code" => Esc(g[i].StoreCode), "dest" => $"<b>{Esc(g[i].Destination)}</b>",
+                                    "no" => n.ToString(), "trip_report" => TripReportNos(g), "crates" => g[i].TotalCrates > 0 ? g[i].TotalCrates.ToString("N0") : "-", "date" => Esc(completed!.Text(f.DeliveryId, f.SpecialTripId, f.DateReceived)), "zone" => Esc(f.Zone), "dr" => DrList.Html(g[i].DrNumbers), "code" => Esc(MJdatabase.StoreCodeForPrint(g[i].StoreCode)), "dest" => $"<b>{Esc(g[i].Destination)}</b>",
                                     "type" => Esc(f.DeliveryType), "plate" => $"<b>{Esc(f.PlateNumber)}</b>", "tons" => Esc(f.Tonnage), "drops" => f.DropCount.ToString(),
                                     "amount" => $"<b>{TripAmount(g):N2}</b>", "fuel" => TripFuel(g) > 0 ? TripFuel(g).ToString("N2") : "-", "driver" => Esc(f.DriverHelper), _ => ""
                                 };
@@ -542,7 +542,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     sb.Append(SectionTitle($"Stores ({stops.Count})"));
                     sb.Append(Table(opt, new[] { ("seq", "#", "center"), ("store", "Store", ""), ("store_address", "Store address", ""), ("planned", "Planned", "num"), ("delivered", "Delivered", "num"), ("returned", "Returned", "num"), ("time", "Arrival / departure", ""), ("received", "Received by", ""), ("status", "Status", "") },
-                        stops.OrderBy(s => s.StopSequence).Select(s => Row(("seq", s.StopSequence), ("store", $"<b>{Esc((s.StoreCode + " " + s.Destination).Trim())}</b>{(DrList.Count(s.DrNumbers) == 0 ? "" : "<br/>" + DrList.Html(s.DrNumbers, "DR# "))}"), ("store_address", Esc(StoreAddressBook.Get(d.ClientName, s.StoreCode, s.Destination))),
+                        stops.OrderBy(s => s.StopSequence).Select(s => Row(("seq", s.StopSequence), ("store", $"<b>{Esc((MJdatabase.StoreCodeForPrint(s.StoreCode) + " " + s.Destination).Trim())}</b>{(DrList.Count(s.DrNumbers) == 0 ? "" : "<br/>" + DrList.Html(s.DrNumbers, "DR# "))}"), ("store_address", Esc(StoreAddressBook.Get(d.ClientName, s.StoreCode, s.Destination))),
                             ("planned", $"{s.TotalCrates} (G {s.GCrate} / E {s.ECrate})"), ("delivered", $"{s.DeliveredCrates}"), ("returned", $"{s.ReturnedCrates}"), ("time", $"{s.ArrivalTime} – {s.DepartureTime}"), ("received", s.StoreManagerName), ("status", s.Status)))));
                 }
                 if (opt.On("trip"))
@@ -592,7 +592,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     Truck = trk != null ? $"{trk.PlateNumber} · {trk.TruckType}" : del.TruckInfo,
                     Crew = Crew(del), Client = del.ClientName, Order = del.DispatchNumber
                 };
-                foreach (var s in MJdatabase.GetOrBuildTripStopsForDelivery(del)) g.Stores.Add((s.StoreCode, s.Destination, s.ECrate, s.GCrate));
+                foreach (var s in MJdatabase.GetOrBuildTripStopsForDelivery(del)) g.Stores.Add((MJdatabase.StoreCodeForPrint(s.StoreCode), s.Destination, s.ECrate, s.GCrate));
                 groups.Add(g);
             }
             return LoadingSheet(groups, deliveries.Count > 0 ? deliveries.Min(d => d.DispatchDate) : DateTime.Today);
@@ -609,17 +609,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var stops = MJdatabase.GetLoadingScheduleStops(ls.Id);
                 if (stops.Count == 0 && del != null) stops = MJdatabase.GetOrBuildTripStopsForDelivery(del);
                 var g = new LoadGroup { Route = route != null ? route.RouteName.Split('(')[0].Trim() : ls.Destination.Split(':')[0].Trim(), Departure = ls.DepartureTime, Client = ls.ClientName, Order = ls.ScheduleNumber };
-                if (stops.Count > 0) foreach (var s in stops) g.Stores.Add((s.StoreCode, s.Destination, s.ECrate, s.GCrate));
+                if (stops.Count > 0) foreach (var s in stops) g.Stores.Add((MJdatabase.StoreCodeForPrint(s.StoreCode), s.Destination, s.ECrate, s.GCrate));
                 else if (route != null && route.PlacesList.Count > 0)
                 {
                     int cnt = route.PlacesList.Count;
                     for (int i = 0; i < cnt; i++)
                     {
                         var (sc, sn) = DeliveryRoute.SplitStoreCodeAndName(route.PlacesList[i]);
-                        g.Stores.Add((sc, sn, ls.ECrate / cnt + (i < ls.ECrate % cnt ? 1 : 0), ls.GCrate / cnt + (i < ls.GCrate % cnt ? 1 : 0)));
+                        g.Stores.Add((MJdatabase.StoreCodeForPrint(sc), sn, ls.ECrate / cnt + (i < ls.ECrate % cnt ? 1 : 0), ls.GCrate / cnt + (i < ls.GCrate % cnt ? 1 : 0)));
                     }
                 }
-                else { var (sc, sn) = DeliveryRoute.SplitStoreCodeAndName(ls.Destination); g.Stores.Add((sc, sn, ls.ECrate, ls.GCrate)); }
+                else { var (sc, sn) = DeliveryRoute.SplitStoreCodeAndName(ls.Destination); g.Stores.Add((MJdatabase.StoreCodeForPrint(sc), sn, ls.ECrate, ls.GCrate)); }
                 if (del != null)
                 {
                     var trk = trucks.FirstOrDefault(t => t.Id == del.TruckId);
@@ -744,7 +744,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     int n = 0;
                     int Le(DispatchStop s) => s.DeliveredECrates > 0 || s.DeliveredGCrates > 0 ? s.DeliveredECrates : s.ECrate;
                     int Lg(DispatchStop s) => s.DeliveredECrates > 0 || s.DeliveredGCrates > 0 ? s.DeliveredGCrates : s.GCrate;
-                    var rows = stops.Select(s => Row(("no", ++n), ("code", $"<b>{Esc(s.StoreCode)}</b>"), ("store", $"<b>{Esc(s.Destination)}</b>{(DrList.Count(s.DrNumbers) == 0 ? "" : "<br/>" + DrList.Html(s.DrNumbers, "DR# "))}"),
+                    var rows = stops.Select(s => Row(("no", ++n), ("code", $"<b>{Esc(MJdatabase.StoreCodeForPrint(s.StoreCode))}</b>"), ("store", $"<b>{Esc(s.Destination)}</b>{(DrList.Count(s.DrNumbers) == 0 ? "" : "<br/>" + DrList.Html(s.DrNumbers, "DR# "))}"),
                         ("store_address", Esc(StoreAddressBook.Get(d.ClientName, s.StoreCode, s.Destination))), ("in", s.ArrivalTime), ("out", s.DepartureTime), ("rep", s.StoreManagerName), ("le", Le(s)), ("lg", Lg(s)),
                         ("re", s.ReturnedECrates), ("rg", s.ReturnedGCrates), ("remarks", s.Remarks))).ToList();
                     var totals = opt.On("totals") ? new Dictionary<string, string> { ["store"] = "TOTAL", ["le"] = stops.Sum(Le).ToString(), ["lg"] = stops.Sum(Lg).ToString(), ["re"] = stops.Sum(s => s.ReturnedECrates).ToString(), ["rg"] = stops.Sum(s => s.ReturnedGCrates).ToString() } : null;

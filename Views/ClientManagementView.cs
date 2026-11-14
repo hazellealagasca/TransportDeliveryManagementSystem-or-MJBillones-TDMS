@@ -52,6 +52,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private TextBox txtContactPerson = null!;
         private TextBox txtContactNumber = null!;
         private TextBox txtEmail = null!;
+        private ComboBox cbClientType = null!;
+        private Panel fldName = null!, fldTin = null!, fldEmail = null!, fldContact = null!, fldPhone = null!, fldAddress = null!;
+        private bool IsIndividualType => string.Equals(cbClientType?.SelectedItem?.ToString(), ClientTypes.Individual, StringComparison.OrdinalIgnoreCase);
         private Button btnSave = null!;
         private Button btnDelete = null!;
         private Label lblSaveState = null!;
@@ -447,21 +450,34 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtEmail = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "billing@company.com", MaxLength = 100 };
             foreach (var t in new[] { txtClientName, txtClientTin, txtClientAddress, txtContactPerson, txtContactNumber, txtEmail })
                 t.TextChanged += (s, e) => MarkDirty();
-            var tblDetails = new TableLayoutPanel { Height = Dpi(66) * 2 + Dpi(92), ColumnCount = 3, RowCount = 3, BackColor = AppTheme.Surface, Margin = new Padding(0) };
+            // Nov 14: the client type, at the top. Corporate asks for every company detail; Individual is a person with one automatic store.
+            cbClientType = new ComboBox { Font = new Font("Segoe UI", 10.5F), DropDownStyle = ComboBoxStyle.DropDownList };
+            cbClientType.Items.AddRange(new object[] { ClientTypes.Corporate, ClientTypes.Individual });
+            cbClientType.SelectedIndex = 0;
+            cbClientType.SelectedIndexChanged += (s, e) => { ApplyClientTypeLayout(); MarkDirty(); };
+            tips.SetToolTip(cbClientType, "Corporate: a company, all details required. Individual: a person, with one automatic store (the recipient). The type is chosen when the client is created.");
+            var tblDetails = new TableLayoutPanel { Height = Dpi(66) * 3 + Dpi(92), ColumnCount = 3, RowCount = 4, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             tblDetails.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
             tblDetails.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 27.5F));
             tblDetails.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 27.5F));
             tblDetails.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(66)));
             tblDetails.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(66)));
+            tblDetails.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(66)));
             tblDetails.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(92)));
-            tblDetails.Controls.Add(Field("Company name", txtClientName), 0, 0);
-            tblDetails.Controls.Add(Field("TIN", txtClientTin), 1, 0);
-            tblDetails.Controls.Add(Field("Email", txtEmail), 2, 0);
-            tblDetails.Controls.Add(Field("Contact person", txtContactPerson), 0, 1);
-            tblDetails.Controls.Add(Field("Contact number", txtContactNumber), 1, 1);
-            var addr = Field("Address (optional)", txtClientAddress, Dpi(56));
-            tblDetails.Controls.Add(addr, 0, 2);
-            tblDetails.SetColumnSpan(addr, 3);
+            tblDetails.Controls.Add(Field("Client type", cbClientType), 0, 0);
+            fldName = Field("Company name", txtClientName);
+            fldTin = Field("TIN", txtClientTin);
+            fldEmail = Field("Email", txtEmail);
+            fldContact = Field("Contact person", txtContactPerson);
+            fldPhone = Field("Contact number", txtContactNumber);
+            fldAddress = Field("Address", txtClientAddress, Dpi(56));
+            tblDetails.Controls.Add(fldName, 0, 1);
+            tblDetails.Controls.Add(fldTin, 1, 1);
+            tblDetails.Controls.Add(fldEmail, 2, 1);
+            tblDetails.Controls.Add(fldContact, 0, 2);
+            tblDetails.Controls.Add(fldPhone, 1, 2);
+            tblDetails.Controls.Add(fldAddress, 0, 3);
+            tblDetails.SetColumnSpan(fldAddress, 3);
             pnlCustomFields = new Panel { Height = 0, BackColor = AppTheme.Surface, Visible = false };
             var cardDetails = CreateSectionCard(1, "Company details", "Name, TIN and contact used on statements, invoices and receipts.", tblDetails, pnlCustomFields);
             // Card 2: stores & branches
@@ -519,6 +535,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             colActions.DefaultCellStyle.ForeColor = AppTheme.TextSecondary;
             colActions.DefaultCellStyle.Font = new Font("Segoe UI Semibold", 9F);
             gridBranches.Columns.Add(colActions);
+            GeneratedCodeDisplay.Attach(gridBranches, "StoreCode");   // a code the system made shows as (no code)
             gridBranches.DataError += (s, e) => { e.ThrowException = false; };
             gridBranches.CurrentCellDirtyStateChanged += (s, e) =>
             {
@@ -551,7 +568,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 row.ErrorText = "";
                 if (typed.Length == 0)
                 {
-                    row.ErrorText = col == "StoreCode" ? "Type the store code" : "Type the store name";
+                    if (col == "StoreName") row.ErrorText = "Type the store name";   // Nov 14: the code may be left blank (one is made)
                     return;
                 }
                 if (col == "StoreCode")
@@ -574,6 +591,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             storesRoutes = new ClientStoresRoutesPanel(() => selectedClient?.CompanyName ?? "", gridBranches, () => { if (selectedClient != null) LoadClientBranches(selectedClient.CompanyName); });
             storesRoutes.SetPendingCheck(() => isNewClient || selectedClient == null); // Nov 6: stores and routes of a new client wait for Create client
             storesRoutes.PendingChanged += MarkDirty;
+            storesRoutes.SetPendingNameSource(() => txtClientName.Text);   // a store saved without a code gets one starting with the first 3 letters of this name
             if (gridBranches.Columns["DestinationRoute"] is DataGridViewColumn destCol) destCol.Visible = false;
             pnlStoresCard = CreateSectionCard(2, "Stores & delivery routes", "The client's stores (code and name), and which of its routes each store is on.", bar, lblStoresHint, storesRoutes);
             // Card 3: trips
@@ -775,11 +793,35 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             BindClient(client);
             ShowProfile(true);
         }
+        private static void SetFieldLabel(Panel field, string text)
+        {
+            var lbl = field.Controls.OfType<Label>().FirstOrDefault();
+            if (lbl != null) lbl.Text = text;
+        }
+        /// <summary>
+        /// Corporate: company name, TIN, contact person, contact number, email and address are all required. Individual: the person's full name,
+        /// contact number and drop-off address are required; email and TIN are optional; the contact person box and the stores section are hidden.
+        /// </summary>
+        private void ApplyClientTypeLayout()
+        {
+            bool ind = IsIndividualType;
+            SetFieldLabel(fldName, ind ? "Full name" : "Company name");
+            txtClientName.PlaceholderText = ind ? "e.g. Dela Cruz, Juan" : "Full registered company name";
+            SetFieldLabel(fldTin, ind ? "TIN (optional)" : "TIN");
+            SetFieldLabel(fldEmail, ind ? "Email (optional)" : "Email");
+            SetFieldLabel(fldAddress, ind ? "Drop-off address" : "Address");
+            txtClientAddress.PlaceholderText = ind ? "Where the delivery is dropped off" : "Head office address";
+            fldContact.Visible = !ind;
+            if (pnlStoresCard != null) pnlStoresCard.Visible = !ind;
+            if (btnAddBranch != null) ApplyProfileMode();
+        }
         private void OpenNewClient()
         {
             isNewClient = true;
             selectedClient = null;
             isBinding = true;
+            cbClientType.SelectedIndex = 0;
+            ApplyClientTypeLayout();
             foreach (var t in new[] { txtClientName, txtClientTin, txtClientAddress, txtContactPerson, txtContactNumber, txtEmail }) t.Text = "";
             foreach (var t in customFieldBoxes.Values) t.Text = "";
             isBinding = false;
@@ -796,6 +838,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             selectedClient = client;
             isBinding = true;
+            cbClientType.SelectedItem = client.IsIndividual ? ClientTypes.Individual : ClientTypes.Corporate;
+            ApplyClientTypeLayout();
             txtClientName.Text = client.CompanyName;
             txtClientTin.Text = client.TIN;
             txtClientAddress.Text = client.Address;
@@ -820,11 +864,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UIThemeHelper.SetButtonRole(btnDelete, deactivated ? "secondary" : "danger");
             btnSave.Text = isNewClient ? "💾  Create client" : "💾  Save changes";
             bool hasClient = !isNewClient && selectedClient != null;
+            cbClientType.Enabled = isNewClient;   // the type is chosen when the client is created
+            pnlStoresCard.Visible = !IsIndividualType;   // an Individual client has one automatic store, so there is nothing to manage
             btnAddBranch.Enabled = hasClient;
             pnlTripsCard.Visible = hasClient;
             pnlBillingCard.Visible = hasClient;
             lblStoresHint.Text = hasClient
-                ? "Type each store's own code and name (nothing is filled in for you). Put stores on routes in tab 2. Changes save automatically."
+                ? "Type each store's name; leave the code blank and one is made for you (it shows as (no code)). Put stores on routes in tab 2. Changes save automatically."
                 : "Type the client's stores now (and its routes in tab 2). They are saved together with the client when you click Create client.";
             UpdateSaveState();
         }
@@ -944,11 +990,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             string name = System.Text.RegularExpressions.Regex.Replace(txtClientName.Text.Trim(), @"\s+", " ");
             // Required fields cannot be empty or only spaces.
+            // Nov 14: a Corporate client needs every company detail, the address too. An Individual client needs the person's full name,
+            // a contact number and the drop-off address; email and TIN are optional.
+            bool individual = IsIndividualType;
             var missing = new List<(string Label, TextBox Box)>();
-            if (string.IsNullOrWhiteSpace(txtClientName.Text)) missing.Add(("Company name", txtClientName));
-            if (string.IsNullOrWhiteSpace(txtContactPerson.Text)) missing.Add(("Contact person", txtContactPerson));
+            if (string.IsNullOrWhiteSpace(txtClientName.Text)) missing.Add((individual ? "Full name" : "Company name", txtClientName));
+            if (!individual && string.IsNullOrWhiteSpace(txtContactPerson.Text)) missing.Add(("Contact person", txtContactPerson));
             if (string.IsNullOrWhiteSpace(txtContactNumber.Text)) missing.Add(("Contact number", txtContactNumber));
-            foreach (var t in new[] { txtClientName, txtContactPerson, txtContactNumber }) t.BackColor = AppTheme.InputBack;
+            if (!individual && string.IsNullOrWhiteSpace(txtEmail.Text)) missing.Add(("Email", txtEmail));
+            if (string.IsNullOrWhiteSpace(txtClientAddress.Text)) missing.Add((individual ? "Drop-off address" : "Address", txtClientAddress));
+            foreach (var t in new[] { txtClientName, txtContactPerson, txtContactNumber, txtEmail, txtClientAddress }) t.BackColor = AppTheme.InputBack;
             if (missing.Count > 0)
             {
                 foreach (var m in missing) m.Box.BackColor = AppTheme.DangerSoft;
@@ -956,15 +1007,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 missing[0].Box.Focus();
                 return false;
             }
-            if (!InputRules.IsValidPersonName(txtContactPerson.Text))
+            var personBox = individual ? txtClientName : txtContactPerson;
+            if (!InputRules.IsValidPersonName(personBox.Text))
             {
-                txtContactPerson.BackColor = AppTheme.DangerSoft;
-                MessageBox.Show("The contact person's name can only have letters, spaces, periods, hyphens and apostrophes (no digits).", "Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                txtContactPerson.Focus();
+                personBox.BackColor = AppTheme.DangerSoft;
+                MessageBox.Show(individual ? "The full name can only have letters, spaces, periods, hyphens and apostrophes (no digits)." : "The contact person's name can only have letters, spaces, periods, hyphens and apostrophes (no digits).", "Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                personBox.Focus();
                 return false;
             }
             string tinDigits = new string(txtClientTin.Text.Where(char.IsDigit).ToArray());
-            if (tinDigits.Length == 0)
+            if (!individual && tinDigits.Length == 0)
             {
                 txtClientTin.BackColor = AppTheme.DangerSoft;
                 MessageBox.Show("The client's TIN is required (e.g. 006-896-371-000). It is printed on the statement and the invoice.", "Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -1019,7 +1071,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 client.Address = InputRules.Tidy(txtClientAddress.Text);
                 client.ContactNumber = phone;
                 client.Email = email;
-                client.ContactPerson = InputRules.Tidy(txtContactPerson.Text);
+                client.ContactPerson = InputRules.Tidy(individual ? name : txtContactPerson.Text);   // an Individual client is its own contact
+                client.ClientType = individual ? ClientTypes.Individual : ClientTypes.Corporate;
                 var extraValues = GridLayoutStore.ReadValues(client.ExtraFieldsJson);
                 foreach (var kv in customFieldBoxes) extraValues[kv.Key] = kv.Value.Text.Trim();
                 client.ExtraFieldsJson = GridLayoutStore.WriteValues(extraValues);
@@ -1030,6 +1083,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MJdatabase.SaveClient(client);
                 bool wasNew = isNewClient;
                 // Nov 6: the stores and routes typed for a new client are saved now, with the client.
+                if (individual) storesRoutes?.ClearPending();   // an Individual client's one store is made by the save itself
                 int pendStores = storesRoutes?.PendingStoreCount ?? 0, pendRoutes = storesRoutes?.PendingRouteCount ?? 0;
                 string? pendErr = wasNew && storesRoutes != null && storesRoutes.HasPending ? storesRoutes.SavePending(name) : null;
                 isDirty = false;
@@ -1081,11 +1135,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             store.ClientCompanyName = selectedClient.CompanyName;
             store.ClientId = selectedClient.Id;
             store.StoreCode = (store.StoreCode ?? "").Trim();
+            if (string.Equals(store.StoreCode, MJdatabase.NoCodeText, StringComparison.OrdinalIgnoreCase)) store.StoreCode = "";
             store.StoreName = (store.StoreName ?? "").Trim();
             store.Address = MJdatabase.CleanStoreText(store.Address);
-            if (store.StoreName.Length == 0 || store.StoreCode.Length == 0)
+            if (store.StoreName.Length == 0)
             {
-                lblSaveState.Text = store.StoreCode.Length == 0 ? "Type a store code to save this row" : "Type a store name to save this row";
+                lblSaveState.Text = "Type a store name to save this row";   // the code is optional: a blank one is made on save
                 lblSaveState.ForeColor = AppTheme.WarningText;
                 return;
             }
@@ -1095,7 +1150,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show($"Store code {store.StoreCode} is already used by \"{sameCode.StoreName}\". Each store needs its own code.", "Stores", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            if (MessageBox.Show($"Are you sure you want to save the changes to store \"{store.StoreCode} - {store.StoreName}\"?", "Save store", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            if (MessageBox.Show($"Are you sure you want to save the changes to store \"{(store.StoreCode.Length == 0 ? store.StoreName : store.StoreCode + " - " + store.StoreName)}\"?", "Save store", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
             {
                 BeginInvoke(new Action(() => LoadClientBranches(selectedClient.CompanyName)));
                 lblSaveState.Text = "Store change not saved";
@@ -1105,6 +1160,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 string? routeProblem = MJdatabase.SaveClientStore(store);
+                gridBranches.Invalidate();   // a blank code was made on save: show it as (no code)
                 lblSaveState.Text = routeProblem ?? $"Store saved {DateTime.Now:hh:mm tt}";
                 lblSaveState.ForeColor = routeProblem == null ? AppTheme.SuccessText : AppTheme.WarningText;
             }
@@ -1145,7 +1201,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 gridBranches.CurrentCell = gridBranches.Rows[idx].Cells["StoreCode"];
                 gridBranches.BeginEdit(true);
             }
-            lblSaveState.Text = "New store: type its code and name — it saves when both are filled in (the address is optional)";
+            lblSaveState.Text = "New store: type its name — it saves once the name is filled in (the code and the address are optional; a blank code is made for you)";
             lblSaveState.ForeColor = AppTheme.TextMuted;
         }
 
