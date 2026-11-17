@@ -19,7 +19,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             new("Operations", "Dispatch", "Loading schedule & dispatch", "Create and edit loading orders and dispatches."),
             new("Operations", "TripReports", "Trip reports", "File trip reports when trucks come back."),
-            new("Operations", "History", "Order history", "Look up every past order, dispatch and special trip."),
+            new("Operations", "History", "Order history", "Look up every past order and dispatch."),
             new("Resources", "Trucks", "Trucks", "The fleet list and truck profiles."),
             new("Resources", "Crew", "Crew management", "Drivers and aides."),
             new("Resources", "CrewHistory", "Crew trip history", "Which trips each crew member made."),

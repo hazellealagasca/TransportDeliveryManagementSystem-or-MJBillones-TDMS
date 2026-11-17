@@ -14,17 +14,17 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.M
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
 {
     /// <summary>
-    /// Order History: every loading order, dispatch and special trip in one easy list.
+    /// Order History: every loading order and dispatch in one easy list.
     /// Each record is one readable two-line row (number + client on top; date, route, truck, crew and crates below; status on the right),
     /// so nothing is cut off. Click a row to see everything about it in the panel on the right; double-click to open the full record.
-    /// Tabs: All · Dispatches · Loading orders · Special trips · Pinned · Recently viewed. One search box finds anything,
+    /// Tabs: All · Dispatches · Loading orders · Pinned · Recently viewed. One search box finds anything,
     /// including dates like "oct 5". "Find a transaction" helps when the number is forgotten.
     /// </summary>
     public sealed class OrderHistoryView : UserControl, IRefreshable
     {
-        private readonly SegmentTabs tabs = new SegmentTabs("All", "✅ Completed", "✖ Cancelled", "Dispatches", "Loading orders", "Special trips", "📌 Pinned", "🕘 Recently viewed");
-        private const int TabCompleted = 1, TabCancelled = 2, TabPinned = 6, TabRecent = 7;
-        private static readonly string[] TabKinds = { "", "", "", TxRecord.KDispatch, TxRecord.KLoading, TxRecord.KSpecial, "", "" };
+        private readonly SegmentTabs tabs = new SegmentTabs("All", "✅ Completed", "✖ Cancelled", "Dispatches", "Loading orders", "📌 Pinned", "🕘 Recently viewed");   // Nov 17: the "Special trips" tab was removed
+        private const int TabCompleted = 1, TabCancelled = 2, TabPinned = 5, TabRecent = 6;
+        private static readonly string[] TabKinds = { "", "", "", TxRecord.KDispatch, TxRecord.KLoading, "", "" };
         private static readonly string[] StatusOptions = { "All statuses", "Waiting", "On the road", "Completed", "Cancelled" };
         private static readonly string[] GroupOptions = { "By date", "By month", "By client", "By status", "By type", "No groups" };
         private static readonly string[] SortOptions = { "Newest first", "Oldest first", "Client A–Z", "Most crates", "Number" };
@@ -73,7 +73,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         // =====================================================================================================
         private void BuildUi()
         {
-            var header = PageKit.Header("Order History", "Every loading order, dispatch and special trip. Search, click a row to see the details, double-click to open it.");
+            var header = PageKit.Header("Order History", "Every loading order and dispatch. Search, click a row to see the details, double-click to open it.");
             var btnFind = PageKit.Action("🔎  Find a transaction…", "primary", (s, e) => OpenFinder());
             var more = new ContextMenuStrip();
             more.Items.Add("⬇  Export this list to CSV…", null, (s, e) => ExportCsv());
@@ -320,13 +320,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (grid == null) return;
             var baseAll = BaseFilter().ToList();
-            tabs.Badges = new[] { baseAll.Count, baseAll.Count(r => r.StatusGroup == "Completed"), baseAll.Count(r => r.StatusGroup == "Cancelled"), baseAll.Count(r => r.Kind == TxRecord.KDispatch), baseAll.Count(r => r.Kind == TxRecord.KLoading), baseAll.Count(r => r.Kind == TxRecord.KSpecial),
+            tabs.Badges = new[] { baseAll.Count, baseAll.Count(r => r.StatusGroup == "Completed"), baseAll.Count(r => r.StatusGroup == "Cancelled"), baseAll.Count(r => r.Kind == TxRecord.KDispatch), baseAll.Count(r => r.Kind == TxRecord.KLoading),
                 baseAll.Count(r => pinned.Contains(r.Key)), baseAll.Count(r => recent.Contains(r.Key)) };
             tabs.Invalidate();
             var q = baseAll.AsEnumerable();
             if (tabs.Selected == TabCompleted) q = q.Where(r => r.StatusGroup == "Completed");
             else if (tabs.Selected == TabCancelled) q = q.Where(r => r.StatusGroup == "Cancelled");
-            else if (tabs.Selected is >= 3 and <= 5) { string k = TabKinds[tabs.Selected]; q = q.Where(r => r.Kind == k); }
+            else if (tabs.Selected is >= 3 and <= 4) { string k = TabKinds[tabs.Selected]; q = q.Where(r => r.Kind == k); }
             else if (tabs.Selected == TabPinned) q = q.Where(r => pinned.Contains(r.Key));
             else if (tabs.Selected == TabRecent) q = q.Where(r => recent.Contains(r.Key)).OrderBy(r => recent.IndexOf(r.Key));
             shown = tabs.Selected == TabRecent ? q.ToList() : Sorted(q).ToList();
@@ -403,7 +403,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var list = shown ?? new List<TxRecord>();
                 int dispatches = list.Count(r => r.Kind == TxRecord.KDispatch);
                 int loading = list.Count(r => r.Kind == TxRecord.KLoading);
-                int special = list.Count(r => r.Kind == TxRecord.KSpecial);
                 int completed = list.Count(r => r.StatusGroup == "Completed");
                 int cancelled = list.Count(r => r.StatusGroup == "Cancelled");
                 int crates = list.Where(r => r.StatusGroup != "Cancelled").Sum(r => Math.Max(0, r.Crates));
@@ -413,7 +412,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     new("Transactions shown", list.Count.ToString("N0"), SummaryTone.Blue, $"of {all.Count:N0} transactions", Strong: true),
                     new("Dispatches", dispatches.ToString("N0"), SummaryTone.Teal, "delivery orders"),
                     new("Loading orders", loading.ToString("N0"), SummaryTone.Purple, "schedules"),
-                    new("Special trips", special.ToString("N0"), SummaryTone.Neutral, "non-crate trips"),
                     new("Completed", completed.ToString("N0"), SummaryTone.Green, "finished"),
                     new("Cancelled", cancelled.ToString("N0"), SummaryTone.Red, "not counted below"),
                     new("Total crates", crates.ToString("N0"), SummaryTone.Blue, "on the transactions shown"),
@@ -742,7 +740,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 BackColor = AppTheme.Canvas,
                 ShowInTaskbar = false
             };
-            f.Controls.Add(new ModuleHistoryView("Change log", new[] { "LoadingSchedules", "Deliveries", "SpecialTrips" }, isAdminOnly: false));
+            f.Controls.Add(new ModuleHistoryView("Change log", new[] { "LoadingSchedules", "Deliveries" }, isAdminOnly: false));   // Nov 17: special trips not listed
             f.ShowDialog(FindForm());
         }
         private void ExportCsv()

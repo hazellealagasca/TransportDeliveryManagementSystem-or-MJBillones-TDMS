@@ -339,7 +339,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try { MJdatabase.SetSystemSetting(InactiveAfterKey, InactiveAfterDays.ToString(), "Days without orders or invoices before a client counts as inactive"); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 LoadClients();
             };
-            tips.SetToolTip(cbInactiveAfter, "A client with no dispatch, loading order, special trip or invoice in this many days is shown as Inactive. Archived clients are listed under Master Data → Archive.");
+            tips.SetToolTip(cbInactiveAfter, "A client with no dispatch, loading order or invoice in this many days is shown as Inactive. Archived clients are listed under Master Data → Archive.");
             btnAddClient = MakeButton("＋  New client", "primary");
             btnAddClient.Margin = new Padding(0, Dpi(8), 0, 0);
             btnAddClient.Click += (s, e) => OpenNewClient();
@@ -955,7 +955,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int active = trips.Count(d => !string.Equals(d.Status, "Completed", StringComparison.OrdinalIgnoreCase) && !string.Equals(d.Status, "Cancelled", StringComparison.OrdinalIgnoreCase));
             flowTripTiles.Controls.Add(Tile("Completed trips", $"{tripSum.CompletedCount:N0}", string.IsNullOrEmpty(tripSum.LatestCompletedDate) ? "None yet" : $"Latest {tripSum.LatestCompletedDate}", AppTheme.SuccessText));
             flowTripTiles.Controls.Add(Tile("Active orders", $"{active:N0}", "Scheduled or on the road", active > 0 ? AppTheme.InfoText : (Color?)null));
-            flowTripTiles.Controls.Add(Tile("Special trips", $"{tripSum.SpecialCount:N0}", string.IsNullOrEmpty(tripSum.LatestSpecialDate) ? "None yet" : $"Latest {tripSum.LatestSpecialDate}"));
+            // Nov 17: the "Special trips" tile was removed (special trips are hidden everywhere).
             flowTripTiles.Controls.Add(Tile("Cancelled", $"{tripSum.CancelledCount:N0}", "Orders called off", tripSum.CancelledCount > 0 ? AppTheme.DangerText : (Color?)null));
             foreach (var d in trips.Take(100))
             {

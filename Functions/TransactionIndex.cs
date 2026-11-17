@@ -103,7 +103,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     Status = s.Status ?? "", Cargo = s.CargoType ?? "", Remarks = s.Remarks ?? "", Source = s
                 });
             }
-            foreach (var t in sts)
+            // Nov 17: special trips are hidden everywhere, so they are not listed in Order History or Find a transaction (records stay in the database).
+            foreach (var t in Features.On(Features.SpecialTrips) ? sts : new List<SpecialTrip>())
             {
                 chainBySpecial.TryGetValue(t.Id, out var sch2);
                 var siv = sch2?.Invoice;

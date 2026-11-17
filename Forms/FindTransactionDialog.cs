@@ -70,7 +70,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Combo(cbClient, true, new[] { "" }.Concat(Distinct(all.Select(r => r.Client))));
             Field("Client / company", cbClient);
             Field("About when", dateChip);
-            Combo(cbType, false, new[] { "Any type", TxRecord.KDispatch, TxRecord.KLoading, TxRecord.KSpecial });
+            Combo(cbType, false, new[] { "Any type", TxRecord.KDispatch, TxRecord.KLoading });   // Nov 17: no "Special trip" type
             Field("Type", cbType);
             Combo(cbTruck, true, new[] { "" }.Concat(Distinct(all.Select(r => r.Truck))));
             Field("Truck (plate)", cbTruck);

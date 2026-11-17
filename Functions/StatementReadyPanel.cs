@@ -104,7 +104,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     InvoiceId = c.DeliveryId, InvoiceNumber = c.TripReportNumber, TripNumber = c.DispatchNumber, ClientName = c.ClientName, Kind = "Normal",
                     TripDate = c.ReportDate, IssueDate = c.ReportDate, Net = 0m, DaysWaiting = Math.Max(0, (int)(today - c.ReportDate.Date).TotalDays)
                 }).ToList();
-                all.AddRange(MJdatabase.GetInvoicesReadyForStatement().Where(r => r.Kind == "Special"));
+                if (Features.On(Features.SpecialTrips))   // Nov 17: special trips are hidden, so none are offered for a statement
+                    all.AddRange(MJdatabase.GetInvoicesReadyForStatement().Where(r => r.Kind == "Special"));
             }
             catch (Exception ex) { ErrLog.Swallowed(ex); all = new(); }
             picked.IntersectWith(all.Select(r => r.InvoiceId));

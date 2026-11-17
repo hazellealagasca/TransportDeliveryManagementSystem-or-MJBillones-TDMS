@@ -8,7 +8,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 {
     /// <summary>
     /// Who is free on the dispatch date being planned (not just right now). A truck, driver or aide can be booked on
-    /// any date where they have no other dispatch or special trip; for today, anyone still on the road from an earlier
+    /// any date where they have no other dispatch; for today, anyone still on the road from an earlier
     /// trip counts as busy too. Trucks in maintenance / inactive and inactive crew are never offered.
     /// </summary>
     public partial class DispatchManagementView
@@ -44,7 +44,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 foreach (var st in MJdatabase.GetSpecialTrips().Where(s => s.DispatchDate.Date == date && RowMenu.Is(s.Status, "Pending", "Scheduled", "In Transit", "Rescheduled")))
-                    Book(st.TruckId, new[] { st.DriverId }.Concat(st.AllAideIds), $"special trip {st.OrderReference}");
+                    Book(st.TruckId, new[] { st.DriverId }.Concat(st.AllAideIds), $"booked on {st.OrderReference}");   // Nov 17: no "special trip" wording shown
             }
             catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }

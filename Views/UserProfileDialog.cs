@@ -144,7 +144,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             page.AddRow(SectionLabel("What you can open", "Access comes from your role. Ask the owner or an administrator if you need more."), S(8));
             var access = new FeedList { EmptyText = "" };
             void Area(bool ok, string name, string what) => access.Items.Add(new FeedItem(name, what, ok ? "Allowed" : "No access", ok ? AppTheme.Success : AppTheme.BorderStrong, !ok));
-            Area(SessionContext.CanAccessOperations, "Operations", "Dispatch, loading orders, special trips, trip and incident reports");
+            Area(SessionContext.CanAccessOperations, "Operations", "Dispatch, loading orders, trip and incident reports");
             Area(SessionContext.CanAccessFinance, "Finance", "Billing, collections, statements of account");
             Area(SessionContext.CanAccessResources, "Resources", "Trucks, crew, crew trip and resource history");
             Area(SessionContext.CanAccessMasterData, "Master data", "Clients, delivery routes, rate matrix, categories");

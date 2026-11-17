@@ -616,7 +616,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 // Billable: completed trips with a trip report, plus cancelled trips marked chargeable. Cancelled no-charge trips never appear.
                 var waitingIds = new HashSet<int>(MJdatabase.GetTripsWaitingForInvoice().Where(w => w.DeliveryId > 0).Select(w => w.DeliveryId)); // the one shared list (plan section 4)
                 completedDeliveries = MJdatabase.GetDeliveries().FindAll(d => waitingIds.Contains(d.Id));
-                completedDeliveries.AddRange(SpecialTripsToInvoice()); // Nov 6: completed special trips with a trip report
+                if (Features.On(Features.SpecialTrips)) completedDeliveries.AddRange(SpecialTripsToInvoice()); // Nov 6: completed special trips with a trip report (Nov 17: hidden, gate is always false)
                 // Nov 7: each trip is listed by its trip report number, then its dispatch and client (no loading schedule number).
                 var reportNos = MJdatabase.GetTripReportsByDelivery();
                 var specialLinks = MJdatabase.GetSpecialTripLinks();

@@ -49,7 +49,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtPickSearch = new TextBox { Width = Dpi(300), Margin = new Padding(0, 0, Dpi(8), Dpi(4)) };
             PageKit.StyleSearch(txtPickSearch, "Search dispatch #, client, route, driver…");
             cbPickClient = NewPickCombo(Dpi(210), "All clients");
-            cbPickShow = NewPickCombo(Dpi(170), "All waiting", "No report yet", "Drafts to finish", "Special trips");
+            cbPickShow = NewPickCombo(Dpi(170), "All waiting", "No report yet", "Drafts to finish");   // Nov 17: no "Special trips" option
             cbPickSort = NewPickCombo(Dpi(150), "Oldest first", "Newest first", "Client A–Z", "Dispatch #");
             lblPickCount = new Label { AutoSize = true, ForeColor = AppTheme.TextMuted, Font = new Font("Segoe UI", 9F), Margin = new Padding(Dpi(6), Dpi(7), Dpi(6), 0), UseMnemonic = false };
             lnkPickClear = new LinkLabel { Text = "Clear", AutoSize = true, Visible = false, Margin = new Padding(0, Dpi(7), 0, 0), LinkColor = AppTheme.AccentText, ActiveLinkColor = AppTheme.AccentText, UseMnemonic = false };
@@ -161,7 +161,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 bool IsKeep(PickRow r) => keepNo != null && string.Equals(r.D.DispatchNumber, keepNo, StringComparison.OrdinalIgnoreCase);
                 bool Match(PickRow r) =>
                     (client == null || string.Equals(r.Client, client, StringComparison.OrdinalIgnoreCase))
-                    && (show == 0 || (show == 1 && !r.Draft) || (show == 2 && r.Draft) || (show == 3 && r.D.Id < 0))
+                    && (show == 0 || (show == 1 && !r.Draft) || (show == 2 && r.Draft))
                     && (q.Length == 0 || NormPick(r.Text).Contains(q));
                 var rows = pickRows.Where(r => IsKeep(r) || Match(r));
                 var no = StringComparer.OrdinalIgnoreCase;

@@ -231,7 +231,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 Refill(cbUser, AllUsers, all.Select(r => r.User).Where(u => u.Length > 0));
-                var areas = ModuleNames.Values.Concat(all.Where(r => !r.IsSecurity).Select(r => r.Area)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(a => a, StringComparer.OrdinalIgnoreCase).Append(SecurityArea);
+                var areas = ModuleNames.Values.Concat(all.Where(r => !r.IsSecurity).Select(r => r.Area)).Where(a => !string.Equals(a, ModuleNames["SpecialTrips"], StringComparison.OrdinalIgnoreCase)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(a => a, StringComparer.OrdinalIgnoreCase).Append(SecurityArea);   // Nov 17: no "Special trips" entry in the Area filter (old log rows are kept)
                 Refill(cbArea, AllAreas, areas, keepOrder: true);
                 Refill(cbAction, AllActions, all.Select(r => r.Action).Where(a => a.Length > 0));
             }

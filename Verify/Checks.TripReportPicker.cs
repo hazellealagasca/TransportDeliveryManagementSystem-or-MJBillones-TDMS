@@ -132,7 +132,8 @@ public static partial class Checks
 
             show.SelectedIndex = 2; Expect($"show drafts: {Seq()}", Is(nAd));
             show.SelectedIndex = 1; Expect($"show no report yet: {Seq()}", Is(nBw, nAw, nSp));
-            show.SelectedIndex = 3; Expect($"show special trips: {Seq()}", Is(nSp));
+            // Nov 17: the "Special trips" show-option was removed (special trips are hidden everywhere).
+            Expect($"show options: {string.Join(", ", show.Items.Cast<object>())}", show.Items.Cast<object>().Select(o => o.ToString()).SequenceEqual(new[] { "All waiting", "No report yet", "Drafts to finish" }));
             show.SelectedIndex = 0;
 
             sort.SelectedIndex = 1; Expect($"newest first: {Seq()}", Is(nAd, nSp, nAw, nBw));

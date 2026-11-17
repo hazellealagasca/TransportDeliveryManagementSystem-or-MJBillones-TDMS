@@ -20,7 +20,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     }
     /// <summary>
     /// Builds the list of everything the signed-in user is allowed to see (orders, trucks, crew, clients, invoices,
-    /// receipts, statements, trip reports, incidents, routes, special trips, users, pages) and matches typed text
+    /// receipts, statements, trip reports, incidents, routes, users, pages) and matches typed text
     /// against it. Every word typed has to appear somewhere in the record; title matches rank first, newest next.
     /// </summary>
     public static class SearchIndex
@@ -80,6 +80,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     foreach (var inc in MJdatabase.GetIncidentReports())
                         Add("Incidents", "⚠️", $"Incident · {inc.DispatchNumber}", $"{Fmt.Date(inc.IncidentDate)} · {inc.Cause} · {inc.Status}",
                             $"{inc.Description}", inc.IncidentDate, () => RecordDetailsDialog.ShowDetails(mf!, inc));
+                    // Nov 17: special trips are hidden, so no special-trip search results (gate is always false).
+                    if (Features.On(Features.SpecialTrips))
                     foreach (var st in MJdatabase.GetSpecialTrips())
                         Add("Special trips", "🌟", $"{st.OrderReference} · {st.Company}", $"{Fmt.Date(st.DispatchDate)} · {st.TruckPlate} · {st.DriverName} · {st.Status}",
                             $"{st.Address} {st.AideName} {st.ServiceType}", st.DispatchDate, () => mf?.NavigateToOperations("SpecialTrips"));
