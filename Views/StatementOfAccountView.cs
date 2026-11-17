@@ -792,7 +792,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     TabStop = false,
                     BackColor = AppTheme.Canvas
                 };
-                if (n.Controls.Count > 0) n.Controls[0].Visible = false; // no up/down buttons on a calculated figure
+                n.HideArrows(); // no up/down buttons on a calculated figure (their strip stays painted)
                 n.ValueChanged += (s, e) => { if (!isCalculatingTaxes) RecalculateTaxes(manualOverride: true); };
                 return n;
             }

@@ -35,7 +35,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numCapacity.TabStop = false;
             numCapacity.MouseWheel += (s, e) => { if (e is HandledMouseEventArgs h) h.Handled = true; };
             numCapacity.Minimum = 0;
-            if (numCapacity.Controls.Count > 0) numCapacity.Controls[0].Visible = false; // no up/down arrows on a locked number
+            numCapacity.HideArrows(); // no up/down arrows on a locked number (their strip stays painted)
             // Category buttons sit beside the capacity box.
             pnlCapRow = new Panel { Dock = DockStyle.Top, Height = 40, Margin = new Padding(0, 0, 0, 6) };
             var flow = new FlowLayoutPanel { Dock = DockStyle.Right, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Padding = new Padding(8, 0, 0, 0) };
