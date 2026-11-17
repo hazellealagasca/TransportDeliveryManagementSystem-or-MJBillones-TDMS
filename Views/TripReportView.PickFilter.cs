@@ -54,6 +54,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblPickCount = new Label { AutoSize = true, ForeColor = AppTheme.TextMuted, Font = new Font("Segoe UI", 9F), Margin = new Padding(Dpi(6), Dpi(7), Dpi(6), 0), UseMnemonic = false };
             lnkPickClear = new LinkLabel { Text = "Clear", AutoSize = true, Visible = false, Margin = new Padding(0, Dpi(7), 0, 0), LinkColor = AppTheme.AccentText, ActiveLinkColor = AppTheme.AccentText, UseMnemonic = false };
             row.Controls.AddRange(new Control[] { txtPickSearch, cbPickClient, cbPickShow, cbPickSort, lblPickCount, lnkPickClear });
+            // Nov 17: only the search box is shown. The client, show and sort pickers and the "N waiting" count stay (hidden) on their
+            // defaults — all clients, all waiting, oldest first — so the list is exactly what it was with nothing chosen.
+            foreach (Control c in new Control[] { cbPickClient, cbPickShow, cbPickSort, lblPickCount, lnkPickClear }) c.Visible = false;
 
             void Changed(object? s, EventArgs e) { if (!pickFilterBusy) ApplyPickFilter(GetSelectedDelivery()?.DispatchNumber); }
             txtPickSearch.TextChanged += (s, e) =>
@@ -188,7 +191,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 : active ? $"{matched} of {pickRows.Count} waiting"
                 : $"{pickRows.Count} waiting";
             if (tickedPickIds.Count > 0 && pickRows.Count > 0) lblPickCount.Text += $" · {tickedPickIds.Count} ticked";
-            lnkPickClear.Visible = active;
+            lnkPickClear.Visible = false;   // Nov 17: hidden with the pickers; Esc in the search box clears it
         }
 
         // ------------------------------------------------------------------ Nov 14: ticked dispatches
