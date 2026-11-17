@@ -2546,17 +2546,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             gridRouteStores.EndEdit();
 
+            // Nov 17: the DR No. column is not shown or edited on the dispatch order (DR numbers are typed on the trip report),
+            // so the table editor doesn't list it either. DR numbers already on a store are kept, matched by store code.
+            var editorColumns = storeGridColumns.Where(c => !string.Equals(c.Key, "colDrNumbers", StringComparison.OrdinalIgnoreCase)).ToList();
+            var keptDr = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var currentRows = new List<Dictionary<string, string>>();
             foreach (DataGridViewRow r in gridRouteStores.Rows)
             {
                 if (r.IsNewRow) continue;
                 var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var c in storeGridColumns)
+                foreach (var c in editorColumns)
                 {
                     if (gridRouteStores.Columns.Contains(c.Key))
                     {
                         dict[c.Key] = r.Cells[c.Key].Value?.ToString() ?? string.Empty;
                     }
+                }
+                if (gridRouteStores.Columns.Contains("colDrNumbers") && gridRouteStores.Columns.Contains("colStoreCode"))
+                {
+                    string code = (r.Cells["colStoreCode"].Value?.ToString() ?? "").Trim();
+                    string dr = (r.Cells["colDrNumbers"].Value?.ToString() ?? "").Trim();
+                    if (code.Length > 0 && dr.Length > 0) keptDr[code] = dr;
                 }
                 currentRows.Add(dict);
             }
@@ -2564,7 +2574,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             using (var dlg = new SpecialTripTableEditorDialog(
                 lblRouteStoresHeader.Text,
                 storeBreakdownDescription,
-                storeGridColumns,
+                editorColumns,
                 currentRows,
                 cbDepartureTime.Text))
             {
@@ -2576,7 +2586,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         lblRouteStoresHeader.Text = dlg.EditedTableTitle;
                         storeBreakdownDescription = dlg.EditedTableDescription;
                         storeGridColumns = dlg.EditedColumns.Select(c => c.Clone()).ToList();
-                        RebuildStoreBreakdownGridColumns();
+                        RebuildStoreBreakdownGridColumns();   // puts the hidden DR No. column back (see the "always stay" list)
 
                         gridRouteStores.Rows.Clear();
                         foreach (var dict in dlg.EditedRows)
@@ -2590,6 +2600,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                     row.Cells[c.Key].Value = dict.TryGetValue(c.Key, out string? v) ? v : string.Empty;
                                 }
                             }
+                            // Nov 17: the DR numbers the editor didn't show come back by store code.
+                            if (gridRouteStores.Columns.Contains("colDrNumbers") && dict.TryGetValue("colStoreCode", out string? sc) && keptDr.TryGetValue((sc ?? "").Trim(), out string? keep))
+                                row.Cells["colDrNumbers"].Value = keep;
                         }
                         pnlRouteStoresBreakdown.Visible = true;
                         SizeStoreBreakdown(gridRouteStores.Rows.Count);
