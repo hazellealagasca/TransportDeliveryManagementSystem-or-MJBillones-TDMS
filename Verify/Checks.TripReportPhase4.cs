@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Text.RegularExpressions;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Database;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
@@ -188,7 +188,7 @@ public static partial class Checks
         return WithTripReportView((view, host, problems) =>
         {
             using var boxes = new P4Boxes();
-            P4Fill(view, no, new[] { "8:42 PM", "9:10 PM" }, new[] { "9:00 PM", "9:30 PM" }, "8:00 PM", "11:30 PM");
+            P4Fill(view, no, new[] { "8:42 PM", "9:10 PM" }, new[] { "9:00 PM", "9:30 PM" }, "7:30 PM", "8:00 PM");   // Nov 17: the gate times come before the store times
             var typeBox = FieldOf<ComboBox>(view, "cbTripType")!;
             if (typeBox.Parent!.Visible || typeBox.Visible) problems.Add("the type of delivery is still shown");
             if (typeBox.Text != "REF") problems.Add("the type of delivery is " + typeBox.Text + ", not REF");
@@ -210,8 +210,8 @@ public static partial class Checks
             {
                 int trId = (int)Long("SELECT Id FROM TripReports WHERE DeliveryId = @d", ("@d", id));
                 if (MJdatabase.GetTripReportDeliveryType(trId) != "REF") problems.Add("saved type of delivery: " + MJdatabase.GetTripReportDeliveryType(trId));
-                if (Str("SELECT TruckTimeIn FROM TripReports WHERE DeliveryId = @d", ("@d", id)) != "08:00 PM") problems.Add("gate time in saved as " + Str("SELECT TruckTimeIn FROM TripReports WHERE DeliveryId = @d", ("@d", id)));
-                if (Str("SELECT TruckTimeOut FROM TripReports WHERE DeliveryId = @d", ("@d", id)) != "11:30 PM") problems.Add("gate time out saved as " + Str("SELECT TruckTimeOut FROM TripReports WHERE DeliveryId = @d", ("@d", id)));
+                if (Str("SELECT TruckTimeIn FROM TripReports WHERE DeliveryId = @d", ("@d", id)) != "07:30 PM") problems.Add("gate time in saved as " + Str("SELECT TruckTimeIn FROM TripReports WHERE DeliveryId = @d", ("@d", id)));
+                if (Str("SELECT TruckTimeOut FROM TripReports WHERE DeliveryId = @d", ("@d", id)) != "08:00 PM") problems.Add("gate time out saved as " + Str("SELECT TruckTimeOut FROM TripReports WHERE DeliveryId = @d", ("@d", id)));
                 if (Str("SELECT ArrivalTime FROM DispatchStops WHERE DeliveryId = @d AND StopSequence = 1", ("@d", id)) != "08:42 PM") problems.Add("store 1 time in saved as " + Str("SELECT ArrivalTime FROM DispatchStops WHERE DeliveryId = @d AND StopSequence = 1", ("@d", id)));
                 if (Str("SELECT DepartureTime FROM DispatchStops WHERE DeliveryId = @d AND StopSequence = 2", ("@d", id)) != "09:30 PM") problems.Add("store 2 time out saved as " + Str("SELECT DepartureTime FROM DispatchStops WHERE DeliveryId = @d AND StopSequence = 2", ("@d", id)));
                 if (boxes.Boxes.Any(b => b.Contains("overnight"))) problems.Add("a normal day trip asked the overnight question");
@@ -256,14 +256,14 @@ public static partial class Checks
             if (!(bool)typeof(TripReportView).GetMethod("ConfirmGateOrder", NonPub)!.Invoke(view, null)!) problems.Add("answering Yes to the gate question did not let the save go on");
 
             // a new report: unreadable times are refused (listed), out before in is not refused
-            P4Fill(view, nOver, new[] { "8:42 PM", "2:00 AM" }, new[] { "1:30 AM", "3:00 AM" }, "8:00 PM", "5:00 AM");
+            P4Fill(view, nOver, new[] { "12:20 AM", "1:40 AM" }, new[] { "1:30 AM", "3:00 AM" }, "7:30 PM", "12:10 AM");   // Nov 17: overnight gate; store times are after the gate time out
             var blank = typeof(TripReportView).GetMethod("BlankFormChecks", NonPub)!;
             string Listed() => string.Join(" | ", ((System.Collections.IEnumerable)blank.Invoke(view, null)!).Cast<object>().Select(o => o.ToString() ?? ""));
             if (Listed().Contains("must be a time like 08:42 PM")) problems.Add("valid 12-hour times were refused: " + Listed());
             if (Listed().Contains("overnight")) problems.Add("the overnight question is in the refusal list");
             tin.Text = "99:99";
             if (!Listed().Contains("Truck time in must be a time like 08:42 PM")) problems.Add("an unreadable gate time in was not refused: " + Listed());
-            tin.Text = "8:00 PM";
+            tin.Text = "7:30 PM";
             grid.Rows[0].Cells["colOut"].Value = "soon";
             if (!Listed().Contains("Time out must be a time like 08:42 PM. Fix it for: Store A-1")) problems.Add("an unreadable store time out was not refused: " + Listed());
             grid.Rows[0].Cells["colOut"].Value = "1:30 AM";
@@ -273,13 +273,12 @@ public static partial class Checks
             before = boxes.Boxes.Count;
             P4Save(view);
             var asked = boxes.Boxes.Skip(before).Where(b => b.Contains("overnight trip")).ToList();
-            if (asked.Count != 2) problems.Add($"expected 2 overnight questions (store 1 and the plant gate), saw {asked.Count}: " + string.Join(" | ", boxes.Boxes.Skip(before)));
-            if (!asked.Any(b => b.Contains("Store A-1") && b.Contains("Time out (01:30 AM) is earlier than time in (08:42 PM)"))) problems.Add("the store question is missing: " + string.Join(" | ", asked));
-            if (!asked.Any(b => b.Contains("Time out (05:00 AM) is earlier than time in (08:00 PM)"))) problems.Add("the gate question is missing: " + string.Join(" | ", asked));
+            if (asked.Count != 1) problems.Add($"expected 1 overnight question (the plant gate; Nov 17: a store out-before-in cannot pass the new store-time rule), saw {asked.Count}: " + string.Join(" | ", boxes.Boxes.Skip(before)));
+            if (!asked.Any(b => b.Contains("Time out (12:10 AM) is earlier than time in (07:30 PM)"))) problems.Add("the gate question is missing: " + string.Join(" | ", asked));
             if (Long("SELECT COUNT(*) FROM TripReports WHERE DeliveryId = @d AND Status = 'Completed'", ("@d", over)) != 1) problems.Add("the overnight report was not saved: " + string.Join(" | ", boxes.Boxes.Skip(before)));
             else
             {
-                if (Str("SELECT TruckTimeOut FROM TripReports WHERE DeliveryId = @d", ("@d", over)) != "05:00 AM") problems.Add("overnight gate time out saved as " + Str("SELECT TruckTimeOut FROM TripReports WHERE DeliveryId = @d", ("@d", over)));
+                if (Str("SELECT TruckTimeOut FROM TripReports WHERE DeliveryId = @d", ("@d", over)) != "12:10 AM") problems.Add("overnight gate time out saved as " + Str("SELECT TruckTimeOut FROM TripReports WHERE DeliveryId = @d", ("@d", over)));
                 if (Str("SELECT DepartureTime FROM DispatchStops WHERE DeliveryId = @d AND StopSequence = 1", ("@d", over)) != "01:30 AM") problems.Add("overnight store time out saved as " + Str("SELECT DepartureTime FROM DispatchStops WHERE DeliveryId = @d AND StopSequence = 1", ("@d", over)));
             }
             return "";
@@ -297,7 +296,7 @@ public static partial class Checks
         string result = WithTripReportView((view, host, problems) =>
         {
             using var boxes = new P4Boxes();
-            P4Fill(view, no, new[] { "8:42 PM", "9:10 PM" }, new[] { "9:00 PM", "9:30 PM" }, "8:00 PM", "11:30 PM");
+            P4Fill(view, no, new[] { "8:42 PM", "9:10 PM" }, new[] { "9:00 PM", "9:30 PM" }, "7:30 PM", "8:00 PM");   // Nov 17: the gate times come before the store times
             var no_ = FieldOf<RadioButton>(view, "rbIncNo")!; var yes = FieldOf<RadioButton>(view, "rbIncYes")!;
             var fields = FieldOf<TableLayoutPanel>(view, "pnlIncFields")!; var card = FieldOf<Panel>(view, "cardIncident")!;
             var cause = FieldOf<TextBox>(view, "txtIncCause")!; var notes = FieldOf<TextBox>(view, "txtIncNotes")!;
@@ -318,6 +317,8 @@ public static partial class Checks
             bool Add(string c, int q, decimal k, bool ch, string n)
             {
                 cause.Text = c; qty.SetSafe(q); cost.SetSafe(k); crew.Checked = ch; notes.Text = n;
+                // Nov 17: a chargeable incident names who is charged: tick the trip's first crew member (the driver).
+                if (ch && typeof(TripReportView).GetField("incCrewBoxes", NonPub)!.GetValue(view) is List<CheckBox> who && who.Count > 0) who[0].Checked = true;
                 return (bool)add.Invoke(view, new object[] { false })!;
             }
             if (Add("", 3, 100, false, "")) problems.Add("an incident with no cause was added");
@@ -364,7 +365,7 @@ public static partial class Checks
             var t1 = DetailsTexts();
             if (!t1.Any(t => t == "Incident · Broken crates")) problems.Add("Dispatch details does not list the Broken crates incident: " + string.Join(" | ", t1.Where(t => t.Contains("ncident"))));
             if (!t1.Any(t => t == "Incident · Missing crates")) problems.Add("Dispatch details does not list the Missing crates incident");
-            if (!t1.Any(t => t.Contains("3 crates") && t.Contains("PHP 450.00") && t.Contains("charged to crew") && t.Contains("Dropped at store 1"))) problems.Add("the incident line lacks its quantity, cost, crew flag or notes");
+            if (!t1.Any(t => t.Contains("3 crates") && t.Contains("PHP 450.00") && t.Contains("charged to ") && t.Contains("Dropped at store 1"))) problems.Add("the incident line lacks its quantity, cost, crew flag or notes");   // Nov 17: "charged to <name>"
             if (t1.Any(t => t.Contains("Log incident", StringComparison.OrdinalIgnoreCase))) problems.Add("Dispatch details offers 'Log incident'");
             try
             {

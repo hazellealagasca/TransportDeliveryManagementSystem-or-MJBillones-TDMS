@@ -36,6 +36,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (!Fmt.TryParseTime(timeIn, out var a) || !Fmt.TryParseTime(timeOut, out var b)) return false;
             return b < a;
         }
+        /// <summary>
+        /// Nov 17: which plant gate time a store's time (in or out) is earlier than: "in" (earlier than the truck time in), "out" (earlier than the truck time out,
+        /// the truck leaves the gate before it reaches the stores), or null when it is fine. Blank or unreadable times are ignored (the required / "must be a time"
+        /// checks report those); when only one gate time is readable, the store time is checked against that one.
+        /// Timeline: a normal gate (out not earlier than in) compares the store time as it is, so it must be at or after the truck time out.
+        /// An overnight gate (out earlier than in) puts the truck time out after midnight: truckOut' = out + 24h, and a store time earlier than the truck time in
+        /// counts as after midnight too (store + 24h); it is wrong when store' &lt; truckOut'. So with in 10:00 PM, out 12:30 AM: 01:00 AM is fine, 11:00 PM and 12:15 AM are not.
+        /// </summary>
+        public static string? StoreTimeBeforePlantGate(string? truckIn, string? truckOut, string? storeTime)
+        {
+            if (!Fmt.TryParseTime(storeTime, out var s)) return null;
+            bool hasIn = Fmt.TryParseTime(truckIn, out var a), hasOut = Fmt.TryParseTime(truckOut, out var b);
+            if (hasIn && hasOut && b < a)
+            {
+                var day = TimeSpan.FromHours(24);
+                var store = s < a ? s + day : s;
+                return store < b + day ? "out" : null;
+            }
+            if (hasIn && s < a) return "in";
+            if (hasOut && s < b) return "out";
+            return null;
+        }
+
+        /// <summary>The short hint shown on a store time cell that is earlier than a plant gate time.</summary>
+        public static string StoreBeforeGateHint(string which, string truckIn, string truckOut)
+            => which == "in" ? $"Earlier than the truck time in at the plant gate ({Fmt.Time(truckIn)})" : $"Earlier than the truck time out at the plant gate ({Fmt.Time(truckOut)})";
         /// <summary>The question asked when a time out is earlier than the time in (plant gate and each store).</summary>
         public static string OvernightQuestion(string timeIn, string timeOut) => $"Time out ({Fmt.Time(timeOut)}) is earlier than time in ({Fmt.Time(timeIn)}). Is this an overnight trip?";
         public static string GateOvernightQuestion(string timeIn, string timeOut) => OvernightQuestion(timeIn, timeOut);

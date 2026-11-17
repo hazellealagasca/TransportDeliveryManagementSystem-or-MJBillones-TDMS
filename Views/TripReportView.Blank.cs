@@ -52,6 +52,30 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (bad.Count > 0) list.Add(($"{nm} must be a time like 08:42 PM. Fix it for: {string.Join(", ", bad.Select(n => n.Length > 0 ? n : "a store").Take(6))}{(bad.Count > 6 ? ", …" : "")}.", gridStores));
                 }
             }
+            // Nov 17: a store's time in / time out can't be earlier than the truck time in at the plant gate (an overnight trip is the exception). Blocks Proceed / Save, not Save draft.
+            // (rule change: also not earlier than the truck time out; the check is in DailyRules.StoreTimeBeforePlantGate)
+            if (gridStores != null && (Fmt.TryParseTime(txtTruckTimeIn?.Text, out _) || Fmt.TryParseTime(txtTruckTimeOut?.Text, out _)))
+            {
+                string tin = (txtTruckTimeIn?.Text ?? "").Trim(), tout = (txtTruckTimeOut?.Text ?? "").Trim();
+                var early = new List<string>();
+                foreach (DataGridViewRow r in gridStores.Rows)
+                {
+                    if (r.IsNewRow) continue;
+                    string store = (r.Cells["colStore"]?.Value?.ToString() ?? "").Trim(); if (store.Length == 0) store = "a store";
+                    foreach (var (col, nm) in new[] { ("colIn", "time in"), ("colOut", "time out") })
+                    {
+                        string v = (r.Cells[col].Value?.ToString() ?? "").Trim();
+                        if (DailyRules.StoreTimeBeforePlantGate(tin, tout, v) != null) early.Add($"{store} ({nm} {Fmt.Time(v)})");
+                    }
+                }
+                if (early.Count > 0)
+                {
+                    var gate = new List<string>();
+                    if (Fmt.TryParseTime(tin, out _)) gate.Add($"time in {Fmt.Time(tin)}");
+                    if (Fmt.TryParseTime(tout, out _)) gate.Add($"time out {Fmt.Time(tout)}");
+                    list.Add(($"A store's time in and time out can't be earlier than the truck's plant gate times ({string.Join(", ", gate)}). Fix it for: {string.Join(", ", early.Take(6))}{(early.Count > 6 ? ", …" : "")}.", gridStores));
+                }
+            }
             IncidentChecks(list);   // step 3: Yes needs at least one incident
             foreach (var (tb, nm) in SignOffBoxes())
                 if (tb != null && !string.IsNullOrWhiteSpace(tb.Text) && !SecurityHelper.IsValidName(tb.Text.Trim())) list.Add(($"{nm} must be a name (letters only).", tb));
@@ -113,6 +137,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (var tb in new[] { txtTruckTimeIn, txtTruckTimeOut })
                 if (tb != null) Fmt.ApplyTimeBox(tb);   // Nov 14: 12-hour box, shown as hh:mm AM/PM when left; "e.g. 08:42 PM"
             if (gridStores != null) Fmt.ApplyTimeColumns(gridStores, "colIn", "colOut");
+            // Nov 17: live hint (cell error text only, no pop-ups) when a store time or the truck times change. Added after Fmt's own handlers so its format errors are set first.
+            if (gridStores != null) gridStores.CellEndEdit += (s, e) => MarkStoreTimesBeforeTruckIn();
+            foreach (var tb in new[] { txtTruckTimeIn, txtTruckTimeOut })
+                if (tb != null) { tb.TextChanged += (s, e) => MarkStoreTimesBeforeTruckIn(); tb.Leave += (s, e) => MarkStoreTimesBeforeTruckIn(); }
             foreach (var (tb, _) in SignOffBoxes())
             {
                 if (tb == null) continue;
@@ -124,6 +152,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     ValidationHelper.ApplyValidationState(box, SecurityHelper.IsValidName(box.Text.Trim()), "Type a name (letters only).");
                 };
             }
+        }
+
+        /// <summary>Nov 17: marks store time cells that are earlier than the truck time in (cell error text) and clears it when fixed. Only its own message is touched, never a format error.</summary>
+        private void MarkStoreTimesBeforeTruckIn()
+        {
+            if (gridStores == null) return;
+            try
+            {
+                string tin = (txtTruckTimeIn?.Text ?? "").Trim(), tout = (txtTruckTimeOut?.Text ?? "").Trim();
+                foreach (DataGridViewRow r in gridStores.Rows)
+                {
+                    if (r.IsNewRow) continue;
+                    foreach (var col in new[] { "colIn", "colOut" })
+                    {
+                        var cell = r.Cells[col];
+                        bool ours = cell.ErrorText.StartsWith("Earlier than the truck time");
+                        string? which = DailyRules.StoreTimeBeforePlantGate(tin, tout, cell.Value?.ToString());
+                        bool early = which != null;
+                        string msg = early ? DailyRules.StoreBeforeGateHint(which!, tin, tout) : "";
+                        if (early) { if (cell.ErrorText != msg && (ours || cell.ErrorText.Length == 0)) cell.ErrorText = msg; }
+                        else if (ours) cell.ErrorText = "";
+                    }
+                }
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
         }
 
         /// <summary>Shows the missing fields (if any). True when the form may be saved.</summary>
