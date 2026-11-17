@@ -28,6 +28,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Button? btnIncAdd, btnIncRemove;
         private DataGridView? gridInc;
         private Label? lblIncHint;
+        /// <summary>Nov 17: "Charge to" row: one tick box per crew member of the trip (driver, aides), shown while "Chargeable to crew" is ticked.</summary>
+        private Panel? pnlIncCrewPick;
+        private FlowLayoutPanel? flowIncCrew;
+        private Label? lblIncShare;
+        private readonly List<CheckBox> incCrewBoxes = new List<CheckBox>();
         /// <summary>The incident lines of the trip being reported (Id 0 = not saved yet).</summary>
         private readonly List<IncidentReport> tripIncidentLines = new List<IncidentReport>();
         /// <summary>Saved incident lines the person took off; they are voided when the report is saved.</summary>
@@ -78,6 +83,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlIncFields.Controls.Add(txtIncNotes, 0, 3);
             pnlIncFields.SetColumnSpan(txtIncNotes, 3);
             pnlIncFields.Controls.Add(btnIncAdd, 3, 3);
+            // Nov 17: who pays: the trip's driver and/or aides (the cost is shared equally). Record only.
+            pnlIncCrewPick = new Panel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = AppTheme.Surface, Visible = false, Margin = new Padding(0, 0, 0, Dpi(8)), Name = "pnlIncidentCrewPick" };
+            var crewCap = Cap("Charge to (driver / aide) *");
+            crewCap.Dock = DockStyle.Top;
+            flowIncCrew = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, BackColor = AppTheme.Surface, Margin = new Padding(0), Padding = new Padding(0, Dpi(2), 0, 0), Name = "flowIncidentCrew" };
+            lblIncShare = new Label { Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, UseMnemonic = false, Padding = new Padding(0, Dpi(2), 0, 0), Name = "lblIncidentShare" };
+            pnlIncCrewPick.Controls.Add(lblIncShare);
+            pnlIncCrewPick.Controls.Add(flowIncCrew);
+            pnlIncCrewPick.Controls.Add(crewCap);
+            pnlIncFields.Controls.Add(pnlIncCrewPick, 0, 4);
+            pnlIncFields.SetColumnSpan(pnlIncCrewPick, 4);
+            chkIncCrew.CheckedChanged += (s, e) => RefreshIncidentCrewPicker();
+            numIncCost.ValueChanged += (s, e) => UpdateIncidentShare();
             root.Controls.Add(pnlIncFields);
 
             gridInc = new DataGridView
@@ -90,7 +108,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridInc.Columns.Add(new DataGridViewTextBoxColumn { Name = "colIncCause", HeaderText = "Cause", FillWeight = 30 });
             gridInc.Columns.Add(new DataGridViewTextBoxColumn { Name = "colIncQty", HeaderText = "Damaged qty", FillWeight = 14, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleRight } });
             gridInc.Columns.Add(new DataGridViewTextBoxColumn { Name = "colIncCost", HeaderText = "Est. cost (₱)", FillWeight = 16, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleRight } });
-            gridInc.Columns.Add(new DataGridViewTextBoxColumn { Name = "colIncCrew", HeaderText = "Charged to crew", FillWeight = 14 });
+            gridInc.Columns.Add(new DataGridViewTextBoxColumn { Name = "colIncCrew", HeaderText = "Charged to", FillWeight = 24 });
             gridInc.Columns.Add(new DataGridViewTextBoxColumn { Name = "colIncNotes", HeaderText = "Notes", FillWeight = 40 });
             root.Controls.Add(gridInc);
             btnIncRemove = new Button { Text = "Remove selected incident", AutoSize = true, MinimumSize = new Size(Dpi(170), Dpi(32)), FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, UseMnemonic = false, Visible = false, Name = "btnIncidentRemove", Margin = new Padding(0, Dpi(6), 0, 0) };
@@ -146,7 +164,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridInc.Rows.Clear();
             foreach (var l in tripIncidentLines)
             {
-                int i = gridInc.Rows.Add(l.Cause, l.DamagedQuantity.ToString("N0"), l.EstimatedCost.ToString("N2"), l.ChargeableToCrew ? "Yes" : "No", l.Description);
+                int i = gridInc.Rows.Add(l.Cause, l.DamagedQuantity.ToString("N0"), l.EstimatedCost.ToString("N2"), l.ChargedToDisplay, l.Description);
                 gridInc.Rows[i].Tag = l;
             }
             bool yes = rbIncYes != null && rbIncYes.Checked;
@@ -173,6 +191,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 rbIncNo.Checked = !yes;
                 pnlIncFields.Visible = yes;
                 ClearIncidentFields();
+                RefreshIncidentCrewPicker();   // the picked trip decides who can be charged
                 RefreshIncidentGrid();
             }
             finally { incidentBusy = false; }
@@ -186,6 +205,56 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (txtIncCause == null || numIncQty == null || numIncCost == null || chkIncCrew == null || txtIncNotes == null) return;
             txtIncCause.Text = ""; numIncQty.SetSafe(0); numIncCost.SetSafe(0); chkIncCrew.Checked = false; txtIncNotes.Text = "";
+            foreach (var b in incCrewBoxes) b.Checked = false;
+        }
+
+        /// <summary>The ticked crew members of the "Charge to" row (Id and name).</summary>
+        private List<(int Id, string Name)> PickedIncidentCrew()
+            => incCrewBoxes.Where(b => b.Checked && b.Tag is ValueTuple<int, string>).Select(b => ((ValueTuple<int, string>)b.Tag!)).Select(t => (t.Item1, t.Item2)).ToList();
+
+        /// <summary>Shows the "Charge to" row while "Chargeable to crew" is ticked, with one tick box per crew member of the trip (ticks are kept for the same people).</summary>
+        private void RefreshIncidentCrewPicker()
+        {
+            if (pnlIncCrewPick == null || flowIncCrew == null || chkIncCrew == null) return;
+            var keep = PickedIncidentCrew().Select(p => p.Id).ToHashSet();
+            flowIncCrew.SuspendLayout();
+            try
+            {
+                foreach (var b in incCrewBoxes) { flowIncCrew.Controls.Remove(b); b.Dispose(); }
+                incCrewBoxes.Clear();
+                foreach (Control c in flowIncCrew.Controls.Cast<Control>().ToList()) { flowIncCrew.Controls.Remove(c); c.Dispose(); }
+                List<(int Id, string Name, string Role)> crew;
+                try { crew = MJdatabase.GetTripCrewForCharge(TripDelivery()); }
+                catch (Exception ex) { ErrLog.Swallowed(ex); crew = new List<(int, string, string)>(); }
+                foreach (var m in crew)
+                {
+                    var b = new CheckBox
+                    {
+                        AutoSize = true, Text = $"{m.Name} ({m.Role})", Tag = (m.Id, m.Name), Checked = keep.Contains(m.Id) || (crew.Count == 1 && chkIncCrew.Checked),
+                        Font = new Font("Segoe UI", 10F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, 0, Dpi(18), Dpi(2)), UseMnemonic = false, Name = $"chkIncidentCrew_{m.Id}"
+                    };
+                    b.CheckedChanged += (s, e) => UpdateIncidentShare();
+                    incCrewBoxes.Add(b);
+                    flowIncCrew.Controls.Add(b);
+                }
+                if (crew.Count == 0)
+                    flowIncCrew.Controls.Add(new Label { AutoSize = true, Text = "This trip has no driver or aide on record, so nobody can be charged.", Font = new Font("Segoe UI", 9.5F), ForeColor = AppTheme.WarningText, UseMnemonic = false });
+            }
+            finally { flowIncCrew.ResumeLayout(); }
+            pnlIncCrewPick.Visible = chkIncCrew.Checked;
+            UpdateIncidentShare();
+        }
+
+        /// <summary>"Each pays PHP x (cost shared by n)" under the tick boxes.</summary>
+        private void UpdateIncidentShare()
+        {
+            if (lblIncShare == null) return;
+            int n = PickedIncidentCrew().Count;
+            decimal cost = numIncCost?.Value ?? 0m;
+            lblIncShare.Text = n == 0 ? "Tick who is charged. The estimated cost is shared equally. Record only: pay, statements, invoices and receipts are not changed."
+                : n == 1 ? $"Charged PHP {cost:N2} in full. Record only: pay, statements, invoices and receipts are not changed."
+                : $"Each pays PHP {Math.Round(cost / n, 2):N2} (PHP {cost:N2} shared by {n}). Record only: pay, statements, invoices and receipts are not changed.";
+            lblIncShare.ForeColor = n == 0 && (chkIncCrew?.Checked ?? false) ? AppTheme.WarningText : AppTheme.TextMuted;
         }
 
         private bool IncidentFieldsTouched()
@@ -204,6 +273,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int loaded = del == null ? 0 : (del.TotalCrates > 0 ? del.TotalCrates : del.GCrate + del.ECrate);
             if (loaded > 0 && qty > loaded) { field = numIncQty; return $"Damaged quantity ({qty:N0}) can't be more than the {loaded:N0} crates loaded on dispatch {del!.DispatchNumber}."; }
             if (chkIncCrew != null && chkIncCrew.Checked && (numIncCost?.Value ?? 0) <= 0) { field = numIncCost; return "This incident is chargeable to the crew, but the estimated cost is 0.00. Enter the cost, or untick \"Chargeable to crew\"."; }
+            if (chkIncCrew != null && chkIncCrew.Checked && PickedIncidentCrew().Count == 0)
+            {
+                field = incCrewBoxes.FirstOrDefault() ?? (Control?)chkIncCrew;
+                return incCrewBoxes.Count == 0
+                    ? "This incident is chargeable to the crew, but the trip has no driver or aide on record. Untick \"Chargeable to crew\"."
+                    : "This incident is chargeable to the crew: tick who is charged under \"Charge to (driver / aide)\".";
+            }
             if (tripIncidentLines.Any(l => string.Equals(l.Cause, cause, StringComparison.OrdinalIgnoreCase)))
             { field = txtIncCause; return $"\"{cause}\" is already on this trip's list. Remove it first, or use a different cause."; }
             return "";
@@ -219,6 +295,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return false;
             }
             var del = TripDelivery();
+            var charged = chkIncCrew!.Checked ? PickedIncidentCrew() : new List<(int Id, string Name)>();
             tripIncidentLines.Add(new IncidentReport
             {
                 DeliveryId = del?.Id ?? 0,
@@ -228,6 +305,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 DamagedQuantity = (int)numIncQty!.Value,
                 EstimatedCost = numIncCost!.Value,
                 ChargeableToCrew = chkIncCrew!.Checked,
+                ChargedCrewIds = string.Join(",", charged.Select(c => c.Id)),
+                ChargedCrewNames = string.Join("; ", charged.Select(c => c.Name)),   // names are "Last, First", so people are split by ";"
                 Description = DailyRules.CollapseSpaces(txtIncNotes!.Text),
                 Status = "Pending"
             });

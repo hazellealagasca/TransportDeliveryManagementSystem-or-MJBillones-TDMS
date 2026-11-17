@@ -60,6 +60,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             receiptSchemaChecked = receiptSoaColumnChecked = false;
             numberSchemaReady = false;
             soaCancelColumnsReady = false;
+            incidentCrewColumnsReady = false;
             ResetWorkflowSchemaFlag();
         }
 
@@ -10759,9 +10760,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 conn.Open();
 
+                EnsureIncidentCrewColumns(conn);
+
                 var cmd = conn.CreateCommand();
 
-                cmd.CommandText = "SELECT Id, DeliveryId, DispatchNumber, IncidentDate, DamagedQuantity, EstimatedCost, Cause, ChargeableToCrew, Description, Status, PhotoPath FROM IncidentReports WHERE COALESCE(Status,'') <> 'Voided' ORDER BY Id DESC";
+                cmd.CommandText = "SELECT Id, DeliveryId, DispatchNumber, IncidentDate, DamagedQuantity, EstimatedCost, Cause, ChargeableToCrew, Description, Status, PhotoPath, COALESCE(ChargedCrewIds,''), COALESCE(ChargedCrewNames,'') FROM IncidentReports WHERE COALESCE(Status,'') <> 'Voided' ORDER BY Id DESC";
 
                 using (var reader = cmd.ExecuteReader())
 
@@ -10797,7 +10800,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             Status = reader.GetString(9),
 
-                            PhotoPath = reader.IsDBNull(10) ? "" : Functions.AppPaths.Resolve(reader.GetString(10))
+                            PhotoPath = reader.IsDBNull(10) ? "" : Functions.AppPaths.Resolve(reader.GetString(10)),
+
+                            ChargedCrewIds = reader.GetString(11),
+
+                            ChargedCrewNames = reader.GetString(12)
 
                         });
 
@@ -10827,8 +10834,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (deliveryId <= 0 || !Features.On(Features.TripIncidents)) return list;
             using var conn = new SqliteConnection(connectionString);
             conn.Open();
+            EnsureIncidentCrewColumns(conn);
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT Id, DeliveryId, DispatchNumber, IncidentDate, DamagedQuantity, EstimatedCost, Cause, ChargeableToCrew, Description, Status, PhotoPath FROM IncidentReports WHERE DeliveryId = @d AND COALESCE(Status,'') <> 'Voided' ORDER BY Id ASC";
+            cmd.CommandText = "SELECT Id, DeliveryId, DispatchNumber, IncidentDate, DamagedQuantity, EstimatedCost, Cause, ChargeableToCrew, Description, Status, PhotoPath, COALESCE(ChargedCrewIds,''), COALESCE(ChargedCrewNames,'') FROM IncidentReports WHERE DeliveryId = @d AND COALESCE(Status,'') <> 'Voided' ORDER BY Id ASC";
             cmd.Parameters.AddWithValue("@d", deliveryId);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
@@ -10845,7 +10853,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     ChargeableToCrew = reader.GetInt32(7) == 1,
                     Description = reader.IsDBNull(8) ? "" : reader.GetString(8),
                     Status = reader.IsDBNull(9) ? "Pending" : reader.GetString(9),
-                    PhotoPath = reader.IsDBNull(10) ? "" : Functions.AppPaths.Resolve(reader.GetString(10))
+                    PhotoPath = reader.IsDBNull(10) ? "" : Functions.AppPaths.Resolve(reader.GetString(10)),
+                    ChargedCrewIds = reader.GetString(11),
+                    ChargedCrewNames = reader.GetString(12)
                 });
             }
             return list;
@@ -10886,6 +10896,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 conn.Open();
 
+                EnsureIncidentCrewColumns(conn);
+
                 var cmd = conn.CreateCommand();
 
                 if (ir.Id == 0)
@@ -10912,9 +10924,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     }
 
-                    cmd.CommandText = @"INSERT INTO IncidentReports (DeliveryId, DispatchNumber, IncidentDate, DamagedQuantity, EstimatedCost, Cause, ChargeableToCrew, Description, Status, PhotoPath)
+                    cmd.CommandText = @"INSERT INTO IncidentReports (DeliveryId, DispatchNumber, IncidentDate, DamagedQuantity, EstimatedCost, Cause, ChargeableToCrew, Description, Status, PhotoPath, ChargedCrewIds, ChargedCrewNames)
 
-                                        VALUES (@did, @dn, @incDate, @dq, @ec, @c, @ch, @desc, @s, @photo)";
+                                        VALUES (@did, @dn, @incDate, @dq, @ec, @c, @ch, @desc, @s, @photo, @cci, @ccn)";
 
                 }
 
@@ -10922,7 +10934,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    cmd.CommandText = @"UPDATE IncidentReports SET IncidentDate=@incDate, DamagedQuantity=@dq, EstimatedCost=@ec, Cause=@c, ChargeableToCrew=@ch, Description=@desc, Status=@s, PhotoPath=@photo WHERE Id=@id";
+                    cmd.CommandText = @"UPDATE IncidentReports SET IncidentDate=@incDate, DamagedQuantity=@dq, EstimatedCost=@ec, Cause=@c, ChargeableToCrew=@ch, Description=@desc, Status=@s, PhotoPath=@photo, ChargedCrewIds=@cci, ChargedCrewNames=@ccn WHERE Id=@id";
 
                     cmd.Parameters.AddWithValue("@id", ir.Id);
 
@@ -10950,6 +10962,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 cmd.Parameters.AddWithValue("@photo", ir.PhotoPath ?? "");
 
+                // Nov 17: who is charged (only kept while the incident is chargeable to the crew).
+                cmd.Parameters.AddWithValue("@cci", ir.ChargeableToCrew ? (ir.ChargedCrewIds ?? "") : "");
+
+                cmd.Parameters.AddWithValue("@ccn", ir.ChargeableToCrew ? (ir.ChargedCrewNames ?? "") : "");
+
                 cmd.ExecuteNonQuery();
 
                 if (isNew)
@@ -10964,7 +10981,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                LogAuditTrail(isNew ? "ADD" : "UPDATE", "IncidentReports", ir.Id, ir.DispatchNumber, "Cause", "", ir.Cause, $"Incident for Dispatch #{ir.DispatchNumber}: {ir.Cause} (Damaged: {ir.DamagedQuantity}, Cost: PHP {ir.EstimatedCost:N2}) {(isNew ? "filed" : "updated")}");
+                LogAuditTrail(isNew ? "ADD" : "UPDATE", "IncidentReports", ir.Id, ir.DispatchNumber, "Cause", "", ir.Cause, $"Incident for Dispatch #{ir.DispatchNumber}: {ir.Cause} (Damaged: {ir.DamagedQuantity}, Cost: PHP {ir.EstimatedCost:N2}){(ir.ChargeableToCrew && !string.IsNullOrWhiteSpace(ir.ChargedCrewNames) ? $", charged to {ir.ChargedToDisplay}" : "")} {(isNew ? "filed" : "updated")}");
 
             }
 

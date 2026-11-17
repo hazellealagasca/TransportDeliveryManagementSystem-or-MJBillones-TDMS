@@ -632,9 +632,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public decimal EstimatedCost { get; set; }
         public string Cause { get; set; } = string.Empty;
         public bool ChargeableToCrew { get; set; } = false;
+        /// <summary>Nov 17: who the cost is charged to (crew Ids, comma-separated) when <see cref="ChargeableToCrew"/> is on. Record only: pay and billing are not changed.</summary>
+        public string ChargedCrewIds { get; set; } = string.Empty;
+        /// <summary>The names of <see cref="ChargedCrewIds"/> at the time of the incident, separated by "; " (a name itself is "Last, First Middle").</summary>
+        public string ChargedCrewNames { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string Status { get; set; } = "Pending";
         public string PhotoPath { get; set; } = string.Empty;
+        /// <summary>How many people share the cost (0 when not chargeable or nobody was named).</summary>
+        public int ChargedCrewCount => !ChargeableToCrew ? 0 : ChargedCrewIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length;
+        /// <summary>Each person's equal share of the estimated cost.</summary>
+        public decimal ChargedSharePerCrew => ChargedCrewCount == 0 ? 0m : Math.Round(EstimatedCost / ChargedCrewCount, 2);
+        /// <summary>"No", "Yes" (older lines without names) or "Juan Dela Cruz, Pedro Santos (PHP 250.00 each)".</summary>
+        public string ChargedToDisplay => !ChargeableToCrew ? "No"
+            : string.IsNullOrWhiteSpace(ChargedCrewNames) ? "Yes"
+            : ChargedCrewCount > 1 ? $"{ChargedCrewNames} (PHP {ChargedSharePerCrew:N2} each)" : ChargedCrewNames;
     }
 
     public class StatementOfAccount

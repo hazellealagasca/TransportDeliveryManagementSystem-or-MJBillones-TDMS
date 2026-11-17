@@ -770,7 +770,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 foreach (var inc in incidents)
                 {
-                    items.Add(DocRow("⚠️", $"Incident · {inc.Cause}", $"{Fmt.Date(inc.IncidentDate)} · {inc.DamagedQuantity:N0} crates · PHP {inc.EstimatedCost:N2}" + (inc.ChargeableToCrew ? " · charged to crew" : "") + (string.IsNullOrWhiteSpace(inc.Description) ? "" : " · " + inc.Description.Trim()),
+                    items.Add(DocRow("⚠️", $"Incident · {inc.Cause}", $"{Fmt.Date(inc.IncidentDate)} · {inc.DamagedQuantity:N0} crates · PHP {inc.EstimatedCost:N2}" + (inc.ChargeableToCrew ? " · charged to " + (string.IsNullOrWhiteSpace(inc.ChargedCrewNames) ? "crew" : inc.ChargedToDisplay) : "") + (string.IsNullOrWhiteSpace(inc.Description) ? "" : " · " + inc.Description.Trim()),
                         Features.On(Features.Incidents) ? ("Open", "secondary", OpenIncidents) : default));
                 }
             }
