@@ -182,7 +182,7 @@ public static partial class Checks
 
         var rows = MJdatabase.SaveOneReceipt("0601", TargetFor(soaId), "Check", "CHK-123456", "");
         string rc = Html(PrintForms.CollectionReceipt(rows[0]));
-        if (!P6Bold(rc, "Amount received (paid in full)")) bad.Add("receipt: Amount received is not bold");
+        if (!P6Bold(rc, "Amount received")) bad.Add("receipt: Amount received is not bold");   // Nov 17: "(paid in full)" removed from the label
         if (!P6Bold(rc, "Total due")) bad.Add("receipt: Total due is not bold");
         if (P6Bold(rc, "Method / reference")) bad.Add("receipt: the reference line is bold like a total");
         if (!Regex.IsMatch(rc, @"class='amt-total'><strong>[^<]*600\.00")) bad.Add("receipt: the big amount is not inside a bold element");
