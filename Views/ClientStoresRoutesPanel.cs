@@ -267,6 +267,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 string? problem = MJdatabase.CheckCompanyStore(c, txtCode.Text, txtName.Text);
                 if (problem != null) { Say("✕ " + problem, true); Outline(StoreProblemBox(problem)); return; }
+                if (!ConfirmNoAddress(MJdatabase.CleanStoreCode(txtCode.Text), MJdatabase.CleanStoreText(txtName.Text), txtAddress.Text)) return;   // Nov 17
                 var st = MJdatabase.RegisterCompanyStore(c, txtCode.Text, txtName.Text, txtAddress.Text);
                 txtCode.Clear(); txtName.Clear(); txtAddress.Clear(); txtCode.Focus(); // clearing runs the live check, so say the result after it
                 Outline(null);
@@ -440,14 +441,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bool oneRoute = clientName.Length > 0 && MJdatabase.GetOneRoutePerStore(clientName);
             if (chkOneRoute.Checked != oneRoute) { bool was = binding; binding = true; chkOneRoute.Checked = oneRoute; binding = was; }
             var r = SelectedRoute();
-            lblAssignTitle.Text = r == null ? "Stores on this route — pick a route on the left" : $"Stores on route {r.RouteCode} — tick the stores it serves (same client only)";
+            lblAssignTitle.Text = r == null ? "Company stores — pick a route on the left to tick the stores it serves" : $"Stores on route {r.RouteCode} — tick the stores it serves (same client only)";
             string q = txtSearch.Text.Trim();
             binding = true;
             try
             {
                 gridAssign.Rows.Clear();
-                gridAssign.Enabled = r != null;
+                gridAssign.Enabled = true;   // Nov 17: the company stores are listed (read-only) even before a route is picked
                 btnRemove.Enabled = r != null;
+                if (r == null) RenderCompanyStoresOverview(q);
                 if (r != null)
                 {
                     var model = RouteStoreListModel.Build(r, stores, routes, oneRoute); // routes: Build uses the active ones only
@@ -472,6 +474,30 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UpdateMoveButtons();
         }
 
+        /// <summary>
+        /// Nov 17: with no route picked, the right side lists every company store of the client (code, name) and its status:
+        /// the active routes it is on, or "Not on a route yet". Read-only: picking a route on the left makes the stores tickable.
+        /// </summary>
+        private void RenderCompanyStoresOverview(string q)
+        {
+            var active = routes.Where(x => x.IsActive).ToList();
+            var list = stores.Where(s => q.Length == 0
+                    || (s.StoreName ?? "").Contains(q, StringComparison.OrdinalIgnoreCase)
+                    || MJdatabase.StoreCodeForScreen(s).Contains(q, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(s => s.StoreName, StringComparer.OrdinalIgnoreCase).ToList();
+            AddNoteRow(stores.Count == 0 ? "No company stores yet — add them in the Company stores tab" : $"Company stores ({stores.Count})", "header");
+            foreach (var s in list)
+            {
+                var on = active.Where(rt => MJdatabase.StoreIsOnRoute(rt, s)).Select(rt => rt.RouteCode).ToList();
+                string tag = on.Count == 0 ? "Not on a route yet" : "On route " + string.Join(", ", on);
+                int i = gridAssign.Rows.Add(on.Count > 0, MJdatabase.StoreCodeForScreen(s), s.StoreName, tag);
+                var row = gridAssign.Rows[i];
+                row.Tag = s;
+                row.Height = gridAssign.RowTemplate.Height;
+                foreach (DataGridViewCell c in row.Cells) c.ReadOnly = true;   // tick only after a route is picked
+            }
+        }
+
         /// <summary>Up is off on the first store of the route and Down on the last; both are off unless an "On this route" row is selected.</summary>
         private void UpdateMoveButtons()
         {
@@ -486,6 +512,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var r = SelectedRoute();
             if (r == null) return;
             if (!(gridAssign.CurrentRow?.Tag is ClientStore st) || !MJdatabase.StoreIsOnRoute(r, st)) { Say("Pick a store that is on this route, then press Move up or Move down.", false); return; }
+            if (!ConfirmRouteChange($"Move {st.StoreName} {(delta < 0 ? "up" : "down")} on route {r.RouteCode} – {r.RouteName}?\n\nThis changes the order of the stops on the route.")) return;
             reselectStore = st.StoreCode; // set first: the change event may redraw the list before this method returns
             try
             {
@@ -532,6 +559,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             string c = client();
             if (isPending() || c.Length == 0) return;
+            string ask = chkOneRoute.Checked
+                ? $"Turn on \"One route per store\" for {c}?\n\nEach store will be allowed on only one of this client's routes."
+                : $"Turn off \"One route per store\" for {c}?\n\nA store will be allowed on several of this client's routes.";
+            if (!ConfirmRouteChange(ask)) { RenderAssign(); return; }   // RenderAssign puts the switch back to the saved value
             try
             {
                 string? refused = MJdatabase.SetOneRoutePerStore(c, chkOneRoute.Checked);
@@ -551,6 +582,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     string? why = MJdatabase.OneRouteRefusal(r, st);
                     if (why != null) { Say("✕ " + why, true); BeginInvoke(new Action(() => LoadRoutes(r.RouteCode))); return; }
                 }
+                if (MJdatabase.StoreIsOnRoute(r, st) != include)   // Nov 17: ask before a route's stores change
+                {
+                    string label = MJdatabase.StoreCodeForScreen(st) + " – " + st.StoreName;
+                    string ask = include ? $"Add store {label} to route {r.RouteCode} – {r.RouteName}?" : $"Take store {label} off route {r.RouteCode} – {r.RouteName}?";
+                    if (!ConfirmRouteChange(ask)) { Say("Route not changed.", false); BeginInvoke(new Action(() => LoadRoutes(r.RouteCode))); return; }
+                }
                 bool changed = MJdatabase.SetStoreOnRoute(r, st, include);
                 if (changed) Say(include ? $"✔ {st.StoreName} is now on route {r.RouteCode}." : $"{st.StoreName} was taken off route {r.RouteCode}.", false);
                 else Say(include ? $"No change: {st.StoreName} is already on route {r.RouteCode}." : $"No change: {st.StoreName} is not on route {r.RouteCode}.", false);
@@ -559,6 +596,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.ToggleStore", ex); Say("✕ " + ex.Message, true); BeginInvoke(new Action(() => LoadRoutes(r.RouteCode))); }
         }
+        /// <summary>
+        /// Nov 17: "+ Add store" with the address box empty asks first. The address stays optional: Yes adds the store without one,
+        /// No (the default) puts the cursor in the address box.
+        /// </summary>
+        private bool ConfirmNoAddress(string code, string name, string? address)
+        {
+            if (MJdatabase.CleanStoreText(address).Length > 0) return true;
+            string who = code.Length > 0 ? $"{code} – {name}" : $"{name} (no code typed: one is made)";
+            var ans = MessageBox.Show(FindForm(), $"No address was typed for store {who}.\n\nThe address is shown on trip reports and store details. Add the store without an address? You can type it later in the store table.",
+                "Store has no address", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+            if (ans == DialogResult.Yes) return true;
+            Say("Type the store address, then add the store.", false);
+            try { txtAddress.Focus(); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            return false;
+        }
+
+        /// <summary>Nov 17: every change to a saved client's delivery route (stores added or taken off, stop order, the one-route switch) asks first.</summary>
+        private bool ConfirmRouteChange(string question)
+            => MessageBox.Show(FindForm(), question, "Confirm delivery route change", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+
         private void ToggleStore(int rowIndex)
         {
             if (isPending()) { TogglePendingStore(rowIndex); return; } // Nov 6: client not saved yet

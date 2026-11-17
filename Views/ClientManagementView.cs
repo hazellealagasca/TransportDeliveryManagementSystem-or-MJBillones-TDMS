@@ -1057,6 +1057,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (MessageBox.Show(ask, isNewClient ? "Add client" : "Update client", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return false;
             }
             if (!ConfirmNoStoresOrRoutes(name, individual)) return false;   // Nov 17: asked last, after every field check passed
+            if (!ConfirmStoresWithoutAddress(name, individual)) return false;   // Nov 17: stores with a blank address are listed
             try
             {
                 if (!isNewClient && selectedClient != null && !string.Equals(selectedClient.CompanyName.Trim(), name, StringComparison.Ordinal))
@@ -1130,6 +1131,33 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             storesRoutes.FocusStoreEntry();
             return false;
         }
+        /// <summary>
+        /// Nov 17: a Corporate client with company stores that have no address lists them before saving. The address stays optional:
+        /// Yes saves anyway, No (the default) goes back so the addresses can be typed in the store table.
+        /// </summary>
+        private bool ConfirmStoresWithoutAddress(string name, bool individual)
+        {
+            if (individual || storesRoutes == null) return true;   // an Individual client's one IND store uses the drop-off address
+            List<string> missing;
+            try
+            {
+                missing = isNewClient || selectedClient == null
+                    ? storesRoutes.PendingStoresWithoutAddress()
+                    : MJdatabase.GetClientStores(selectedClient.CompanyName).Where(s => string.IsNullOrWhiteSpace(s.Address))
+                        .Select(s => (s.IsGeneratedCode || string.IsNullOrWhiteSpace(s.StoreCode) ? "(no code)" : s.StoreCode.Trim()) + " – " + (s.StoreName ?? "").Trim()).ToList();
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); return true; }   // cannot tell, so do not get in the way of the save
+            if (missing.Count == 0) return true;
+            string shown = name.Length > 0 ? name : "This client";
+            string list = string.Join("\n", missing.Take(12).Select(m => "• " + m)) + (missing.Count > 12 ? $"\n• … and {missing.Count - 12} more" : "");
+            string msg = $"{shown} has {missing.Count} store{(missing.Count == 1 ? "" : "s")} with no address:\n\n{list}\n\n" +
+                         "The address is shown on trip reports and store details. Save anyway and type the address" + (missing.Count == 1 ? "" : "es") + " later in the store table?";
+            if (MessageBox.Show(FindForm(), msg, "Stores without an address", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes) return true;
+            lblSaveState.Text = "Not saved: type the store addresses in the store table, then save";
+            lblSaveState.ForeColor = AppTheme.WarningText;
+            return false;
+        }
+
         private void DeleteClient()
         {
             if (selectedClient == null || isNewClient) return;
@@ -1179,7 +1207,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show($"Store code {store.StoreCode} is already used by \"{sameCode.StoreName}\". Each store needs its own code.", "Stores", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            if (MessageBox.Show($"Are you sure you want to save the changes to store \"{(store.StoreCode.Length == 0 ? store.StoreName : store.StoreCode + " - " + store.StoreName)}\"?", "Save store", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            // Nov 17: the question lists what changes (old → new); nothing changed = nothing to ask or save.
+            string changes = DescribeStoreChanges(store, out bool anyChange);
+            if (!anyChange) { lblSaveState.Text = "No change to save"; lblSaveState.ForeColor = AppTheme.TextMuted; return; }
+            string storeLabel = store.StoreCode.Length == 0 ? store.StoreName : store.StoreCode + " - " + store.StoreName;
+            string noAddress = string.IsNullOrWhiteSpace(store.Address) ? "\n\n⚠ This store has no address. You can save it now and type the address later." : "";
+            if (MessageBox.Show(FindForm(), $"Save the changes to store \"{storeLabel}\"?\n\n{changes}{noAddress}", "Confirm store change", MessageBoxButtons.YesNo,
+                    noAddress.Length > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Question) != DialogResult.Yes)
             {
                 BeginInvoke(new Action(() => LoadClientBranches(selectedClient.CompanyName)));
                 lblSaveState.Text = "Store change not saved";
@@ -1198,6 +1232,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show("Couldn't save the store: " + ex.Message, "Stores", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 LoadClientBranches(selectedClient.CompanyName);
             }
+        }
+
+        /// <summary>Nov 17: "Store code: 20000 → 20001" lines for what differs from the saved store (a new row lists what was typed).</summary>
+        private string DescribeStoreChanges(ClientStore store, out bool anyChange)
+        {
+            ClientStore? saved = null;
+            try { if (store.Id > 0 && selectedClient != null) saved = MJdatabase.GetClientStores(selectedClient.CompanyName).FirstOrDefault(s => s.Id == store.Id); }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+            string Show(string? v) => string.IsNullOrWhiteSpace(v) ? "(blank)" : v.Trim();
+            string ShowCode(ClientStore s) => s.IsGeneratedCode || string.IsNullOrWhiteSpace(s.StoreCode) ? "(no code)" : s.StoreCode.Trim();
+            var lines = new List<string>();
+            if (saved == null)
+            {
+                lines.Add($"New store: {Show(store.StoreName)}" + (store.StoreCode.Length > 0 ? $" (code {store.StoreCode})" : ""));
+                if (!string.IsNullOrWhiteSpace(store.Address)) lines.Add($"Address: {store.Address.Trim()}");
+                anyChange = true;
+                return string.Join("\n", lines);
+            }
+            string newCode = store.StoreCode.Length == 0 ? ShowCode(saved) : store.StoreCode;
+            if (!string.Equals(ShowCode(saved), newCode, StringComparison.OrdinalIgnoreCase)) lines.Add($"Store code: {ShowCode(saved)} → {newCode}");
+            if (!string.Equals((saved.StoreName ?? "").Trim(), store.StoreName, StringComparison.Ordinal)) lines.Add($"Store name: {Show(saved.StoreName)} → {Show(store.StoreName)}");
+            if (!string.Equals(MJdatabase.CleanStoreText(saved.Address), store.Address ?? "", StringComparison.Ordinal)) lines.Add($"Address: {Show(saved.Address)} → {Show(store.Address)}");
+            bool extra = !string.Equals(saved.ExtraFieldsJson ?? "", store.ExtraFieldsJson ?? "", StringComparison.Ordinal);
+            if (extra && lines.Count == 0) lines.Add("Other store details were changed.");
+            anyChange = lines.Count > 0;
+            return string.Join("\n", lines);
         }
 
         private void AddNewBranchRow()

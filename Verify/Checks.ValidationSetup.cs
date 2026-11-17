@@ -133,12 +133,13 @@ public static partial class Checks
         {
             SignInAsAdmin();
             using var boxes = new BoxCloser(GetCurrentThreadId());
+            using var yes = new YesPresser(GetCurrentThreadId());   // Nov 17: "No stores or delivery routes yet" asks before a store-less client is saved
             var msgs = new List<string>();
             const BindingFlags F = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
             var vt = typeof(ClientManagementView);
             using var view = new ClientManagementView();
             TextBox B(string f) => (TextBox)vt.GetField(f, F)!.GetValue(view)!;
-            foreach (var (f, len) in new[] { ("txtClientName", 150), ("txtClientAddress", 250), ("txtContactPerson", 100), ("txtContactNumber", 20), ("txtEmail", 100), ("txtClientTin", 15) })
+            foreach (var (f, len) in new[] { ("txtClientName", 150), ("txtClientAddress", 250), ("txtContactPerson", 100), ("txtContactNumber", 11), ("txtEmail", 100), ("txtClientTin", 15) })
                 if (B(f).MaxLength != len) msgs.Add($"{f} MaxLength {B(f).MaxLength}, expected {len}");
             bool Try(string person, string email, string name)
             {

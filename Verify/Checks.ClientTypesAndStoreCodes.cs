@@ -342,6 +342,7 @@ public static partial class Checks
         return RunOnSta(() =>
         {
             var bad = new List<string>();
+            using var yes = new YesPresser(GetCurrentThreadId());   // Nov 17: "Store has no address" asks; Yes adds the store without one
             var pt = typeof(ClientStoresRoutesPanel);
             string Msg(ClientStoresRoutesPanel p) => ((Label)pt.GetField("lblMsg", CtF)!.GetValue(p)!).Text;
             void Type(ClientStoresRoutesPanel p, string code, string name) { ((TextBox)pt.GetField("txtCode", CtF)!.GetValue(p)!).Text = code; ((TextBox)pt.GetField("txtName", CtF)!.GetValue(p)!).Text = name; }

@@ -31,6 +31,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private DataGridView pendingGrid = null!;
         private Control storesGridCtl = null!;
         public bool HasPending => pendingStores.Count > 0 || pendingRoutes.Count > 0;
+        /// <summary>Nov 17: the new client's stores (not saved yet) that have no address, as "CODE – Name" ("Name (code made on save)" for a made code).</summary>
+        public List<string> PendingStoresWithoutAddress()
+            => pendingStores.Where(p => !pendingAddress.TryGetValue(p.Code, out var a) || string.IsNullOrWhiteSpace(a))
+                .Select(p => pendingGenerated.Contains(p.Code) ? $"{p.Name} (code made on save)" : $"{p.Code} – {p.Name}").ToList();
         public int PendingStoreCount => pendingStores.Count;
         public int PendingRouteCount => pendingRoutes.Count;
 
@@ -117,6 +121,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (problem != null) { Say("✕ " + problem, true); return; }
             }
             catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.AddPendingStore", ex); Say("✕ Couldn't check the store: " + ex.Message, true); return; }
+            if (!ConfirmNoAddress(generated ? "" : code, name, address)) return;   // Nov 17: a store without an address asks first
             pendingStores.Add((code, name)); pendingAddress[code] = address; if (generated) pendingGenerated.Add(code);
             Say(generated ? $"✔ {name} added (no code typed: one is made when the client is saved). It is saved together with the client when you click Create client." : $"✔ {code} – {name} added. It is saved together with the client when you click Create client.", false);
             txtCode.Clear(); txtName.Clear(); txtAddress.Clear(); txtCode.Focus();

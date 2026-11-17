@@ -133,6 +133,7 @@ public static partial class Checks
             }
             // Clients > Stores and routes quick-add bar: a saved client, then a new unsaved client
             using (var host = new Form())
+            using (var yesAdd = new YesPresser(GetCurrentThreadId()))   // Nov 17: "Store has no address" asks; Yes adds it without one
             {
                 var grid = new DataGridView();
                 var panel = new ClientStoresRoutesPanel(() => "CLIENT A", grid, () => { });
