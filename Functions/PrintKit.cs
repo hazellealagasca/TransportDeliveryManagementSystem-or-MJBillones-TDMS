@@ -67,7 +67,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public bool SelectedRowsOnly { get; set; }
         public int SelectedRowCount { get; set; }
         public bool HasBlankRows { get; set; }
-        public int BlankRows { get; set; } = 8;
+        /// <summary>Nov 17: empty rows added under the data for writing by hand. 0 by default: only rows with data are printed.</summary>
+        public int BlankRows { get; set; } = 0;
+        /// <summary>Nov 17: true once the person set the blank rows in the print window; only then is a saved number used (older saved layouts kept the old default of 8).</summary>
+        public bool BlankRowsChosen { get; set; }
         public bool On(string key) => Sections.FirstOrDefault(s => s.Key == key)?.On ?? true;
         /// <summary>A column listed in the options follows its tick box; a column the saved options do not know yet is shown, except the optional store address (off until ticked).</summary>
         public bool Col(string key) => Columns.FirstOrDefault(s => s.Key == key)?.On ?? key != "store_address";
@@ -105,7 +108,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 o.FontPct = s.FontPct is >= 70 and <= 140 ? s.FontPct : 100; o.Margins = s.Margins; o.Tone = s.Tone; o.ShowLogo = s.ShowLogo;
                 o.Footer = s.Footer;
                 if (!string.IsNullOrWhiteSpace(s.Notes) && string.IsNullOrWhiteSpace(o.Notes)) o.Notes = s.Notes;
-                if (o.HasBlankRows && s.BlankRows is >= 0 and <= 40) o.BlankRows = s.BlankRows;
+                if (o.HasBlankRows && s.BlankRowsChosen && s.BlankRows is >= 0 and <= 40) { o.BlankRows = s.BlankRows; o.BlankRowsChosen = true; }
                 MergeFields(o.Header, s.Header);
                 MergeFields(o.Fields, s.Fields);
                 foreach (var c in o.Sections) { var m = s.Sections.FirstOrDefault(x => x.Key == c.Key); if (m != null) c.On = m.On; }

@@ -718,7 +718,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var o = NewOptions("TripReport", "Trip Report", $"Dispatch {d.DispatchNumber}");
             o.Orientation = "Landscape";
             o.HasBlankRows = true;
-            o.BlankRows = 8;
+            o.BlankRows = 0;   // Nov 17: no empty rows under the stores unless chosen in the print window
             o.Fields = new List<PrintField>
             {
                 new PrintField("ref", "Ref.", trip?.TripReportNumber ?? $"{d.DispatchNumber}"), new PrintField("date", "Delivery date", Fmt.Date(d.DispatchDate)),

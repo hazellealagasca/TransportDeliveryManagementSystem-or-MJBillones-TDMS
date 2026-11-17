@@ -187,7 +187,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 var num = new NumericUpDown { Minimum = 0, Maximum = 40, Value = Math.Max(0, Math.Min(40, o.BlankRows)), Width = D(90), Margin = new Padding(0, D(2), 0, 0) };
                 WheelScrollsOptions(num);
-                num.ValueChanged += (s, e) => { o.BlankRows = (int)num.Value; Schedule(); };
+                num.ValueChanged += (s, e) => { o.BlankRows = (int)num.Value; o.BlankRowsChosen = true; Schedule(); };   // Nov 17: remembered only when set here
                 var f = new FlowLayoutPanel { AutoSize = true, WrapContents = true, BackColor = Color.Transparent, Margin = new Padding(0, 0, 0, D(10)) };
                 f.Controls.Add(new Label { Text = "Table rows (blank lines are added to reach this)", AutoSize = true, Margin = new Padding(0, D(6), D(10), D(4)), ForeColor = AppTheme.TextSecondary });
                 f.Controls.Add(num);
