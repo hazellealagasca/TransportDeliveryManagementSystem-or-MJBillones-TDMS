@@ -40,10 +40,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // the crew list gives the name; the saved text is only a fallback for a single aide.
             string single = aideIds.Count == 1 ? (!string.IsNullOrWhiteSpace(d.AideName) ? d.AideName : d.AideNames ?? "") : "";
             if (single.Trim().Equals("None", StringComparison.OrdinalIgnoreCase)) single = "";
-            foreach (int id in aideIds)
+            // Nov 18: several aides: "Last, First Middle, Last, First Middle" splits into 2 parts per name, so pair the parts back up
+            // when the count matches (only a fallback for a crew member who is no longer in the crew list).
+            var parts = (d.AideNames ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            var paired = aideIds.Count > 1 && parts.Length == aideIds.Count * 2
+                ? Enumerable.Range(0, aideIds.Count).Select(i => parts[2 * i] + ", " + parts[2 * i + 1]).ToList()
+                : aideIds.Count > 1 && parts.Length == aideIds.Count ? parts.ToList() : new List<string>();
+            for (int i = 0; i < aideIds.Count; i++)
             {
+                int id = aideIds[i];
                 if (list.Any(x => x.Id == id)) continue;
-                list.Add((id, NameOf(id, single.Length > 0 ? single : $"Crew #{id}"), "Aide"));
+                string fallback = single.Length > 0 ? single : i < paired.Count ? paired[i] : $"Crew #{id}";
+                list.Add((id, NameOf(id, fallback), "Aide"));
             }
             return list.Where(x => x.Name.Length > 0).ToList();
         }

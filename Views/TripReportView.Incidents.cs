@@ -38,6 +38,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Saved incident lines the person took off; they are voided when the report is saved.</summary>
         private readonly List<int> removedIncidentIds = new List<int>();
         private bool incidentBusy;
+        /// <summary>Nov 18: the dispatch step 3 belongs to, read fresh from the database when the trip is picked (its truck, driver and aides as assigned now).</summary>
+        private Delivery? incidentTrip;
+        /// <summary>Nov 18: "Truck · Driver · Aides" of that dispatch, at the top of step 3.</summary>
+        private Label? lblIncTrip;
 
         /// <summary>True while step 3 is shown (the trip-incident switch is on).</summary>
         private bool IncidentStepOn => Features.On(Features.TripIncidents);
@@ -55,6 +59,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             rbIncYes = new RadioButton { AutoSize = true, Text = "Yes", Font = new Font("Segoe UI", 10F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0), Name = "rbIncidentYes" };
             lblIncHint = new Label { AutoSize = true, Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.WarningText, Margin = new Padding(Dpi(18), Dpi(6), 0, 0), UseMnemonic = false, Visible = false };
             ask.Controls.AddRange(new Control[] { lblAsk, rbIncNo, rbIncYes, lblIncHint });
+            // Nov 18: the trip's assigned truck and crew, so the incident is clearly tied to them (and "Charge to" lists the same people).
+            lblIncTrip = new Label { AutoSize = true, Font = new Font("Segoe UI", 9.5F), ForeColor = AppTheme.TextSecondary, Margin = new Padding(0, 0, 0, Dpi(6)), UseMnemonic = false, Name = "lblIncidentTrip",
+                Text = "Pick the dispatch first: its truck, driver and aides show here." };
+            root.Controls.Add(lblIncTrip);
             root.Controls.Add(ask);
 
             Label Cap(string t) => new Label { AutoSize = true, Text = t, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextSecondary, Margin = new Padding(0, 0, Dpi(12), Dpi(2)), UseMnemonic = false };
@@ -164,8 +172,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridInc.Rows.Clear();
             foreach (var l in tripIncidentLines)
             {
-                int i = gridInc.Rows.Add(l.Cause, l.DamagedQuantity.ToString("N0"), l.EstimatedCost.ToString("N2"), l.ChargedToDisplay, l.Description);
+                var gone = ChargedNoLongerOnTrip(l);   // Nov 18: the dispatch's crew changed after this incident was saved
+                string charged = gone.Count == 0 ? l.ChargedToDisplay : $"{l.ChargedToDisplay}  ⚠ no longer on this trip: {string.Join("; ", gone)}";
+                int i = gridInc.Rows.Add(l.Cause, l.DamagedQuantity.ToString("N0"), l.EstimatedCost.ToString("N2"), charged, l.Description);
                 gridInc.Rows[i].Tag = l;
+                if (gone.Count > 0)
+                {
+                    gridInc.Rows[i].Cells["colIncCrew"].Style.ForeColor = AppTheme.WarningText;
+                    gridInc.Rows[i].Cells["colIncCrew"].ToolTipText = "The dispatch's crew was changed after this incident was saved. Remove the incident and add it again to charge the current crew.";
+                }
             }
             bool yes = rbIncYes != null && rbIncYes.Checked;
             gridInc.Visible = yes && tripIncidentLines.Count > 0;
@@ -183,6 +198,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 tripIncidentLines.Clear();
                 removedIncidentIds.Clear();
+                // Nov 18: the trip as assigned NOW (the list behind the drop-down can be older than a change made on the dispatch).
+                incidentTrip = null;
+                if (d != null && d.Id > 0)
+                {
+                    try { incidentTrip = MJdatabase.GetDeliveryById(d.Id) ?? d; }
+                    catch (Exception ex) { ErrLog.Swallowed(ex); incidentTrip = d; }
+                }
+                ShowIncidentTripLine();
                 bool usable = d != null && d.Id > 0 && IncidentStepOn;
                 rbIncNo.Enabled = rbIncYes.Enabled = usable;
                 if (usable) tripIncidentLines.AddRange(MJdatabase.GetTripIncidents(d!.Id));
@@ -196,6 +219,30 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             finally { incidentBusy = false; }
             UpdateTripStepper();
+        }
+
+        /// <summary>Nov 18: "🚚 Truck: … · 👤 Driver: … · 🤝 Aides: …" of the trip step 3 belongs to.</summary>
+        private void ShowIncidentTripLine()
+        {
+            if (lblIncTrip == null) return;
+            var t = incidentTrip;
+            if (t == null) { lblIncTrip.Text = "Pick the dispatch first: its truck, driver and aides show here."; return; }
+            string aides = string.Join(", ", MJdatabase.GetTripCrewForCharge(t).Where(c => c.Role == "Aide").Select(c => c.Name));
+            string driver = MJdatabase.GetTripCrewForCharge(t).FirstOrDefault(c => c.Role == "Driver").Name ?? "";
+            lblIncTrip.Text = $"Dispatch {t.DispatchNumber}   ·   🚚 Truck: {(string.IsNullOrWhiteSpace(t.TruckInfo) ? "none" : t.TruckInfo)}   ·   👤 Driver: {(driver.Length == 0 ? "none" : driver)}   ·   🤝 Aides: {(aides.Length == 0 ? "none" : aides)}";
+        }
+
+        /// <summary>Nov 18: crew ids of a saved incident line that are no longer on the trip's crew (after the dispatch's crew was changed).</summary>
+        private List<string> ChargedNoLongerOnTrip(IncidentReport l)
+        {
+            var left = new List<string>();
+            if (!l.ChargeableToCrew || string.IsNullOrWhiteSpace(l.ChargedCrewIds) || incidentTrip == null) return left;
+            var crewIds = MJdatabase.GetTripCrewForCharge(incidentTrip).Select(c => c.Id).ToHashSet();
+            var ids = l.ChargedCrewIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var names = (l.ChargedCrewNames ?? "").Split(';', StringSplitOptions.TrimEntries);
+            for (int i = 0; i < ids.Length; i++)
+                if (int.TryParse(ids[i], out int id) && !crewIds.Contains(id)) left.Add(i < names.Length && names[i].Length > 0 ? names[i] : $"Crew #{id}");
+            return left;
         }
 
         /// <summary>Back to No, no lines and empty fields (a new report, or after a save).</summary>
@@ -224,7 +271,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 incCrewBoxes.Clear();
                 foreach (Control c in flowIncCrew.Controls.Cast<Control>().ToList()) { flowIncCrew.Controls.Remove(c); c.Dispose(); }
                 List<(int Id, string Name, string Role)> crew;
-                try { crew = MJdatabase.GetTripCrewForCharge(TripDelivery()); }
+                try { crew = MJdatabase.GetTripCrewForCharge(incidentTrip ?? TripDelivery()); }   // Nov 18: the trip step 3 was loaded for
                 catch (Exception ex) { ErrLog.Swallowed(ex); crew = new List<(int, string, string)>(); }
                 foreach (var m in crew)
                 {
