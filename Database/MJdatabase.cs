@@ -12077,7 +12077,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                string backupDir = Functions.AppPaths.Backups;
+                string backupDir = AutoBackupFolder;   // Nov 17: the folder chosen in Backup & Restore (default: Backups in the data folder)
 
                 if (!Directory.Exists(backupDir))
 
@@ -14517,7 +14517,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             {
 
-                string backupDir = Path.Combine(Functions.AppPaths.Backups, "AutoSave");
+                string backupDir = Path.Combine(AutoBackupFolder, "AutoSave");   // Nov 17: under the chosen automatic backups folder
 
                 if (!Directory.Exists(backupDir))
 

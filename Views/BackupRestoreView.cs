@@ -13,6 +13,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             InitializeComponent();
             Pal.RemapTree(this);
+            AddAutoFolderRow();
             AddFolderLinks();
             lblTitle.UseMnemonic = false;
             lblBDesc.Text = "Save a copy of all records (orders, dispatches, trucks, crew, billing and receipts) as a .db file, plus a _files.zip with every photo and document.";
@@ -24,9 +25,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 p.Resize += (s, e) => Wrap();
                 Wrap();
             }
-            var last = MJdatabase.LastManualBackup();
-            lblDbStatus.Text = $"Data folder: {AppPaths.DataRoot}\nDatabase: {MJdatabase.DbFilePath}\n" +
-                $"Last manual backup: {(last.HasValue ? Fmt.DateTimeText(last.Value) : "never")} · Automatic copies: {AppPaths.Backups}";
+            RefreshStatusText();
         }
         private void AddFolderLinks()
         {
@@ -54,7 +53,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 path: AppPaths.DataRoot, note: "Use Create Backup Snapshot at least once a week and keep the copy (the .db file and its _files.zip) on a USB drive or cloud storage.", okText: "Got it");
             links.Controls.Add(where);
             links.Controls.Add(L("Open data folder", () => AppPaths.DataRoot));
-            links.Controls.Add(L("Open automatic backups", () => AppPaths.Backups));
+            links.Controls.Add(L("Open automatic backups", () => MJdatabase.AutoBackupFolder));
             links.Controls.Add(L("Open error log", () => File.Exists(AppLog.ErrorLogFile) ? AppLog.ErrorLogFile : AppPaths.Logs));
             pnlStatus.Controls.Add(links);
             links.BringToFront();
@@ -91,8 +90,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                      : files == 0 ? "\n\nThere are no photos or documents to save yet."
                                      : $"\n\nThe data was backed up, but the photos and documents couldn't be saved ({fileError}).";
                         MessageBox.Show("Backup created and checked. It can be restored on this or another copy of the app." + extra, "Backup Success", MessageBoxButtons.OK, files < 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
-                        var lastNow = MJdatabase.LastManualBackup();
-                        lblDbStatus.Text = $"Data folder: {AppPaths.DataRoot}\nDatabase: {MJdatabase.DbFilePath}\nLast manual backup: {Fmt.DateTimeText(lastNow)} · Automatic copies: {AppPaths.Backups}";
+                        RefreshStatusText();
                     }
                     else
                     {
