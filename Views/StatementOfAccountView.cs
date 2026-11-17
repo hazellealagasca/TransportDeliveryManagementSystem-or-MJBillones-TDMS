@@ -690,7 +690,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Nov 6 workflow: the statement shows only the billed line items (DR no., store, plate, tons, drops, freight tariff,
             // fuel surcharge) and the crew names. The other columns stay in the table (hidden) so the saved lines keep their data.
             // Nov 7: the table follows the statement sheet: Trip, Date store received, Zone, DR no., Destination, Type of delivery, Plate, Tons, Drops, Amount, Fuel surcharge, Driver / Aide.
-            foreach (var hide in new[] { "colTripReport", "colCrates", "colStoreCode", "colDrBtn" }) gridItems.Columns[hide]!.Visible = false;
+            // Nov 18: Zone hidden on screen (column and data kept; still a merged trip column)
+            foreach (var hide in new[] { "colTripReport", "colCrates", "colStoreCode", "colDrBtn", "colZone" }) gridItems.Columns[hide]!.Visible = false;
             gridItems.Columns["colTripNo"]!.HeaderText = "Trip";
             gridItems.Columns["colDr"]!.HeaderText = "DR no.";
             gridItems.Columns["colDest"]!.HeaderText = "Destination";
