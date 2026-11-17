@@ -146,7 +146,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 4, 8, 4)
             };
             btnToggleForm.FlatAppearance.BorderSize = 0;
-            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) { if (FormGuard.ConfirmDiscard(this)) SetFormVisibility(false); } else OpenNewTripReport(); };
+            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) { if (FormGuard.ConfirmDiscard(this)) SetFormVisibility(false); } else { OpenNewTripReport(); CloseNewFormIfNoDispatch(); } };   // Nov 18: never an empty form
             UIThemeHelper.SetButtonRole(btnToggleForm, "primary");
             pnlGridActionsFlow.Controls.Add(btnToggleForm);
             pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
@@ -198,7 +198,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Padding = new Padding(Dpi(12), Dpi(4), Dpi(12), Dpi(4)),
                 Margin = new Padding(0, Dpi(8), 0, 0),
                 AutoEllipsis = true,
-                Text = "ℹ️ Pick a dispatch order above to load its route, truck, crew and stores."
+                Visible = false,   // Nov 18: shown only while a dispatch is selected
+                Text = ""
             };
 
             pnlMultiDropInfo = new Panel
@@ -468,7 +469,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string refNum = $"RCS VILLASIS{d.DispatchDate:MMddyy}-{d.Id:D3}";
                 if (lblDispatchInfoBanner != null)
                 {
-                    lblDispatchInfoBanner.Text = $"📄 Ref: {refNum}   ·   🛣️ Route: {routeTitle}   ·   📅 Date: {Fmt.Date(d.DispatchDate)} (leaves {d.DepartureTime})" + Environment.NewLine + $"🚚 Truck: {d.TruckInfo}   ·   👤 Driver: {d.DriverName}   ·   🤝 Aides: {d.AideDisplay}";
+                    lblDispatchInfoBanner.Visible = true;   // Nov 18: the picker is hidden, so this banner names the dispatch
+                    lblDispatchInfoBanner.Text = $"Dispatch {d.DispatchNumber}   ·   📄 Ref:{refNum}   ·   🛣️ Route: {routeTitle}   ·   📅 Date: {Fmt.Date(d.DispatchDate)} (leaves {d.DepartureTime})" + Environment.NewLine + $"🚚 Truck: {d.TruckInfo}   ·   👤 Driver: {d.DriverName}   ·   🤝 Aides: {d.AideDisplay}";
                 }
                 var incidents = MJdatabase.GetIncidentReports().FindAll(ir => ir.DeliveryId == d.Id);
                 // An incident note filled in automatically for the previously picked dispatch belongs to that trip only.
@@ -1749,6 +1751,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             OpenNewTripReport();
             int idx = FindDeliveryItemIndex(dispatchNumber);
             if (idx >= 0 && cbDelivery.SelectedIndex != idx) cbDelivery.SelectedIndex = idx;
+            CloseNewFormIfNoDispatch();   // Nov 18: after the pick; the dispatch wasn't on the list, so there is nothing to fill in
         }
         public void FilterByDispatch(string dispatchNumber)
         {

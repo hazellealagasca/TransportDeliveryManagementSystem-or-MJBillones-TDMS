@@ -87,8 +87,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblCrateTotals.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tblCrateTotals.Controls.Add(tblDeliveredCrates, 0, 0);
             tblCrateTotals.Controls.Add(tblReturnedCrates, 1, 0);
-            var card1 = CreateSectionCard("•", "Dispatch order", "Pick the delivery this report closes out. Its route, truck and crew load automatically.",
-                lblDel, BuildPickFilterRow(), cbDelivery, BuildExtraDispatchesRow(), BuildTripOverview(), BuildTripTypeRow());
+            var pickFilterRow = BuildPickFilterRow();
+            var card1 = CreateSectionCard("•", "Dispatch order", "The delivery this report closes out. Its route, truck and crew are loaded from the waiting list.",
+                lblDel, pickFilterRow, cbDelivery, lblDispatchInfoBanner, BuildExtraDispatchesRow(), BuildTripOverview(), BuildTripTypeRow());
+            // Nov 18: no "Dispatch order" caption, search row or drop-down on the form. A report is always started from the waiting list
+            // (Create trip report) or from a dispatch, which picks the dispatch in cbDelivery by code; the controls stay (hidden) and keep driving the form.
+            // The picked dispatch is shown by lblDispatchInfoBanner and the trip overview.
+            lblDel.Visible = false;
+            pickFilterRow.Visible = false;
+            cbDelivery.Visible = false;
+            if (lblDispatchInfoBanner != null) lblDispatchInfoBanner.Visible = GetSelectedDelivery() != null;
             tripCrateSummary = new TripCrateSummaryPanel();
             lblDeliveredCrateTotals = new Label
             {
@@ -323,7 +331,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ApplyFormMode();
             SetFormVisibility(true);
             LoadSelectedDeliveryIntoForm();
-            cbDelivery.Focus();
+        }
+        /// <summary>
+        /// Nov 18: the form is useless without a dispatch (the drop-down is hidden). If a new report was opened with none picked,
+        /// close it, say how to start one and stay on the waiting list. Returns true when the form was closed.
+        /// </summary>
+        private bool CloseNewFormIfNoDispatch()
+        {
+            if (isEditingExistingReport || GetSelectedDelivery() != null) return false;
+            SetFormVisibility(false);
+            ToastHelper.ShowToast(this, "Start a trip report from the waiting list: click Create trip report on the dispatch.", ToastType.Warning);
+            return true;
         }
         private void OpenEditTripReport(TripReport? tr)
         {

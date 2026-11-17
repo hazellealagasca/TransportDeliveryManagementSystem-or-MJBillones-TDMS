@@ -82,10 +82,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return tripStepper;
         }
 
-        private const string TripOverviewPlaceholder = "Pick a dispatch order above: its trip and crate overview shows here.";
+        private const string TripOverviewPlaceholder = "Start from the waiting list (Create trip report): the dispatch's trip and crate overview shows here.";   // Nov 18: the picker is hidden
         /// <summary>No dispatch picked: the overview, the stores table and the step bar start empty (nothing left from the last trip).</summary>
         private void ResetTripOverview()
         {
+            if (lblDispatchInfoBanner != null) lblDispatchInfoBanner.Visible = false;   // Nov 18: no dispatch, no banner
             if (txtTripOverview != null)
             {
                 txtTripOverview.Text = TripOverviewPlaceholder;
