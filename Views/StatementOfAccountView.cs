@@ -1002,8 +1002,86 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 75, MinimumWidth = 60, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter } });
         }
 
+        /// <summary>Nov 17: the list's status for a saved statement that has no service invoice yet (see LoadData).</summary>
+        private const string NoInvoiceStatus = "No invoice";
+
+        /// <summary>Nov 17: true when the statement still needs its service invoice (the list shows "No invoice").</summary>
+        private static bool NeedsServiceInvoice(StatementOfAccount? soa) => soa != null && soa.Id > 0 && RowMenu.Is(soa.Status, NoInvoiceStatus);
+
+        /// <summary>
+        /// Nov 17: "Create service invoice" (row menu and the button in the Status column): opens Service Invoices on this statement — one invoice for the
+        /// whole statement when it can be billed whole, otherwise each trip without an invoice in turn (the same as "Issue Invoice" after saving a statement).
+        /// </summary>
+        private void CreateServiceInvoiceFor(StatementOfAccount soa)
+        {
+            if (!NeedsServiceInvoice(soa)) return;
+            var hub = FinanceHubView.Of(this);
+            if (hub == null) { QuietBox.Show("Open Payments → Service Invoices to make the invoice for " + soa.SoaNumber + ".", "Create service invoice", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            hub.InvoiceStatement(soa.Id);
+        }
+
+        /// <summary>The "+ Create service invoice" button drawn in the Status cell of a "No invoice" row (bounds inside the cell).</summary>
+        private Rectangle CreateInvoiceButtonRect(Rectangle cell)
+        {
+            int h = Math.Min(cell.Height - Dpi(8), Dpi(26));
+            var r = new Rectangle(cell.X + Dpi(4), cell.Y + (cell.Height - h) / 2, cell.Width - Dpi(8), h);
+            return r.Width < Dpi(40) ? Rectangle.Empty : r;
+        }
+
+        /// <summary>Nov 17: Status column: a "No invoice" statement shows a "+ Create service invoice" button there.</summary>
+        private void SetupCreateInvoiceButton()
+        {
+            bool IsStatusCol(int c) => c >= 0 && c < gridSoa.Columns.Count && gridSoa.Columns[c].DataPropertyName == "Status";
+            StatementOfAccount? RowSoa(int r) => r >= 0 && r < gridSoa.Rows.Count ? gridSoa.Rows[r].DataBoundItem as StatementOfAccount : null;
+            gridSoa.CellPainting += (s, e) =>
+            {
+                if (e.RowIndex < 0 || !IsStatusCol(e.ColumnIndex) || e.Graphics == null || !NeedsServiceInvoice(RowSoa(e.RowIndex))) return;
+                e.PaintBackground(e.CellBounds, (e.State & DataGridViewElementStates.Selected) != 0);
+                var r = CreateInvoiceButtonRect(e.CellBounds);
+                if (!r.IsEmpty)
+                {
+                    var g = e.Graphics;
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    using (var path = new System.Drawing.Drawing2D.GraphicsPath())
+                    {
+                        int rad = Dpi(6), d = rad * 2;
+                        path.AddArc(r.X, r.Y, d, d, 180, 90); path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+                        path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90); path.AddArc(r.X, r.Bottom - d, d, d, 90, 90); path.CloseFigure();
+                        using var b = new SolidBrush(AppTheme.Accent);
+                        g.FillPath(b, path);
+                    }
+                    using var f = new Font("Segoe UI Semibold", 8.25F);
+                    TextRenderer.DrawText(g, "＋ Create service invoice", f, r, AppTheme.OnAccent,
+                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+                }
+                e.Handled = true;
+            };
+            gridSoa.CellMouseClick += (s, e) =>
+            {
+                if (e.Button != MouseButtons.Left || e.RowIndex < 0 || !IsStatusCol(e.ColumnIndex)) return;
+                var soa = RowSoa(e.RowIndex);
+                if (!NeedsServiceInvoice(soa)) return;
+                var cell = gridSoa.GetCellDisplayRectangle(e.ColumnIndex, e.RowIndex, false);
+                var r = CreateInvoiceButtonRect(new Rectangle(0, 0, cell.Width, cell.Height));
+                if (r.Contains(e.Location)) BeginInvoke(new Action(() => CreateServiceInvoiceFor(soa!)));
+            };
+            gridSoa.CellMouseMove += (s, e) =>
+            {
+                bool over = e.RowIndex >= 0 && IsStatusCol(e.ColumnIndex) && NeedsServiceInvoice(RowSoa(e.RowIndex));
+                var want = over ? Cursors.Hand : Cursors.Default;
+                if (gridSoa.Cursor != want) gridSoa.Cursor = want;
+            };
+            gridSoa.MouseLeave += (s, e) => { if (gridSoa.Cursor != Cursors.Default) gridSoa.Cursor = Cursors.Default; };
+            gridSoa.CellToolTipTextNeeded += (s, e) =>
+            {
+                if (e.RowIndex >= 0 && IsStatusCol(e.ColumnIndex) && RowSoa(e.RowIndex) is StatementOfAccount soa && NeedsServiceInvoice(soa))
+                    e.ToolTipText = $"{soa.SoaNumber} has no service invoice yet. Click to make it.";
+            };
+        }
+
         private void SetupContextMenu()
         {
+            SetupCreateInvoiceButton();
             RowMenu.Attach(gridSoa, (m, rows) =>
             {
                 if (rows[0].DataBoundItem is not StatementOfAccount soa) return;
@@ -1012,11 +1090,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     $"{RowMenu.Short(soa.ClientName, 28)} · {RowMenu.Money(soa.TotalAmount)} · {soa.PeriodCovered} · {StatusText.BillingText(soa.Status, soa.TotalAmount)}"));
                 m.Items.Add(RowMenu.Item("Edit statement", () => OpenEditStatement(soa), "Enter"));
                 m.Items.Add(RowMenu.Good("Print official statement", () => PrintOfficialSoa(soa)));
-                m.Items.Add(RowMenu.Item("Mark as sent to client", () =>
-                {
-                    MJdatabase.LogStatementIssued(soa.Id, soa.SoaNumber, soa.TotalAmount, "Sent");
-                    ToastHelper.ShowToast(this, $"{soa.SoaNumber} marked as sent (PHP {soa.TotalAmount:N2}). If it changes later you will be told to resend it.", ToastType.Success);
-                }, "", !string.Equals(soa.Status, "Cancelled", StringComparison.OrdinalIgnoreCase)));
+                // Nov 17: "Mark as sent to client" removed; a statement with no service invoice yet can make one from here.
+                m.Items.Add(RowMenu.Good("Create service invoice", () => CreateServiceInvoiceFor(soa), NeedsServiceInvoice(soa)));
                 var stale = MJdatabase.NeedsReissue(MJdatabase.DocSoa, soa.Id, soa.TotalAmount);
                 if (stale != null) m.Items.Add(RowMenu.Item($"⚠ Changed since it was {stale.Kind.ToLowerInvariant()} ({Fmt.Short(stale.At)}, PHP {stale.Amount:N2}): reprint and resend", () => PrintOfficialSoa(soa)));
                 m.Items.Add(RowMenu.Item(string.IsNullOrWhiteSpace(soa.SalesInvoiceNo) ? "No sales invoice linked" : $"Show sales invoice {soa.SalesInvoiceNo}", () => OpenLinkedInvoice(), "", !string.IsNullOrWhiteSpace(soa.SalesInvoiceNo)));
