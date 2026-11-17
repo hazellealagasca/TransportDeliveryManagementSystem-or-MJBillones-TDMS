@@ -391,6 +391,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             catch (Exception ex) { ErrLog.Error("ClientStoresRoutesPanel.PasteStores", ex); Say("✕ Couldn't paste the list: " + ex.Message, true); }
         }
 
+        /// <summary>Nov 17: the store entry boxes have text that was not added with "+ Add store" yet (asked about when the client is saved).</summary>
+        public bool HasTypedStore => txtCode.Text.Trim().Length > 0 || txtName.Text.Trim().Length > 0 || txtAddress.Text.Trim().Length > 0;
+        /// <summary>Nov 17: puts the cursor in the store entry (the name box, or the code box when only a code is typed).</summary>
+        public void FocusStoreEntry() { try { (txtName.Text.Trim().Length == 0 && txtCode.Text.Trim().Length > 0 ? txtCode : txtName).Focus(); } catch (Exception ex) { ErrLog.Swallowed(ex); } }
         /// <summary>Called when another client is opened.</summary>
         public void RefreshForClient() { txtCode.Clear(); txtName.Clear(); txtAddress.Clear(); lblMsg.Text = ""; ApplyPendingMode(); if (page2.Visible) LoadRoutes(); }
 

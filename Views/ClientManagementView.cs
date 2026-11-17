@@ -1056,6 +1056,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string ask = isNewClient ? $"Are you sure you want to add the new client \"{name}\"?" : $"Are you sure you want to save the changes to \"{name}\"?";
                 if (MessageBox.Show(ask, isNewClient ? "Add client" : "Update client", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return false;
             }
+            if (!ConfirmNoStoresOrRoutes(name, individual)) return false;   // Nov 17: asked last, after every field check passed
             try
             {
                 if (!isNewClient && selectedClient != null && !string.Equals(selectedClient.CompanyName.Trim(), name, StringComparison.Ordinal))
@@ -1101,6 +1102,33 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show("Couldn't save the client: " + ex.Message, "Client", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
+        }
+        /// <summary>Nov 17: a Corporate client with no company stores and no delivery routes (and none waiting to be saved) cannot be used for dispatches
+        /// and statements yet. Asks once; "No" is the default and sends the user back to the store entry. Returns true to carry on saving.</summary>
+        private bool ConfirmNoStoresOrRoutes(string name, bool individual)
+        {
+            if (individual || storesRoutes == null) return true;   // an Individual client gets its one IND store from the save itself
+            bool isNew = isNewClient || selectedClient == null;
+            if (isNew)
+            {
+                if (storesRoutes.HasPending) return true;
+            }
+            else
+            {
+                try
+                {
+                    string existing = selectedClient!.CompanyName;
+                    if (MJdatabase.GetClientStores(existing).Count > 0 || MJdatabase.GetDeliveryRoutesByClient(existing, true).Count > 0) return true;
+                }
+                catch (Exception ex) { ErrLog.Swallowed(ex); return true; }   // cannot tell, so do not get in the way of the save
+            }
+            string shown = name.Length > 0 ? name : "This client";
+            string msg = storesRoutes.HasTypedStore
+                ? $"{shown} has no company stores and no delivery routes yet.\n\nA store was typed in the Stores and routes section below but not added yet. Click \"+ Add store\" first so it is kept.\n\nSave the client without stores and routes and add them later?"
+                : $"{shown} has no company stores and no delivery routes yet.\n\nWe recommend adding the company stores and delivery routes now (in the Stores and routes section below), so the client can be used for dispatches and statements.\n\nSave the client without stores and routes and add them later?";
+            if (MessageBox.Show(msg, "No stores or delivery routes yet", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes) return true;
+            storesRoutes.FocusStoreEntry();
+            return false;
         }
         private void DeleteClient()
         {
