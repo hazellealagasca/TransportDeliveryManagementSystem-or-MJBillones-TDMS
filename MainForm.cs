@@ -763,6 +763,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tmrOperationalAlerts.Start();
         }
 
+        /// <summary>Nov 17: when the next In Transit dispatch reaches 24 hours after departure (see MJdatabase.IsAwaitingCompletion).</summary>
+        private DateTime? nextCompletionDue;
+
         private void SetupAutoTransitCheckTimer()
         {
             tmrAutoTransitCheck = new System.Windows.Forms.Timer { Interval = 30000 };
@@ -771,7 +774,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try
                 {
                     var result = MJdatabase.RunOperationalLifecycleAutomation();
-                    bool anyChanged = result.transitStarted > 0 || result.invoicesOverdue > 0 || result.schedulesPastDue > 0;
+                    // Nov 17: a dispatch that has just reached 24 hours after departure turns from Current to Complete on screen.
+                    bool completionDue = nextCompletionDue.HasValue && DateTime.Now >= nextCompletionDue.Value;
+                    nextCompletionDue = MJdatabase.NextCompletionDue();   // re-read every tick: covers orders started by hand ("Start trip now") too
+                    bool anyChanged = result.transitStarted > 0 || result.invoicesOverdue > 0 || result.schedulesPastDue > 0 || completionDue;
                     if (anyChanged)
                     {
                         UpdateHeaderKpiBadges();

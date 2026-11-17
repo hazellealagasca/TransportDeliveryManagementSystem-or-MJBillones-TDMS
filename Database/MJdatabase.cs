@@ -7885,20 +7885,48 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         /// <summary>
 
-        /// A dispatch counts as "For Completion" once it has been In Transit past its dispatch day.
-
-        /// The status in the database stays 'In Transit' (so the truck and crew stay locked) until someone marks the order complete.
+        /// A dispatch counts as "For Completion" (the list shows "Complete") once it has been In Transit for a full
+        /// <see cref="CompletionWaitHours"/> hours after its departure date and time. Before that it shows as Current.
+        /// Nov 17: it used to switch at midnight (dispatch date before today), so an order leaving at 01:01 PM read "Complete"
+        /// eleven hours later. The status in the database stays 'In Transit' (so the truck and crew stay locked) until someone marks the order complete.
 
         /// </summary>
 
-        public static bool IsAwaitingCompletion(Delivery d)
+        public const int CompletionWaitHours = 24;
+
+        public static bool IsAwaitingCompletion(Delivery d) => IsAwaitingCompletion(d, DateTime.Now);
+
+        /// <summary>The same rule at a given moment (used by the checks).</summary>
+        public static bool IsAwaitingCompletion(Delivery? d, DateTime now)
 
         {
 
             if (d == null) return false;
 
-            return string.Equals(d.Status, "In Transit", StringComparison.OrdinalIgnoreCase) && d.DispatchDate.Date < DateTime.Today;
+            return string.Equals(d.Status, "In Transit", StringComparison.OrdinalIgnoreCase) && now >= DepartureDateTime(d).AddHours(CompletionWaitHours);
 
+        }
+
+        /// <summary>Nov 17: when the next In Transit dispatch reaches its 24 hours (null = none waiting), so the open list can redraw at that moment.</summary>
+        public static DateTime? NextCompletionDue()
+        {
+            try
+            {
+                using var conn = new SqliteConnection(connectionString);
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT DispatchDate, COALESCE(DepartureTime,'') FROM Deliveries WHERE Status = 'In Transit' COLLATE NOCASE";
+                using var r = cmd.ExecuteReader();
+                DateTime? next = null;
+                while (r.Read())
+                {
+                    if (!DateTime.TryParse(r.GetValue(0)?.ToString(), out var day)) continue;
+                    var due = DepartureDateTime(day, r.GetString(1)).AddHours(CompletionWaitHours);
+                    if (due > DateTime.Now && (next == null || due < next)) next = due;
+                }
+                return next;
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); return null; }
         }
 
         /// <summary>
