@@ -1220,7 +1220,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         public void ShowIncidentsForDispatch(string dispatchNumber)
         {
-            GetOperationsHub("Incidents")?.FilterIncidentsByDispatch(dispatchNumber);
+            // Nov 18: the old Incident & Damage Logs screen is hidden; incidents are listed in Resources → Incident log.
+            NavigateToResources("IncidentLog");
+            if (viewCache.TryGetValue("ResourcesHubView", out var rv) && rv is ResourcesHubView rhv)
+                rhv.GetView<IncidentLogView>("IncidentLog")?.ShowFor(dispatchNumber);
         }
         public void LogIncidentForDispatch(Delivery delivery)
         {

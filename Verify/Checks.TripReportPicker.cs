@@ -39,6 +39,7 @@ public static partial class Checks
         return RunOnSta(() =>
         {
             using var boxes = new BoxCloser(GetCurrentThreadId());
+            using var no = new NoPresser(GetCurrentThreadId());   // Nov 18: the app's own "Clear empty drafts" question (No) would otherwise wait forever
             using var host = new Form { ShowInTaskbar = false, StartPosition = FormStartPosition.Manual, Location = new Point(-4000, -4000), ClientSize = new Size(1500, 900), Opacity = 0 };
             var view = new TripReportView { Dock = DockStyle.Fill };
             host.Controls.Add(view); host.Show(); Pump(2000);
@@ -97,6 +98,7 @@ public static partial class Checks
         return RunOnSta(() =>
         {
             using var boxes = new BoxCloser(GetCurrentThreadId());
+            using var no = new NoPresser(GetCurrentThreadId());   // Nov 18: the app's own "Clear empty drafts" question (No) would otherwise wait forever
             using var host = new Form { ShowInTaskbar = false, StartPosition = FormStartPosition.Manual, Location = new Point(-4000, -4000), ClientSize = new Size(1500, 900), Opacity = 0 };
             var view = new TripReportView { Dock = DockStyle.Fill };
             host.Controls.Add(view); host.Show(); Pump(2000);

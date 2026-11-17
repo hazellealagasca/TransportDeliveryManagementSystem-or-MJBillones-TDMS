@@ -187,6 +187,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnIncRemove.Visible = gridInc.Visible;
             int rows = Math.Min(Math.Max(tripIncidentLines.Count, 1), 5);
             gridInc.Height = gridInc.ColumnHeadersHeight + rows * Math.Max(gridInc.RowTemplate.Height, Dpi(28)) + Dpi(4);
+            try { UpdateTripCrateSummary(); } catch (Exception ex) { ErrLog.Swallowed(ex); }   // Nov 18: the damaged-crates count follows step 3 at once
         }
 
         /// <summary>Shows the saved incidents of the picked dispatch (Yes when there are some, otherwise No). Special trips and no trip: the step is switched off.</summary>

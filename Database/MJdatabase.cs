@@ -10778,7 +10778,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static List<IncidentReport> GetIncidentReports()
 
         {
-            if (!Features.On(Features.Incidents)) return new List<IncidentReport>();   // Nov 10: incident and damage logs are hidden everywhere
+            // Nov 18: the incidents are the trip report's step 3 lines; they follow "Incident report in trip reports" (TripIncidents), not the
+            // old Incident & Damage Logs screen (Incidents, hidden since Nov 10) — otherwise every reader (crew/truck profile, dossier, counts) saw none.
+            if (!Features.On(Features.TripIncidents)) return new List<IncidentReport>();
 
             var list = new List<IncidentReport>();
 

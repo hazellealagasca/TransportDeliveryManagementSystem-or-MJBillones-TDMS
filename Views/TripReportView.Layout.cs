@@ -411,20 +411,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 var f = new TripCrateFigures();
-                var d = TripDelivery();
-                // Damaged crates come from the trip's incident reports (read again only when the trip changes).
+                var d = TripDelivery() ?? incidentTrip;   // Nov 18: the trip step 3 was loaded for when the drop-down has none
+                // Damaged crates come from the trip's incident lines. Nov 18: step 3's own list (saved lines of this trip plus the ones just
+                // added, without the ones taken off) when step 3 is on this trip, so the count follows step 3 before saving; otherwise the saved ones.
                 int delId = d?.Id ?? 0;
-                if (delId != tripIncidentDeliveryId)
+                tripIncidentDeliveryId = delId;
+                tripIncidentDamaged = 0; tripIncidentNote = "";
+                if (delId > 0)
                 {
-                    tripIncidentDeliveryId = delId;
-                    tripIncidentDamaged = 0; tripIncidentNote = "";
-                    if (delId > 0)
-                    {
-                        var incs = MJdatabase.GetIncidentReports().FindAll(ir => ir.DeliveryId == delId && !string.Equals(ir.Status, "Cancelled", StringComparison.OrdinalIgnoreCase));
-                        tripIncidentDamaged = incs.Sum(i => Math.Max(0, i.DamagedQuantity));
-                        if (tripIncidentDamaged > 0)
-                            tripIncidentNote = $"Damaged: {tripIncidentDamaged:N0} crate{(tripIncidentDamaged == 1 ? "" : "s")} (incident reports for the whole trip: {string.Join("; ", incs.Where(i => i.DamagedQuantity > 0).Select(i => $"{i.Cause} {i.DamagedQuantity:N0}"))})";
-                    }
+                    List<IncidentReport> incs = incidentTrip != null && incidentTrip.Id == delId
+                        ? ((rbIncYes?.Checked ?? false) ? tripIncidentLines.ToList() : new List<IncidentReport>())
+                        : MJdatabase.GetIncidentReports().FindAll(ir => ir.DeliveryId == delId && !string.Equals(ir.Status, "Cancelled", StringComparison.OrdinalIgnoreCase));
+                    tripIncidentDamaged = incs.Sum(i => Math.Max(0, i.DamagedQuantity));
+                    if (tripIncidentDamaged > 0)
+                        tripIncidentNote = $"Damaged: {tripIncidentDamaged:N0} crate{(tripIncidentDamaged == 1 ? "" : "s")} (incident reports for the whole trip: {string.Join("; ", incs.Where(i => i.DamagedQuantity > 0).Select(i => $"{i.Cause} {i.DamagedQuantity:N0}"))})";
                 }
                 string client = (d?.ClientName ?? "").Trim();
                 if (!string.Equals(client, tripRouteStoresClient, StringComparison.OrdinalIgnoreCase))

@@ -340,7 +340,9 @@ public static partial class Checks
             if (Str("SELECT DispatchNumber FROM IncidentReports WHERE DeliveryId = @d ORDER BY Id LIMIT 1", ("@d", id)) != no) problems.Add("the incident has the wrong dispatch number");
             if (Long("SELECT COUNT(*) FROM IncidentReports WHERE DeliveryId = @d AND Cause = 'Broken crates' AND DamagedQuantity = 3 AND EstimatedCost = 450 AND ChargeableToCrew = 1 AND Description = 'Dropped at store 1'", ("@d", id)) != 1) problems.Add("the first incident was not saved with its quantity, cost, crew flag and notes");
             if (MJdatabase.GetTripIncidents(id).Count != 2) problems.Add("GetTripIncidents found " + MJdatabase.GetTripIncidents(id).Count);
-            if (MJdatabase.GetIncidentReports().Count != 0) problems.Add("the full Incident screen's data is not hidden (Features.Incidents is off)");
+            // Nov 18: the trip incidents are read back everywhere (profiles, dossier, counts); only the old full screen stays hidden.
+            if (Features.On(Features.Incidents)) problems.Add("the full Incident & Damage Logs screen is switched on");
+            if (MJdatabase.GetIncidentReports().Count(i => i.DeliveryId == id) != 2) problems.Add("the saved trip incidents are not read back (" + MJdatabase.GetIncidentReports().Count(i => i.DeliveryId == id) + ")");
             return "";
         });
         if (result.Length > 0) return result;

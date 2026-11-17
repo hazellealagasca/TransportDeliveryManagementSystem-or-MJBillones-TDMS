@@ -87,6 +87,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
 
+        /// <summary>Nov 18: shows the incidents matching <paramref name="search"/> (e.g. a dispatch number) over all dates.</summary>
+        public void ShowFor(string search)
+        {
+            RefreshData();
+            var first = all.Count > 0 ? all.Min(x => x.IncidentDate.Date) : DateTime.Today;
+            if (first < dtFrom.MinDate) first = dtFrom.MinDate;
+            if (dtFrom.Value.Date > first) dtFrom.Value = first;
+            if (dtTo.Value.Date < DateTime.Today) dtTo.Value = DateTime.Today;
+            chkChargedOnly.Checked = false;
+            txtSearch.Text = search ?? "";
+        }
+
         public void RefreshData()
         {
             if (loading) return;
