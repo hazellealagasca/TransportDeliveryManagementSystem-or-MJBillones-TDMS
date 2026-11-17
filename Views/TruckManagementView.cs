@@ -165,10 +165,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void InitFullPageForm()
         {
             formKit = new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to trucks");
+            // Nov 18: Vehicle and Capacity are now ONE section (only the grouping changed); Remarks is section 2.
+            // lblCap used to start a card; as a mid-card label give it the same gap above as the other rows.
+            lblCap.Padding = new Padding(lblCap.Padding.Left, lblCap.Padding.Top + 10, lblCap.Padding.Right, lblCap.Padding.Bottom);
             formKit.Build(new[]
             {
-                new FullPageFormKit.Section("Vehicle", "Plate number, type, crate zone and status.", tblPlateType, tblCargoStatus),
-                new FullPageFormKit.Section("Capacity", "Locked to the truck category and crate type above.", lblCap, pnlCapRow, lblCatHint),
+                new FullPageFormKit.Section("Vehicle & capacity", "Plate number, category, crate type, status and the crate capacity (locked to the category and crate type).", tblPlateType, tblCargoStatus, lblCap, pnlCapRow, lblCatHint),
                 new FullPageFormKit.Section("Remarks", "Anything to note about this truck.", lblRemarks, txtRemarks, pnlRemarksSpacer)
             });
             if (btnToggleForm != null)
