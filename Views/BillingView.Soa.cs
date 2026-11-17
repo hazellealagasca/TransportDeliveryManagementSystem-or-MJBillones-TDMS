@@ -33,6 +33,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlFormBody.Controls.Add(cbSoa);
             pnlFormBody.Controls.Add(lblSoa);
             cbSoa.SelectedIndexChanged += (s, e) => OnSoaPicked();
+            // Nov 18: once a statement is shown the box is disabled (no click, wheel or Tab); owner-drawn so the text stays dark and readable.
+            cbSoa.DrawMode = DrawMode.OwnerDrawFixed;
+            cbSoa.DrawItem += (s, e) =>
+            {
+                e.DrawBackground();
+                if (e.Index >= 0)
+                {
+                    bool dis = (e.State & DrawItemState.ComboBoxEdit) != 0 && !cbSoa.Enabled;
+                    var fore = dis ? SystemColors.ControlText : e.ForeColor;
+                    TextRenderer.DrawText(e.Graphics, cbSoa.Items[e.Index]?.ToString() ?? "", e.Font ?? cbSoa.Font, e.Bounds, fore, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                }
+            };
             chkDirectTrip.CheckedChanged += (s, e) => { SwitchInvoiceSource(); ScheduleBillGuide(); };
         }
 
@@ -78,6 +90,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbSoa.SelectedIndex = -1;
             }
             finally { isBindingForm = was; }
+            ApplySoaLock();
         }
 
         private SoaToInvoice? SelectedSoa() => cbSoa != null && cbSoa.SelectedIndex >= 0 && cbSoa.SelectedIndex < soaChoices.Count ? soaChoices[cbSoa.SelectedIndex] : null;
@@ -102,6 +115,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (SelectedSoa() == null) { numTotalAmount.Enabled = false; numFuel.Enabled = false; }
             }
             else if (selectedInvoice == null && cbDelivery.SelectedIndex < 0) { numTotalAmount.Enabled = false; numFuel.Enabled = false; lblTariffMatch.Visible = false; } // no trip picked yet: nothing to bill, amounts stay locked until one is
+            ApplySoaLock();
+        }
+
+        /// <summary>Nov 18: locked while a statement is shown (new invoice with a statement picked, or a saved statement invoice); open when nothing is chosen.</summary>
+        private void ApplySoaLock()
+        {
+            if (cbSoa == null) return;
+            bool savedSoa = selectedInvoice != null && selectedInvoice.SoaId > 0;
+            bool shown = SoaModeOn ? SelectedSoa() != null : savedSoa;
+            cbSoa.Enabled = !shown;
+            cbSoa.TabStop = !shown;
+            cbClient.Enabled = !shown; // the client comes from the statement and must match it
         }
 
         /// <summary>A statement was picked: client, trips and every amount are filled from it and locked.</summary>
@@ -124,6 +149,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblTariffMatch.Text = $"🔒 From {s.SoaNumber}: total sales PHP {t.TotalSales:N2} (freight PHP {freightOnly:N2} + fuel surcharge PHP {t.Fuel:N2}, VAT inclusive) − withholding tax PHP {t.Withholding:N2} = total amount due PHP {t.Due:N2}. Nothing is typed here except the Service Invoice No.";
             lblTariffMatch.Visible = true;
             RecalculateNet(this, EventArgs.Empty);
+            ApplySoaLock();
             ScheduleBillGuide();
         }
 
