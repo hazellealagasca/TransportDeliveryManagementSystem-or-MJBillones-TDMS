@@ -34,7 +34,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnSettled.Click += (s, e) => Show(true);
             btnLog.Click += (s, e) => Show(false);
             btnStatements.Click += (s, e) => Show(false, true);
-            bar.Controls.Add(btnStatements); bar.Controls.Add(btnSettled); bar.Controls.Add(btnLog);
+            // Nov 17: no "Change log" tab here: every change to invoices, statements and receipts is in Settings → Audit Trail (Area filter).
+            bar.Controls.Add(btnStatements); bar.Controls.Add(btnSettled);
+            btnLog.Visible = false;
             host = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Canvas };
             Controls.Add(host); Controls.Add(bar);
             Show(true);
