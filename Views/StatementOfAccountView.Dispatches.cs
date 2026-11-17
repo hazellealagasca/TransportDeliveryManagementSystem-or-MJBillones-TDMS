@@ -194,7 +194,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             var trucks = MJdatabase.GetTrucks();
             var links = MJdatabase.GetSpecialTripLinks();
-            var completed = MJdatabase.GetTripCompletedDates();
             var invoices = MJdatabase.GetTripInvoices(); // Nov 7: the line's amount is the trip's service invoice, never worked out again here
             int trip = NextTripNumber();
             bool was = isBindingForm;
@@ -210,13 +209,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     string driverHelper = $"{t.DriverName} / {t.AideName}".Trim(' ', '/');
                     string dest = string.IsNullOrWhiteSpace(t.DestinationAddress) ? t.Address : t.DestinationAddress;
                     var spInv = MJdatabase.TripInvoiceFor(invoices, 0, t.Id);
-                    int r = gridItems.Rows.Add(trip, Fmt.DateText(completed.Iso(0, t.Id, t.DispatchDate.ToString("yyyy-MM-dd"))), "", "", dest, "SPECIAL", plate, tonnage, Math.Max(1, t.TotalStopsCount), spInv?.Freight ?? t.TripCharge, spInv?.Fuel ?? 0m, driverHelper, "");
+                    // Nov 17: the date is the dispatch date, not the day the trip was completed.
+                    int r = gridItems.Rows.Add(trip, Fmt.Date(t.DispatchDate), "", "", dest, "SPECIAL", plate, tonnage, Math.Max(1, t.TotalStopsCount), spInv?.Freight ?? t.TripCharge, spInv?.Fuel ?? 0m, driverHelper, "");
                     gridItems.Rows[r].Cells["colSpecialTrip"].Value = t.Id.ToString();
                     gridItems.Rows[r].Cells["colTripReport"].Value = links.TryGetValue(t.Id, out var l) && l.HasReport ? l.TripReportNumber : t.OrderReference;
                     trip++;
                 }
             }
             finally { isBindingForm = was; }
+            SortTripsByDateStoreReceived();   // Nov 17: oldest to latest
             SizeItemsGrid();
         }
         private HashSet<int> DeliveryIdsInTable()
@@ -466,7 +467,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int unpriced = 0;
             var trucks = MJdatabase.GetTrucks();
             var reports = MJdatabase.GetTripReportsByDelivery();
-            var completed = MJdatabase.GetTripCompletedDates();
             var tripTypes = MJdatabase.GetTripReportDeliveryTypes(); // Nov 10: REF / DRY is chosen on each trip report
             var invoices = MJdatabase.GetTripInvoices(); // Nov 7: the line's amount and fuel surcharge are the trip's service invoice, never worked out again here
             int trip = NextTripNumber();
@@ -481,7 +481,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     string tonnage = trk != null ? MJdatabase.TonnageLabel(trk) : "6T";
                     string driverHelper = $"{del.DriverName} / {del.AideDisplay}".Trim(' ', '/');
                     var lines = BuildTripLines(del, out int dropCount);
-                    string dateStr = Fmt.DateText(completed.Iso(del.Id, 0, del.DispatchDate.ToString("yyyy-MM-dd"))); // date completed (trip report date)
+                    string dateStr = Fmt.Date(del.DispatchDate); // Nov 17: "Date store received" is the DISPATCH ORDER's date (not the trip report's completion date, not today)
                     var tripInv = MJdatabase.TripInvoiceFor(invoices, del.Id, 0);
                     if (tripInv != null && MJdatabase.IsPreStatementInvoice(del.Id)) tripInv = null; // an unpaid invoice on no statement: its amounts are typed on the statement line
                     decimal rate = tripInv?.Freight ?? 0m, fuelAmt = tripInv?.Fuel ?? 0m;
@@ -516,6 +516,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 isBindingForm = was;
             }
+            SortTripsByDateStoreReceived();   // Nov 17: oldest to latest, Trip renumbered 1..n
             SizeItemsGrid();
             return unpriced;
         }
@@ -578,7 +579,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             var reported = MJdatabase.GetTripReportDeliveryIds();
             var invoices = MJdatabase.GetTripInvoices();
-            var completedOn = MJdatabase.GetTripCompletedDates();
             int changed = 0, added = 0;
             var stale = new List<string>();
             var noReport = new List<string>();
@@ -639,7 +639,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     var tripRows = gridItems.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow && RowDeliveryId(r) == id).ToList();
                     for (int k = 0; k < tripRows.Count; k++)
                     {
-                        string wantDate = Fmt.DateText(completedOn.Iso(id, 0, Fmt.StoredDate(tripRows[k].Cells["colDate"].Value?.ToString())));
+                        string wantDate = Fmt.Date(del.DispatchDate);   // Nov 17: the dispatch order's date
                         decimal wantAmt = k == 0 ? tripInv?.Freight ?? 0m : 0m, wantFuel = k == 0 ? tripInv?.Fuel ?? 0m : 0m;
                         decimal.TryParse(tripRows[k].Cells["colAmount"].Value?.ToString(), out var haveAmt);
                         decimal.TryParse(tripRows[k].Cells["colFuel"].Value?.ToString(), out var haveFuel);
@@ -652,6 +652,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 isBindingForm = was;
             }
+            SortTripsByDateStoreReceived();   // Nov 17: a dispatch date may have changed
             RecalculateTaxes(manualOverride: false);
             SizeItemsGrid();
             RefreshPicker();

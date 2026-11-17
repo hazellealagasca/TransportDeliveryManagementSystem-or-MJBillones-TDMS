@@ -1505,6 +1505,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 gridItems.Rows[r].Cells["colCrates"].Value = it.TotalCrates;
                 gridItems.Rows[r].Cells["colSpecialTrip"].Value = it.SpecialTripId > 0 ? it.SpecialTripId.ToString() : "";
             }
+            // Nov 17: "Date store received" is the dispatch order's date (statements saved before show it too; nothing is written until the person saves),
+            // and the trips are listed oldest to latest, here and in view-only. Money is never touched.
+            ApplyDispatchDatesToRows();
+            SortTripsByDateStoreReceived();
 
             isBindingForm = false;
             UpdateItemsSummary();
@@ -1797,8 +1801,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!CheckRepeatedDrsBeforeSave()) return;
                 if (!IsLegacySoa()) RecalculateTaxes(manualOverride: false); // Nov 12: a statement saved under the old rule is re-worked by the new one on this save
                 if (!IsLegacySoa() && !UseInvoiceTotals()) return; // Nov 6: the statement's total is its invoices' total
+                SortTripsByDateStoreReceived();   // Nov 17: saved oldest to latest, Trip 1..n
                 var items = CollectItemsFromGrid();
-                string period = $"{Fmt.Date(dtpPeriodFrom.Value)} to {Fmt.Date(dtpPeriodTo.Value)}";
+                string period =$"{Fmt.Date(dtpPeriodFrom.Value)} to {Fmt.Date(dtpPeriodTo.Value)}";
 
                 StatementOfAccount soa = isEditingExisting && selectedSoa != null ? selectedSoa : new StatementOfAccount();
                 soa.SoaNumber = string.IsNullOrWhiteSpace(txtSoaNumber.Text) ? MJdatabase.GenerateNextSoaNumber() : txtSoaNumber.Text.Trim();
@@ -2126,6 +2131,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void PrintCurrentDraftSoa()
         {
+            SortTripsByDateStoreReceived();   // Nov 17: printed oldest to latest
             var items = CollectItemsFromGrid();
             var soa = new StatementOfAccount
             {

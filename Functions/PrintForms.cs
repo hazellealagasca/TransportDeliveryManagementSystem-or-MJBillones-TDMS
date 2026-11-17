@@ -217,6 +217,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static PrintFormDef BuildStatementOfAccount(StatementOfAccount soa, List<StatementOfAccountItem> items, bool special)
         {
             var groups = items.GroupBy(i => i.TripNumber).OrderBy(g => g.Key).Select(g => g.ToList()).ToList();
+            // Nov 17: "Date store received" of a trip is its DISPATCH ORDER's date (looked up now, so statements saved earlier print it too; the saved line's
+            // date is the fallback for a line with no dispatch). The trips are listed oldest to latest by it (same date: the saved trip order). A Special Trips
+            // statement keeps its "Date completed" column (the trip report's date) and is listed by that date.
+            var completedDates = special ? MJdatabase.GetTripCompletedDates() : null;
+            DateTime? TripDate(List<StatementOfAccountItem> g)
+            {
+                var first = g[0];
+                try
+                {
+                    if (special) { var c = completedDates!.Of(first.DeliveryId, first.SpecialTripId); if (c.HasValue) return c.Value.Date; }
+                    else if (first.DeliveryId > 0) { var d = MJdatabase.GetDeliveryById(first.DeliveryId); if (d != null) return d.DispatchDate.Date; }
+                    else if (first.SpecialTripId > 0) { var t = MJdatabase.GetSpecialTripById(first.SpecialTripId); if (t != null) return t.DispatchDate.Date; }
+                }
+                catch (Exception ex) { ErrLog.Swallowed(ex); }
+                return Fmt.TryParseDate(first.DateReceived, out var p) || DateTime.TryParse(first.DateReceived, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out p) ? p.Date : null;
+            }
+            var tripDates = new Dictionary<List<StatementOfAccountItem>, DateTime?>();
+            foreach (var g in groups) tripDates[g] = TripDate(g);
+            groups = groups.Select((g, idx) => (g, idx)).OrderBy(x => tripDates[x.g].HasValue ? 0 : 1).ThenBy(x => tripDates[x.g] ?? DateTime.MaxValue).ThenBy(x => x.idx).Select(x => x.g).ToList();
             // Nov 7: a trip's amount and fuel surcharge are those of its service invoice on this statement (read now, so the table always
             // matches the invoice). Lines with no such invoice (older statements) keep their own lines added up.
             var tripInvoices = items.Any(i => i.DeliveryId > 0 || i.SpecialTripId > 0) && soa.Id > 0 ? MJdatabase.GetTripInvoices() : new List<TripInvoice>();
@@ -293,8 +312,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             ("plate", "Plate no.", "center", true), ("tons", "Tons", "center", true),
                             ("drops", "No. of drops", "center", true), ("amount", "Amount", "num", true), ("fuel", "Fuel surcharge", "num", true), ("driver", "Driver / Aide", "center", true)
                         }).Where(c => opt.Col(c.Key)).ToList();
-                    // Date completed = the trip report's date (looked up now, so statements saved earlier print it too); the saved line date is the fallback.
-                    var completed = cols.Any(c => c.Key == "date") ? MJdatabase.GetTripCompletedDates() : null;
                     sb.Append(SectionTitle("Trips"));
                     sb.Append("<table class='grid sheet'><thead><tr>");
                     foreach (var c in cols) sb.Append($"<th class='{c.Css}{(c.Key == "fuel" ? " red" : "")}'>{Esc(c.Header)}</th>");
@@ -313,7 +330,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                                 string span = c.PerTrip && g.Count > 1 ? $" rowspan='{g.Count}'" : "";
                                 string v = c.Key switch
                                 {
-                                    "no" => n.ToString(), "trip_report" => TripReportNos(g), "crates" => g[i].TotalCrates > 0 ? g[i].TotalCrates.ToString("N0") : "-", "date" => Esc(completed!.Text(f.DeliveryId, f.SpecialTripId, f.DateReceived)), "zone" => Esc(f.Zone), "dr" => DrList.Html(g[i].DrNumbers), "code" => Esc(MJdatabase.StoreCodeForPrint(g[i].StoreCode)), "dest" => $"<b>{Esc(g[i].Destination)}</b>",
+                                    "no" => n.ToString(), "trip_report" => TripReportNos(g), "crates" => g[i].TotalCrates > 0 ? g[i].TotalCrates.ToString("N0") : "-", "date" => Esc(tripDates[g] is DateTime td ? Fmt.Date(td) : (f.DateReceived ?? "").Trim()), "zone" => Esc(f.Zone), "dr" => DrList.Html(g[i].DrNumbers), "code" => Esc(MJdatabase.StoreCodeForPrint(g[i].StoreCode)), "dest" => $"<b>{Esc(g[i].Destination)}</b>",
                                     "type" => Esc(f.DeliveryType), "plate" => $"<b>{Esc(f.PlateNumber)}</b>", "tons" => Esc(f.Tonnage), "drops" => TripStoreCount(g).ToString(),
                                     "amount" => $"<b>{TripAmount(g):N2}</b>", "fuel" => TripFuel(g) > 0 ? TripFuel(g).ToString("N2") : "-", "driver" => Esc(f.DriverHelper), _ => ""
                                 };

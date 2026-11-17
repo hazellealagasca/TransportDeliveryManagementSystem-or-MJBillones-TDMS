@@ -46,31 +46,38 @@ public static partial class Checks
     }
 
     [Check]
-    public static string SoaPrint_DateCompleted_IsTripReportDate()
+    public static string SoaPrint_DateStoreReceived_IsDispatchDate_SpecialKeepsDateCompleted()
     {
         Fresh();
         string bad = "";
         string Print(string type, int deliveryId, int specialId)
         {
             var (soa, items) = PrintSample(type);
-            items[0].DeliveryId = deliveryId; items[0].SpecialTripId = specialId; items[0].DateReceived = "2026-11-01"; // the saved line holds the dispatch date
+            items[0].DeliveryId = deliveryId; items[0].SpecialTripId = specialId; items[0].DateReceived = "2026-11-01"; // the date saved on the line
             return Html(PrintForms.StatementOfAccount(soa, items));
         }
-        // A dispatch with a finished trip report prints the report date, not the dispatch date saved on the line.
+        // Nov 17: a normal statement prints the DISPATCH ORDER's date, not the trip report's date and not the date saved on the line.
         int d1 = Seed.Delivery();
         int r1 = Seed.TripReport(d1);
+        Exec("UPDATE Deliveries SET DispatchDate = '2026-10-30' WHERE Id = @i", ("@i", d1));
         Exec("UPDATE TripReports SET ReportDate = '2026-11-05', Status = 'Completed' WHERE Id = @i", ("@i", r1));
         string h1 = Print(SoaTypes.Normal, d1, 0);
-        if (!h1.Contains("11/05/2026") || h1.Contains("11/01/2026")) bad += "dispatch with report did not print the report date; ";
-        // A draft report is not a completion: the saved line date stays.
+        if (!h1.Contains("10/30/2026") || h1.Contains("11/05/2026") || h1.Contains("11/01/2026")) bad += "dispatch with report did not print the dispatch date; ";
+        // A draft report changes nothing: still the dispatch date.
         int d2 = Seed.Delivery();
         int r2 = Seed.TripReport(d2);
+        Exec("UPDATE Deliveries SET DispatchDate = '2026-10-31' WHERE Id = @i", ("@i", d2));
         Exec("UPDATE TripReports SET ReportDate = '2026-11-06', Status = 'Draft' WHERE Id = @i", ("@i", r2));
         string h2 = Print(SoaTypes.Normal, d2, 0);
-        if (h2.Contains("11/06/2026") || !h2.Contains("11/01/2026")) bad += "draft report was treated as completed; ";
-        // No report at all: the saved line date.
-        string h3 = Print(SoaTypes.Normal, Seed.Delivery(), 0);
-        if (!h3.Contains("11/01/2026")) bad += "no report: saved date missing; ";
+        if (h2.Contains("11/06/2026") || !h2.Contains("10/31/2026") || h2.Contains("11/01/2026")) bad += "draft report: the dispatch date was not printed; ";
+        // No trip report at all: still the dispatch date.
+        int d3 = Seed.Delivery();
+        Exec("UPDATE Deliveries SET DispatchDate = '2026-10-29' WHERE Id = @i", ("@i", d3));
+        string h3 = Print(SoaTypes.Normal, d3, 0);
+        if (!h3.Contains("10/29/2026") || h3.Contains("11/01/2026")) bad += "no report: the dispatch date was not printed; ";
+        // A line with no dispatch keeps the date saved on it.
+        string h3b = Print(SoaTypes.Normal, 0, 0);
+        if (!h3b.Contains("11/01/2026")) bad += "a line with no dispatch lost its saved date; ";
         // A special trip prints its trip report date.
         int s1 = Seed.SpecialTrip();
         int sr = Seed.TripReport(0, s1);

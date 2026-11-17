@@ -122,6 +122,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     catch (Exception ex) { ErrLog.Swallowed(ex); }
                 }));
             };
+            // Nov 17: a date typed on a line with no dispatch puts its trip in its place, oldest to latest (only once it reads as a date).
+            gridItems.CellEndEdit += (s, e) =>
+            {
+                if (isBindingForm || e.RowIndex < 0 || e.ColumnIndex < 0 || gridItems.Columns[e.ColumnIndex].Name != "colDate") return;
+                if (!Fmt.TryParseDate(gridItems.Rows[e.RowIndex].Cells["colDate"].Value?.ToString(), out _)) return;
+                BeginInvoke(new Action(SortTripsByDateStoreReceived));
+            };
             // What is typed on the trip's first row is the trip's figure: the other rows of the trip follow (drops) or stay empty (money).
             gridItems.CellValueChanged += (s, e) =>
             {
@@ -139,6 +146,132 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 finally { propagatingTripFigure = false; }
             };
+        }
+
+        // ------------------------------------------------------------------ Nov 17: "Date store received" = the dispatch order's date; trips listed oldest to latest
+
+        private bool sortingTrips;
+
+        /// <summary>Nov 17: the dispatch order's date (Delivery.DispatchDate; a special trip's own dispatch date) of the trip a line bills, or null for a line with no dispatch.</summary>
+        private static DateTime? DispatchDateOfRow(DataGridViewRow r, Dictionary<int, DateTime?> byDelivery, Dictionary<int, DateTime?> bySpecial)
+        {
+            try
+            {
+                int d = RowDeliveryId(r);
+                if (d > 0)
+                {
+                    if (!byDelivery.TryGetValue(d, out var dv)) byDelivery[d] = dv = MJdatabase.GetDeliveryById(d)?.DispatchDate.Date;
+                    return dv;
+                }
+                int s = RowSpecialTripId(r);
+                if (s > 0)
+                {
+                    if (!bySpecial.TryGetValue(s, out var sv)) bySpecial[s] = sv = MJdatabase.GetSpecialTripById(s)?.DispatchDate.Date;
+                    return sv;
+                }
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+            return null;
+        }
+
+        /// <summary>
+        /// Nov 17: every line that bills a dispatch (or special trip) shows the DISPATCH ORDER's date as its "Date store received". Used when a saved statement
+        /// is opened (older statements stored the trip report's date): only what is shown changes, nothing is written until the person saves. Lines with no dispatch stay as they are.
+        /// </summary>
+        private void ApplyDispatchDatesToRows()
+        {
+            if (gridItems == null || !gridItems.Columns.Contains("colDate")) return;
+            var byDelivery = new Dictionary<int, DateTime?>();
+            var bySpecial = new Dictionary<int, DateTime?>();
+            bool was = isBindingForm;
+            isBindingForm = true;
+            try
+            {
+                foreach (DataGridViewRow r in gridItems.Rows)
+                {
+                    if (r.IsNewRow) continue;
+                    var d = DispatchDateOfRow(r, byDelivery, bySpecial);
+                    if (!d.HasValue) continue;
+                    string want = Fmt.Date(d.Value);
+                    if (!string.Equals(r.Cells["colDate"].Value?.ToString() ?? "", want, StringComparison.Ordinal)) r.Cells["colDate"].Value = want;
+                }
+            }
+            finally { isBindingForm = was; }
+        }
+
+        /// <summary>
+        /// Nov 17: lists the trips oldest to latest by "Date store received". A trip is the rows that share a Trip no.; its rows stay together and in their store
+        /// order, the first row keeps the Amount and Fuel surcharge (whole trips only move), and Trip is renumbered 1..n in the new order. Same date: the order they
+        /// already had. A trip with no readable date goes last. Only the cell values move between the existing rows, so no money changes.
+        /// </summary>
+        private void SortTripsByDateStoreReceived()
+        {
+            if (gridItems == null || sortingTrips || !gridItems.Columns.Contains("colDate") || !gridItems.Columns.Contains("colTripNo")) return;
+            sortingTrips = true;
+            bool was = isBindingForm;
+            try
+            {
+                try { gridItems.EndEdit(); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+                var rows = gridItems.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow).ToList();
+                if (rows.Count == 0) return;
+                // the trips: runs of consecutive rows with the same (non-blank) Trip no.
+                var groups = new List<List<int>>();
+                string lastKey = "";
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    string k = (rows[i].Cells["colTripNo"].Value?.ToString() ?? "").Trim();
+                    if (k.Length > 0 && groups.Count > 0 && k == lastKey) groups[groups.Count - 1].Add(i);
+                    else groups.Add(new List<int> { i });
+                    lastKey = k;
+                }
+                DateTime? DateOf(List<int> g)
+                {
+                    foreach (int i in g)
+                    {
+                        string t = rows[i].Cells["colDate"].Value?.ToString() ?? "";
+                        if (Fmt.TryParseDate(t, out var d) || DateTime.TryParse(t, CultureInfo.InvariantCulture, DateTimeStyles.None, out d)) return d.Date;
+                    }
+                    return null;
+                }
+                var ordered = groups.Select((g, idx) => (g, idx, d: DateOf(g)))
+                    .OrderBy(x => x.d.HasValue ? 0 : 1).ThenBy(x => x.d ?? DateTime.MaxValue).ThenBy(x => x.idx).ToList();
+                // the new Trip no. of each trip (blank-numbered lines stay blank)
+                var newNo = new Dictionary<int, object?>();
+                var order = new List<int>();
+                int no = 0;
+                foreach (var x in ordered)
+                {
+                    bool numbered = (rows[x.g[0]].Cells["colTripNo"].Value?.ToString() ?? "").Trim().Length > 0;
+                    int tripNo = numbered ? ++no : 0;
+                    foreach (int i in x.g) { order.Add(i); newNo[i] = numbered ? tripNo : rows[i].Cells["colTripNo"].Value; }
+                }
+                var cols = gridItems.Columns.Cast<DataGridViewColumn>().Where(c => c is not DataGridViewButtonColumn).Select(c => c.Index).ToList();
+                var snapshot = rows.Select(r => cols.Select(ci => r.Cells[ci].Value).ToArray()).ToList();
+                int tripCol = gridItems.Columns["colTripNo"]!.Index;
+                bool changed = false;
+                for (int p = 0; p < rows.Count && !changed; p++)
+                {
+                    if (order[p] != p) { changed = true; break; }
+                    if (!Equals(rows[p].Cells[tripCol].Value?.ToString(), newNo[p]?.ToString())) changed = true;
+                }
+                if (!changed) return;
+                isBindingForm = true;   // writing values must not re-run the totals or the trip-figure propagation
+                for (int p = 0; p < rows.Count; p++)
+                {
+                    int src = order[p];
+                    for (int k = 0; k < cols.Count; k++)
+                    {
+                        int ci = cols[k];
+                        object? v = ci == tripCol ? newNo[src] : snapshot[src][k];
+                        var cell = rows[p].Cells[ci];
+                        if (!Equals(cell.Value, v)) cell.Value = v;
+                    }
+                }
+                gridItems.Invalidate();
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+            finally { isBindingForm = was; sortingTrips = false; }
+            SyncDropsToStoreCount();
         }
 
         /// <summary>Nov 17: the hint shown in an empty Amount / Fuel surcharge cell of a trip.</summary>
