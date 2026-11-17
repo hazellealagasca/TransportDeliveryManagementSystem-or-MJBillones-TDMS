@@ -405,7 +405,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         ("🚛  Trucks", () => NavigateToResources("Trucks")),
                         ("👨‍✈️  Crew Management", () => NavigateToResources("Crew")),
-                        ("📋  Crew Trip History", () => NavigateToResources("CrewHistory"))
+                        ("📋  Crew Trip History", () => NavigateToResources("CrewHistory")),
+                        ("⚠️  Incident log", () => NavigateToResources("IncidentLog"))
                     }
                 ),
                 (

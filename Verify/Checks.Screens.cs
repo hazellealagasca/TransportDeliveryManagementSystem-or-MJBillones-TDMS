@@ -247,7 +247,7 @@ public static partial class Checks
             var tabs = new (string Area, string Tab)[]
             {
                 ("Operations","Dispatch"),("Operations","SpecialTrips"),("Operations","Incidents"),("Operations","TripReports"),("Operations","History"),
-                ("Resources","Trucks"),("Resources","Crew"),("Resources","CrewHistory"),
+                ("Resources","Trucks"),("Resources","Crew"),("Resources","CrewHistory"),("Resources","IncidentLog"),
                 ("Finance","Billing"),("Finance","StatementOfAccount"),("Finance","Collections"),("Finance","History"),
                 ("MasterData","Clients"),("MasterData","Routes"),("MasterData","Rates"),("MasterData","Archive"),("MasterData","History"),
             };
@@ -312,7 +312,7 @@ public static partial class Checks
             var tabs = new (string Area, string Tab)[]
             {
                 ("Operations","Dispatch"),("Operations","SpecialTrips"),("Operations","Incidents"),("Operations","TripReports"),("Operations","History"),
-                ("Resources","Trucks"),("Resources","Crew"),("Resources","CrewHistory"),
+                ("Resources","Trucks"),("Resources","Crew"),("Resources","CrewHistory"),("Resources","IncidentLog"),
                 ("Finance","Billing"),("Finance","StatementOfAccount"),("Finance","Collections"),("Finance","History"),
                 ("MasterData","Clients"),("MasterData","Routes"),("MasterData","Rates"),
             };

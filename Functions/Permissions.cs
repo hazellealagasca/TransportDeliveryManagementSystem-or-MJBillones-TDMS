@@ -23,6 +23,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             new("Resources", "Trucks", "Trucks", "The fleet list and truck profiles."),
             new("Resources", "Crew", "Crew management", "Drivers and aides."),
             new("Resources", "CrewHistory", "Crew trip history", "Which trips each crew member made."),
+            new("Resources", "IncidentLog", "Incident log", "Damaged or missing crates recorded on trip reports, and who is charged."),   // Nov 17
             new("Payments", "StatementOfAccount", "Statement of Accounts", "Monthly statements for clients."),
             new("Payments", "Billing", "Service Invoices", "Create and manage invoices."),
             new("Payments", "Collections", "Collection Receipts", "Record payments received."),
