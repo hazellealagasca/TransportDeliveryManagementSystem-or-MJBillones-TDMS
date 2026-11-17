@@ -162,7 +162,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (visible) keep.Restored(btnToggleForm);
             if (formKit != null) formKit.Show(visible);
             else pnlForm.Visible = visible;
-            if (btnToggleForm != null) btnToggleForm.Visible = !visible;
+            // Nov 17: no "+ New receipt" button: a receipt is made from its statement (Proceed to Collection Receipt), which opens this form.
+            if (btnToggleForm != null) btnToggleForm.Visible = false;
             OnCollFormShown(visible);
             MainForm.Instance?.NotifyDrawerToggled(visible);
         }
