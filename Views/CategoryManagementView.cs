@@ -430,13 +430,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlRowCP.Controls.Add(lblContactPerson);
 
             lblContactNumber = new Label { Text = "Contact Phone:", Dock = DockStyle.Left, Width = 115, TextAlign = ContentAlignment.MiddleRight, Padding = new Padding(0, 0, 8, 0), Font = new Font("Segoe UI Semibold", 8.5F), ForeColor = Pal.C(30, 41, 59) };
-            txtContactNumber = new TextBox { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 9F), MaxLength = 20 };
-            txtContactNumber.KeyPress += (s, e) => {
-                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) && e.KeyChar != '+' && e.KeyChar != '-')
-                {
-                    e.Handled = true;
-                }
-            };
+            txtContactNumber = new TextBox { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 9F), MaxLength = 11 };
+            InputGuards.MobileNumber(txtContactNumber);   // Nov 17: 11 digits only (09XXXXXXXXX)
             Panel pnlRowCN = new Panel { Dock = DockStyle.Top, Height = 30, Margin = new Padding(0, 0, 0, 4) };
             pnlRowCN.Controls.Add(txtContactNumber);
             pnlRowCN.Controls.Add(lblContactNumber);

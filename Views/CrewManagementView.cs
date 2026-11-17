@@ -25,6 +25,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             InitializeComponent();
             Pal.RemapTree(this);
+            InputGuards.MobileNumber(txtContact);   // Nov 17: contact number is 11 digits only
             gridCrew.BringToFront();
             SetupGridColumns();
             SetupContextMenu();
@@ -654,7 +655,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string contact = txtContact.Text.Trim();
                 if (!string.IsNullOrEmpty(contact) && !SecurityHelper.IsValidPhone(contact))
                 {
-                    MessageBox.Show("Invalid contact number format. Please enter a valid mobile number (e.g. 09171234567).", "Invalid Contact #", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("The contact number must be 11 digits starting with 09 (e.g. 09171234567).", "Invalid Contact #", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtContact.Focus();
                     return;
                 }
@@ -745,7 +746,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string contact = txtContact.Text.Trim();
                 if (!string.IsNullOrEmpty(contact) && !SecurityHelper.IsValidPhone(contact))
                 {
-                    MessageBox.Show("Invalid contact number format. Please enter a valid mobile number (e.g. 09171234567).", "Invalid Contact #", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("The contact number must be 11 digits starting with 09 (e.g. 09171234567).", "Invalid Contact #", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtContact.Focus();
                     return;
                 }

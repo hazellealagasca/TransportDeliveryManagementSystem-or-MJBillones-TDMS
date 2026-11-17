@@ -446,7 +446,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtClientTin.TextChanged += TxtClientTin_TextChanged;
             txtClientAddress = new TextBox { Font = new Font("Segoe UI", 10.5F), Multiline = true, PlaceholderText = "Head office address", MaxLength = 250 };
             txtContactPerson = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "e.g. Dela Cruz, Juan", MaxLength = 100 };
-            txtContactNumber = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "e.g. 0917 123 4567", MaxLength = 20 };
+            txtContactNumber = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "e.g. 09171234567", MaxLength = 11 };
+            InputGuards.MobileNumber(txtContactNumber);   // Nov 17: 11 digits only
             txtEmail = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "billing@company.com", MaxLength = 100 };
             foreach (var t in new[] { txtClientName, txtClientTin, txtClientAddress, txtContactPerson, txtContactNumber, txtEmail })
                 t.TextChanged += (s, e) => MarkDirty();
@@ -1037,9 +1038,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return false;
             }
             string phone = InputRules.Tidy(txtContactNumber.Text);
-            if (phone.Length > 0 && !InputRules.PhoneShapeOk(phone))
+            if (phone.Length > 0 && !SecurityHelper.IsValidPhone(phone))   // Nov 17: 11 digits starting with 09
             {
-                MessageBox.Show("Please enter a valid contact number (e.g. 09171234567 or (02) 8123-4567).", "Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("The contact number must be 11 digits starting with 09 (e.g. 09171234567).", "Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtContactNumber.Focus();
                 return false;
             }

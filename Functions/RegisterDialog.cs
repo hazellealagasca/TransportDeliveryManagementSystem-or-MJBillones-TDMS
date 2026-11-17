@@ -141,7 +141,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtContact.Dock = DockStyle.Top;
             txtContact.Font = new Font("Segoe UI", 10F);
             txtContact.PlaceholderText = "e.g. 09171234567";
-            txtContact.MaxLength = 20;
+            InputGuards.MobileNumber(txtContact);   // Nov 17: 11 digits only
             txtContact.Margin = new Padding(0, 0, 0, 10);
 
             Label lblUsername = new Label { Text = "Desired Username *", Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold), ForeColor = Pal.C(51, 65, 85), Margin = new Padding(0, 0, 0, 4) };

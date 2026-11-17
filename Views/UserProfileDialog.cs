@@ -167,8 +167,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtContact = card.Field("Contact number", original.C, 1, 1, "09XXXXXXXXX");
             card.Field("Username", "@" + user.Username, 0, 2, readOnly: true);
             card.Field("Role", user.Role ?? "", 1, 2, readOnly: true);
-            txtContact.MaxLength = 13;
-            txtContact.KeyPress += (s, e) => { if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) && e.KeyChar != ' ' && e.KeyChar != '-') e.Handled = true; };
+            InputGuards.MobileNumber(txtContact);   // Nov 17: 11 digits only
             foreach (var t in new[] { txtFirst, txtMiddle, txtLast }) t.MaxLength = 50;
             card.Height = S(250);
             page.AddRow(card, S(6));

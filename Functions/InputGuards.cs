@@ -46,6 +46,51 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
             }
         }
+        /// <summary>Nov 17: the length of a Philippine mobile number (09XXXXXXXXX).</summary>
+        public const int MobileDigits = 11;
+
+        /// <summary>
+        /// Nov 17: contact number boxes take a mobile number of 11 digits only (09XXXXXXXXX): letters, spaces and signs can't be typed,
+        /// pasted text keeps its digits ("+63 917 123 4567" becomes 09171234567) and anything past 11 digits is cut off.
+        /// </summary>
+        public static void MobileNumber(params TextBox?[] boxes)
+        {
+            foreach (var t in boxes)
+            {
+                if (t == null) continue;
+                t.MaxLength = MobileDigits;
+                t.KeyPress -= BlockNonDigits;
+                t.KeyPress += BlockNonDigits;
+                if (string.IsNullOrEmpty(t.PlaceholderText) || t.PlaceholderText.Contains(' ') || t.PlaceholderText.Contains('-')) t.PlaceholderText = "09XXXXXXXXX";
+                bool busy = false;
+                t.TextChanged += (s, e) =>
+                {
+                    if (busy) return;
+                    string clean = CleanMobile(t.Text);
+                    if (clean == t.Text) return;
+                    busy = true;
+                    try
+                    {
+                        int caret = t.SelectionStart;
+                        t.Text = clean;
+                        t.SelectionStart = Math.Min(caret, t.TextLength);
+                    }
+                    finally { busy = false; }
+                };
+                string first = CleanMobile(t.Text);
+                if (first != t.Text) t.Text = first;
+            }
+        }
+
+        /// <summary>Digits only, a leading +63 / 63 turned into 0, at most 11 digits.</summary>
+        public static string CleanMobile(string? text)
+        {
+            string raw = (text ?? "").Trim();
+            string digits = new string(raw.Where(char.IsDigit).ToArray());
+            if ((raw.StartsWith("+63") || (digits.StartsWith("63") && digits.Length == 12)) && digits.StartsWith("63")) digits = "0" + digits.Substring(2);
+            return digits.Length > MobileDigits ? digits.Substring(0, MobileDigits) : digits;
+        }
+
         /// <summary>Grid columns that hold counts: typing is limited to digits, and a non-number can't be committed.</summary>
         public static void DigitsOnlyColumns(DataGridView grid, params string[] columnNames)
         {

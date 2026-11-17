@@ -51,11 +51,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return LicenseNumberRegex.IsMatch(clean);
         }
 
+        /// <summary>Nov 17: a contact number is a mobile number of exactly 11 digits starting with 09 (e.g. 09171234567).</summary>
         public static bool IsValidPhone(string? phone)
         {
             if (string.IsNullOrWhiteSpace(phone)) return false;
-            string clean = phone.Trim().Replace(" ", "").Replace("-", "");
-            return PhoneRegex.IsMatch(clean);
+            string clean = phone.Trim();
+            return clean.Length == 11 && clean.StartsWith("09") && clean.All(char.IsDigit);
         }
 
         public static bool IsValidName(string? name)

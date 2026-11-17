@@ -21,6 +21,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             InitializeComponent();
             Pal.RemapTree(this);
+            InputGuards.MobileNumber(txtContact);   // Nov 17: contact number is 11 digits only
             gridUsers.BringToFront();
             SetupGridColumns();
             gridUsers.CurrentCellDirtyStateChanged += (s, e) => { if (gridUsers.IsCurrentCellDirty && gridUsers.CurrentCell is DataGridViewCheckBoxCell) gridUsers.CommitEdit(DataGridViewDataErrorContexts.Commit); };
@@ -411,7 +412,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string contact = txtContact.Text.Trim();
                 if (!string.IsNullOrEmpty(contact) && !SecurityHelper.IsValidPhone(contact))
                 {
-                    MessageBox.Show("Please enter a valid Philippine contact number (e.g. 09123456789 or +639123456789).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("The contact number must be 11 digits starting with 09 (e.g. 09123456789).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtContact.Focus();
                     return;
                 }
@@ -540,7 +541,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string contact = txtContact.Text.Trim();
                 if (!string.IsNullOrEmpty(contact) && !SecurityHelper.IsValidPhone(contact))
                 {
-                    MessageBox.Show("Please enter a valid Philippine contact number (e.g. 09123456789 or +639123456789).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("The contact number must be 11 digits starting with 09 (e.g. 09123456789).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtContact.Focus();
                     return;
                 }

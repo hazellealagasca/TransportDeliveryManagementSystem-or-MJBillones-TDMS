@@ -153,7 +153,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return tb;
             }
             lblProblem = new Label { Dock = DockStyle.Fill, ForeColor = AppTheme.DangerText, Font = new Font("Segoe UI Semibold", 9.25F), UseMnemonic = false, Margin = new Padding(0, D(4), 0, 0) };
-            txtLast = Add("Last name", 0); txtFirst = Add("First name", 1); txtMiddle = Add("Middle name (optional)", 2); txtContact = Add("Contact number (optional)", 3);
+            txtLast = Add("Last name", 0); txtFirst = Add("First name", 1); txtMiddle = Add("Middle name (optional)", 2); txtContact = Add("Contact number (optional)", 3); InputGuards.MobileNumber(txtContact);
             txtAddress = Add("Address", 4); txtAddress.MaxLength = CrewRules.AddressMax;
             int pr = 5;
             cbEmployment = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, Margin = new Padding(0, D(4), 0, D(6)), Font = Font };
