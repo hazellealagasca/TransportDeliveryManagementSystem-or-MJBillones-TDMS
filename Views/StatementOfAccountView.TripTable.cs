@@ -64,7 +64,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string col = gridItems.Columns[e.ColumnIndex].Name;
                 if (!MergedCols.Contains(col) || TripKeyAt(e.RowIndex).Length == 0) return;
                 TripBounds(e.RowIndex, out int first, out int last);
-                if (first == last) return;   // a trip of one row paints normally
+                if (first == last)
+                {
+                    // Nov 17: an empty Amount / Fuel surcharge that can be typed shows the "Type amount" hint.
+                    if (col is "colAmount" or "colFuel" && ShowsMoneyHint(first, last, col))
+                    {
+                        e.PaintBackground(e.CellBounds, true);
+                        DrawMoneyHint(e.Graphics, e.CellBounds, e.CellStyle ?? gridItems.DefaultCellStyle, (e.State & DataGridViewElementStates.Selected) != 0);
+                        e.Handled = true;
+                    }
+                    return;   // otherwise a trip of one row paints normally
+                }
                 var st = e.CellStyle ?? gridItems.DefaultCellStyle;
                 bool sel = (e.State & DataGridViewElementStates.Selected) != 0;
                 using (var b = new SolidBrush(sel ? st.SelectionBackColor : st.BackColor)) e.Graphics.FillRectangle(b, e.CellBounds);
@@ -83,6 +93,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         decimal sum = 0m;
                         for (int i = first; i <= last; i++) sum += CellDecimal(gridItems.Rows[i], col);
                         text = sum > 0 ? sum.ToString("N2", CultureInfo.InvariantCulture) : "";
+                        if (text.Length == 0 && ShowsMoneyHint(first, last, col))   // Nov 17: "Type amount" hint in the empty trip cell
+                        {
+                            DrawMoneyHint(e.Graphics, e.CellBounds, st, sel);
+                            e.Handled = true;
+                            return;
+                        }
                     }
                     else text = gridItems.Rows[first].Cells[col].Value?.ToString() ?? "";
                     var flags = TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix
@@ -123,6 +139,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 finally { propagatingTripFigure = false; }
             };
+        }
+
+        /// <summary>Nov 17: the hint shown in an empty Amount / Fuel surcharge cell of a trip.</summary>
+        private const string MoneyHintText = "Type amount";
+
+        /// <summary>
+        /// Nov 17: true when the trip's Amount / Fuel surcharge (column <paramref name="col"/>) is empty and can be typed: the table and the trip's first
+        /// cell are not read-only. A trip whose money comes from its service invoice already has an amount, so it shows no hint.
+        /// </summary>
+        private bool ShowsMoneyHint(int first, int last, string col)
+        {
+            if (gridItems.ReadOnly || gridItems.Columns[col] is not DataGridViewColumn c || c.ReadOnly || first < 0 || first >= gridItems.Rows.Count) return false;
+            if (gridItems.Rows[first].Cells[col].ReadOnly) return false;
+            for (int i = first; i <= last && i < gridItems.Rows.Count; i++)
+                if (CellDecimal(gridItems.Rows[i], col) > 0 || !string.IsNullOrWhiteSpace(gridItems.Rows[i].Cells[col].Value?.ToString())) return false;
+            return true;
+        }
+
+        /// <summary>Draws the grey, italic "Type amount" hint, right-aligned like the amounts.</summary>
+        private void DrawMoneyHint(Graphics g, Rectangle bounds, DataGridViewCellStyle st, bool selected)
+        {
+            var baseFont = st.Font ?? gridItems.Font;
+            var rect = Rectangle.Inflate(bounds, -Dpi(4), 0);
+            using var f = new Font(baseFont, FontStyle.Italic);
+            TextRenderer.DrawText(g, MoneyHintText, f, rect, selected ? st.SelectionForeColor : AppTheme.TextMuted,
+                TextFormatFlags.VerticalCenter | TextFormatFlags.Right | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
         }
 
         /// <summary>
