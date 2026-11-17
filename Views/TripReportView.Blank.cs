@@ -76,6 +76,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     list.Add(($"A store's time in and time out can't be earlier than the truck's plant gate times ({string.Join(", ", gate)}). Fix it for: {string.Join(", ", early.Take(6))}{(early.Count > 6 ? ", …" : "")}.", gridStores));
                 }
             }
+            // Nov 18: a store's time out can't be earlier than its own time in (blocks Proceed / Save, not Save draft).
+            if (gridStores != null)
+            {
+                var backwards = new List<string>();
+                foreach (DataGridViewRow r in gridStores.Rows)
+                {
+                    if (r.IsNewRow) continue;
+                    string tin = (r.Cells["colIn"].Value?.ToString() ?? "").Trim(), tout = (r.Cells["colOut"].Value?.ToString() ?? "").Trim();
+                    if (!DailyRules.GateOutBeforeIn(tin, tout)) continue;
+                    string store = (r.Cells["colStore"]?.Value?.ToString() ?? "").Trim();
+                    backwards.Add($"{(store.Length > 0 ? store : "a store")} (in {Fmt.Time(tin)}, out {Fmt.Time(tout)})");
+                }
+                if (backwards.Count > 0)
+                    list.Add(($"A store's time out can't be earlier than its time in. Fix it for: {string.Join(", ", backwards.Take(6))}{(backwards.Count > 6 ? ", …" : "")}.", gridStores));
+            }
             IncidentChecks(list);   // step 3: Yes needs at least one incident
             foreach (var (tb, nm) in SignOffBoxes())
                 if (tb != null && !string.IsNullOrWhiteSpace(tb.Text) && !SecurityHelper.IsValidName(tb.Text.Trim())) list.Add(($"{nm} must be a name (letters only).", tb));
@@ -110,6 +125,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Nov 14: the same overnight question for every store whose time out is earlier than its time in. Asked one store at a time; No sends the person back to that store's Time out cell.</summary>
         private bool ConfirmStoreOrder()
         {
+            // Nov 18: a store's time out earlier than its time in is no longer asked about ("overnight?"): it is refused by BlankFormChecks.
+            return true;
+#pragma warning disable CS0162 // kept for reference
             if (gridStores == null) return true;
             gridStores.EndEdit();
             foreach (DataGridViewRow r in gridStores.Rows)
@@ -123,6 +141,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return false;
             }
             return true;
+#pragma warning restore CS0162
         }
 
         private IEnumerable<(TextBox? Box, string Name)> SignOffBoxes() => new (TextBox?, string)[]
@@ -164,9 +183,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 foreach (DataGridViewRow r in gridStores.Rows)
                 {
                     if (r.IsNewRow) continue;
+                    // Nov 18: time out earlier than this store's own time in is marked on the Time out cell first.
+                    var outCell = r.Cells["colOut"];
+                    bool backwards = DailyRules.GateOutBeforeIn(r.Cells["colIn"].Value?.ToString(), outCell.Value?.ToString());
+                    bool oursOut = outCell.ErrorText.StartsWith("Earlier than this store's time in");
+                    if (backwards)
+                    {
+                        string m = $"Earlier than this store's time in ({Fmt.Time(r.Cells["colIn"].Value?.ToString())})";
+                        if (outCell.ErrorText != m && (oursOut || outCell.ErrorText.Length == 0 || outCell.ErrorText.StartsWith("Earlier than the truck time"))) outCell.ErrorText = m;
+                    }
+                    else if (oursOut) outCell.ErrorText = "";
                     foreach (var col in new[] { "colIn", "colOut" })
                     {
                         var cell = r.Cells[col];
+                        if (col == "colOut" && backwards) continue;   // Nov 18: the time-in message above wins
                         bool ours = cell.ErrorText.StartsWith("Earlier than the truck time");
                         string? which = DailyRules.StoreTimeBeforePlantGate(tin, tout, cell.Value?.ToString());
                         bool early = which != null;
