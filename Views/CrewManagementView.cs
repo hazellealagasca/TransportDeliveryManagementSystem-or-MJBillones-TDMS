@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -329,6 +329,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "EmploymentType", HeaderText = "Employment type", FillWeight = 13F, MinimumWidth = 100, ReadOnly = true });
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ContactNumber", HeaderText = "Contact #", FillWeight = 16F, MinimumWidth = 110, ReadOnly = true });
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "LicenseDisplay", HeaderText = "Driver's license", FillWeight = 22F, MinimumWidth = 150, ReadOnly = true });
+            // Nov 18: standard pay visible at a glance.
+            if (Features.On(Features.CrewPay))
+            {
+                var right = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleRight, Format = "N2" };
+                gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DailyWage", HeaderText = "Daily wage", FillWeight = 12F, MinimumWidth = 85, ReadOnly = true, DefaultCellStyle = right });
+                gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "FoodAllowance", HeaderText = "Meal allowance", FillWeight = 12F, MinimumWidth = 100, ReadOnly = true, DefaultCellStyle = right });
+            }
             gridCrew.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "AvailabilityStatus", HeaderText = "Status", FillWeight = 15F, MinimumWidth = 95, ReadOnly = true });
         }
 
@@ -990,6 +997,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try { onTrip = c.Role.IndexOf("Driver", StringComparison.OrdinalIgnoreCase) >= 0 && MJdatabase.IsDriverOnActiveTrip(c.Id); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
                 m.Items.AddRange(RowMenu.Header($"👤  {c.FullName}", $"{c.CrewCode} · {c.Role}{(c.IsSeasonal ? " (seasonal)" : "")} · {c.AvailabilityStatus} · license: {c.LicenseDisplay}"));
                 m.Items.Add(RowMenu.Item("Open crew profile", () => OpenCrewProfile(c), "Enter"));
+                if (Features.On(Features.CrewPay)) m.Items.Add(RowMenu.Item("View trip pay", () => OpenCrewProfile(c, "pay")));
                 m.Items.Add(RowMenu.Item("Quick details", () => RecordDetailsDialog.ShowDetails(this, c)));
                 m.Items.Add(RowMenu.Item("Edit crew member", () => { SetFormVisibility(true); txtLastName.Focus(); }));
                 m.Items.Add(RowMenu.Item("Trip & schedule history", () => OnViewCrewHistoryRequested?.Invoke(c.Id)));

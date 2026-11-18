@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -18,24 +18,30 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly Action<Crew>? onEdit;
         private readonly ProfileHeader header = new ProfileHeader();
         // Nov 18: the Incidents tab follows "Incident report in trip reports" (the trip incidents), not the hidden Incident & Damage Logs screen.
-        private readonly SegmentTabs tabs = Features.On(Features.TripIncidents) ? new SegmentTabs("Profile", "Dispatch logs", "Trip performance", "Vehicle history", "Incidents & violations") : new SegmentTabs("Profile", "Dispatch logs", "Trip performance", "Vehicle history");
+        // Nov 18: optional "Trip pay" tab (after Dispatch logs) when Features.CrewPay is on; page keys map tab index -> page.
+        private readonly string[] keys = new[] { "profile", "dispatch" }.Concat(Features.On(Features.CrewPay) ? new[] { "pay" } : new string[0]).Concat(new[] { "perf", "veh" }).Concat(Features.On(Features.TripIncidents) ? new[] { "inc" } : new string[0]).ToArray();
+        private readonly SegmentTabs tabs;
+        private int Idx(string key) => Array.IndexOf(keys, key);
+        private static string TabTitle(string key) => key switch { "profile" => "Profile", "dispatch" => "Dispatch logs", "pay" => "Trip pay", "perf" => "Trip performance", "veh" => "Vehicle history", _ => "Incidents & violations" };
+        private Dictionary<(int DeliveryId, int CrewId), TripCrewPay> recordedPay = new Dictionary<(int DeliveryId, int CrewId), TripCrewPay>();
         private readonly Panel body = new Panel { Dock = DockStyle.Fill };
-        private readonly Panel[] pages = new Panel[5];
+        private readonly Panel[] pages = new Panel[6];
         private List<Delivery> trips = new List<Delivery>();
         private Dictionary<int, TripReport> reports = new Dictionary<int, TripReport>();
         private List<IncidentReport> incidents = new List<IncidentReport>();
         private List<CrewRecord> records = new List<CrewRecord>();
         private Dictionary<int, Truck> trucks = new Dictionary<int, Truck>();
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
-        public static void ShowFor(IWin32Window? owner, Crew crew, Action<Crew>? onEdit = null)
+        public static void ShowFor(IWin32Window? owner, Crew crew, Action<Crew>? onEdit = null, string? startTab = null)
         {
-            var dlg = new CrewProfileDialog(crew, onEdit);
+            var dlg = new CrewProfileDialog(crew, onEdit, startTab);
             dlg.FormClosing += (s, e) => DarkModeKit.StopAutoComplete(dlg);
             try { dlg.ShowDialog(owner); }
             finally { DarkModeKit.StopAutoComplete(dlg); DarkModeKit.SafeDispose(dlg); }
         }
-        public CrewProfileDialog(Crew crew, Action<Crew>? onEdit = null)
+        public CrewProfileDialog(Crew crew, Action<Crew>? onEdit = null, string? startTab = null)
         {
+            tabs = new SegmentTabs(keys.Select(TabTitle).ToArray());
             this.crew = crew;
             this.onEdit = onEdit;
             Text = $"Crew profile — {crew.FullName}";
@@ -74,7 +80,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UpdateBadges();
             tabs.SelectedChanged += (s, e) => ShowPage(tabs.Selected);
             ShowPage(0);
-            KeyDown += (s, e) => { if (e.Control && e.KeyCode == Keys.Tab) { { int n = Features.On(Features.TripIncidents) ? 5 : 4; tabs.Selected = (tabs.Selected + (e.Shift ? n - 1 : 1)) % n; } e.Handled = true; } };
+            // Nov 18: open straight on a tab (e.g. "pay" from the Crew Management row menu).
+            if (startTab != null && Idx(startTab) > 0) { tabs.Selected = Idx(startTab); ShowPage(Idx(startTab)); }
+            KeyDown += (s, e) => { if (e.Control && e.KeyCode == Keys.Tab) { { int n = keys.Length; tabs.Selected = (tabs.Selected + (e.Shift ? n - 1 : 1)) % n; } e.Handled = true; } };
             try { ThemeManager.StyleWindowChrome(this); } catch (System.Exception swx1) { ErrLog.Swallowed(swx1); }
         }
         private bool OnTrip(Delivery d) => d.DriverId == crew.Id || d.AideId == crew.Id || (d.AideIds ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Any(x => x.Trim() == crew.Id.ToString());
@@ -87,10 +95,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try { incidents = MJdatabase.GetIncidentReports().Where(i => ids.Contains(i.DeliveryId)).OrderByDescending(i => i.IncidentDate).ToList(); } catch { incidents = new List<IncidentReport>(); }
             try { records = MJdatabase.GetCrewRecords(crew.Id); } catch { records = new List<CrewRecord>(); }
             try { trucks = MJdatabase.GetTrucks().ToDictionary(t => t.Id); } catch { trucks = new Dictionary<int, Truck>(); }
+            if (Features.On(Features.CrewPay)) { try { recordedPay = MJdatabase.GetAllTripCrewPay(); } catch (Exception ex) { ErrLog.Swallowed(ex); } }
         }
         private void UpdateBadges()
         {
-            tabs.Badges = new[] { 0, trips.Count, trips.Count(t => RowMenu.Is(t.Status, "Completed")), trips.Select(t => t.TruckId).Where(i => i > 0).Distinct().Count(), incidents.Count + records.Count(r => r.Kind == "Violation") };
+            tabs.Badges = keys.Select(k => k switch { "dispatch" => trips.Count, "pay" => trips.Count(t => RowMenu.Is(t.Status, "Completed")), "perf" => trips.Count(t => RowMenu.Is(t.Status, "Completed")), "veh" => trips.Select(t => t.TruckId).Where(i => i > 0).Distinct().Count(), "inc" => incidents.Count + records.Count(r => r.Kind == "Violation"), _ => 0 }).ToArray();
             tabs.Invalidate();
         }
         private void BuildHeader()
@@ -113,7 +122,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (pages[i] == null)
             {
-                pages[i] = i switch { 0 => BuildProfile(), 1 => BuildDispatchLogs(), 2 => BuildPerformance(), 3 => BuildVehicles(), _ => BuildIncidents() };
+                pages[i] = keys[i] switch { "profile" => BuildProfile(), "dispatch" => BuildDispatchLogs(), "pay" => BuildTripPay(), "perf" => BuildPerformance(), "veh" => BuildVehicles(), _ => BuildIncidents() };
                 pages[i].Dock = DockStyle.Fill;
                 pages[i].Visible = false;
                 body.Controls.Add(pages[i]);
@@ -123,7 +132,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void Rebuild(params int[] which)
         {
-            foreach (var i in which) if (pages[i] != null) { body.Controls.Remove(pages[i]); pages[i].Dispose(); pages[i] = null!; }
+            foreach (var i in which) if (i >= 0 && pages[i] != null) { body.Controls.Remove(pages[i]); pages[i].Dispose(); pages[i] = null!; }
             UpdateBadges();
             ShowPage(tabs.Selected);
         }
@@ -208,6 +217,41 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             page.Controls.Add(ProfileKit.Card(g, 1));
             page.Controls.Add(top);
             page.Controls.Add(ProfileKit.Section("Dispatch logs", $"{trips.Count} dispatch(es), newest first · double-click to open"));
+            return page;
+        }
+        // ------------------------------------------------------------------ trip pay (Nov 18)
+        private Panel BuildTripPay()
+        {
+            var page = Page();
+            // Same pay per trip as Crew Trip History / pay slip: MJdatabase.ResolveTripPay (saved trip pay, else standard rate).
+            var rows = trips.Where(t => RowMenu.Is(t.Status, "Completed")).Select(t => (Trip: t, Pay: MJdatabase.ResolveTripPay(crew, t, recordedPay), Saved: recordedPay.ContainsKey((t.Id, crew.Id)))).ToList();
+            var now = DateTime.Today;
+            var month = rows.Where(r => r.Trip.DispatchDate.Year == now.Year && r.Trip.DispatchDate.Month == now.Month).ToList();
+            var stats = new StatRow();
+            stats.Add("Standard rate", $"₱{crew.DailyWage + crew.FoodAllowance:N2}", $"₱{crew.DailyWage:N2} wage + ₱{crew.FoodAllowance:N2} meal per trip", AppTheme.Accent);
+            stats.Add("Total pay this month", $"₱{month.Sum(r => r.Pay.NetPay):N2}", $"{month.Count} trip(s) in {now:MMMM}", AppTheme.Success);
+            stats.Add("Total pay (shown trips)", $"₱{rows.Sum(r => r.Pay.NetPay):N2}", "all completed trips below", AppTheme.Info);
+            stats.Add("Trips", rows.Count.ToString("N0"), "completed", AppTheme.Warning);
+            var g = ProfileKit.Grid();
+            g.Columns.AddRange(ProfileKit.Col("Date", "Date", 65), ProfileKit.Col("Dispatch", "Dispatch #", 75), ProfileKit.Col("Route", "Route / client", 150), ProfileKit.Col("As", "Role on trip", 55),
+                ProfileKit.Col("Wage", "Daily wage", 65, true), ProfileKit.Col("Meal", "Meal allowance", 70, true), ProfileKit.Col("Total", "Total pay", 70, true), ProfileKit.Col("Note", "Note", 120));
+            foreach (var r in rows)
+            {
+                string note = "";
+                if (r.Saved)
+                {
+                    bool edited = r.Pay.BasePay != crew.DailyWage || r.Pay.Allowance != crew.FoodAllowance || !string.IsNullOrWhiteSpace(r.Pay.Notes);
+                    if (edited) note = "Edited" + (string.IsNullOrWhiteSpace(r.Pay.Notes) ? "" : " — " + r.Pay.Notes);
+                }
+                int i = g.Rows.Add(Fmt.Date(r.Trip.DispatchDate), r.Trip.DispatchNumber, $"{r.Trip.CleanRouteDisplay} · {r.Trip.ClientName}", RoleOn(r.Trip), r.Pay.BasePay.ToString("N2"), r.Pay.Allowance.ToString("N2"), r.Pay.NetPay.ToString("N2"), note);
+                g.Rows[i].Tag = r.Trip;
+            }
+            g.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && g.Rows[e.RowIndex].Tag is Delivery d) DispatchDetailsDialog.ShowFor(this, d); };
+            var gap = new Panel { Dock = DockStyle.Top, Height = D(14), BackColor = AppTheme.Canvas };
+            page.Controls.Add(ProfileKit.Card(g, 1));
+            page.Controls.Add(ProfileKit.Section("Trip pay", $"{rows.Count} completed trip(s), newest first · pay is edited per trip in Crew Trip History"));
+            page.Controls.Add(gap);
+            page.Controls.Add(stats);
             return page;
         }
         // ------------------------------------------------------------------ trip performance
@@ -365,7 +409,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     MJdatabase.SaveCrewRecord(new CrewRecord { CrewId = crew.Id, RecordDate = dtp.Value.Date, Kind = kind, Type = type, Description = txtDesc.Text.Trim(), DispatchNumber = dn, Severity = isViolation ? cbSev.Text : "" });
                     records = MJdatabase.GetCrewRecords(crew.Id);
-                    Rebuild(0, 2, 4);
+                    Rebuild(Idx("profile"), Idx("perf"), Idx("inc"));
                 }
                 catch (Exception ex) { ErrLog.Error("CrewProfileDialog", ex);  MessageBox.Show(this, "Couldn't save: " + ex.Message, kind, MessageBoxButtons.OK, MessageBoxIcon.Error); }
             }
@@ -379,7 +423,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (MessageBox.Show(this, $"Are you sure you want to void \"{it.Record.Type}\" ({Fmt.Date(it.Record.RecordDate)})?\n\nIt's hidden from the record but kept in the audit trail.", "Void " + kind.ToLowerInvariant(), MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
                 MJdatabase.VoidCrewRecord(it.Record.Id);
                 records = MJdatabase.GetCrewRecords(crew.Id);
-                Rebuild(0, 2, 4);
+                Rebuild(Idx("profile"), Idx("perf"), Idx("inc"));
             }));
             var controls = new List<Control> { L("Date *"), dtp, L((isViolation ? "Violation type" : "Remark") + " *  (type to see suggestions)"), cbType, L("Related dispatch (optional)"), cbDispatch };
             if (isViolation) { controls.Add(L("Severity")); controls.Add(cbSev); }

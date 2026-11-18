@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -281,10 +281,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
         /// <summary>Dispatch logs, trip performance, vehicles used and incidents / violations for one crew member.</summary>
-        private void OpenCrewProfile(Crew c)
+        private void OpenCrewProfile(Crew c, string? startTab = null)
         {
             Crew? toEdit = null;
-            Forms.CrewProfileDialog.ShowFor(FindForm(), c, cr => toEdit = cr);
+            Forms.CrewProfileDialog.ShowFor(FindForm(), c, cr => toEdit = cr, startTab);
             if (toEdit != null)
             {
                 BindCrewToForm(toEdit);
