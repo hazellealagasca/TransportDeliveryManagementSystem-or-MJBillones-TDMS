@@ -465,8 +465,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     internal sealed class TripStepper : Control
     {
         // Nov 14: 1 Stores & DRs, 2 Plant gate & sign-off, 3 Trip report (damaged or missing crates; only while the trip-incident switch is on), then the statement.
-        // Nov 17: step 3 is called "Trip report" (it was "Incident report").
-        private static readonly string[] AllTitles = { "Stores & DRs", "Plant gate & sign-off", "Trip report", "Goes to Statement of Account" };
+        // Nov 18: step 3 is called "Incident / Damage Report" (Nov 17 it was "Trip report", before that "Incident report").
+        private static readonly string[] AllTitles = { "Stores & DRs", "Plant gate & sign-off", "Incident / Damage Report", "Goes to Statement of Account" };
         private string[] Titles = AllTitles;
         private bool[] done = new bool[4];
 

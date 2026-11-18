@@ -91,6 +91,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (backwards.Count > 0)
                     list.Add(($"A store's time out can't be earlier than its time in. Fix it for: {string.Join(", ", backwards.Take(6))}{(backwards.Count > 6 ? ", …" : "")}.", gridStores));
             }
+            // Nov 18: missing crates must be answered in step 3 (Yes with an incident). Blocks Proceed / Save, not Save draft.
+            if (MissingCratesNeedIncident(out int missingCrates, out var missingStores))
+                list.Add(($"{missingCrates:N0} crate(s) are missing (returned fewer than delivered: {string.Join(", ", missingStores.Take(6))}{(missingStores.Count > 6 ? ", …" : "")}). Answer Yes under 'Any damaged or missing crates?' in step 3 Incident / Damage Report and add the incident.", (Control?)rbIncYes ?? gridStores!));
             IncidentChecks(list);   // step 3: Yes needs at least one incident
             foreach (var (tb, nm) in SignOffBoxes())
                 if (tb != null && !string.IsNullOrWhiteSpace(tb.Text) && !SecurityHelper.IsValidName(tb.Text.Trim())) list.Add(($"{nm} must be a name (letters only).", tb));
@@ -158,6 +161,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (gridStores != null) Fmt.ApplyTimeColumns(gridStores, "colIn", "colOut");
             // Nov 17: live hint (cell error text only, no pop-ups) when a store time or the truck times change. Added after Fmt's own handlers so its format errors are set first.
             if (gridStores != null) gridStores.CellEndEdit += (s, e) => MarkStoreTimesBeforeTruckIn();
+            WireTimeAutoAdvance();
             foreach (var tb in new[] { txtTruckTimeIn, txtTruckTimeOut })
                 if (tb != null) { tb.TextChanged += (s, e) => MarkStoreTimesBeforeTruckIn(); tb.Leave += (s, e) => MarkStoreTimesBeforeTruckIn(); }
             foreach (var (tb, _) in SignOffBoxes())
@@ -169,6 +173,60 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     if (string.IsNullOrWhiteSpace(box.Text)) { ValidationHelper.ClearErrors(box); return; }
                     ValidationHelper.ApplyValidationState(box, SecurityHelper.IsValidName(box.Text.Trim()), "Type a name (letters only).");
+                };
+            }
+        }
+
+        /// <summary>Nov 18: after the Truck time in is complete (clock, Enter, or typed up to AM/PM) the focus goes to Truck time out; after a store's Time in is edited to a valid time the same row's Time out cell opens.
+        /// Only user actions count (key presses, clock picks, cell edits): code that sets the values never moves the focus.</summary>
+        private void WireTimeAutoAdvance()
+        {
+            if (txtTruckTimeIn != null && txtTruckTimeOut != null)
+            {
+                var tin = txtTruckTimeIn; var tout = txtTruckTimeOut;
+                void toOut()
+                {
+                    if (!Fmt.TryParseTime(tin.Text, out var t)) return;
+                    tin.Text = Fmt.Time(t);
+                    if (tout.Visible && tout.Enabled && !tout.ReadOnly) { tout.Focus(); tout.SelectAll(); }
+                }
+                tin.KeyDown += (s, e) =>
+                {
+                    if (e.KeyCode != Keys.Enter || !Fmt.TryParseTime(tin.Text, out _)) return;
+                    e.Handled = e.SuppressKeyPress = true; toOut();
+                };
+                tin.KeyUp += (s, e) =>
+                {
+                    // the last typed letter M of a complete "hh:mm AM/PM"; a partial "08" or "08:4" never moves on
+                    if (e.KeyCode == Keys.M && tin.Focused && System.Text.RegularExpressions.Regex.IsMatch(tin.Text.Trim(), @"^\d{1,2}:\d{2} ?[AP]M$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) && Fmt.TryParseTime(tin.Text, out _)) toOut();
+                };
+                Action<TextBox> onPicked = picked => { if (ReferenceEquals(picked, tin) && !tin.IsDisposed) tin.BeginInvoke(new Action(toOut)); };
+                Fmt.TimeBoxPicked += onPicked;
+                tin.Disposed += (s, e) => Fmt.TimeBoxPicked -= onPicked;   // Nov 18: unsubscribe when the screen goes, so it isn't kept alive
+            }
+            if (gridStores != null)
+            {
+                var g = gridStores;
+                string before = "";
+                g.CellBeginEdit += (s, e) => { if (e.ColumnIndex >= 0 && g.Columns[e.ColumnIndex].Name == "colIn") before = (g.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString() ?? "").Trim(); };
+                g.CellEndEdit += (s, e) =>
+                {
+                    if (e.RowIndex < 0 || e.ColumnIndex < 0 || g.Columns[e.ColumnIndex].Name != "colIn") return;
+                    string now = (g.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString() ?? "").Trim();
+                    if (now.Length == 0 || now == before || !Fmt.TryParseTime(now, out _)) return;   // blank, unchanged or invalid: stay
+                    int row = e.RowIndex;
+                    g.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            if (g.IsDisposed || row >= g.Rows.Count || g.Rows[row].IsNewRow || !g.Columns.Contains("colOut")) return;
+                            var c = g.Rows[row].Cells["colOut"];
+                            if (c.ReadOnly || !c.Visible) return;
+                            g.CurrentCell = c;
+                            g.BeginEdit(true);
+                        }
+                        catch (Exception ex) { ErrLog.Swallowed(ex); }
+                    }));
                 };
             }
         }

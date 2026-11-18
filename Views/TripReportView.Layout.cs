@@ -113,7 +113,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tripAttachments = new AttachmentPanel("Proof of delivery (POD)") { Height = Dpi(250) };
             tripAttachments.AttachmentsChanged += (s, e) => FilterGridData();
             var card5 = CreateSectionCard("•", "Attachments", "Proof of delivery, receipts, trip sheets and photos for this trip. Drop files in or click Add.", tripAttachments);
-            cardIncident = CreateSectionCard("3", "Trip report", "Any damaged or missing crates on this trip? Kept for reference only: it never reaches a statement, invoice or receipt.", BuildIncidentStep());
+            cardIncident = CreateSectionCard("3", "Incident / Damage Report", "Any damaged or missing crates on this trip? Kept for reference only: it never reaches a statement, invoice or receipt.", BuildIncidentStep());
             Features.Bind(this, ApplyIncidentFeature, Features.TripIncidents);
             pnlFormBody.Controls.Add(card5);
             pnlFormBody.Controls.Add(CreateSectionSpacer());
@@ -425,6 +425,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void UpdateTripCrateSummary()
         {
             UpdateDeliveredCrateTotals();
+            try { UpdateIncidentHint(); } catch (Exception ex) { ErrLog.Swallowed(ex); }   // Nov 18: step 3 hint follows the store crates
             if (tripCrateSummary == null || gridStores == null) return;
             try
             {

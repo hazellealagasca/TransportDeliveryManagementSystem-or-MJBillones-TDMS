@@ -799,6 +799,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (row.IsNewRow) continue;
                 int I(string c) => int.TryParse(row.Cells[c].Value?.ToString(), out int n) ? Math.Max(0, n) : 0;
                 int dg = I("colRetG") - I("colLoadG"), de = I("colRetE") - I("colLoadE");
+                // Nov 18: missing crates are answered in step 3 (BlankFormChecks), so the "save anyway" question is only about crates returned over the delivered count.
+                if (IncidentStepOn) { dg = Math.Max(0, dg); de = Math.Max(0, de); }
                 if (dg == 0 && de == 0) continue;
                 var p = new List<string>();
                 if (dg != 0) p.Add($"G {(dg < 0 ? "short by " + (-dg) : "over by " + dg)}");
@@ -994,13 +996,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (lblIncHint == null) return;
             var selDel = cbDelivery.SelectedIndex < 0 ? null : GetSelectedDelivery();
-            if (selDel == null || selDel.Id <= 0 || !IncidentStepOn) { lblIncHint.Visible = false; return; }
+            if (selDel == null || selDel.Id <= 0 || !IncidentStepOn) { crateVarianceHint = ""; lblIncHint.Visible = false; return; }
             int totalDel = (int)numDeliveredGCrates.Value + (int)numDeliveredECrates.Value;
             int totalDisp = selDel.TotalCrates > 0 ? selDel.TotalCrates : (selDel.GCrate + selDel.ECrate);
             int fewer = totalDisp - totalDel;
-            lblIncHint.Text = fewer > 0 ? $"{fewer:N0} crate{(fewer == 1 ? "" : "s")} fewer were delivered than dispatched." : "";
-            lblIncHint.Visible = lblIncHint.Text.Length > 0;
+            crateVarianceHint = fewer > 0 ? $"{fewer:N0} crate{(fewer == 1 ? "" : "s")} fewer were delivered than dispatched." : "";
+            UpdateIncidentHint();   // Nov 18: one label for both hints; missing crates win
         }
+        private string crateVarianceHint = "";
 
         private void SetupGridColumns()
         {

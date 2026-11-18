@@ -268,6 +268,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// 12-hour time box: digits and a/p are typed, the box shows hh:mm AM when you leave it; text that is not a time turns red
         /// (the ValidationHelper state) and an empty box is left alone.
         /// </summary>
+        /// <summary>Nov 18: raised after a time was picked from the clock of a time box (never for typed or code-set text).</summary>
+        public static event Action<TextBox>? TimeBoxPicked;
+
         public static void ApplyTimeBox(TextBox tb)
         {
             tb.MaxLength = 8;
@@ -295,7 +298,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try
                 {
                     string? v = PickTime(tb, tb.Text);
-                    if (v != null) { tb.Text = v; validate(); }
+                    if (v != null) { tb.Text = v; validate(); TimeBoxPicked?.Invoke(tb); }   // Nov 18: only a time picked from the clock raises it
                 }
                 finally { picking = false; }
             }

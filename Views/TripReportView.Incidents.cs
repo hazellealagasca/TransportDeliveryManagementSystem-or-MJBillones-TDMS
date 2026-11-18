@@ -373,9 +373,48 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UpdateTripStepper();
         }
 
+        /// <summary>Nov 18: crates not returned, per store (delivered minus returned, E and G, never negative) as in the Trip &amp; Crate Summary.</summary>
+        private int MissingCrates(out List<string> stores)
+        {
+            stores = new List<string>();
+            int total = 0;
+            if (gridStores == null) return 0;
+            foreach (DataGridViewRow row in gridStores.Rows)
+            {
+                if (row.IsNewRow) continue;
+                int I(string c) => gridStores.Columns.Contains(c) && int.TryParse(row.Cells[c].Value?.ToString(), out int n) ? Math.Max(0, n) : 0;
+                int miss = Math.Max(0, I("colLoadG") - I("colRetG")) + Math.Max(0, I("colLoadE") - I("colRetE"));
+                if (miss == 0) continue;
+                total += miss;
+                string nm = (row.Cells["colStore"].Value?.ToString() ?? "").Trim();
+                stores.Add(nm.Length > 0 ? nm : "Row " + (row.Index + 1));
+            }
+            return total;
+        }
+
+        /// <summary>Nov 18: true while crates are missing and step 3 does not yet say Yes with at least one incident line.</summary>
+        private bool MissingCratesNeedIncident(out int missing, out List<string> stores)
+        {
+            missing = MissingCrates(out stores);
+            if (missing <= 0 || !IncidentStepOn || rbIncYes == null || !rbIncYes.Enabled) return false;
+            return !(rbIncYes.Checked && tripIncidentLines.Count > 0);
+        }
+
+        /// <summary>Nov 18: the hint beside the No/Yes radios: missing crates first, else the dispatched-vs-delivered note.</summary>
+        private void UpdateIncidentHint()
+        {
+            if (lblIncHint == null) return;
+            string text = MissingCratesNeedIncident(out int missing, out _)
+                ? $"Missing crates on this trip: {missing:N0}. Answer Yes and add the incident."
+                : crateVarianceHint;
+            lblIncHint.Text = text;
+            lblIncHint.Visible = text.Length > 0;
+        }
+
         /// <summary>Step 3 is done when the answer is No, or Yes with at least one incident and nothing half-typed.</summary>
         private bool StepIncidentDone()
         {
+            if (MissingCratesNeedIncident(out _, out _)) return false;   // Nov 18: missing crates must be answered with an incident
             if (rbIncYes == null || !rbIncYes.Checked) return true;
             return tripIncidentLines.Count > 0 && !IncidentFieldsTouched();
         }
