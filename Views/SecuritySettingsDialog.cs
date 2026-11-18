@@ -10,6 +10,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 {
     public class SecuritySettingsDialog : Form
     {
+        private bool allowClose; // Nov 18: set only by Save/Cancel buttons
         private User currentUser;
         private ComboBox cbQuestion = null!;
         private TextBox txtCustomQuestion = null!;
@@ -26,6 +27,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.Size = new Size(520, 560);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.ControlBox = false; // Nov 18: no title-bar X (also hides min/max); title text kept
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.BackColor = Pal.C(248, 250, 252);
@@ -180,9 +182,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Button btnCancel = new Button
             {
-                Text = "Cancel",
+                Text = "Do it later", // Nov 18: renamed from "Cancel"; same behaviour, DialogResult stays Cancel
                 Dock = DockStyle.Right,
-                Width = 90,
+                Width = 100,
                 BackColor = Pal.C(226, 232, 240),
                 ForeColor = Pal.C(51, 65, 85),
                 FlatStyle = FlatStyle.Flat,
@@ -191,9 +193,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             btnCancel.FlatAppearance.BorderSize = 0;
             btnCancel.DialogResult = DialogResult.Cancel;
-            btnCancel.Click += (s, e) => this.Close();
+            btnCancel.Click += (s, e) => { allowClose = true; this.Close(); };
 
-            this.CancelButton = btnCancel; // Esc closes without saving
+            // Nov 18: no CancelButton, so Esc no longer closes the dialog; only Save/Cancel buttons do.
             Button btnSave = new Button
             {
                 Text = "Save security settings",
@@ -327,7 +329,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             EventNotificationService.Publish("Security Updated", $"Security settings updated for @{currentUser.Username}", ToastType.Success, this);
             QuietBox.Show("Security settings saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            allowClose = true;
             this.Close();
+        }
+
+        // Nov 18: block Alt+F4 / system-menu close; allow Save/Cancel and non-user closes (shutdown, app exit).
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (e.CloseReason == CloseReason.UserClosing && !allowClose)
+                e.Cancel = true;
+            base.OnFormClosing(e);
         }
     }
 }
