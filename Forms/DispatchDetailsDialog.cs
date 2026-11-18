@@ -120,6 +120,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private ClientCompany? client;
         private TripReport? trip;
         private Invoice? invoice;
+        private (string Number, string Issued)? soa;   // Nov 18
         private List<IncidentReport> incidents = new List<IncidentReport>();
         private List<AuditTrailEntry> activity = new List<AuditTrailEntry>();
         private List<Crew> crews = new List<Crew>();
@@ -207,6 +208,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 client = SafeGet(() => MJdatabase.GetClientByCompanyName(clientName), null);
                 trip = SafeGet(() => MJdatabase.GetTripReports().FirstOrDefault(t => t.DeliveryId == del.Id || (!string.IsNullOrEmpty(t.DispatchNumber) && t.DispatchNumber == del.DispatchNumber)), null);
                 invoice = SafeGet(() => MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == del.Id), null);
+                soa = SafeGet(() => MJdatabase.GetLiveSoaOfDelivery(del.Id), ((string Number, string Issued)?)null);   // Nov 18: live statement of this trip, for the tracker
                 incidents = SafeGet(() => MJdatabase.GetTripIncidents(del.Id), new List<IncidentReport>());   // Nov 14: the trip incidents (step 3 of the trip report), read-only here
                 crews = SafeGet(() => MJdatabase.GetCrews(), new List<Crew>());
                 truck = SafeGet(() => MJdatabase.GetTrucks().FirstOrDefault(t => t.Id == del.TruckId), null);
@@ -355,6 +357,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 new Tracker.Step("In transit", IsInTransit ? "On the road" : "", IsInTransit || IsCompleted || trip != null),
                 new Tracker.Step("Delivered", IsCompleted ? "Order complete" : "", IsCompleted),
                 new Tracker.Step("Trip report", trip != null ? Fmt.Short(trip.ReportDate) : "", trip != null),
+                // Nov 18: Trip report -> Statement of Account -> Invoiced -> Paid
+                new Tracker.Step("Statement of Account", soa == null ? "" : (soa.Value.Number + (DateTime.TryParse(soa.Value.Issued, out var soaDt) ? " · " + soaDt.ToString("MM/dd") : "")), soa != null),
                 new Tracker.Step("Invoiced", invoice != null ? Fmt.Short(invoice.IssueDate) : "", invoice != null),
                 new Tracker.Step("Paid", IsPaid ? "Settled" : "", IsPaid)
             };
