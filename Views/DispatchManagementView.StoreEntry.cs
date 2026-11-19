@@ -31,7 +31,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Font = new Font("Segoe UI Semibold", 9F),
                 ForeColor = AppTheme.TextSecondary,
                 TextAlign = ContentAlignment.BottomLeft,
-                Padding = new Padding(0, Dpi(4), 4, Dpi(4)),
+                Padding = new Padding(0, 0, 4, Dpi(2)),
                 Margin = new Padding(0, 0, Dpi(8), 0)
             };
         }
@@ -76,7 +76,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14F));   // temp
             tbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));       // add button
             tbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));       // season (routes off)
-            tbl.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(LargePrint.Px(26, 22))));   // caption row: fixed height so the captions are never cut off
             tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(36)));
 
             txtEntryCode = EntryBox("txtEntryStoreCode", "Code", false);
@@ -89,7 +89,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblTempType.ForeColor = AppTheme.TextSecondary;
             lblTempType.TextAlign = ContentAlignment.BottomLeft;
             lblTempType.AutoSize = false;
-            lblTempType.Padding = new Padding(0, Dpi(4), 4, Dpi(4));
+            lblTempType.Padding = new Padding(0, 0, 4, Dpi(2));
             lblTempType.Margin = new Padding(0, 0, Dpi(8), 0);
             cbTempType!.Dock = DockStyle.Fill;
             cbTempType.Margin = new Padding(0, 0, Dpi(8), 0);
@@ -98,15 +98,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Name = "btnAddStoreRow",
                 Text = "＋ Add store",
-                AutoSize = true,
-                Height = Dpi(34),
+                AutoSize = false,
                 Padding = new Padding(Dpi(10), 0, Dpi(10), 0),
                 Font = new Font("Segoe UI Semibold", 9F),
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
-                Anchor = AnchorStyles.Left | AnchorStyles.Bottom,
-                Margin = new Padding(0, 0, Dpi(8), Dpi(1))
+                Anchor = AnchorStyles.Left | AnchorStyles.Top,   // lines up with the text boxes (same top, same height)
+                Margin = new Padding(0, 0, Dpi(8), 0)
             };
+            btnEntryAdd.Height = txtEntryCode.PreferredHeight;
+            btnEntryAdd.Width = TextRenderer.MeasureText(btnEntryAdd.Text, btnEntryAdd.Font).Width + Dpi(36);
             UIThemeHelper.SetButtonRole(btnEntryAdd, "primary");
             storeTips.SetToolTip(btnEntryAdd, "Add this store and its crates to the table below");
             btnEntryAdd.Click += (s, e) => AddStoreFromEntryRow();
