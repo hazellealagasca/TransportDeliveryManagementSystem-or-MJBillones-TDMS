@@ -632,7 +632,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             tblFormButtons.Visible = false;
 
-            foreach (var b in new[] { btnSave, btnUpdate, btnReschedule, btnClear })
+            CreateWizardButtons();
+
+            foreach (var b in new[] { btnSave, btnUpdate, btnReschedule, btnClear, btnBack!, btnNext! })
 
             {
 
@@ -664,7 +666,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             flowFormActions.Controls.Add(btnReschedule);
 
-            flowFormActions.Controls.Add(btnClear);
+            flowFormActions.Controls.Add(btnNext);
+
+            BuildWizardLeftActions();
 
             pnlFormActionsBar.Controls.Add(flowFormActions);
 
@@ -1145,7 +1149,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 }
 
-                txtDispatchNumber.Focus();
+                FocusStep(txtDispatchNumber);
 
             }
 
@@ -1233,7 +1237,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 lblFormHeader.Text = $"New Dispatch Order  ·  {schedule.ScheduleNumber} ({schedule.ClientName})";
 
-                cbDriver.Focus();
+                FocusStep(cbDriver);
 
                 ToastHelper.ShowToast(this, $"Loaded Order #{schedule.ScheduleNumber} for {schedule.ClientName} ({schedule.TotalCrates} Crates) ✓", ToastType.Info);
 
@@ -1960,26 +1964,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 Cursor = Cursors.Hand
             };
-            lblRouteStoresHeader.DoubleClick += (s, e) => OpenStoreBreakdownTableEditor();
 
-            var btnAddStoreRow = new Button
-            {
-                Text = "＋ Add store",
-                Height = Dpi(34),
-                AutoSize = true,
-                Padding = new Padding(Dpi(10), 0, Dpi(10), 0),
-                Font = new Font("Segoe UI Semibold", 9F),
-                BackColor = AppTheme.Surface,
-
-                ForeColor = AppTheme.TextPrimary,
-
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 2, 8, 2)
-            };
-            UIThemeHelper.SetButtonRole(btnAddStoreRow, "secondary"); // same look as the other form buttons
-            tipRouteStores.SetToolTip(btnAddStoreRow, "Add another store of the same client company to this order");
-            btnAddStoreRow.Click += (s, e) => AddStoreBreakdownRow();
 
             btnEditStoreTable = new Button
 
@@ -2001,7 +1986,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 2, 4, 2)
             };
             btnEditStoreTable.FlatAppearance.BorderSize = 0;
-            btnEditStoreTable.Click += (s, e) => OpenStoreBreakdownTableEditor();
 
             storeTips.SetToolTip(btnEditStoreTable, "Change this table's columns (Settings → Features can hide this).");
 
@@ -2031,7 +2015,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             storeTips.SetToolTip(btnSaveStoresToRoute, "Copy this order's store list into the saved route, so future orders on this route start with the same stores.");
 
             pnlRouteStoreHeaderBar.Controls.Add(lblRouteStoresHeader, 0, 0);
-            pnlRouteStoreHeaderBar.Controls.Add(btnAddStoreRow, 1, 0);
+            btnEditStoreTable.Visible = false; // stores are added through the entry row; the table isn't edited by column
             pnlRouteStoreHeaderBar.Controls.Add(btnEditStoreTable, 2, 0);
             pnlRouteStoreHeaderBar.Controls.Add(btnSaveStoresToRoute, 3, 0);
 
@@ -2149,7 +2133,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 RemoveStoreRows(new List<DataGridViewRow> { gridRouteStores.Rows[e.RowIndex] });
                 }
             };
-            gridRouteStores.ColumnHeaderMouseDoubleClick += (s, e) => OpenStoreBreakdownTableEditor();
+            // No header double-click editor: the text columns are ReadOnly (stores come in through the entry row); only the tick and Remove work.
 
             // Settings → "Show Column Edit Header in Edit Store Table": the Edit button and the ✎ marks come and go live.
 
@@ -2267,7 +2251,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     FillWeight = colDef.IsFill ? 140 : 75,
                     MinimumWidth = 50,
-                    ReadOnly = isTotal,
+                    ReadOnly = true, // stores come in through the entry row
                     DefaultCellStyle =
                     {
                         Alignment = isNumeric ? DataGridViewContentAlignment.MiddleRight : DataGridViewContentAlignment.MiddleLeft,
@@ -2326,7 +2310,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 ToastHelper.ShowToast(this.FindForm() ?? (Control)this, StoreDirectory.NeedClientMessage, ToastType.Warning);
 
-                cbClient.Focus();
+                FocusStep(cbClient);
 
                 return;
 
@@ -2521,7 +2505,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             string h = header ?? "";
 
-            return StoreEditHeaderOn ? h : h.Replace("✎", "").Trim();
+            return h.Replace("✎", "").Trim(); // the table is not edited by column on this form
 
         }
 
@@ -2531,11 +2515,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         {
 
-            bool on = StoreEditHeaderOn;
+            if (btnEditStoreTable != null) btnEditStoreTable.Visible = false; // always hidden on the dispatch form
 
-            if (btnEditStoreTable != null) btnEditStoreTable.Visible = on;
-
-            if (lblRouteStoresHeader != null) lblRouteStoresHeader.Cursor = on ? Cursors.Hand : Cursors.Default;
+            if (lblRouteStoresHeader != null) lblRouteStoresHeader.Cursor = Cursors.Default;
 
             if (gridRouteStores == null) return;
 
@@ -2730,6 +2712,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lblCargoType, pnlCargoContainer
 
             );
+            var pnlStoreEntry = BuildStoreEntryRow();
+            // Routes off: the Season box sits at the right end of the entry row; routes on: it stays in the route row.
+            Features.Bind(pnlStoreEntry, () => PlaceSeasonBox(Features.On(Features.DeliveryRoutes), pnlRowRouteCargo, lblCargoType, pnlCargoContainer), Features.DeliveryRoutes);
 
             pnlRowCombi = CreateTwoColumnRow(
 
@@ -2786,28 +2771,28 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlAidesSection.Controls.Add(pnlAidesSearchRow);
             pnlAidesSection.Controls.Add(lblAi);
 
-            var card1 = CreateSectionCard(1, Features.On(Features.DeliveryRoutes) ? "Route & store crates" : "Stores & crates", "Who the order is for, where it goes and how many crates are loaded.",
+            var card1 = CreateSectionCard(1, Features.On(Features.DeliveryRoutes) ? "Client & route stores" : "Client & stores", "Who the order is for and which stores it goes to.",
+                pnlRowOrderClient, clientStrip, pnlStoreEntry, pnlRowRouteCargo, pnlRowCombi, pnlRouteStoresBreakdown);
 
-                pnlRowOrderClient, clientStrip, pnlRowRouteCargo, pnlRowCombi, pnlRouteStoresBreakdown, tblCrates, pnlRec);
-
-            var card2 = CreateSectionCard(2, "Truck & crew", "Assign the truck, the driver and the helpers for this trip.",
-
-                BuildAddResourceLinks(), BuildTempTypeRow(), pnlRowTruckDriver, pnlAidesSection);
+            var card2 = CreateSectionCard(2, "Crates, truck & crew", "How many crates are loaded, then the truck, driver and helpers for this trip.",
+                tblCrates, pnlRec, BuildAddResourceLinks(), pnlRowTruckDriver, pnlAidesSection);
             BuildCrateFooter();
 
             var card3 = CreateSectionCard(3, "Schedule & status", "When the truck leaves and where the order stands.",
-
                 pnlRowDateTime, pnlRowStatus);
 
+            pnlStep1ClientStores = card1; pnlStep2LoadCrew = card2; pnlStep3Schedule = card3;
+            card1.Name = "pnlStep1ClientStores"; card2.Name = "pnlStep2LoadCrew"; card3.Name = "pnlStep3Schedule";
+
+            // Docked Top: the last control added sits highest, so add bottom-to-top. Only the current step's card is visible.
             pnlFormBody.Controls.Add(card3);
-
-            pnlFormBody.Controls.Add(CreateSectionSpacer());
-
             pnlFormBody.Controls.Add(card2);
-
-            pnlFormBody.Controls.Add(CreateSectionSpacer());
-
             pnlFormBody.Controls.Add(card1);
+            pnlFormBody.Controls.Add(CreateSectionSpacer());
+            BuildWizardStepper();
+            pnlFormBody.Controls.Add(pnlStepperHeader!);
+            wizardStep = 1;
+            ApplyWizardStep();
 
             pnlFormBody.ResumeLayout(true);
         }
@@ -3156,7 +3141,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbDestination.SelectedItem = routeDisplay;
                 cbDestination.Text = routeDisplay;
                 PopulateRouteStoresGrid(route);
-                numGCrate.Focus();
+                FocusStep(numGCrate);
             }
         }
 
@@ -3324,8 +3309,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (gridRouteStores == null || !gridRouteStores.Columns.Contains("colBaseline")) return;
             row.Cells["colBaseline"].Value = routeStore;
             row.Cells["colRowType"].Value = routeStore ? "🔒 Route store" : "＋ Added store";
-            foreach (var key in new[] { "colStoreCode", "colStoreName" })
-                if (gridRouteStores.Columns.Contains(key)) row.Cells[key].ReadOnly = routeStore;
+            // Cell ReadOnly is left alone: the table's text columns are all read-only (setting a cell flag would flip the whole column).
             row.Height = Dpi(LargePrint.Px(40, 32));
         }
         /// <summary>Rows that came in without a type (table editor, saved draft): on the route = route store, otherwise added.</summary>
@@ -4481,6 +4465,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (!exists)
             {
+                saveVisWanted = true; updateVisWanted = false; rescheduleVisWanted = false;
                 btnSave.Visible = true;
                 btnSave.Enabled = true;
                 ApplyButtonVisualState(btnSave, true, Pal.C(13, 110, 253), Pal.White);
@@ -4503,6 +4488,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else
             {
+                saveVisWanted = false; updateVisWanted = true;
                 btnSave.Visible = false;
                 btnSave.Enabled = false;
 
@@ -4517,6 +4503,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (isOngoing)
                 {
+                    rescheduleVisWanted = true;
                     btnReschedule.Visible = true;
                     btnReschedule.Enabled = true;
                     tblFormButtons.RowStyles[0].Height = 34F;
@@ -4527,6 +4514,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 else
                 {
+                    rescheduleVisWanted = false;
                     btnReschedule.Visible = false;
                     btnReschedule.Enabled = false;
                     tblFormButtons.RowStyles[0].Height = 34F;
@@ -4539,6 +4527,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 btnClear.Text = "➕ New dispatch form";
 
             }
+            RememberSaveButtons();
         }
 
 
@@ -5110,6 +5099,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 isBindingForm = false;
             }
             SetButtonStates(true);
+            GoToStep(1);
         }
 
 
@@ -5258,7 +5248,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     MessageBox.Show($"Order Reference / Dispatch Number '{dspNum}' is already in use. Please provide a unique reference number.", "Reference Number Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
-                    txtDispatchNumber.Focus();
+                    FocusStep(txtDispatchNumber);
 
                     return;
 
@@ -5308,7 +5298,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         MessageBox.Show("Please select or enter a Client Company name.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
-                        cbClient.Focus();
+                        FocusStep(cbClient);
 
                         return;
 
@@ -5320,7 +5310,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         MessageBox.Show("Please add at least one store to this order (Stores & crates → Add).", "Store required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
-                        cbDestination.Focus();
+                        FocusStep(cbDestination);
 
                         return;
 
@@ -5336,7 +5326,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        MessageBox.Show("Please add at least 1 destination stop to configure the multi-drop route.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        ShowStepFor(cbClient); MessageBox.Show("Please add at least 1 destination stop to configure the multi-drop route.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                         return;
 
@@ -5356,7 +5346,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     MessageBox.Show("Client name cannot exceed 150 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
-                    cbClient.Focus();
+                    FocusStep(cbClient);
 
                     return;
 
@@ -5368,7 +5358,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     MessageBox.Show("Destination cannot exceed 200 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
-                    cbDestination.Focus();
+                    FocusStep(cbDestination);
 
                     return;
 
@@ -5382,9 +5372,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     MessageBox.Show("STRICT FLEET ASSIGNMENT REQUIRED:\nPlease select both an assigned Truck Vehicle and Driver before saving this dispatch order.", "Fleet Assignment Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
-                    if (cbTruck.SelectedIndex < 0) cbTruck.Focus();
+                    if (cbTruck.SelectedIndex < 0) FocusStep(cbTruck);
 
-                    else cbDriver.Focus();
+                    else FocusStep(cbDriver);
 
                     return;
 
@@ -5404,7 +5394,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    MessageBox.Show("Please assign at least 1 aide / helper to this trip. Every driver needs an aide.", "Aide required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    ShowStepFor(flowAidesModule); MessageBox.Show("Please assign at least 1 aide / helper to this trip. Every driver needs an aide.", "Aide required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                     return;
 
@@ -5510,7 +5500,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    MessageBox.Show("Please enter at least 1 crate for dispatch.", "Crate Quantity Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    ShowStepFor(numGCrate); MessageBox.Show("Please enter at least 1 crate for dispatch.", "Crate Quantity Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                     return;
 
@@ -5530,7 +5520,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     MessageBox.Show($"DISPATCH NUMBER ALREADY EXISTS:\nDispatch Number '{dspNum}' is already assigned to an existing delivery order. Please enter a unique dispatch number.", "Order Number Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop);
 
-                    txtDispatchNumber.Focus();
+                    FocusStep(txtDispatchNumber);
 
                     return;
 
@@ -5809,7 +5799,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         MessageBox.Show("Please select or enter a Client Company name.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
-                        cbClient.Focus();
+                        FocusStep(cbClient);
 
                         return;
 
@@ -5821,7 +5811,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         MessageBox.Show("Please add at least one store to this order (Stores & crates → Add).", "Store required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
-                        cbDestination.Focus();
+                        FocusStep(cbDestination);
 
                         return;
 
@@ -5837,7 +5827,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        MessageBox.Show("Please add at least 1 destination stop to configure the multi-drop route.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        ShowStepFor(cbClient); MessageBox.Show("Please add at least 1 destination stop to configure the multi-drop route.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                         return;
 
@@ -5857,7 +5847,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     MessageBox.Show("Client name cannot exceed 150 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
-                    cbClient.Focus();
+                    FocusStep(cbClient);
 
                     return;
 
@@ -5869,7 +5859,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     MessageBox.Show("Destination cannot exceed 200 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
-                    cbDestination.Focus();
+                    FocusStep(cbDestination);
 
                     return;
 
@@ -5901,7 +5891,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    MessageBox.Show("Please assign at least 1 aide / helper to this trip. Every driver needs an aide.", "Aide required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    ShowStepFor(flowAidesModule); MessageBox.Show("Please assign at least 1 aide / helper to this trip. Every driver needs an aide.", "Aide required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                     return;
 
@@ -5921,7 +5911,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     ValidationHelper.ApplyValidationState(cbDepartureTime, false, updateTimeProblem);
                     MessageBox.Show(updateTimeProblem, "Departure Time Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    cbDepartureTime.Focus();
+                    FocusStep(cbDepartureTime);
                     return;
                 }
 
@@ -5970,7 +5960,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    MessageBox.Show("Please enter at least 1 crate for dispatch.", "Crate Quantity Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    ShowStepFor(numGCrate); MessageBox.Show("Please enter at least 1 crate for dispatch.", "Crate Quantity Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                     return;
 
@@ -5994,7 +5984,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     MessageBox.Show($"DISPATCH NUMBER ALREADY EXISTS:\nDispatch Number '{dspNum}' is already assigned to another delivery order. Please enter a unique dispatch number.", "Order Number Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Stop);
 
-                    txtDispatchNumber.Focus();
+                    FocusStep(txtDispatchNumber);
 
                     return;
 
@@ -6667,6 +6657,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             SetButtonStates(false);
+            GoToStep(1);
             gridDispatch.ClearSelection();
 
             txtSearchAides.Enabled = true;

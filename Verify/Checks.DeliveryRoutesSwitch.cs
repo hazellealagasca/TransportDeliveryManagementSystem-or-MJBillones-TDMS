@@ -120,7 +120,7 @@ public static partial class Checks
             GetF<ComboBox>("cbClient").Text = "ROUTELESS CO"; Pump(500);
             foreach (var (code, name, e, g) in new[] { ("RL-1", "Store One", 3, 4), ("RL-2", "Store Two", 2, 1) })
             {
-                int r = grid.Rows.Add();
+                int r = grid.Rows.Add(); // programmatic values work on the read-only table
                 grid.Rows[r].Cells["colStoreCode"].Value = code; grid.Rows[r].Cells["colStoreName"].Value = name;
                 grid.Rows[r].Cells["colECrate"].Value = e; grid.Rows[r].Cells["colGCrate"].Value = g;
             }

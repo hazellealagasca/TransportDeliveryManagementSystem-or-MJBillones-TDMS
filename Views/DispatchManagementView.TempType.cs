@@ -43,7 +43,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>The row with the required Temp Type box, placed first in the "Truck &amp; crew" card.</summary>
-        private Control BuildTempTypeRow()
+        private void EnsureTempTypeControls()
         {
             if (cbTempType == null)
             {
@@ -87,7 +87,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cbTempType.SelectedIndexChanged += (s, e) => { if (pnlRowCombi != null) pnlRowCombi.Visible = IsCombiCargo; };
                 storeTips.SetToolTip(cbTempType, "Dry, Cold or Combi (cold + dry). The crates are checked against that part of the truck's capacity.");
             }
-            return CreateTwoColumnRow(lblTempType!, cbTempType, new Label { Visible = false }, new Panel { Visible = false });
         }
 
         /// <summary>A clear footer at the bottom of the order form: the live crate count and the truck's limit.</summary>

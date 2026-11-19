@@ -205,7 +205,7 @@ public static partial class Checks
                 if (!(bool)typeof(DispatchManagementView).GetMethod("IsRouteStoreRow", DcF)!.Invoke(view, new object?[] { grid.Rows[r2] })!) bad.Add("a route store row is not recognised");
                 if (!grid.Rows[r2].Cells["colStoreCode"].ReadOnly || !grid.Rows[r2].Cells["colStoreName"].ReadOnly) bad.Add("a route store row is not locked");
                 typeof(DispatchManagementView).GetMethod("SetStoreRowType", DcF)!.Invoke(view, new object?[] { grid.Rows[r2], false });
-                if (grid.Rows[r2].Cells["colStoreCode"].ReadOnly) bad.Add("an added store row is locked");
+                if (!grid.Rows[r2].Cells["colStoreCode"].ReadOnly) bad.Add("an added store row can be typed in (the table is entry-row only)");
             }
             // No. of drops is the number of stores with a code or a name, and cannot be typed.
             var drops = DcGet<Label>(view, "lblNoOfDrops");
