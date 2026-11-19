@@ -745,6 +745,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 gridOperations.Columns.AddRange(Col("When", "When", 11, 90), Col("No", "Dispatch #", 12, 100), Col("Client", "Client", 20, 130), Col("Route", "Route / destination", 18, 120),
                     Col("Truck", "Truck", 11, 85), Col("Driver", "Driver", 14, 110), Col("Crates", "Crates", 7, 60, true), Col("Status", "Status", 11, 105));
+                gridOperations.Columns["Route"]!.Visible = Features.On(Features.DeliveryRoutes);   // Nov 19: no Route column while delivery routes are off
                 var list = data.Deliveries.Where(d => d.DispatchDate.Date >= from && d.DispatchDate.Date <= to)
                     .OrderBy(d => DispatchGate.IsCancelled(d.Status) ? 1 : 0).ThenBy(d => Departure(d.DispatchDate, d.DepartureTime)).ToList();
                 if (q.Length > 0) list = list.Where(d => $"{d.DispatchNumber} {d.ClientName} {d.Destination} {d.TruckInfo} {d.DriverName} {d.AideNames} {d.Status} {StatusText.Display(d.Status)}".ToLowerInvariant().Contains(q)).ToList();
@@ -763,6 +764,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 gridOperations.Columns.AddRange(Col("When", "When", 11, 90), Col("No", "Loading order #", 13, 110), Col("Client", "Client", 22, 130), Col("Route", "Route / destination", 22, 130),
                     Col("Cargo", "Crate type", 11, 90), Col("Crates", "Crates", 8, 60, true), Col("Dispatch", "Dispatch", 11, 90), Col("Status", "Status", 11, 105));
+                gridOperations.Columns["Route"]!.Visible = Features.On(Features.DeliveryRoutes);   // Nov 19
                 var dispatchBySched = data.Deliveries.Where(d => !DispatchGate.IsCancelled(d.Status) && d.LoadingScheduleId > 0)
                     .GroupBy(d => d.LoadingScheduleId).ToDictionary(g => g.Key, g => g.First().DispatchNumber);
                 var list = data.Schedules.Where(s => s.ScheduleDate.Date >= from && s.ScheduleDate.Date <= to)

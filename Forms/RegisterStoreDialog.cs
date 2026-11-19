@@ -22,6 +22,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly Label lblProblem = new Label();
         private readonly Button btnSave = new Button(), btnCancel = new Button(), btnNewRoute = new Button();
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
+        private bool routesShown = true;   // Nov 19
 
         public RegisterStoreDialog(string clientName, string? code, string? name, string? defaultRouteLabel)
         {
@@ -47,13 +48,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             void Field(Control c) { c.Dock = DockStyle.Fill; c.Margin = new Padding(0, 0, 0, D(2)); c.Font = new Font("Segoe UI", 10.5F); c.BackColor = AppTheme.InputBack; c.ForeColor = AppTheme.TextPrimary; }
 
             root.Controls.Add(new Label { Text = "Register a new store", AutoSize = true, Font = new Font("Segoe UI Semibold", 14F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, 0, 0, D(2)), UseMnemonic = false });
-            root.Controls.Add(new Label { Text = "It is added to this client's stores and to the route's store list, then filled into your table.", AutoSize = true, MaximumSize = new Size(D(480), 0), Font = new Font("Segoe UI", 9.5F), ForeColor = AppTheme.TextMuted, Margin = new Padding(0, 0, 0, D(4)), UseMnemonic = false });
+            root.Controls.Add(new Label { Text = Features.On(Features.DeliveryRoutes) ? "It is added to this client's stores and to the route's store list, then filled into your table." : "It is added to this client's stores, then filled into your table.", AutoSize = true, MaximumSize = new Size(D(480), 0), Font = new Font("Segoe UI", 9.5F), ForeColor = AppTheme.TextMuted, Margin = new Padding(0, 0, 0, D(4)), UseMnemonic = false });
 
             root.Controls.Add(Cap("Client company"));
             var lblClient = new Label { Text = client.Length > 0 ? client : "(no client selected)", AutoSize = true, Font = new Font("Segoe UI Semibold", 10.5F), ForeColor = AppTheme.TextPrimary, BackColor = AppTheme.SurfaceAlt, Padding = new Padding(D(8), D(6), D(8), D(6)), MinimumSize = new Size(D(480), 0), UseMnemonic = false, Margin = new Padding(0) };
             root.Controls.Add(lblClient);
 
-            root.Controls.Add(Cap("Route *"));
+            var capRoute = Cap("Route *");
+            root.Controls.Add(capRoute);
             var routeRow = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, Margin = new Padding(0), BackColor = AppTheme.Surface };
             routeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             routeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -66,6 +68,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             routeRow.Controls.Add(cbRoute, 0, 0);
             routeRow.Controls.Add(btnNewRoute, 1, 0);
             root.Controls.Add(routeRow);
+            // Nov 19: with delivery routes off the route box is hidden; the store is registered to the client's own stores (no route).
+            routesShown = Features.On(Features.DeliveryRoutes);
+            capRoute.Visible = routeRow.Visible = routesShown;
 
             root.Controls.Add(Cap($"Store code (optional: left blank, one is made and shows as {MJdatabase.NoCodeText}; letters, numbers, hyphens; up to {MJdatabase.StoreCodeMaxLength})"));
             Field(txtCode);
@@ -114,7 +119,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbRoute.SelectedIndexChanged += (s, e) => lblProblem.Text = "";
             Shown += (s, e) =>
             {
-                Control first = cbRoute.SelectedIndex < 0 ? cbRoute : txtCode.Text.Length == 0 ? txtCode : txtName.Text.Length == 0 ? txtName : (Control)btnSave;
+                Control first = cbRoute.SelectedIndex < 0 && routesShown ? cbRoute : txtCode.Text.Length == 0 ? txtCode : txtName.Text.Length == 0 ? txtName : (Control)btnSave;
                 first.Focus();
             };
             UIThemeHelper.ApplyTheme(this);
@@ -150,7 +155,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int idx = want.Length == 0 ? -1 : cbRoute.Items.Cast<object>().ToList().FindIndex(o => StoreDirectory.Same(o?.ToString(), want));
             if (idx < 0 && cbRoute.Items.Count == 1) idx = 0;
             cbRoute.SelectedIndex = idx;
-            if (cbRoute.Items.Count == 0)
+            if (cbRoute.Items.Count == 0 && routesShown)
                 lblProblem.Text = $"{(client.Length > 0 ? client : "This client")} has no routes yet. Click \"+ New route\" to add one first.";
         }
 
@@ -165,7 +170,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             txtCode.Text = MJdatabase.CleanStoreCode(txtCode.Text);
             txtName.Text = MJdatabase.CleanStoreText(txtName.Text);
-            string route = cbRoute.SelectedItem?.ToString() ?? "";
+            string route = routesShown ? cbRoute.SelectedItem?.ToString() ?? "" : "";   // Nov 19: no route while routes are off
             string? problem;
             try { problem = MJdatabase.CheckNewStore(client, txtCode.Text, txtName.Text, route, out _); }
             catch (Exception ex) { ErrLog.Error("RegisterStoreDialog", ex); problem = "Couldn't check the store: " + ex.Message; }
@@ -183,7 +188,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void ShowProblem(string problem)
         {
             lblProblem.Text = "⚠ " + problem;
-            if (problem.IndexOf("route", StringComparison.OrdinalIgnoreCase) >= 0 && cbRoute.SelectedIndex < 0) cbRoute.Focus();
+            if (routesShown && problem.IndexOf("route", StringComparison.OrdinalIgnoreCase) >= 0 && cbRoute.SelectedIndex < 0) cbRoute.Focus();
             else if (problem.IndexOf("code", StringComparison.OrdinalIgnoreCase) >= 0) { txtCode.Focus(); txtCode.SelectAll(); }
             else if (problem.IndexOf("name", StringComparison.OrdinalIgnoreCase) >= 0) { txtName.Focus(); txtName.SelectAll(); }
         }

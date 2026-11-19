@@ -221,9 +221,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var lines = new List<string>
             {
                 $"Total stores / drop-off stops:  {f.Stores:N0} store{(f.Stores == 1 ? "" : "s")}" + (f.Drops > 0 ? $"  ·  {f.Drops:N0} drop{(f.Drops == 1 ? "" : "s")}" : ""),
-                "Covered routes:  " + (f.Routes.Count > 0 ? string.Join(", ", f.Routes) : "—"),
                 $"Crates returned by the stores:  {f.ReturnedTotal:N0} of {f.TotalCrates:N0}",
             };
+            if (Features.On(Features.DeliveryRoutes)) lines.Insert(1, "Covered routes:  " + (f.Routes.Count > 0 ? string.Join(", ", f.Routes) : "—"));   // Nov 19: hidden while delivery routes are off
             if (f.StoreIssues.Count > 0 || f.Damaged > 0 || f.OverReturns.Count > 0)
             {
                 lines.Add("Store-by-store issues:");

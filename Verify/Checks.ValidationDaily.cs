@@ -40,7 +40,8 @@ public static partial class Checks
                     Boxes.Add("[" + sb.ToString().Trim());
                     VdShot(f, "popup-" + tag.Replace("ValidationDaily_", "") + "-" + Boxes.Count + ".png");
                     // Nov 17: "No stores or delivery routes yet" (Clients save): Yes = save anyway, so checks that save a store-less client keep working
-                    f.DialogResult = f.Text == "No stores or delivery routes yet" ? DialogResult.Yes : DialogResult.Cancel; f.Close();
+                    // Nov 19: with delivery routes off the same question is titled "No stores yet"
+                    f.DialogResult = f.Text == "No stores or delivery routes yet" || f.Text == "No stores yet" ? DialogResult.Yes : DialogResult.Cancel; f.Close();
                 }
             };
             timer.Start();

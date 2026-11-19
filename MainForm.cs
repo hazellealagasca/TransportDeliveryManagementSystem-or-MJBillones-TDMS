@@ -443,7 +443,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     currentHoveredNavBtn = targetBtn;
                     tmrNavFlyoutGrace.Stop();
-                    ShowNavFlyout(targetBtn, targetTitle, targetItems);
+                    // Nov 19: the Delivery Routes entry only shows while delivery routes are switched on
+                    var shownItems = Features.On(Features.DeliveryRoutes) ? targetItems : System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Where(targetItems, it => !it.Label.Contains("Delivery Routes")));
+                    ShowNavFlyout(targetBtn, targetTitle, shownItems);
                 };
 
                 targetBtn.MouseLeave += (s, e) =>

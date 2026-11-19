@@ -36,7 +36,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 ApplyAccess();
                 if (!Features.On(Features.RateMatrix) && Equals(activeTabBtn?.Tag, "Rates")) SelectTab("Clients");
-            }, Features.RateMatrix);
+                if (!Features.On(Features.DeliveryRoutes) && Equals(activeTabBtn?.Tag, "Routes")) SelectTab("Clients");   // Nov 19
+            }, Features.RateMatrix, Features.DeliveryRoutes);
         }
 
         private void AddTab(string key, string title, Func<UserControl> viewFactory)
@@ -93,13 +94,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (var kv in tabButtons) if (kv.Value.Visible) return kv.Key;
             return null;
         }
-        private static bool FeatureAllows(string key) => key != "Rates" || Features.On(Features.RateMatrix);
+        private static bool FeatureAllows(string key) => (key != "Rates" || Features.On(Features.RateMatrix)) && (key != "Routes" || Features.On(Features.DeliveryRoutes));   // Nov 19: Routes tab only when delivery routes are on
         public void SelectTab(string key)
         {
             if (!tabButtons.ContainsKey(key) || !cachedViews.ContainsKey(key))
                 return;
 
             if (key == "Rates" && !Features.On(Features.RateMatrix)) { Features.TellOff(this, "The Rate Matrix"); key = "Clients"; }
+            if (key == "Routes" && !Features.On(Features.DeliveryRoutes)) { Features.TellOff(this, "Delivery routes"); key = "Clients"; }   // Nov 19
             var allowed = AllowedTab(key);
             if (allowed == null || !cachedViews.ContainsKey(allowed)) return;
             key = allowed;

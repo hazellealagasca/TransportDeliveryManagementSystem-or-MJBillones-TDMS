@@ -237,7 +237,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 using (var lp = new Pen(AppTheme.Border)) g.DrawLine(lp, 0, h - 1, w, h - 1);
                 if (p.noMatch)
                 {
-                    TextRenderer.DrawText(g, "No matching registered store found — Press Enter to register this store under Client Company Routes.", bold,
+                    TextRenderer.DrawText(g, Features.On(Features.DeliveryRoutes) ? "No matching registered store found — Press Enter to register this store under Client Company Routes." : "No matching registered store found — Press Enter to register this store under the Client Company.", bold,   // Nov 19
                         new Rectangle(pad, h, Math.Max(0, w - pad * 2), h * 2), AppTheme.WarningText,
                         TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix);
                     return;

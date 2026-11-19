@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 using System.Collections.Generic;
 
@@ -1298,7 +1298,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             cbDestination.SelectedIndexChanged += (s, e) =>
             {
-                if (!isBindingForm)
+                if (!isBindingForm && Features.On(Features.DeliveryRoutes))   // Nov 19: the route box is hidden (and does nothing) while routes are off
                 {
                     string selected = cbDestination.Text.Trim();
                     var matched = MJdatabase.FindRouteByNameOrCode(selected);
@@ -1316,7 +1316,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             cbDestination.KeyDown += (s, e) =>
             {
-                if (e.KeyCode == Keys.Enter)
+                if (e.KeyCode == Keys.Enter && Features.On(Features.DeliveryRoutes))
                 {
                     string txt = cbDestination.Text.Trim();
                     var matched = MJdatabase.FindRouteByNameOrCode(txt);
@@ -1335,7 +1335,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbDestination.TextChanged += (s, e) =>
             {
                 UpdateDestinationHint();
-                if (!isBindingForm && cbDestination.Focused)
+                if (!isBindingForm && cbDestination.Focused && Features.On(Features.DeliveryRoutes))
                 {
                     string txt = cbDestination.Text.Trim();
                     var matched = MJdatabase.FindRouteByNameOrCode(txt);
@@ -2395,11 +2395,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             string client = cbClient.Text.Trim();
 
+            // Nov 19: with delivery routes off the destination is just the stores on the order (first store, plus how many more).
+            bool routesOn = Features.On(Features.DeliveryRoutes);
+
             try
 
             {
 
-                var routes = client.Length == 0 ? new List<DeliveryRoute>() : MJdatabase.GetDeliveryRoutesByClient(client, activeOnly: false);
+                var routes = client.Length == 0 || !routesOn ? new List<DeliveryRoute>() : MJdatabase.GetDeliveryRoutesByClient(client, activeOnly: false);
 
                 DeliveryRoute? best = null;
 
@@ -2467,7 +2470,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
-        private const string StoreHintText = "Type a store code or name and pick it from the list (Code | Name | Route). Stores that aren't registered can be added from the warning.";
+        // Nov 19: the hint only mentions the Route column while delivery routes are on
+        private static string StoreHintText => Features.On(Features.DeliveryRoutes)
+            ? "Type a store code or name and pick it from the list (Code | Name | Route). Stores that aren't registered can be added from the warning."
+            : "Type a store code or name and pick it from the list (Code | Name). Stores that aren't registered can be added from the warning.";
 
         /// <summary>Shows a warning in place of the hint under the store table (null puts the hint back).</summary>
 
@@ -2548,7 +2554,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             // Nov 17: the DR No. column is not shown or edited on the dispatch order (DR numbers are typed on the trip report),
             // so the table editor doesn't list it either. DR numbers already on a store are kept, matched by store code.
-            var editorColumns = storeGridColumns.Where(c => !string.Equals(c.Key, "colDrNumbers", StringComparison.OrdinalIgnoreCase)).ToList();
+            // Nov 19: nor the Route column while delivery routes are off (it comes back, hidden, in the "always stay" list).
+            bool routesOnForEditor = Features.On(Features.DeliveryRoutes);
+            var editorColumns = storeGridColumns.Where(c => !string.Equals(c.Key, "colDrNumbers", StringComparison.OrdinalIgnoreCase) && (routesOnForEditor || !string.Equals(c.Key, "colStoreRoute", StringComparison.OrdinalIgnoreCase))).ToList();
             var keptDr = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var currentRows = new List<Dictionary<string, string>>();
             foreach (DataGridViewRow r in gridRouteStores.Rows)
@@ -2713,6 +2721,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             pnlRouteContainer.Visible = true;
 
+            // Nov 19: with delivery routes off (the default) the Delivery Route box is hidden; the order is built from the client's stores.
+            Features.Bind(pnlRouteContainer, () => { bool routesOn = Features.On(Features.DeliveryRoutes); lblDest.Visible = routesOn; pnlRouteContainer.Visible = routesOn; }, Features.DeliveryRoutes);
+
             var pnlRowRouteCargo = CreateTwoColumnRow(
                 lblDest, pnlRouteContainer,
 
@@ -2775,7 +2786,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlAidesSection.Controls.Add(pnlAidesSearchRow);
             pnlAidesSection.Controls.Add(lblAi);
 
-            var card1 = CreateSectionCard(1, "Route & store crates", "Who the order is for, where it goes and how many crates are loaded.",
+            var card1 = CreateSectionCard(1, Features.On(Features.DeliveryRoutes) ? "Route & store crates" : "Stores & crates", "Who the order is for, where it goes and how many crates are loaded.",
 
                 pnlRowOrderClient, clientStrip, pnlRowRouteCargo, pnlRowCombi, pnlRouteStoresBreakdown, tblCrates, pnlRec);
 
@@ -3196,6 +3207,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void PopulateRouteStoresGrid(DeliveryRoute? route, List<DispatchStop>? savedStops = null)
         {
             if (gridRouteStores == null || pnlRouteStoresBreakdown == null || lblRouteStoresHeader == null) return;
+            if (!Features.On(Features.DeliveryRoutes)) route = null;   // Nov 19: no routes: every store on the order is an ordinary (editable) store row
             storeListRoute = route;
 
             isUpdatingRouteStores = true;
@@ -3229,7 +3241,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         if (gridRouteStores.Columns.Contains("colGCrate")) row.Cells["colGCrate"].Value = st.GCrate;
                         if (gridRouteStores.Columns.Contains("colStoreTotal")) row.Cells["colStoreTotal"].Value = st.ECrate + st.GCrate;
                         if (gridRouteStores.Columns.Contains("colDrNumbers")) row.Cells["colDrNumbers"].Value = st.DrNumbers;
-                        SetStoreRowType(row, MJdatabase.IsRouteStoreRow(savedTypes, route, savedCode, st.Destination));
+                        SetStoreRowType(row, Features.On(Features.DeliveryRoutes) && MJdatabase.IsRouteStoreRow(savedTypes, route, savedCode, st.Destination));   // Nov 19: no locked "route store" rows while routes are off
                         }
                     SizeStoreBreakdown(savedStops.Count);
 
@@ -4046,6 +4058,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
+        private bool routeColumnBound;   // Nov 19
+
         private void SetupGridColumns()
 
         {
@@ -4067,7 +4081,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DispatchNumber", HeaderText = "Dispatch #", FillWeight = 88, MinimumWidth = 65, ReadOnly = true });
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DispatchDate", HeaderText = "Date", DefaultCellStyle = { Format = "MM/dd/yyyy", Alignment = DataGridViewContentAlignment.MiddleCenter }, FillWeight = 78, MinimumWidth = 62, ReadOnly = true });
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DepartureTime", HeaderText = "Time", DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }, FillWeight = 66, MinimumWidth = 52, ReadOnly = true });
-            gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "CleanRouteDisplay", HeaderText = "Route", FillWeight = 115, MinimumWidth = 80, ReadOnly = true });
+            gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "CleanRouteDisplay", HeaderText = "Route", FillWeight = 115, MinimumWidth = 80, ReadOnly = true, Visible = Features.On(Features.DeliveryRoutes) });   // Nov 19: no Route column while routes are off
+            if (!routeColumnBound)
+            {
+                routeColumnBound = true;
+                Features.Bind(gridDispatch, () => { foreach (DataGridViewColumn c in gridDispatch.Columns) if (c.DataPropertyName == "CleanRouteDisplay") c.Visible = Features.On(Features.DeliveryRoutes); txtGridSearch.PlaceholderText = Features.On(Features.DeliveryRoutes) ? "🔍 Search dispatch #, client, route, truck..." : "🔍 Search dispatch #, client, truck..."; }, Features.DeliveryRoutes);
+            }
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ClientName", HeaderText = "Client", FillWeight = 95, MinimumWidth = 70, ReadOnly = true });
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TruckInfo", HeaderText = "Truck", FillWeight = 80, MinimumWidth = 58, ReadOnly = true });
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "DriverName", HeaderText = "Driver", FillWeight = 80, MinimumWidth = 58, ReadOnly = true });
@@ -5259,7 +5278,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     WhileBinding(() => cbDestination.Text = destination);
 
-                var matchedRoute = MJdatabase.FindRouteByNameOrCode(destination);
+                var matchedRoute = Features.On(Features.DeliveryRoutes) ? MJdatabase.FindRouteByNameOrCode(destination) : null;   // Nov 19: no route lookup while routes are off
 
                 if (matchedRoute != null && matchedRoute.PlacesList.Count > 0)
 
@@ -5760,7 +5779,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     WhileBinding(() => cbDestination.Text = destination);
 
-                var matchedRoute = MJdatabase.FindRouteByNameOrCode(destination);
+                var matchedRoute = Features.On(Features.DeliveryRoutes) ? MJdatabase.FindRouteByNameOrCode(destination) : null;   // Nov 19: no route lookup while routes are off
 
                 if (matchedRoute != null && matchedRoute.PlacesList.Count > 0)
 
@@ -7584,6 +7603,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private async Task ReloadRoutesForClientAsync(string client)
 
         {
+
+            if (!Features.On(Features.DeliveryRoutes)) return;   // Nov 19: the route box is hidden while routes are off
 
             var routes = await Task.Run(() => string.IsNullOrWhiteSpace(client) ? MJdatabase.GetDeliveryRoutes(activeOnly: true) : MJdatabase.GetDeliveryRoutesByClient(client, activeOnly: true));
 

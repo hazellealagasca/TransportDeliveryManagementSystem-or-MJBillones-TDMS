@@ -35,8 +35,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public const string PaymentsWorkbench = "Feature.PaymentsWorkbench";
         /// <summary>New invoice picks a Statement of Account and bills it with ONE invoice (amounts from the statement). Off = the old form that picks one trip.</summary>
         public const string InvoiceFromSoa = "Feature.InvoiceFromSoa";
+        /// <summary>Nov 19: delivery routes (the Delivery Routes tab, route boxes and route columns). Off by default; saved routes are kept.</summary>
+        public const string DeliveryRoutes = "Feature.DeliveryRoutes";
         private static readonly Dictionary<string, bool> Defaults = new()
         {
+            [DeliveryRoutes] = false,   // Nov 19: hidden by default
             [RateMatrix] = true, [AutoDispatchNumber] = true, [SpecialTrips] = true, [Incidents] = true, [TripIncidents] = true, [CrewPay] = true,
             [BackupReminder] = true, [ConfirmSaves] = true, [QuietNotices] = true, [Toasts] = true,
             [TruckSuggestion] = true, [EmptyCrateCheck] = true, [StoreTableEditHeader] = true, [AllInOneSummary] = false, [PaymentsWorkbench] = true, [InvoiceFromSoa] = true

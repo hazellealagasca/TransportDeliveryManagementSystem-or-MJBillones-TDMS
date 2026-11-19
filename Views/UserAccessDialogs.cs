@@ -78,13 +78,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     var l = new LinkLabel { Text = t, AutoSize = true, LinkColor = AppTheme.AccentText, ActiveLinkColor = AppTheme.AccentHover, LinkBehavior = LinkBehavior.HoverUnderline, Margin = new Padding(D(10), 0, 0, 0), Enabled = !isAdminAccount };
                     string m = module;
-                    l.LinkClicked += (s, e) => { foreach (var a in Permissions.Areas.Where(a => a.Module == m)) switches[a.Key].Checked = on; };
+                    l.LinkClicked += (s, e) => { foreach (var a in Permissions.Areas.Where(a => a.Module == m && switches.ContainsKey(a.Key))) switches[a.Key].Checked = on; };
                     return l;
                 }
                 links.Controls.Add(Link("Allow all", true)); links.Controls.Add(Link("Hide all", false));
                 stack.Controls.Add(modHead); stack.Controls.Add(links);
                 foreach (var a in Permissions.Areas.Where(a => a.Module == module))
                 {
+                    if (a.Key == "MasterData.Routes" && !Features.On(Features.DeliveryRoutes)) continue;   // Nov 19: no entry while delivery routes are switched off (an existing choice is kept on save)
                     var text = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0, D(8), D(12), D(6)), BackColor = Color.Transparent };
                     text.Controls.Add(Text2(a.Label, new Font("Segoe UI Semibold", 10F), AppTheme.TextPrimary));
                     text.Controls.Add(Text2(a.Description, new Font("Segoe UI", 8.75F), AppTheme.TextSecondary, D(2)));
@@ -101,6 +102,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try
                 {
                     var hidden = switches.Where(kv => !kv.Value.Checked).Select(kv => kv.Key).ToList();
+                    // Nov 19: the Delivery routes entry has no switch while routes are off; keep whatever was chosen for it.
+                    if (!switches.ContainsKey("MasterData.Routes") && denied.Contains("MasterData.Routes")) hidden.Add("MasterData.Routes");
                     Permissions.SetDenied(user.Username, hidden);
                     DialogResult = DialogResult.OK;
                 }

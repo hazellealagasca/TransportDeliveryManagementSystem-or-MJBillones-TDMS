@@ -470,7 +470,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (lblDispatchInfoBanner != null)
                 {
                     lblDispatchInfoBanner.Visible = true;   // Nov 18: the picker is hidden, so this banner names the dispatch
-                    lblDispatchInfoBanner.Text = $"Dispatch {d.DispatchNumber}   ·   📄 Ref:{refNum}   ·   🛣️ Route: {routeTitle}   ·   📅 Date: {Fmt.Date(d.DispatchDate)} (leaves {d.DepartureTime})" + Environment.NewLine + $"🚚 Truck: {d.TruckInfo}   ·   👤 Driver: {d.DriverName}   ·   🤝 Aides: {d.AideDisplay}";
+                    lblDispatchInfoBanner.Text = $"Dispatch {d.DispatchNumber}   ·   📄 Ref:{refNum}   ·   {(Features.On(Features.DeliveryRoutes) ? $"🛣️ Route: {routeTitle}   ·   " : "")}📅 Date: {Fmt.Date(d.DispatchDate)} (leaves {d.DepartureTime})" + Environment.NewLine + $"🚚 Truck: {d.TruckInfo}   ·   👤 Driver: {d.DriverName}   ·   🤝 Aides: {d.AideDisplay}";
                 }
                 var incidents = MJdatabase.GetIncidentReports().FindAll(ir => ir.DeliveryId == d.Id);
                 // An incident note filled in automatically for the previously picked dispatch belongs to that trip only.
@@ -1727,7 +1727,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (client.Length > 0) parts.Add(client);
             parts.Add(Fmt.Short(d.DispatchDate));
             string route = Cut(d.CleanRouteDisplay, 38);
-            parts.Add(d.Id < 0 ? "Special trip" + (route.Length > 0 ? " · " + route : "") : route);
+            if (d.Id < 0) parts.Add("Special trip" + (route.Length > 0 ? " · " + route : ""));
+            else if (Features.On(Features.DeliveryRoutes)) parts.Add(route);   // Nov 19: no route in the line while delivery routes are off
             string driver = Cut(d.DriverName, 24);
             if (driver.Length > 0) parts.Add(driver);
             if (draft) parts.Add("draft saved");

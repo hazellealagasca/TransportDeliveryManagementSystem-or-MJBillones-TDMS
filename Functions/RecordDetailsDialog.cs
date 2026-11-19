@@ -273,7 +273,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string destDisplay = !string.IsNullOrWhiteSpace(del.Destination) ? del.Destination : (string.IsNullOrEmpty(del.LoadingScheduleInfo) ? (matchSched?.Destination ?? "N/A") : del.LoadingScheduleInfo);
                 keyValues.Add(("Delivery Destination", destDisplay));
                 keyValues.Add(("Peak Season", del.IsPeak ? "⚡ Peak season surcharge applied" : "Regular season rate"));
-                keyValues.Add(("Route Type", del.RouteTypeDisplay));
+                if (Features.On(Features.DeliveryRoutes)) keyValues.Add(("Route Type", del.RouteTypeDisplay));   // Nov 19
                 keyValues.Add(("Order Reference #", del.DispatchNumber));
                 if (matchSched != null || del.LoadingScheduleId > 0)
                 {

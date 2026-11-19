@@ -208,6 +208,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         };
         private Panel CreateSectionSpacer() => new Panel { Dock = DockStyle.Top, Height = Dpi(16), BackColor = AppTheme.Canvas };
         private Panel CreateSectionCard(int step, string title, string subtitle, params Control?[] contentTopToBottom)
+            => CreateSectionCard(step, () => title, () => subtitle, contentTopToBottom);
+        /// <summary>Nov 19: title and subtitle are read each time the header paints, so they can follow a Settings switch.</summary>
+        private Panel CreateSectionCard(int step, Func<string> titleOf, Func<string> subtitleOf, params Control?[] contentTopToBottom)
         {
             var card = new Panel
             {
@@ -242,9 +245,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 using (var nf = new Font("Segoe UI Semibold", 10F))
                     TextRenderer.DrawText(g, step.ToString(), nf, circle, AppTheme.AccentText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
                 using (var tf = new Font("Segoe UI Semibold", 12F))
-                    TextRenderer.DrawText(g, title, tf, new Point(d + Dpi(12), 0), AppTheme.TextPrimary, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+                    TextRenderer.DrawText(g, titleOf(), tf, new Point(d + Dpi(12), 0), AppTheme.TextPrimary, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
                 using (var sf = new Font("Segoe UI", 9F))
-                    TextRenderer.DrawText(g, subtitle, sf, new Rectangle(d + Dpi(12), Dpi(24), header.Width - d - Dpi(12), Dpi(22)), AppTheme.TextMuted, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
+                    TextRenderer.DrawText(g, subtitleOf(), sf, new Rectangle(d + Dpi(12), Dpi(24), header.Width - d - Dpi(12), Dpi(22)), AppTheme.TextMuted, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
                 using var pen = new Pen(AppTheme.Border);
                 g.DrawLine(pen, 0, header.Height - 1, header.Width, header.Height - 1);
             };
@@ -389,7 +392,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.Add(RowMenu.Item("Open client profile", () => OpenClient(c), "Enter"));
                 if (c.IsActive) m.Items.Add(RowMenu.Danger("Archive client…", () => SetClientActive(c, false)));
                 else m.Items.Add(RowMenu.Good("Restore client", () => SetClientActive(c, true)));
-                m.Items.Add(RowMenu.Item("Delivery routes", () => MainForm.Instance?.NavigateToMasterData("Routes")));
+                if (Features.On(Features.DeliveryRoutes)) m.Items.Add(RowMenu.Item("Delivery routes", () => MainForm.Instance?.NavigateToMasterData("Routes")));   // Nov 19
                 m.Items.Add(RowMenu.Sub("📂  Show records",
                     RowMenu.Item("Loading schedules & dispatches", () => MainForm.Instance?.NavigateToOperations("Dispatch")),
                     RowMenu.Item("Invoices", () => MainForm.Instance?.ShowFinanceRecords("Billing", c.CompanyName)),
@@ -594,7 +597,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             storesRoutes.PendingChanged += MarkDirty;
             storesRoutes.SetPendingNameSource(() => txtClientName.Text);   // a store saved without a code gets one starting with the first 3 letters of this name
             if (gridBranches.Columns["DestinationRoute"] is DataGridViewColumn destCol) destCol.Visible = false;
-            pnlStoresCard = CreateSectionCard(2, "Stores & delivery routes", "The client's stores (code and name), and which of its routes each store is on.", bar, lblStoresHint, storesRoutes);
+            // Nov 19: with delivery routes off (the default) the card is just "Stores" and says nothing about routes
+            pnlStoresCard = CreateSectionCard(2, () => Features.On(Features.DeliveryRoutes) ? "Stores & delivery routes" : "Stores",
+                () => Features.On(Features.DeliveryRoutes) ? "The client's stores (code and name), and which of its routes each store is on." : "The client's stores (code, name and address).", bar, lblStoresHint, storesRoutes);
+            Features.Bind(pnlStoresCard, () => { pnlStoresCard.Invalidate(true); btnRoutes.Visible = Features.On(Features.DeliveryRoutes); }, Features.DeliveryRoutes);
             // Card 3: trips
             flowTripTiles = new FlowLayoutPanel { Height = Dpi(94), WrapContents = false, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             pnlTripsHost = new Panel { Height = Dpi(240), BackColor = AppTheme.Surface };
@@ -602,6 +608,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridTrips.Columns.Add(TextCol("Date", "Date", 70, Dpi(90)));
             gridTrips.Columns.Add(TextCol("Dispatch", "Dispatch #", 110, Dpi(120)));
             gridTrips.Columns.Add(TextCol("Route", "Route", 150, Dpi(120)));
+            Features.Bind(gridTrips, () => { if (gridTrips.Columns["Route"] is DataGridViewColumn rc) rc.Visible = Features.On(Features.DeliveryRoutes); }, Features.DeliveryRoutes);   // Nov 19: no Route column while routes are off
             gridTrips.Columns.Add(TextCol("Truck", "Truck", 90, Dpi(90)));
             gridTrips.Columns.Add(TextCol("Crates", "Crates", 50, Dpi(60), right: true));
             gridTrips.Columns.Add(TextCol("Status", "Status", 80, Dpi(100)));
@@ -870,9 +877,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnAddBranch.Enabled = hasClient;
             pnlTripsCard.Visible = hasClient;
             pnlBillingCard.Visible = hasClient;
+            bool routesOn = Features.On(Features.DeliveryRoutes);   // Nov 19: no talk of routes while they are switched off
             lblStoresHint.Text = hasClient
-                ? "Type each store's name; leave the code blank and one is made for you (it shows as (no code)). Put stores on routes in tab 2. Changes save automatically."
-                : "Type the client's stores now (and its routes in tab 2). They are saved together with the client when you click Create client.";
+                ? "Type each store's name; leave the code blank and one is made for you (it shows as (no code))." + (routesOn ? " Put stores on routes in tab 2." : "") + " Changes save automatically."
+                : routesOn ? "Type the client's stores now (and its routes in tab 2). They are saved together with the client when you click Create client."
+                           : "Type the client's stores now. They are saved together with the client when you click Create client.";
             UpdateSaveState();
         }
         private void MarkDirty()
@@ -1094,7 +1103,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var saved = allClients.FirstOrDefault(c => string.Equals(c.CompanyName.Trim(), name, StringComparison.OrdinalIgnoreCase)) ?? client;
                 isNewClient = false;
                 BindClient(saved);
-                ToastHelper.ShowToast(this, wasNew ? $"Client \"{name}\" created" + (pendStores + pendRoutes > 0 ? $" with {pendStores} store(s) and {pendRoutes} route(s)" : "") : $"Client \"{name}\" saved", ToastType.Success);
+                ToastHelper.ShowToast(this, wasNew ? $"Client \"{name}\" created" + (pendStores + pendRoutes > 0 ? (Features.On(Features.DeliveryRoutes) ? $" with {pendStores} store(s) and {pendRoutes} route(s)" : $" with {pendStores} store(s)") : "") : $"Client \"{name}\" saved", ToastType.Success);
                 if (pendErr != null) MessageBox.Show($"The client was created, but some stores or routes could not be saved:\n\n{pendErr}\n\nAdd them again in Stores & delivery routes.", "Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return true;
             }
@@ -1119,11 +1128,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try
                 {
                     string existing = selectedClient!.CompanyName;
-                    if (MJdatabase.GetClientStores(existing).Count > 0 || MJdatabase.GetDeliveryRoutesByClient(existing, true).Count > 0) return true;
+                    if (MJdatabase.GetClientStores(existing).Count > 0 || (Features.On(Features.DeliveryRoutes) && MJdatabase.GetDeliveryRoutesByClient(existing, true).Count > 0)) return true;   // Nov 19: routes only count while they are switched on
                 }
                 catch (Exception ex) { ErrLog.Swallowed(ex); return true; }   // cannot tell, so do not get in the way of the save
             }
             string shown = name.Length > 0 ? name : "This client";
+            if (!Features.On(Features.DeliveryRoutes))
+            {
+                // Nov 19: delivery routes are off, so only stores are mentioned
+                string msg2 = storesRoutes.HasTypedStore
+                    ? $"{shown} has no company stores yet.\n\nA store was typed in the Stores section below but not added yet. Click \"+ Add store\" first so it is kept.\n\nSave the client without stores and add them later?"
+                    : $"{shown} has no company stores yet.\n\nWe recommend adding the company stores now (in the Stores section below), so the client can be used for dispatches and statements.\n\nSave the client without stores and add them later?";
+                if (MessageBox.Show(msg2, "No stores yet", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes) return true;
+                storesRoutes.FocusStoreEntry();
+                return false;
+            }
             string msg = storesRoutes.HasTypedStore
                 ? $"{shown} has no company stores and no delivery routes yet.\n\nA store was typed in the Stores and routes section below but not added yet. Click \"+ Add store\" first so it is kept.\n\nSave the client without stores and routes and add them later?"
                 : $"{shown} has no company stores and no delivery routes yet.\n\nWe recommend adding the company stores and delivery routes now (in the Stores and routes section below), so the client can be used for dispatches and statements.\n\nSave the client without stores and routes and add them later?";

@@ -196,6 +196,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var g = ProfileKit.Grid();
             g.Columns.AddRange(ProfileKit.Col("Date", "Date", 65), ProfileKit.Col("Dispatch", "Dispatch #", 75), ProfileKit.Col("As", "Role on trip", 55), ProfileKit.Col("Client", "Client", 110),
                 ProfileKit.Col("Route", "Route", 120), ProfileKit.Col("Truck", "Truck", 70), ProfileKit.Col("Crates", "Crates", 45, true), ProfileKit.Col("Status", "Status", 65));
+            g.Columns["Route"]!.Visible = Features.On(Features.DeliveryRoutes);   // Nov 19: no Route column while delivery routes are off
             var search = ProfileKit.Box("Filter by dispatch #, client, route, truck or status…");
             void Fill()
             {
@@ -233,7 +234,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             stats.Add("Total pay (shown trips)", $"₱{rows.Sum(r => r.Pay.NetPay):N2}", "all completed trips below", AppTheme.Info);
             stats.Add("Trips", rows.Count.ToString("N0"), "completed", AppTheme.Warning);
             var g = ProfileKit.Grid();
-            g.Columns.AddRange(ProfileKit.Col("Date", "Date", 65), ProfileKit.Col("Dispatch", "Dispatch #", 75), ProfileKit.Col("Route", "Route / client", 150), ProfileKit.Col("As", "Role on trip", 55),
+            g.Columns.AddRange(ProfileKit.Col("Date", "Date", 65), ProfileKit.Col("Dispatch", "Dispatch #", 75), ProfileKit.Col("Route", Features.On(Features.DeliveryRoutes) ? "Route / client" : "Client", 150), ProfileKit.Col("As", "Role on trip", 55),
                 ProfileKit.Col("Wage", "Daily wage", 65, true), ProfileKit.Col("Meal", "Meal allowance", 70, true), ProfileKit.Col("Total", "Total pay", 70, true), ProfileKit.Col("Note", "Note", 120));
             foreach (var r in rows)
             {
@@ -243,7 +244,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     bool edited = r.Pay.BasePay != crew.DailyWage || r.Pay.Allowance != crew.FoodAllowance || !string.IsNullOrWhiteSpace(r.Pay.Notes);
                     if (edited) note = "Edited" + (string.IsNullOrWhiteSpace(r.Pay.Notes) ? "" : " — " + r.Pay.Notes);
                 }
-                int i = g.Rows.Add(Fmt.Date(r.Trip.DispatchDate), r.Trip.DispatchNumber, $"{r.Trip.CleanRouteDisplay} · {r.Trip.ClientName}", RoleOn(r.Trip), r.Pay.BasePay.ToString("N2"), r.Pay.Allowance.ToString("N2"), r.Pay.NetPay.ToString("N2"), note);
+                int i = g.Rows.Add(Fmt.Date(r.Trip.DispatchDate), r.Trip.DispatchNumber, Features.On(Features.DeliveryRoutes) ? $"{r.Trip.CleanRouteDisplay} · {r.Trip.ClientName}" : r.Trip.ClientName, RoleOn(r.Trip), r.Pay.BasePay.ToString("N2"), r.Pay.Allowance.ToString("N2"), r.Pay.NetPay.ToString("N2"), note);
                 g.Rows[i].Tag = r.Trip;
             }
             g.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && g.Rows[e.RowIndex].Tag is Delivery d) DispatchDetailsDialog.ShowFor(this, d); };

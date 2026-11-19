@@ -22,6 +22,12 @@ public static partial class Checks
         MJdatabase.InitializeDatabase();
         MJdatabase.EnsureSpecialTripColumns();
         MJdatabase.EnsureReceiptSoaColumn();
+        // Nov 19: delivery routes are off by default in the app, but the checks written before that test route behaviour, so every fresh
+        // database starts with them ON (Checks.DeliveryRoutesSwitch.cs turns them off itself). Set TDMS_VERIFY_ROUTES=off to run the old
+        // checks with the app's default instead.
+        MJdatabase.SetSystemSetting(Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions.Features.DeliveryRoutes,
+            string.Equals(Environment.GetEnvironmentVariable("TDMS_VERIFY_ROUTES"), "off", StringComparison.OrdinalIgnoreCase) ? "False" : "True", "Verify: delivery routes");
+        Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions.Features.Reload();
         return p;
     }
 

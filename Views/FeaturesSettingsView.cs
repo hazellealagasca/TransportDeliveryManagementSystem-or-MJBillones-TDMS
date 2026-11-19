@@ -11,6 +11,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private sealed record Option(string Key, string Title, string Description);
         private static readonly Option[] Parts =
         {
+            // Nov 19: delivery routes are hidden by default and can be switched back on here.
+            new(Features.DeliveryRoutes, "Delivery routes", "Routes of stores per client. When off (the default), the Delivery Routes tab, the route boxes and route columns are hidden and dispatch orders are built from the client's stores. Saved routes are kept and come back when turned on."),
             new(Features.RateMatrix, "Rate Matrix", "Your price list by route, destination, truck type and season (Master Data → Rate Matrix). When on, loading orders and invoices suggest the rate. When off, the Rate Matrix tab is hidden and amounts are typed in by hand."),
             // Nov 17: the "Special trips" switch was removed (special trips are hidden everywhere and cannot be turned on).
             new(Features.Incidents, "Incident & damage logs", "Records of damaged or missing crates. When off, the Incident & Damage Logs tab, the “Log incident” buttons and the question after a short trip report are hidden."),

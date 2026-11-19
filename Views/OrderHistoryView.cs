@@ -423,7 +423,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (sel != null)
                 {
                     m.Add(new SummaryMetric("Selected order", sel.Number, SummaryTone.Purple, $"{sel.Kind} · {sel.StatusShown}", Strong: true));
-                    m.Add(new SummaryMetric("Its crates", sel.Crates.ToString("N0"), SummaryTone.Teal, string.IsNullOrWhiteSpace(sel.Route) ? sel.Client : sel.Route));
+                    m.Add(new SummaryMetric("Its crates", sel.Crates.ToString("N0"), SummaryTone.Teal, string.IsNullOrWhiteSpace(sel.Route) || !Features.On(Features.DeliveryRoutes) ? sel.Client : sel.Route));   // Nov 19: no route text while routes are off
                     m.Add(new SummaryMetric("Its amount", sel.Amount.HasValue ? AllInOneSummaryBar.Money(sel.Amount.Value) : "—", SummaryTone.Green, string.IsNullOrWhiteSpace(sel.InvoiceNo) ? "no invoice yet" : "invoice " + sel.InvoiceNo));
                     m.Add(new SummaryMetric("Truck & crew", string.IsNullOrWhiteSpace(sel.Truck) ? "—" : sel.Truck, SummaryTone.Neutral, string.IsNullOrWhiteSpace(sel.Crew) ? "no crew yet" : sel.Crew));
                     context = $"Selected {sel.Kind.ToLowerInvariant()} {sel.Number} — {sel.Client} · {Fmt.Date(sel.Date)} · {sel.StatusShown}   ·   Transactions shown: {list.Count:N0}";
@@ -515,7 +515,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Short facts first, the (often long) route last, so truck and crew are never cut off.
             if (!string.IsNullOrWhiteSpace(r.Truck)) parts.Add(r.Truck.Split('(')[0].Trim());
             if (!string.IsNullOrWhiteSpace(r.Driver)) parts.Add(r.Driver + (CountAides(r) > 0 ? $" +{CountAides(r)} aide{(CountAides(r) == 1 ? "" : "s")}" : ""));
-            if (!string.IsNullOrWhiteSpace(r.Route)) parts.Add(r.Route);
+            if (!string.IsNullOrWhiteSpace(r.Route) && Features.On(Features.DeliveryRoutes)) parts.Add(r.Route);   // Nov 19: the route is hidden while delivery routes are off
             if (r.Amount.HasValue && r.Crates > 0) parts.Add($"{r.Crates:N0} crates");
             TextRenderer.DrawText(g, string.Join("   ·   ", parts), fSmall, new Rectangle(b.Left + pad, top + lineH, Math.Max(1, rightEdge - b.Left - pad), lineH), AppTheme.TextMuted, one);
             e.Handled = true;
@@ -610,7 +610,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 F("Status", r.StatusShown);
                 F("Date", Fmt.DayDate(r.Date));
                 F("Departure", r.Time);
-                F("Route", r.Route);
+                if (Features.On(Features.DeliveryRoutes)) F("Route", r.Route);   // Nov 19
                 F("Truck", r.Truck);
                 F("Driver", r.Driver);
                 F("Aides", r.Aides);
@@ -750,10 +750,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (dlg.ShowDialog(FindForm()) != DialogResult.OK) return;
             static string Q(string? s) => "\"" + (s ?? "").Replace("\"", "\"\"") + "\"";
             var sb = new StringBuilder();
-            sb.AppendLine(string.Join(",", new[] { "Date", "Time", "Type", "Number", "Client", "Route / address", "Truck", "Driver", "Aides", "Crates", "Status" }.Concat(CanFin ? new[] { "Trip report", "Invoice", "Amount", "Statement", "Receipt", "Paid on" } : Array.Empty<string>())));
+            bool routesOn = Features.On(Features.DeliveryRoutes);   // Nov 19: no Route column in the export while routes are off
+            sb.AppendLine(string.Join(",", new[] { "Date", "Time", "Type", "Number", "Client" }.Concat(routesOn ? new[] { "Route / address" } : Array.Empty<string>()).Concat(new[] { "Truck", "Driver", "Aides", "Crates", "Status" }).Concat(CanFin ? new[] { "Trip report", "Invoice", "Amount", "Statement", "Receipt", "Paid on" } : Array.Empty<string>())));
             foreach (var r in shown)
             {
-                var cells = new List<string> { Fmt.Date(r.Date), Q(r.Time), Q(r.Kind), Q(r.Number), Q(r.Client), Q(r.Route), Q(r.Truck), Q(r.Driver), Q(r.Aides), r.Crates.ToString(), Q(r.StatusShown) };
+                var cells = new List<string> { Fmt.Date(r.Date), Q(r.Time), Q(r.Kind), Q(r.Number), Q(r.Client) };
+                if (routesOn) cells.Add(Q(r.Route));
+                cells.AddRange(new[] { Q(r.Truck), Q(r.Driver), Q(r.Aides), r.Crates.ToString(), Q(r.StatusShown) });
                 if (CanFin) { cells.Add(Q(r.TripReportNo)); cells.Add(Q(r.InvoiceNo)); cells.Add(r.Amount.HasValue ? r.Amount.Value.ToString("0.00") : ""); cells.Add(Q(r.SoaNo)); cells.Add(Q(r.ReceiptNo)); cells.Add(r.PaidOn.HasValue ? Fmt.Date(r.PaidOn.Value) : ""); }
                 sb.AppendLine(string.Join(",", cells));
             }

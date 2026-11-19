@@ -20,6 +20,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly Func<string> client;
         private readonly Action reloadStores;
         private readonly Button tab1, tab2;
+        private readonly TableLayoutPanel tabs;   // Nov 19: hidden while delivery routes are switched off (only Company stores is left)
         private readonly Panel page1, page2;
         private readonly TextBox txtCode, txtName, txtAddress, txtSearch, txtNewCode, txtNewName;
         private readonly DataGridView gridRoutes, gridAssign;
@@ -49,7 +50,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Height = D(LargePrint.Px(520, 420));
 
             // ---- segmented tabs (48 px, 14 pt bold, active = navy with a 4 px accent bar)
-            var tabs = new TableLayoutPanel { Dock = DockStyle.Top, Height = D(LargePrint.Px(46, 38)), ColumnCount = 2, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
+            tabs = new TableLayoutPanel { Dock = DockStyle.Top, Height = D(LargePrint.Px(46, 38)), ColumnCount = 2, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             tabs.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50)); tabs.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             tab1 = TabButton("Company stores");
             tab2 = TabButton("Delivery routes");
@@ -171,6 +172,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tab1.Click += (s, e) => ShowTab(1);
             tab2.Click += (s, e) => ShowTab(2);
             ShowTab(1);
+            // Nov 19: with delivery routes off (the default) only the Company stores page is shown.
+            Features.Bind(this, ApplyRoutesFeature, Features.DeliveryRoutes);
 
             // Rule 16e: refresh when stores or routes change anywhere in the app.
             AppEvents.DataChanged += OnDataChanged;
@@ -237,8 +240,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (DataGridViewRow r in g.Rows) r.Height = g.RowTemplate.Height;
         }
 
+        /// <summary>Nov 19: shows or hides the Delivery routes tab and the route wording, following Settings → Features.</summary>
+        private void ApplyRoutesFeature()
+        {
+            bool on = Features.On(Features.DeliveryRoutes);
+            tabs.Visible = on;
+            if (!on && page2.Visible) ShowTab(1);
+            else if (page1.Visible) ShowTab(1);   // refreshes the hint text
+            if (pendingGrid != null && pendingGrid.Columns["colState"] is DataGridViewColumn st) st.Visible = on;
+        }
+
         private void ShowTab(int n)
         {
+            if (n == 2 && !Features.On(Features.DeliveryRoutes)) n = 1;
             page1.Visible = n == 1; page2.Visible = n == 2;
             foreach (var (b, on) in new[] { (tab1, n == 1), (tab2, n == 2) })
             {
@@ -247,7 +261,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 b.ForeColor = on ? AppTheme.AccentText : AppTheme.TextSecondary;
                 b.Invalidate();
             }
-            lblMsg.Text = n == 1 ? "Type the store name (the code and the address are optional), then press Enter. A blank code is made for you and shows as (no code). Stores are not tied to a route here." : "Pick a route on the left, then tick the stores it serves. " + (client().Length > 0 && !isPending() && MJdatabase.GetOneRoutePerStore(client()) ? "Each store can be on only one of this client's routes." : "A store can be on any of this client's routes.");
+            lblMsg.Text = n == 1 ? "Type the store name (the code and the address are optional), then press Enter. A blank code is made for you and shows as (no code)." + (Features.On(Features.DeliveryRoutes) ? " Stores are not tied to a route here." : "") : "Pick a route on the left, then tick the stores it serves. " + (client().Length > 0 && !isPending() && MJdatabase.GetOneRoutePerStore(client()) ? "Each store can be on only one of this client's routes." : "A store can be on any of this client's routes.");
             lblMsg.ForeColor = AppTheme.TextSecondary;
             if (n == 2) LoadRoutes();
         }

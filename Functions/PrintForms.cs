@@ -455,6 +455,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             AddCommon(o);
             o.Columns = new List<PrintChoice> { new("no", "No."), new("dispatch", "Dispatch #"), new("date", "Date"), new("client", "Client"), new("route", "Route", false), new("crates", "Crates"), new("base", "Daily wage"), new("allow", "Meal allowance"), new("net", "Total") };
             o.Signatures = new List<PrintSig> { new PrintSig("Prepared by", CurrentUserName, "Office Staff", true), new PrintSig("Approved by", OwnerName, "Owner"), new PrintSig("Received by", crew.FullName, crew.Role, true) };
+            if (!Features.On(Features.DeliveryRoutes)) o.Columns.RemoveAll(c => c.Key == "route");   // Nov 19: not offered while delivery routes are off
             var def = new PrintFormDef { Key = o.FormKey, Name = "Crew trip pay record", FileName = $"PaySlip_{Regex.Replace(crew.FullName, "[^A-Za-z0-9]+", "_")}", Defaults = o };
             def.Body = opt =>
             {
@@ -499,6 +500,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             AddCommon(o);
             o.Columns = new List<PrintChoice> { new("dispatch", "Dispatch #"), new("date", "Date"), new("time", "Time"), new("client", "Client"), new("route", "Route"), new("truck", "Truck"), new("crates", "Crates"), new("status", "Status") };
             o.Signatures = new List<PrintSig> { new PrintSig("Personnel", crew.FullName, crew.Role, true), new PrintSig("Verified by", OwnerName, "Owner") };
+            if (!Features.On(Features.DeliveryRoutes)) o.Columns.RemoveAll(c => c.Key == "route");   // Nov 19: not offered while delivery routes are off
             var def = new PrintFormDef { Key = o.FormKey, Name = "Crew profile & history", FileName = $"Crew_{Regex.Replace(crew.FullName, "[^A-Za-z0-9]+", "_")}", Defaults = o };
             def.Body = opt =>
             {
@@ -549,6 +551,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             AddCommon(o);
             o.Columns = new List<PrintChoice> { new("seq", "#"), new("store", "Store"), new("store_address", "Store address", false), new("planned", "Planned"), new("delivered", "Delivered"), new("returned", "Returned"), new("time", "Arrival / departure"), new("received", "Received by"), new("status", "Status") };
             o.Signatures = new List<PrintSig> { new PrintSig("Dispatched by", CurrentUserName, "Dispatcher", true), new PrintSig("Driver", d.DriverName, "Driver", true), new PrintSig("Verified by", OwnerName, "Owner") };
+            if (!Features.On(Features.DeliveryRoutes)) o.Fields.RemoveAll(f => f.Key == "route");   // Nov 19: not offered while delivery routes are off
             var def = new PrintFormDef { Key = o.FormKey, Name = "Delivery dossier", FileName = $"Dossier_{d.DispatchNumber}", Defaults = o };
             def.Body = opt =>
             {
@@ -684,7 +687,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     ("route", "Route", "center", true), ("order", "Order #", "center", true), ("client", "Client", "", true), ("code", "Store code", "center", false), ("store", "Store name", "", false), ("store_address", "Store address", "", false),
                     ("e", "E-crates", "num", false), ("g", "G-crates", "num", false), ("total", "Total", "num", false), ("volume", "Route volume", "center", true), ("ratio", "Load %", "center", true),
                     ("departure", "Departure", "center", true), ("truck", "Truck", "center", true), ("crew", "Driver / helper", "", true)
-                }.Where(c => opt.Col(c.Key)).ToList();
+                }.Where(c => opt.Col(c.Key) && (Features.On(Features.DeliveryRoutes) || c.Key != "route")).ToList();   // Nov 19: no Route column while delivery routes are off
                 sb.Append("<table class='grid'><thead><tr>");
                 foreach (var c in cols) sb.Append($"<th class='{c.Css}'>{Esc(c.Header)}</th>");
                 sb.Append("</tr></thead><tbody>");
@@ -754,6 +757,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             o.Sections.First(s => s.Key == "printed").On = false;
             o.Columns = new List<PrintChoice> { new("no", "No."), new("code", "Store code"), new("store", "Store name & DR"), new("store_address", "Store address", false), new("in", "Store in"), new("out", "Store out"), new("rep", "Store representative"), new("le", "Loaded E-crates"), new("lg", "Loaded G-crates"), new("re", "Returned E-crates"), new("rg", "Returned G-crates"), new("remarks", "No. Drops") };
             o.Signatures = new List<PrintSig> { new PrintSig("Driver", d.DriverName, "Signature over printed name", true, false), new PrintSig("Checked by", "", "Plant checker", false, false) };
+            if (!Features.On(Features.DeliveryRoutes)) o.Fields.RemoveAll(f => f.Key == "route");   // Nov 19: not offered while delivery routes are off
             var def = new PrintFormDef { Key = o.FormKey, Name = "Trip report", FileName = $"TripReport_{d.DispatchNumber}", Defaults = o };
             def.Body = opt =>
             {

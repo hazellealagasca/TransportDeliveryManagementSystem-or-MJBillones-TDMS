@@ -122,7 +122,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             sb.AppendLine($"Dispatch No. : {d.DispatchNumber,-22} Ref No. : {refNum}");
             sb.AppendLine($"Date         : {Fmt.Date(d.DispatchDate)}{"",-10} Departure : {d.DepartureTime}");
             sb.AppendLine($"Client       : {d.ClientName}");
-            sb.AppendLine($"Route        : {routeTitle}   ·   Destination : {d.Destination}   ·   Stores : {storeCount}");
+            // Nov 19: no Route while delivery routes are off
+            if (Features.On(Features.DeliveryRoutes)) sb.AppendLine($"Route        : {routeTitle}   ·   Destination : {d.Destination}   ·   Stores : {storeCount}");
+            else sb.AppendLine($"Destination  : {d.Destination}   ·   Stores : {storeCount}");
             sb.AppendLine($"Truck        : {plate} ({tons})   ·   Driver : {d.DriverName}   ·   Helper : {helper}");
             sb.Append($"Crates       : G-Crates {d.GCrate:N0}   ·   E-Crates {d.ECrate:N0}   ·   Total {d.GCrate + d.ECrate:N0} dispatched");
             if (incidentNote.Length > 0) sb.Append(Environment.NewLine + "Incident     : " + incidentNote);

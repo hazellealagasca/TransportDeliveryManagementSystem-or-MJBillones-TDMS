@@ -92,7 +92,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 registered = cl != null;
                 if (cl == null)
                 {
-                    lbl.Text = $"⚠  \"{name}\" isn't in Master Data → Clients yet, so it has no routes or stores.";
+                    lbl.Text = $"⚠  \"{name}\" isn't in Master Data → Clients yet, so it has no " + (Features.On(Features.DeliveryRoutes) ? "routes or " : "") + "stores.";
                     lbl.ForeColor = AppTheme.WarningText;
                     BackColor = AppTheme.WarningSoft;
                     link.Text = "＋ Add to clients";
@@ -107,7 +107,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (!string.IsNullOrWhiteSpace(cl.TIN)) parts.Add($"TIN {cl.TIN}");
                     string contact = string.Join(" ", new[] { cl.ContactPerson, cl.ContactNumber }.Where(x => !string.IsNullOrWhiteSpace(x)));
                     if (contact.Length > 0) parts.Add($"📞 {contact}");
-                    parts.Add($"{routes} route{(routes == 1 ? "" : "s")}");
+                    if (Features.On(Features.DeliveryRoutes)) parts.Add($"{routes} route{(routes == 1 ? "" : "s")}");   // Nov 19: no route count while routes are off
                     parts.Add($"{stores} store{(stores == 1 ? "" : "s")}");
                     if (!string.IsNullOrWhiteSpace(cl.Address)) parts.Add(cl.Address.Replace("\r", " ").Replace("\n", " "));
                     lbl.Text = "🏢  " + string.Join("   ·   ", parts);

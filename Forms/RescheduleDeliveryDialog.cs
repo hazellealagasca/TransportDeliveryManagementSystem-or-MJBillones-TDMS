@@ -187,7 +187,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = isSpecialTrip
                     ? $"Company / Client: {specialTrip!.Company}   |   Destination: {specialTrip.Address}"
-                    : $"Client: {delivery!.ClientName}   |   Route: {delivery.CleanRouteDisplay}",
+                    : $"Client: {delivery!.ClientName}" + (Features.On(Features.DeliveryRoutes) ? $"   |   Route: {delivery.CleanRouteDisplay}" : ""),   // Nov 19: no route while delivery routes are off
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Pal.C(51, 65, 85),
                 Location = new Point(14, 34),

@@ -61,7 +61,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (master)
             {
                 Page("Clients", "master data clients customers", () => mf?.NavigateToMasterData("Clients"));
-                Page("Delivery routes", "master data routes stores", () => mf?.NavigateToMasterData("Routes"));
+                if (Features.On(Features.DeliveryRoutes)) Page("Delivery routes", "master data routes stores", () => mf?.NavigateToMasterData("Routes"));   // Nov 19
                 if (Features.On(Features.RateMatrix)) Page("Rate Matrix", "master data rates price tariff", () => mf?.NavigateToMasterData("Rates"));
             }
             try
@@ -99,7 +99,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         Add("Clients", "🏢", cl.CompanyName, string.Join(" · ", new[] { cl.ContactPerson, cl.ContactNumber, string.IsNullOrWhiteSpace(cl.TIN) ? "" : "TIN " + cl.TIN }.Where(x => !string.IsNullOrWhiteSpace(x))),
                             $"{cl.Address} {cl.Email}", DateTime.MinValue, () => { if (master) mf?.OpenClientProfile(cl.CompanyName); else RecordDetailsDialog.ShowDetails(mf!, cl); });
                 }
-                if (master)
+                if (master && Features.On(Features.DeliveryRoutes))   // Nov 19: no route results while routes are off
                 {
                     foreach (var r in MJdatabase.GetDeliveryRoutes())
                         Add("Routes", "🗺️", $"{r.RouteCode} - {r.RouteName}", $"{r.ClientCompanyName} · {r.TotalStops} store(s) · {r.StatusDisplay}", r.ConnectedPlaces, DateTime.MinValue, () => mf?.NavigateToMasterData("Routes"));

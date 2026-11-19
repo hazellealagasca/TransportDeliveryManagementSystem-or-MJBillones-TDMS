@@ -102,7 +102,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         public void RefreshData()
         {
-            try { items = MJdatabase.GetArchivedItems(); }
+            try { items = MJdatabase.GetArchivedItems().Where(i => i.Kind != "Route" || Features.On(Features.DeliveryRoutes)).ToList(); }   // Nov 19: archived routes are hidden while delivery routes are off
             catch (Exception ex) { ErrLog.Error("MasterDataArchiveView", ex); items = new List<MJdatabase.ArchivedItem>(); }
             Fill();
         }

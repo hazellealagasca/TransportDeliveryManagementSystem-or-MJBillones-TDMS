@@ -80,7 +80,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var sb = new StringBuilder();
             sb.AppendLine($"DISPATCH {d.DispatchNumber}  [{StatusText.Display(d.Status)}]");
             if (!string.IsNullOrWhiteSpace(d.ClientName)) sb.AppendLine($"Client: {d.ClientName}");
-            sb.AppendLine($"Route: {(string.IsNullOrWhiteSpace(d.Destination) ? d.CleanRouteDisplay : d.Destination)}");
+            sb.AppendLine($"{(Features.On(Features.DeliveryRoutes) ? "Route" : "Destination")}: {(string.IsNullOrWhiteSpace(d.Destination) ? d.CleanRouteDisplay : d.Destination)}");   // Nov 19: no "Route" wording while routes are off
             sb.AppendLine($"Date: {Fmt.DayDate(d.DispatchDate)} · {d.DepartureTime}");
             sb.AppendLine($"Truck: {d.TruckInfo}");
             sb.AppendLine($"Driver: {Person(d.DriverId, d.DriverName)}");
@@ -541,7 +541,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ("Client", clientName, true),
                 ("Contact person", string.IsNullOrWhiteSpace(client?.ContactPerson) ? "—" : client!.ContactPerson, true),
                 ("Contact number", string.IsNullOrWhiteSpace(client?.ContactNumber) ? "—" : client!.ContactNumber, true),
-                ("Route / destination", routeText, true),
+                (Features.On(Features.DeliveryRoutes) ? "Route / destination" : "Destination", routeText, true),   // Nov 19
                 ("Order type", stops.Count > 1 || del.IsMultiDrop ? $"Multi-drop · {Math.Max(stops.Count, del.TotalStopsCount)} stores" : "Single drop", false),
                 ("No. of drops", (stops.Count > 0 ? stops.Count : Math.Max(1, del.TotalStopsCount)).ToString(), false),
                 ("Crate type", string.IsNullOrWhiteSpace(del.CargoType) ? "—" : del.CargoType, false),
@@ -1180,7 +1180,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var sb = new StringBuilder();
             sb.AppendLine($"DISPATCH {del.DispatchNumber}  [{StatusLabel()}]");
             sb.AppendLine($"Client: {clientName}");
-            sb.AppendLine($"Route: {routeText}");
+            sb.AppendLine($"{(Features.On(Features.DeliveryRoutes) ? "Route" : "Destination")}: {routeText}");   // Nov 19
             sb.AppendLine($"Date: {Fmt.DayDate(del.DispatchDate)} · {del.DepartureTime}");
             sb.AppendLine($"Truck: {del.TruckInfo}");
             sb.AppendLine($"Driver: {PersonLine(del.DriverName, FindCrew(del.DriverId))}");

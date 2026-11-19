@@ -211,7 +211,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Label/value grid from the form's fields (only those switched on), <paramref name="cols"/> pairs per row.</summary>
         public static string FieldGrid(PrintOptions o, int cols, params string[] keys)
         {
-            var list = keys.Select(k => o.Field(k)).Where(f => f != null && f.On).Select(f => f!).ToList();
+            bool routesOn = Features.On(Features.DeliveryRoutes);   // Nov 19: a "route" field is left out while delivery routes are off
+            var list = keys.Where(k => routesOn || k != "route").Select(k => o.Field(k)).Where(f => f != null && f.On).Select(f => f!).ToList();
             if (list.Count == 0) return "";
             var sb = new StringBuilder("<table class='kv'>");
             for (int i = 0; i < list.Count; i += cols)
@@ -235,7 +236,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>A table whose columns follow the form's column switches. Each column: key, header, css class (num/center/'').</summary>
         public static string Table(PrintOptions o, IEnumerable<(string Key, string Header, string Css)> columns, IEnumerable<IDictionary<string, string>> rows, IDictionary<string, string>? totals = null, int blankRows = 0, string cssClass = "grid")
         {
-            var cols = columns.Where(c => o.Col(c.Key)).ToList();
+            bool routesOn = Features.On(Features.DeliveryRoutes);   // Nov 19: a "route" column is left out while delivery routes are off
+            var cols = columns.Where(c => o.Col(c.Key) && (routesOn || c.Key != "route")).ToList();
             if (cols.Count == 0) return "";
             var sb = new StringBuilder($"<table class='{cssClass}'><thead><tr>");
             foreach (var c in cols) sb.Append($"<th class='{c.Css}'>{Esc(c.Header)}</th>");

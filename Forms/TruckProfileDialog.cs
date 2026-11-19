@@ -295,6 +295,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var g = ProfileKit.Grid();
             g.Columns.AddRange(ProfileKit.Col("Date", "Date", 70), ProfileKit.Col("Dispatch", "Dispatch #", 80), ProfileKit.Col("Client", "Client", 110), ProfileKit.Col("Route", "Route", 120),
                 ProfileKit.Col("Driver", "Driver", 100), ProfileKit.Col("Aides", "Aide(s)", 100), ProfileKit.Col("Crates", "Crates", 50, true), ProfileKit.Col("Status", "Status", 70));
+            g.Columns["Route"]!.Visible = Features.On(Features.DeliveryRoutes);   // Nov 19: no Route column while delivery routes are off
             var search = ProfileKit.Box("Filter by dispatch #, client, route, driver or status…");
             void Fill()
             {

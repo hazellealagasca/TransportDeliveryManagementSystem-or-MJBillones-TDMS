@@ -110,6 +110,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             void C(string n, string h, int w) => grid.Columns.Add(new DataGridViewTextBoxColumn { Name = n, HeaderText = h, FillWeight = w, SortMode = DataGridViewColumnSortMode.NotSortable });
             C("match", "Match", 36); C("date", "Date", 46); C("kind", "Type", 42); C("num", "Number", 52); C("client", "Client", 70); C("route", "Route", 60);
             C("truck", "Truck", 40); C("crew", "Driver · aides", 64); C("crates", "Crates", 30); if (showAmount) C("amount", "Amount", 40); C("status", "Status", 40);
+            grid.Columns["route"]!.Visible = Features.On(Features.DeliveryRoutes);   // Nov 19: no Route column while delivery routes are off
             grid.CellFormatting += (s, e) =>
             {
                 if (e.RowIndex < 0 || e.CellStyle == null || grid.Rows[e.RowIndex].Tag is not ValueTuple<TxRecord, int, int> t) return;

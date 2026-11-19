@@ -146,17 +146,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Item("Dispatch / loading sheet", () => PrintLoadingSheet(new List<Delivery> { d }), "Ctrl+P"),
                 Item("Official trip report", () => PrintHelper.PrintOfficialTripReport(d.Id, d.DispatchNumber), enabled: !cancelled),
                 Item("Dispatch list (whole table)", () => BtnPrint_Click(this, EventArgs.Empty))));
-            string routeCode = RouteCodeOf(d);
-            var find = Sub("🔎  Find related",
-                Item($"Orders for {Shorten(client, 28)}", () => SearchList(d.ClientName), enabled: !string.IsNullOrWhiteSpace(d.ClientName)),
-                Item($"Orders on route {Shorten(string.IsNullOrEmpty(routeCode) ? d.CleanRouteDisplay : routeCode, 24)}", () => SearchList(string.IsNullOrEmpty(routeCode) ? d.CleanRouteDisplay : routeCode)),
-                Item($"Orders with truck {Shorten(PlateOf(d), 20)}", () => SearchList(PlateOf(d)), enabled: !string.IsNullOrWhiteSpace(PlateOf(d))),
-                Item($"Orders with driver {Shorten(d.DriverName, 24)}", () => SearchList(d.DriverName), enabled: !string.IsNullOrWhiteSpace(d.DriverName)),
-                new ToolStripSeparator(),
-                Item("Open client profile", () => MainForm.Instance?.OpenClientProfile(d.ClientName, "Loading Schedule & Dispatch", () => MainForm.Instance?.NavigateToOperations("Dispatch")), enabled: !string.IsNullOrWhiteSpace(d.ClientName)),
-                Item("Open route in Delivery Routes", () => MainForm.Instance?.NavigateToDeliveryRoutes(routeCode: routeCode, isNewRoute: false, returnTarget: "Dispatch",
-                    backAction: () => MainForm.Instance?.NavigateToOperations("Dispatch")), enabled: !string.IsNullOrEmpty(routeCode)),
-                Item("Clear search", () => SearchList(""), enabled: !string.IsNullOrWhiteSpace(txtGridSearch.Text)));
+            bool routesOn = Features.On(Features.DeliveryRoutes);   // Nov 19: the two route items only show while delivery routes are on
+            string routeCode = routesOn ? RouteCodeOf(d) : "";
+            var findItems = new List<ToolStripItem>();
+            findItems.Add(Item($"Orders for {Shorten(client, 28)}", () => SearchList(d.ClientName), enabled: !string.IsNullOrWhiteSpace(d.ClientName)));
+            if (routesOn) findItems.Add(Item($"Orders on route {Shorten(string.IsNullOrEmpty(routeCode) ? d.CleanRouteDisplay : routeCode, 24)}", () => SearchList(string.IsNullOrEmpty(routeCode) ? d.CleanRouteDisplay : routeCode)));
+            findItems.Add(Item($"Orders with truck {Shorten(PlateOf(d), 20)}", () => SearchList(PlateOf(d)), enabled: !string.IsNullOrWhiteSpace(PlateOf(d))));
+            findItems.Add(Item($"Orders with driver {Shorten(d.DriverName, 24)}", () => SearchList(d.DriverName), enabled: !string.IsNullOrWhiteSpace(d.DriverName)));
+            findItems.Add(new ToolStripSeparator());
+            findItems.Add(Item("Open client profile", () => MainForm.Instance?.OpenClientProfile(d.ClientName, "Loading Schedule & Dispatch", () => MainForm.Instance?.NavigateToOperations("Dispatch")), enabled: !string.IsNullOrWhiteSpace(d.ClientName)));
+            if (routesOn) findItems.Add(Item("Open route in Delivery Routes", () => MainForm.Instance?.NavigateToDeliveryRoutes(routeCode: routeCode, isNewRoute: false, returnTarget: "Dispatch",
+                backAction: () => MainForm.Instance?.NavigateToOperations("Dispatch")), enabled: !string.IsNullOrEmpty(routeCode)));
+            findItems.Add(Item("Clear search", () => SearchList(""), enabled: !string.IsNullOrWhiteSpace(txtGridSearch.Text)));
+            var find = Sub("🔎  Find related", findItems.ToArray());
             m.Items.Add(find);
             m.Items.Add(Sub("📊  Export table",
                 Item("To CSV…", () => DataExportHelper.ExportToCsv(gridDispatch, "Dispatch_Orders", "Active and Dispatched Trips")),
