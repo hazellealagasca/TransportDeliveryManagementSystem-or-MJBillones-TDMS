@@ -2698,8 +2698,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlFormBody.Controls.Add(CreateSectionSpacer());
             BuildWizardStepper();
             pnlFormBody.Controls.Add(pnlStepperHeader!);
-            wizardStep = 1;
-            ApplyWizardStep();
+            wizard!.GoToStep(1);
 
             pnlFormBody.ResumeLayout(true);
         }
