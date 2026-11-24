@@ -158,6 +158,33 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             SetButtonStates(false);
             UIThemeHelper.ApplyTheme(this);
                     InitFullPageForm();
+            BuildForCollectionHeading();
+        }
+
+        private Panel? pnlForCollection;
+        private Label? lblForCollectionTitle, lblForCollectionCount;
+        /// <summary>The "For collection" heading directly above the invoice grid (under the search / filter bar), with the number of rows listed.</summary>
+        private void BuildForCollectionHeading()
+        {
+            lblForCollectionCount = new Label { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10.5F), TextAlign = ContentAlignment.MiddleLeft, UseMnemonic = false, BackColor = Color.Transparent };
+            lblForCollectionTitle = new Label { Dock = DockStyle.Left, AutoSize = false, Width = Dpi(150), Font = new Font("Segoe UI Semibold", 15.5F), Text = "For collection", TextAlign = ContentAlignment.MiddleLeft, UseMnemonic = false, BackColor = Color.Transparent };
+            pnlForCollection = new Panel { Name = "pnlForCollectionHeading", Dock = DockStyle.Top, Height = Dpi(40), BackColor = Color.Transparent, Padding = new Padding(0, Dpi(4), 0, Dpi(2)) };
+            pnlForCollection.Controls.Add(lblForCollectionCount);
+            pnlForCollection.Controls.Add(lblForCollectionTitle);
+            gridInvoices.BringToFront();
+            pnlGridCard.Controls.Add(pnlForCollection);
+            pnlGridCard.Controls.SetChildIndex(pnlForCollection, 1); // just above the grid (index 0 = Fill)
+            lblForCollectionTitle.Width = TextRenderer.MeasureText("For collection", lblForCollectionTitle.Font).Width + Dpi(14);
+            void Recolor() { lblForCollectionTitle.ForeColor = AppTheme.TextPrimary; lblForCollectionCount.ForeColor = AppTheme.TextMuted; }
+            Recolor();
+            EventHandler themed = (s, e) => { try { if (!IsDisposed) Recolor(); } catch (Exception ex) { ErrLog.Swallowed(ex); } };
+            ThemeManager.ThemeChanged += themed;
+            Disposed += (s, e) => ThemeManager.ThemeChanged -= themed;
+            UpdateForCollectionCount(gridInvoices.Rows.Count);
+        }
+        private void UpdateForCollectionCount(int rows)
+        {
+            if (lblForCollectionCount != null) lblForCollectionCount.Text = $"·  {rows:N0} invoice{(rows == 1 ? "" : "s")}";
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -902,6 +929,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridInvoices.DataSource = filtered;
             UpdateBillingSummary(filtered.ToList(), reloadPayments: false);
             int openCount = allInvoices.Count(IsOpenWork); // Nov 24: only open work is listed (paid ones: Finance History → Completed; cancelled: → Voided)
+            UpdateForCollectionCount(filtered.Count);
             lblGridHeader.Text = string.IsNullOrEmpty(q) && filtered.Count == openCount
                 ? $"Invoices ({openCount})"
                 : $"Invoices ({filtered.Count} of {openCount})";

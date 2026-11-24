@@ -78,7 +78,8 @@ These live in Settings → Features & Pop-ups (code in `Functions\Features.cs`):
 
 | Date | Commit | Change |
 |---|---|---|
-| Nov 25 | (next) | Statement of Account step 1: the trips card shows its "2 · Trips of this client" title again (no subtitle) |
+| Nov 25 | (next) | Service Invoices tab: "For collection · N invoices" heading above the list |
+| Nov 25 | `36e2487` | Statement of Account step 1: the trips card shows its "2 · Trips of this client" title again (no subtitle) |
 | Nov 25 | `a13e015` | Statement of Account step 1: trip search box, + Add trip and the card heading removed; the trips list sits under the client card |
 | Nov 25 | `44c2e30` | Step forms parts 3-5 (plan complete): Service Invoice 2 steps; Statement of Account 3 steps (step 1 "Client & trips", read-only trips list, new statements open on step 1); Trip Report on the shared wizard (3 steps, 2 when incidents are off). Two-pane workbench layouts gone |
 | Nov 25 | `1814e21` | Step forms part 2 + payments: Collection Receipt in 2 steps (details card with VAT/withholding breakdown, big "I checked the overall amount" box required by Next); reference # and Service Invoice No. only validated (no search); Completed Delivery Trip hidden; Paid invoices / issued receipts read-only and off their tabs; Finance History = Completed (newest first) + Voided, admin Void receipt / Cancel invoice / Cancel statement there; locked Billed Client readable. Next: part 3 Service Invoice steps |
