@@ -54,7 +54,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bool layout = mode == PrintStudioMode.Layout;
             string hint = layout
                 ? "Change what this form shows — the preview on the right updates as you go. This applies to every later print of the form. The preview uses made-up sample values; the real values come from each record."
-                : "Choose the paper and print options — the preview on the right updates as you go. To change what the form shows (title, header, labels, columns, signatures, notes), an admin can use Settings → Print layouts.";
+                : "Choose the paper and print options — the preview on the right updates as you go.";
             if (layout && def.LayoutHint.Length > 0) hint += " " + def.LayoutHint;
             int hintHeight = layout ? D(46) : D(26);
             top.Height = D(54) + hintHeight;

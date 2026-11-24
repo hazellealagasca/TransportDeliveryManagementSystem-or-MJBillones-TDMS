@@ -4,7 +4,7 @@ A hand-off note so any Claude account on this computer (including Hazel Lea Laga
 
 **Claude: read this file first, then `git log --oneline -20` for anything newer. Add a line to the Patch log after every commit you make.**
 
-Last updated: Nov 24, 2026 (last app commit `8c37a47`).
+Last updated: Nov 25, 2026 (last app commit: top row of the Patch log).
 
 > **Note:** Smart App Control was turned off on this PC (Nov 24) because it blocked every new build, including F5 and the Verify checks. If builds are blocked again, that's the cause; don't try to bypass it.
 
@@ -78,7 +78,8 @@ These live in Settings → Features & Pop-ups (code in `Functions\Features.cs`):
 
 | Date | Commit | Change |
 |---|---|---|
-| Nov 25 | (next) | Service Invoices tab: "For collection · N invoices" heading above the list |
+| Nov 25 | (this commit) | Settings: Print layouts tab hidden (saved layouts still apply); print window hint no longer mentions it |
+| Nov 25 | `3aecf06` | Service Invoices tab: "For collection · N invoices" heading above the list |
 | Nov 25 | `36e2487` | Statement of Account step 1: the trips card shows its "2 · Trips of this client" title again (no subtitle) |
 | Nov 25 | `a13e015` | Statement of Account step 1: trip search box, + Add trip and the card heading removed; the trips list sits under the client card |
 | Nov 25 | `44c2e30` | Step forms parts 3-5 (plan complete): Service Invoice 2 steps; Statement of Account 3 steps (step 1 "Client & trips", read-only trips list, new statements open on step 1); Trip Report on the shared wizard (3 steps, 2 when incidents are off). Two-pane workbench layouts gone |

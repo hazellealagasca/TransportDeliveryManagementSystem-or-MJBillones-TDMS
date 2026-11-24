@@ -188,9 +188,16 @@ public static partial class Checks
                 if (!entries.Any(e => e.Key == k)) bad.Add("not listed: " + k);
             SignInAsAdmin();
             using var host = new Form { ShowInTaskbar = false, StartPosition = FormStartPosition.Manual, Location = new Point(-4000, -4000), Size = new Size(1300, 800), Opacity = 0 };
-            var view = new Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views.SettingsView(SessionContext.ActiveUser, "PrintLayouts");
-            view.Dock = DockStyle.Fill; host.Controls.Add(view); host.Show(); Pump(800);
-            if (view.CurrentTabKey != "PrintLayouts") bad.Add("Settings has no Print layouts tab (current: " + view.CurrentTabKey + ")");
+            // The Print layouts tab is hidden in Settings (Nov 25) but still registered under the "PrintLayouts" key;
+            // the layouts view itself still lists every form.
+            var settings = new Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views.SettingsView(SessionContext.ActiveUser, "PrintLayouts");
+            settings.Dock = DockStyle.Fill; host.Controls.Add(settings); host.Show(); Pump(800);
+            var tab = Flat(settings).OfType<Button>().FirstOrDefault(b => (b.Tag as string) == "PrintLayouts");
+            if (tab == null) bad.Add("Settings has no Print layouts tab");
+            else if (tab.Visible) bad.Add("Print layouts tab should be hidden");
+            host.Controls.Remove(settings); settings.Dispose();
+            var view = new Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views.PrintLayoutsSettingsView();
+            view.Dock = DockStyle.Fill; host.Controls.Add(view); Pump(800);
             int buttons = Flat(view).OfType<Button>().Count(b => b.Text == "Edit layout…");
             if (buttons != entries.Count) bad.Add($"{buttons} Edit buttons for {entries.Count} forms");
             return string.Join("; ", bad);

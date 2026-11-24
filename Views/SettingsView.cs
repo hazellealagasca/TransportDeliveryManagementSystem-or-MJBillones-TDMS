@@ -131,7 +131,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (isAdmin)
                 AddTabButton(flowTabs, "Features", "🔀  Features & Pop-ups", (s, e) => LoadChildView(new FeaturesSettingsView(), (Button)s!));
             if (isAdmin)
-                AddTabButton(flowTabs, "PrintLayouts", "🖨️  Print layouts", (s, e) => LoadChildView(new PrintLayoutsSettingsView(), (Button)s!));
+            {
+                // Print layouts tab hidden (Nov 25): saved layouts still apply to every print.
+                var btnPrintLayouts = AddTabButton(flowTabs, "PrintLayouts", "🖨️  Print layouts", (s, e) => LoadChildView(new PrintLayoutsSettingsView(), (Button)s!));
+                btnPrintLayouts.Visible = false;
+            }
             if (isAdmin)
             {
                 AddTabButton(flowTabs, "AuditTrail", "📜  Audit Trail", (s, e) => LoadChildView(new AuditTrailView(), (Button)s!));
