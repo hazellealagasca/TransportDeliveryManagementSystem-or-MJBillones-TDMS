@@ -40,7 +40,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var last = list.OrderByDescending(r => r.PaymentDate).FirstOrDefault();
                 var m = new List<SummaryMetric>
                 {
-                    new("Receipts shown", list.Count.ToString("N0"), SummaryTone.Blue, $"of {allReceipts.Count:N0} receipts", Strong: true),
+                    new("Receipts shown", list.Count.ToString("N0"), SummaryTone.Blue, $"of {allReceipts.Count(IsOpenReceipt):N0} receipts", Strong: true),
                     new("Amount collected", AllInOneSummaryBar.Money(total), SummaryTone.Green, "on the receipts shown", Strong: true),
                     new("This month", AllInOneSummaryBar.Money(thisMonth), SummaryTone.Teal, monthStart.ToString("MMMM yyyy")),
                     new("Cash", AllInOneSummaryBar.Money(cash), SummaryTone.Neutral, "paid in cash"),

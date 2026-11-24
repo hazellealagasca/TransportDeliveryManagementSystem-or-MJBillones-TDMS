@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -25,7 +25,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private TextBox txtBillAdjustReason = null!;
         private WaitingListPanel billWaiting = null!;
         private TapeCard? billTape, billNetTape;
-        private RichLookup? invoiceLookup;
         private readonly System.Windows.Forms.Timer billGuideTimer = new System.Windows.Forms.Timer { Interval = 250 };
         private bool billSaving;
         private HashSet<int> billReported = new HashSet<int>();
@@ -86,7 +85,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numTotalAmount.ValueChanged += (s, e) => ScheduleBillGuide();
             numFuel.ValueChanged += (s, e) => ScheduleBillGuide();
             txtInvoiceNumber.TextChanged += (s, e) => ScheduleBillGuide();
-            invoiceLookup = RichLookup.Attach(txtInvoiceNumber, InvoiceSuggestions, it => ScheduleBillGuide());
+            // Nov 24: no suggestion list on the Service Invoice No.: a number already used is only flagged in the checklist and refused on Issue / Update.
             // Ready line above the invoice list.
             billWaiting = new WaitingListPanel();
             billWaiting.InvoiceRequested += StartInvoiceForWaiting;
@@ -118,7 +117,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             billStrip.ShowPayment = false; // "Payment: Unpaid" means nothing on an invoice that is not issued yet
             billStrip.FirstCaption = "Amount"; billStrip.SecondCaption = "Fuel surcharge"; billStrip.ShowNet = false; // Nov 7: an invoice shows only what was typed (amount, fuel surcharge): no total, tax or withholding; the first computation is on the statement
-            billTape = new TapeCard { EmptyText = "Pick the completed trip to see its dispatch, route, date and crates here." };
+            billTape = new TapeCard { EmptyText = "The statement or trip being billed shows here." };
             billTape.Set("The trip being billed", Array.Empty<(string, string)>(), "", "", "");
             billNetTape = new TapeCard();
             billNetTape.Set("What was typed on this invoice", Array.Empty<(string, string)>(), "", "", "");
@@ -197,7 +196,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void OnBillFormShown(bool visible)
         {
             if (billChecklist == null) return;
-            if (!visible) { billGuideTimer.Stop(); invoiceLookup?.HideList(); RefreshBillReady(); return; }
+            if (!visible) { billGuideTimer.Stop(); RefreshBillReady(); return; }
             billSaving = false;
             billGuideInvoiceId = -1; // reload on the first update
             UpdateBillGuide();
@@ -245,15 +244,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             LinkedChoicesPopover.ShowUnder(cbClient, $"This invoice bills a trip of {locked}, so the client stays {locked}.", new[] { locked }, v => { cbClient.Text = v; ScheduleBillGuide(); });
             ScheduleBillGuide();
         }
-        private IEnumerable<LookupItem> InvoiceSuggestions(string q)
+        /// <summary>Nov 24: a Paid invoice is complete: its form is read-only (no Issue / Update, boxes locked).</summary>
+        internal static bool IsInvoiceLocked(Invoice inv) => RowMenu.Is(inv.Status, PayStatus.Paid);
+        private bool billPaidLockApplied;
+        /// <summary>Locks the form for a Paid invoice (or frees what this lock locked when called with null / an editable invoice).</summary>
+        private void ApplyInvoiceLock(Invoice? inv)
         {
-            int n = 0;
-            foreach (var inv in allInvoices.Where(i => (i.InvoiceNumber ?? "").Contains(q, StringComparison.OrdinalIgnoreCase)))
+            bool lockIt = inv != null && IsInvoiceLocked(inv);
+            if (lockIt)
             {
-                var kind = RowMenu.Is(inv.Status, "Paid") ? BadgeKind.Good : RowMenu.Is(inv.Status, "Draft") ? BadgeKind.Warn : inv.DueDate.Date < DateTime.Today ? BadgeKind.Bad : BadgeKind.Info;
-                yield return new LookupItem(inv.InvoiceNumber, $"Existing · {inv.ClientName} · ₱{inv.NetAmount:N2} · {Fmt.Date(inv.IssueDate)}{(inv.SoaId > 0 ? " · from a statement" : "")}", StatusText.Billing(inv.Status, inv.NetAmount), kind);
-                if (++n >= 20) yield break;
+                billPaidLockApplied = true;
+                txtInvoiceNumber.ReadOnly = true;
+                numTotalAmount.Enabled = false; numFuel.Enabled = false; SetClientLocked(true); cbDelivery.Enabled = false;
+                btnSave.Visible = false; btnUpdate.Visible = false; btnSave.Enabled = false; btnUpdate.Enabled = false;
+                lblFormHeader.Text = $"Invoice #{inv!.InvoiceNumber} · paid (read only)";
             }
+            else if (billPaidLockApplied)
+            {
+                billPaidLockApplied = false;
+                txtInvoiceNumber.ReadOnly = false;
+                numTotalAmount.Enabled = true; numFuel.Enabled = true; SetClientLocked(false);
+                ApplySoaLock();
+            }
+            ScheduleBillGuide();
         }
         private decimal ExpectedFor(Delivery d)
         {
@@ -289,7 +302,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 var d = SelectedBillDelivery();
                 bool chargeable = d != null && IsChargeableCancelled(d);
-                if (d == null) checks.Add(new PaymentCheck("Pick a completed trip to invoice (Completed Delivery Trip is required)", false));
+                if (d == null) checks.Add(new PaymentCheck("Pick a statement of account to invoice (or a completed trip for a direct invoice)", false));
                 else if (chargeable) checks.Add(new PaymentCheck($"Dispatch {d.DispatchNumber} was cancelled but is chargeable (agreed ₱{chargeFees[d.Id]:N2})", true));
                 else if (string.Equals(d.Status, "Cancelled", StringComparison.OrdinalIgnoreCase)) checks.Add(new PaymentCheck($"Dispatch {d.DispatchNumber} was cancelled with no charge — it can't be billed", false));
                 else checks.Add(new PaymentCheck($"Dispatch {d.DispatchNumber} is completed", DispatchGate.IsCompleted(d.Status)));
@@ -310,6 +323,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else
             {
+                if (IsInvoiceLocked(selectedInvoice!)) checks.Add(new PaymentCheck($"Invoice {selectedInvoice!.InvoiceNumber} is paid: a completed invoice can't be edited", false));
                 string locked = BillLockedClient();
                 bool clientOk = locked.Length == 0 ? client.Length > 0 : string.Equals(locked, client, StringComparison.OrdinalIgnoreCase);
                 checks.Add(new PaymentCheck(clientOk ? $"Client {client}" : locked.Length > 0 ? $"Client must stay {locked}" : "Choose the client", clientOk));
@@ -325,7 +339,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     // Payments are in full: once a receipt exists the amounts stay as paid (void the receipt first to change them).
                     bool unchanged = Math.Abs(numTotalAmount.Value - selectedInvoice.Freight) < 0.005m && Math.Abs(numFuel.Value - selectedInvoice.FuelSurcharge) < 0.005m;
-                    checks.Add(new PaymentCheck(unchanged ? $"Amounts stay as paid (₱{billPaid:N2} collected)" : $"₱{billPaid:N2} is already collected, so the amounts can't change — void the receipt in Collection Receipts first", unchanged));
+                    checks.Add(new PaymentCheck(unchanged ? $"Amounts stay as paid (₱{billPaid:N2} collected)" : $"₱{billPaid:N2} is already collected, so the amounts can't change — void the receipt in Finance History → Completed first", unchanged));
                 }
             }
             // Invoice number: present, unique.
@@ -433,3 +447,4 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
     }
 }
+

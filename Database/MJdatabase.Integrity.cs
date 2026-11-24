@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Data.Sqlite;
@@ -111,7 +111,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     {
                         ident = Scalar("SELECT InvoiceNumber FROM Invoices WHERE Id = @id");
                         if (Scalar("SELECT COUNT(*) FROM CollectionReceipts WHERE InvoiceId = @id AND COALESCE(IsVoid,0) = 0") is var n && n != "0" && n != "")
-                            throw new InvalidOperationException($"Invoice {ident} has payments recorded. Void its collection receipts first.");
+                            throw new InvalidOperationException($"Invoice {ident} has payments recorded. Void its collection receipts first (Finance History → Completed).");
                         // Nov 6: a trip's service invoice on a statement is part of the statement's total: take the trip off the statement first.
                         string onSoa = Scalar("SELECT COALESCE(s.SoaNumber,'') FROM Invoices v JOIN StatementsOfAccount s ON s.Id = v.SoaId WHERE v.Id = @id AND COALESCE(s.Status,'') <> 'Cancelled' AND (COALESCE(v.DeliveryId,0) > 0 OR COALESCE(v.SpecialTripId,0) > 0)");
                         if (!string.IsNullOrEmpty(onSoa))
@@ -170,7 +170,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         // Guard: money already came in on this statement's invoice. Cancelling now would leave a paid invoice with no statement.
                         string paidCount = Scalar("SELECT COUNT(*) FROM CollectionReceipts r JOIN Invoices v ON v.Id = r.InvoiceId WHERE v.SoaId = @id AND COALESCE(r.IsVoid,0) = 0");
                         if (paidCount != "" && paidCount != "0")
-                            throw new InvalidOperationException($"Statement {ident} has {paidCount} payment(s) recorded on its invoice. Void those collection receipts first (Collection Receipts), then cancel the statement.");
+                            throw new InvalidOperationException($"Statement {ident} has {paidCount} payment(s) recorded on its invoice. Void those collection receipts first (Finance History → Completed), then cancel the statement.");
                         Exec("UPDATE StatementsOfAccount SET Status = 'Cancelled' WHERE Id = @id");
                         // The statement's own invoice is cancelled with it (same transaction), so it can't be collected on or block its trips as a direct invoice.
                         // The SoaId link is kept for the history.

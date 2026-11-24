@@ -47,7 +47,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var btnActions = UIThemeHelper.CreateActionsDropdown(menuActions);
             pnlGridActionsFlow.Controls.Add(btnActions);
 
-            txtRefNo.TextChanged += (s, e) => HandleRefNoInput();
+            // Nov 24: the reference # is only checked (the checklist and Save refuse one already used); typing it no longer searches or opens a saved receipt.
 
             currentFormWidth = UIThemeHelper.GetAdaptiveDrawerWidth(this, 400F, 460F);
             InitializeFormToggle();
@@ -125,12 +125,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             gridCollections.CellDoubleClick += (s, e) =>
             {
-                if (e.RowIndex < 0 || gridCollections.Rows[e.RowIndex].DataBoundItem is not CollectionReceipt) return;
+                if (e.RowIndex < 0 || gridCollections.Rows[e.RowIndex].DataBoundItem is not CollectionReceipt dc) return;
                 gridCollections.ClearSelection();
                 gridCollections.Rows[e.RowIndex].Selected = true;
-                SetFormVisibility(true);
+                RecordDetailsDialog.ShowDetails(this, dc); // Nov 24: an issued receipt is only viewed (details + print), never edited
             };
-            if (Features.On(Features.PaymentsWorkbench)) ApplyCollWorkbench(); // Ledger Desk layout (Settings → Features can switch it off)
+            ApplyCollGuideLayout();
+            BuildCollWizard(); // the receipt is a 2-step form (What is being paid → Payment & save), like New Dispatch Order
+            SetButtonStates(false);
             SetFormVisibility(false);
         }
         private void OpenNewRecordForm()
@@ -157,6 +159,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             // Nov 6: a form is blank whenever it is opened or left.
             if (!visible && pnlForm.Visible && IsHandleCreated && !keep.Keeping) ClearFields();
+            if (visible && !keep.Resuming) wizard?.GoToStep(1); // a form opens on its first step (a kept draft comes back on the step it was left on)
             if (visible) formDirty ??= new FormDirtyTracker(pnlForm);
             if (!keep.Keeping && !(visible && keep.Resuming)) formDirty?.Reset();
             if (visible) keep.Restored(btnToggleForm);
@@ -201,7 +204,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else
             {
-                lblLinkedInvoiceInfo.Text = "📄 Linked invoice: (none selected)";
+                SetLinkedInfo("📄 Linked invoice: (none selected)", "Pick a statement or invoice above");
             }
         }
 
@@ -214,57 +217,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
-        private void HandleRefNoInput()
-        {
-            if (bindingReceipt) return;
-            string refNum = txtRefNo.Text.Trim();
-            if (string.IsNullOrWhiteSpace(refNum))
-            {
-                selectedCollection = null;
-                lblFormHeader.Text = "Record Payment Receipt";
-                SetButtonStates(false);
-                return;
-            }
-
-            var matched = allReceipts.FirstOrDefault(r => (!string.IsNullOrWhiteSpace(r.ReferenceNumber) && r.ReferenceNumber.Equals(refNum, StringComparison.OrdinalIgnoreCase)) ||
-                                                          (!string.IsNullOrWhiteSpace(r.ReceiptNumber) && r.ReceiptNumber.Equals(refNum, StringComparison.OrdinalIgnoreCase)));
-            if (matched != null)
-            {
-                BindCollectionToForm(matched);
-                for (int i = 0; i < gridCollections.Rows.Count; i++)
-                {
-                    if (gridCollections.Rows[i].DataBoundItem is CollectionReceipt rowCr && rowCr.Id == matched.Id)
-                    {
-                        gridCollections.ClearSelection();
-                        gridCollections.Rows[i].Selected = true;
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                selectedCollection = null;
-                lblFormHeader.Text = $"Receipt Ref: {refNum} (New)";
-                SetButtonStates(false);
-            }
-        }
-
-        private bool bindingReceipt;
         private void BindCollectionToForm(CollectionReceipt cr)
         {
-            // Setting the boxes below fires their change events (the reference box clears selectedCollection when it is blank), so the
-            // receipt is held in cr and selectedCollection is set again at the end. This was the "selectedCollection was null" crash.
-            bindingReceipt = true;
-            try
+            // Setting the boxes below fires their change events, so the receipt is held in cr and selectedCollection is set again at the end.
             {
                 selectedCollection = cr;
                 editTargetInvoice = EditInvoiceFor(cr);
                 if (txtReceiptNo != null) txtReceiptNo.Text = cr.ReceiptNumber;
                 SetPaymentDate(cr.PaymentDate);
                 lblFormHeader.Text = $"Receipt #{cr.ReceiptNumber}";
-                lblLinkedInvoiceInfo.Text = !string.IsNullOrEmpty(cr.InvoiceNumber)
+                SetLinkedInfo(!string.IsNullOrEmpty(cr.InvoiceNumber)
                     ? $"📄 Linked invoice: {cr.InvoiceNumber}"
-                    : "📄 Linked invoice: (none)";
+                    : "📄 Linked invoice: (none)",
+                    !string.IsNullOrEmpty(cr.InvoiceNumber) ? $"Linked invoice: {cr.InvoiceNumber}" : "Linked invoice: (none)");
                 cbInvoice.Enabled = false; // a saved receipt keeps its statement
                 var _amt = cr.AmountPaid;
                 if (_amt > numAmountPaid.Maximum) numAmountPaid.Maximum = _amt * 2;
@@ -274,7 +239,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 txtRefNo.Text = cr.ReferenceNumber;
                 txtNotes.Text = cr.Notes;
             }
-            finally { bindingReceipt = false; }
             selectedCollection = cr;
             SetButtonStates(true);
         }
@@ -292,10 +256,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 allReceipts = GroupReceipts(MJdatabase.GetCollectionReceipts()); // one row per receipt number
                 FilterGridData();
                 if (!pnlForm.Visible) RefreshCollReady();
-                var receipts = allReceipts;
+                var receipts = allReceipts.Where(IsOpenReceipt).ToList();
 
                 decimal totalPaid = receipts.Sum(c => c.AmountPaid);
-                lblSummary.Text = $"{receipts.Count:N0} receipt{(receipts.Count == 1 ? "" : "s")}  ·  ₱{totalPaid:N2} collected";
+                lblSummary.Text = receipts.Count == 0
+                    ? "Statements and invoices waiting for payment are listed above. Issued receipts are kept in Finance History → Completed."
+                    : $"{receipts.Count:N0} receipt{(receipts.Count == 1 ? "" : "s")}  ·  ₱{totalPaid:N2} collected";
             }
             catch (Exception ex)
             { ErrLog.Error("CollectionView", ex); 
@@ -314,8 +280,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             finally { CollSaveFinished(); }
         }
 
+        /// <summary>Nov 24: a receipt is only ever issued (Status Completed, full amount). An issued receipt is complete: it is listed in Finance History, not here, and can't be edited.</summary>
+        internal static bool IsOpenReceipt(CollectionReceipt r) => !string.Equals(r.Status, "Completed", StringComparison.OrdinalIgnoreCase);
+
         private void BtnUpdate_Click(object? sender, EventArgs e)
         {
+            if (selectedCollection != null) // Nov 24: no Update for an issued receipt
+            {
+                QuietBox.Show($"Receipt {selectedCollection.ReceiptNumber} is issued. An issued receipt can't be edited.", "Receipt is issued", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
             if (!CollGateBeforeSave()) return;
             try { UpdateSelectedReceipt(); } // Nov 6: receipt no., method, reference and notes; the amount never changes
             catch (Exception ex)
@@ -370,9 +344,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void FilterGridData()
         {
             string q = txtGridSearch.Text.Trim().ToLowerInvariant();
+            var listable = allReceipts.Where(IsOpenReceipt).ToList(); // Nov 24: issued receipts are not listed here (Finance History → Completed)
             var filtered = string.IsNullOrEmpty(q)
-                ? allReceipts
-                : allReceipts.Where(r =>
+                ? listable
+                : listable.Where(r =>
                     (!string.IsNullOrEmpty(r.ReceiptNumber) && r.ReceiptNumber.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(r.InvoiceNumber) && r.InvoiceNumber.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(r.PaymentMethod) && r.PaymentMethod.ToLower().Contains(q)) ||
@@ -384,9 +359,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridCollections.DataSource = null;
             gridCollections.DataSource = filtered;
             UpdateCollectionSummary(filtered.ToList());
-            lblGridHeader.Text = string.IsNullOrEmpty(q) && filtered.Count == allReceipts.Count
-                ? $"Receipts ({allReceipts.Count})"
-                : $"Receipts ({filtered.Count} of {allReceipts.Count})";
+            lblGridHeader.Text = string.IsNullOrEmpty(q) && filtered.Count == listable.Count
+                ? $"Receipts ({listable.Count})"
+                : $"Receipts ({filtered.Count} of {listable.Count})";
             if (filtered.Count > 0)
             {
                 gridCollections.ClearSelection();
@@ -427,8 +402,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void ClearFields()
         {
             selectedCollection = null;
+            wizard?.GoToStep(1);
             lblFormHeader.Text = "Record Payment Receipt";
-            lblLinkedInvoiceInfo.Text = "📄 Linked invoice: (none selected)";
+            SetLinkedInfo("📄 Linked invoice: (none selected)", "Pick a statement or invoice above");
             ShowVerifyFor(null);
             cbPaymentMethod.SelectedIndex = -1; cbPaymentMethod.Text = ""; // Nov 6: blank until picked
             editTargetInvoice = null;
@@ -452,21 +428,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void SetButtonStates(bool isEditing)
         {
-            string refNum = txtRefNo.Text.Trim();
-            var matched = !string.IsNullOrWhiteSpace(refNum)
-                ? allReceipts.FirstOrDefault(r => (!string.IsNullOrWhiteSpace(r.ReferenceNumber) && r.ReferenceNumber.Equals(refNum, StringComparison.OrdinalIgnoreCase)) ||
-                                                  (!string.IsNullOrWhiteSpace(r.ReceiptNumber) && r.ReceiptNumber.Equals(refNum, StringComparison.OrdinalIgnoreCase)))
-                : null;
-            bool exists = (selectedCollection != null || matched != null) && !string.IsNullOrWhiteSpace(refNum);
+            // Nov 24: an issued receipt is read-only: no Update button ever (Update is gone), and no Save while one is shown. Typing a used reference never opens a receipt.
+            bool exists = selectedCollection != null;
 
+            saveVisWanted = !exists; updateVisWanted = false;
             btnSave.Enabled = !exists;
-            btnSave.Visible = !exists;
-            btnUpdate.Enabled = exists;
-            btnUpdate.Visible = exists;
+            btnUpdate.Enabled = false;
+            if (wizard == null) { btnSave.Visible = !exists; btnUpdate.Visible = false; }
+            else { btnUpdate.Visible = false; wizard.Refresh(); wizardHeader?.Invalidate(); } // the step form shows Save on the last step only; a saved receipt makes every step clickable
             ApplyButtonVisualState(btnSave, !exists, Pal.C(13, 110, 253), Pal.White);
-            ApplyButtonVisualState(btnUpdate, exists, Pal.C(25, 135, 84), Pal.White);
+            ApplyButtonVisualState(btnUpdate, false, Pal.C(25, 135, 84), Pal.White);
+            ApplyIssuedReceiptLock(exists);
             collGuideKey = int.MinValue;
             ScheduleCollGuide(); // the checklist decides whether Save / Update can be clicked
+        }
+
+        private bool receiptLockApplied;
+        /// <summary>Nov 24: a saved (issued) receipt shown in the form is read-only; the boxes are freed again for a new receipt.</summary>
+        private void ApplyIssuedReceiptLock(bool locked)
+        {
+            if (locked == receiptLockApplied) return;
+            receiptLockApplied = locked;
+            if (txtReceiptNo != null) txtReceiptNo.ReadOnly = locked;
+            txtRefNo.ReadOnly = locked; txtNotes.ReadOnly = locked;
+            cbPaymentMethod.Enabled = !locked;
+            try { dtpPaymentDate.Enabled = !locked; } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            if (locked) lblFormHeader.Text += " · issued (read only)";
         }
 
         private void ApplyButtonVisualState(Button btn, bool enabled, Color enabledBack, Color enabledFore)
@@ -505,7 +492,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.AddRange(RowMenu.Header($"💵  Receipt {cr.ReceiptNumber}",
                     $"{RowMenu.Money(cr.AmountPaid)} · {cr.PaymentMethod}{(string.IsNullOrWhiteSpace(cr.ReferenceNumber) ? "" : " #" + cr.ReferenceNumber)} · {Fmt.Date(cr.PaymentDate)} · invoice {cr.InvoiceNumber}"));
                 m.Items.Add(RowMenu.Item("Open details", () => RecordDetailsDialog.ShowDetails(this, cr)));
-                m.Items.Add(RowMenu.Item("Edit receipt", () => { SetFormVisibility(true); txtReceiptNo?.Focus(); }));
                 m.Items.Add(RowMenu.Good("Print official receipt (OR)", () => PrintHelper.PrintOfficialCollectionReceipt(cr)));
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.Item($"Show invoice {cr.InvoiceNumber}", () => FinanceHubView.Of(this)?.ShowInvoices(cr.InvoiceNumber), "", !string.IsNullOrWhiteSpace(cr.InvoiceNumber)));
@@ -541,7 +527,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 string note = $"Special trip {trip.OrderReference} · Destination: {trip.DestinationAddress}";
                 if (string.IsNullOrWhiteSpace(txtNotes.Text)) txtNotes.Text = note;
-                lblLinkedInvoiceInfo.Text += $"  ·  {note}  ·  Mode of payment: {(string.IsNullOrWhiteSpace(trip.ModeOfPayment) ? "not set" : trip.ModeOfPayment)}";
+                AddLinkedNote($"{note}  ·  Mode of payment: {(string.IsNullOrWhiteSpace(trip.ModeOfPayment) ? "not set" : trip.ModeOfPayment)}");
             }
             catch (Exception ex) { ErrLog.Swallowed(ex); }
         }
@@ -560,7 +546,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             OpenNewRecordForm();
             cbInvoice.SelectedIndex = idx;
-            txtReceiptNo?.Focus();
+            FocusStep(chkVerifyAmount); // statement picked: stay on step 1 so the overall amount is checked and ticked, then Next
         }
         /// <summary>Opens a new receipt with the invoice already picked (from Billing → Record payment).</summary>
         /// <summary>Nov 6 workflow: a new receipt for this statement's full amount (from "Proceed to Collection Receipt" on the SOA).</summary>
@@ -575,7 +561,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             OpenNewRecordForm();
             cbInvoice.SelectedIndex = idx;
-            txtReceiptNo?.Focus();
+            FocusStep(chkVerifyAmount); // statement picked: stay on step 1 so the overall amount is checked and ticked, then Next
         }
 
         public void PrefillForInvoice(Invoice inv)
@@ -589,7 +575,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             OpenNewRecordForm();
             cbInvoice.SelectedIndex = idx;
-            txtReceiptNo?.Focus();
+            FocusStep(chkVerifyAmount); // statement picked: stay on step 1 so the overall amount is checked and ticked, then Next
         }
     }
 }

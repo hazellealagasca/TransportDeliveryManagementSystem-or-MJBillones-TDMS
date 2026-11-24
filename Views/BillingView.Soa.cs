@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -35,17 +35,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbSoa.SelectedIndexChanged += (s, e) => OnSoaPicked();
             // Nov 18: once a statement is shown the box is disabled (no click, wheel or Tab); owner-drawn so the text stays dark and readable.
             cbSoa.DrawMode = DrawMode.OwnerDrawFixed;
-            cbSoa.DrawItem += (s, e) =>
-            {
-                e.DrawBackground();
-                if (e.Index >= 0)
-                {
-                    bool dis = (e.State & DrawItemState.ComboBoxEdit) != 0 && !cbSoa.Enabled;
-                    var fore = dis ? SystemColors.ControlText : e.ForeColor;
-                    TextRenderer.DrawText(e.Graphics, cbSoa.Items[e.Index]?.ToString() ?? "", e.Font ?? cbSoa.Font, e.Bounds, fore, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-                }
-            };
-            chkDirectTrip.CheckedChanged += (s, e) => { SwitchInvoiceSource(); ScheduleBillGuide(); };
+            cbSoa.DrawItem += (s, e) => DrawLockedCombo(cbSoa, e);
+            cbClient.DrawMode = DrawMode.OwnerDrawFixed;
+            cbClient.DrawItem += (s, e) => DrawLockedCombo(cbClient, e);            chkDirectTrip.CheckedChanged += (s, e) => { SwitchInvoiceSource(); ScheduleBillGuide(); };
         }
 
         /// <summary>
@@ -103,7 +95,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bool soa = SoaModeOn;
             chkDirectTrip.Visible = false;   // Nov 10: an order is billed only through its Statement of Account (no direct trip invoice)
             lblSoa.Visible = cbSoa.Visible = soa;
-            lblDel.Visible = cbDelivery.Visible = !soa;
+            lblDel.Visible = cbDelivery.Visible = false; // Nov 24: "Completed Delivery Trip *" is hidden: an invoice is made from a statement of account (a trip, when one is opened for a direct invoice, is still picked in code and shown on the card)
             bool ownSoa = selectedInvoice != null && selectedInvoice.SoaId > 0 && selectedInvoice.DeliveryId <= 0 && string.IsNullOrWhiteSpace(selectedInvoice.DispatchNumber);
             lblLoadingSchedule.Text = soa ? "Trips on the statement:" : ownSoa ? "Statement of Account:" : "Completed trip report:";
             txtLoadingSchedule.PlaceholderText = soa ? "The trips of the picked statement..." : "The completed trip report of the picked trip...";
@@ -118,6 +110,36 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ApplySoaLock();
         }
 
+        /// <summary>Owner-draw for a combo: when it is disabled (locked) the shown text is dark on a soft read-only background with no blue highlight.</summary>
+        private static void DrawLockedCombo(ComboBox cb, DrawItemEventArgs e)
+        {
+            if (e.Index < 0) { using var b0 = new SolidBrush(cb.Enabled ? AppTheme.InputBack : AppTheme.SurfaceAlt); e.Graphics.FillRectangle(b0, e.Bounds); return; }
+            bool locked = !cb.Enabled && (e.State & DrawItemState.ComboBoxEdit) != 0;
+            Color back = locked ? AppTheme.SurfaceAlt : (e.State & DrawItemState.Selected) != 0 ? SystemColors.Highlight : cb.BackColor;
+            Color fore = locked ? AppTheme.TextPrimary : (e.State & DrawItemState.Selected) != 0 ? SystemColors.HighlightText : cb.ForeColor;
+            using (var br = new SolidBrush(back)) e.Graphics.FillRectangle(br, e.Bounds);
+            TextRenderer.DrawText(e.Graphics, cb.Items[e.Index]?.ToString() ?? "", e.Font ?? cb.Font, e.Bounds, fore, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+        }
+
+        /// <summary>Locks / frees the client box. Locked = disabled (so checks and code that read Enabled still work) and a drop-down list, so the owner-draw above paints it readable.</summary>
+        private void SetClientLocked(bool locked)
+        {
+            string txt = cbClient.Text;
+            if (locked)
+            {
+                if (txt.Length > 0 && !cbClient.Items.Contains(txt)) cbClient.Items.Add(txt);
+                if (cbClient.DropDownStyle != ComboBoxStyle.DropDownList) cbClient.DropDownStyle = ComboBoxStyle.DropDownList;
+                if (txt.Length > 0 && cbClient.Text != txt) cbClient.SelectedItem = txt;
+            }
+            else if (cbClient.DropDownStyle != ComboBoxStyle.DropDown)
+            {
+                cbClient.DropDownStyle = ComboBoxStyle.DropDown;
+                if (cbClient.Text != txt) cbClient.Text = txt;
+            }
+            cbClient.Enabled = !locked;
+            cbClient.TabStop = !locked;
+        }
+
         /// <summary>Nov 18: locked while a statement is shown (new invoice with a statement picked, or a saved statement invoice); open when nothing is chosen.</summary>
         private void ApplySoaLock()
         {
@@ -126,7 +148,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bool shown = SoaModeOn ? SelectedSoa() != null : savedSoa;
             cbSoa.Enabled = !shown;
             cbSoa.TabStop = !shown;
-            cbClient.Enabled = !shown; // the client comes from the statement and must match it
+            SetClientLocked(shown); // the client comes from the statement and must match it
         }
 
         /// <summary>A statement was picked: client, trips and every amount are filled from it and locked.</summary>
@@ -230,3 +252,4 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
     }
 }
+

@@ -151,13 +151,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridActionsFlow.Controls.Add(btnActions);
 
             txtInvoiceNumber.Text = "";
-            txtInvoiceNumber.TextChanged += (s, e) =>
-            {
-                if (!isBindingForm)
-                {
-                    HandleInvoiceNumberInput();
-                }
-            };
+            // Nov 24: the Service Invoice No. is only checked (the checklist flags a used number and Issue / Update refuse it); typing it never searches or opens a saved invoice.
 
             currentFormWidth = UIThemeHelper.GetAdaptiveDrawerWidth(this, 420F, 480F);
             InitializeFormToggle();
@@ -506,40 +500,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
-        private void HandleInvoiceNumberInput()
-        {
-            string invNum = txtInvoiceNumber.Text.Trim();
-            if (string.IsNullOrWhiteSpace(invNum))
-            {
-                selectedInvoice = null;
-                lblFormHeader.Text = "Generate Service Invoice";
-                SetButtonStates(false);
-                return;
-            }
-
-            // A cancelled invoice is never opened for editing from its number (the checklist shows the number as taken).
-            var matched = allInvoices.FirstOrDefault(i => !string.IsNullOrWhiteSpace(i.InvoiceNumber) && i.InvoiceNumber.Equals(invNum, StringComparison.OrdinalIgnoreCase) && !RowMenu.Is(i.Status, PayStatus.Cancelled));
-            if (matched != null)
-            {
-                BindInvoiceToForm(matched);
-                for (int i = 0; i < gridInvoices.Rows.Count; i++)
-                {
-                    if (gridInvoices.Rows[i].DataBoundItem is Invoice rowInv && rowInv.Id == matched.Id)
-                    {
-                        gridInvoices.ClearSelection();
-                        gridInvoices.Rows[i].Selected = true;
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                selectedInvoice = null;
-                lblFormHeader.Text = $"Invoice #{invNum} (New)";
-                SetButtonStates(false);
-            }
-        }
-
         private void BindInvoiceToForm(Invoice inv)
         {
             isBindingForm = true;
@@ -585,6 +545,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 isBindingForm = false;
             }
             SetButtonStates(true);
+            ApplyInvoiceLock(inv); // Nov 24: a Paid invoice opens read-only
         }
 
         private void LoadData()
@@ -639,15 +600,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 FilterGridData();
 
                 if (!pnlForm.Visible) { RefreshBillReady(); ReloadSoaChoices(); }
-                int unpaid = allInvoices.Count(i => i.Status == "Unpaid");
-                int incomplete = allInvoices.Count(i => i.Status == "Draft" && i.NetAmount <= 0);
-                int overdue = allInvoices.Count(i => i.Status == "Unpaid" && i.DueDate.Date < DateTime.Today);
-                int paid = allInvoices.Count(i => i.Status == "Paid");
-                int cancelled = allInvoices.Count(i => i.Status == "Cancelled");
-                // Cancelled invoices are not money billed.
-                decimal totalNet = allInvoices.Where(i => i.Status != "Cancelled").Sum(i => i.NetAmount);
+                // Nov 24: the list holds open work only, so the line counts only that (paid and cancelled invoices are in Finance History).
+                var open = allInvoices.Where(IsOpenWork).ToList();
+                int unpaid = open.Count(i => i.Status == "Unpaid");
+                int incomplete = open.Count(i => i.Status == "Draft" && i.NetAmount <= 0);
+                int overdue = open.Count(i => i.Status == "Unpaid" && i.DueDate.Date < DateTime.Today);
+                decimal totalNet = open.Where(i => i.Status != "Cancelled").Sum(i => i.NetAmount);
 
-                lblSummary.Text = $"{allInvoices.Count:N0} invoice{(allInvoices.Count == 1 ? "" : "s")}  ·  {unpaid} for collection ({overdue} overdue)  ·{(incomplete > 0 ? $"  {incomplete} incomplete  ·" : "")}  {paid} paid{(cancelled > 0 ? $"  ·  {cancelled} cancelled" : "")}  ·  ₱{totalNet:N2} billed";
+                lblSummary.Text = $"{open.Count:N0} open invoice{(open.Count == 1 ? "" : "s")}  ·  {unpaid} for collection ({overdue} overdue)  ·{(incomplete > 0 ? $"  {incomplete} incomplete  ·" : "")}  ₱{totalNet:N2} to collect";
             }
             catch (Exception ex)
             { ErrLog.Error("BillingView", ex); 
@@ -763,6 +723,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void BtnUpdate_Click(object? sender, EventArgs e)
         {
+            if (selectedInvoice != null && IsInvoiceLocked(selectedInvoice)) // Nov 24: a Paid invoice is complete and can't be edited
+            {
+                QuietBox.Show($"Invoice {selectedInvoice.InvoiceNumber} is paid. A completed invoice can't be edited.", "Invoice is complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
             if (!BillGateBeforeSave()) return;
             try
             {
@@ -928,9 +893,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridInvoices.DataSource = null;
             gridInvoices.DataSource = filtered;
             UpdateBillingSummary(filtered.ToList(), reloadPayments: false);
-            lblGridHeader.Text = string.IsNullOrEmpty(q) && filtered.Count == allInvoices.Count
-                ? $"Invoices ({allInvoices.Count})"
-                : $"Invoices ({filtered.Count} of {allInvoices.Count})";
+            int openCount = allInvoices.Count(IsOpenWork); // Nov 24: only open work is listed (paid ones: Finance History → Completed; cancelled: → Voided)
+            lblGridHeader.Text = string.IsNullOrEmpty(q) && filtered.Count == openCount
+                ? $"Invoices ({openCount})"
+                : $"Invoices ({filtered.Count} of {openCount})";
             if (filtered.Count > 0)
             {
                 gridInvoices.ClearSelection();
@@ -1008,22 +974,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 CbDelivery_SelectedIndexChanged(cbDelivery, EventArgs.Empty);
             }
             SetButtonStates(false);
+            ApplyInvoiceLock(null);
         }
 
         private void SetButtonStates(bool isEditing)
         {
+            // Nov 24: only a saved invoice opened from the list is "existing"; a typed number that is already used is flagged by the checklist, never opened.
             string invNum = txtInvoiceNumber.Text.Trim();
-            var matched = !string.IsNullOrWhiteSpace(invNum)
-                ? allInvoices.FirstOrDefault(i => !string.IsNullOrWhiteSpace(i.InvoiceNumber) && i.InvoiceNumber.Equals(invNum, StringComparison.OrdinalIgnoreCase))
-                : null;
-            bool exists = (selectedInvoice != null || matched != null) && !string.IsNullOrWhiteSpace(invNum);
+            bool exists = selectedInvoice != null && !string.IsNullOrWhiteSpace(invNum);
+            bool locked = selectedInvoice != null && IsInvoiceLocked(selectedInvoice); // Paid: no Issue and no Update
 
             btnSave.Enabled = !exists;
             btnSave.Visible = !exists;
-            btnUpdate.Enabled = exists;
-            btnUpdate.Visible = exists;
+            btnUpdate.Enabled = exists && !locked;
+            btnUpdate.Visible = exists && !locked;
             ApplyButtonVisualState(btnSave, !exists, Pal.C(13, 110, 253), Pal.White);
-            ApplyButtonVisualState(btnUpdate, exists, Pal.C(25, 135, 84), Pal.White);
+            ApplyButtonVisualState(btnUpdate, exists && !locked, Pal.C(25, 135, 84), Pal.White);
             ScheduleBillGuide(); // the checklist decides whether Issue / Update can be clicked
         }
 
@@ -1064,7 +1030,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.AddRange(RowMenu.Header($"🧾  Invoice {inv.InvoiceNumber}",
                     $"{RowMenu.Short(inv.ClientName, 28)} · {RowMenu.Money(inv.NetAmount)} · {StatusText.Billing(inv.Status, inv.NetAmount)} · due {Fmt.Short(inv.DueDate)}"));
                 m.Items.Add(RowMenu.Item("Open details", () => RecordDetailsDialog.ShowDetails(this, inv)));
-                m.Items.Add(RowMenu.Item(isDraft && inv.NetAmount <= 0 ? "Complete this incomplete invoice" : "Edit invoice", () => { SetFormVisibility(true); cbDelivery.Focus(); }));
+                    if (!isPaid) // Nov 24: a Paid (completed) invoice has no Edit
+                    m.Items.Add(RowMenu.Item(isDraft && inv.NetAmount <= 0 ? "Complete this incomplete invoice" : "Edit invoice", () => { SetFormVisibility(true); txtInvoiceNumber.Focus(); }));
                 if (!isPaid && !isDraft) m.Items.Add(RowMenu.Good($"Collect payment in full ({RowMenu.Money(inv.NetAmount)})", () => OnRecordPaymentRequested?.Invoke(inv)));
                 if (paid > 0) m.Items.Add(RowMenu.Item($"Show payments ({RowMenu.Money(paid)} received)", () => FinanceHubView.Of(this)?.ShowCollections(inv.InvoiceNumber)));
                 m.Items.Add(RowMenu.Item("Mark as sent to client", () =>

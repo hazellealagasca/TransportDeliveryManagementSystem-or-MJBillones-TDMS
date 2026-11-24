@@ -21,8 +21,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Label lblCollBlocked = null!;
         private Label lblCollCap = null!;
         private CollectionReadyPanel collReady = null!;
-        private TapeCard? collTape;
-        private RichLookup? refLookup;
+        private Panel? collBottomSpacer;
         private readonly System.Windows.Forms.Timer collGuideTimer = new System.Windows.Forms.Timer { Interval = 250 };
         private bool collSaving;
         private Invoice? collInvoice;          // the invoice this receipt pays
@@ -42,7 +41,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit.Compact = true;
             formKit.Restyle();
             collStrip = new PaymentSummaryStrip { Cursor = Cursors.Hand };
-            collStrip.Click += (s, e) => formKit?.ScrollTo(collChecklist);
+            collStrip.Click += (s, e) => ShowCollChecklist();
             new ToolTip().SetToolTip(collStrip, "The invoice being paid and its full amount due (payments are always in full). Click to see the checklist.");
             formKit.AddStrip(collStrip);
             collStepper = new WorkflowStepper("Trip report completed", "Invoice issued", "Payment filled", "Review", "Validated & ready");
@@ -56,10 +55,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit.AddBodyTop(new Panel { Height = Dpi(8), BackColor = AppTheme.Canvas });
             formKit.AddBodyTop(collHelp);
             formKit.AddBodyTop(collStepper);
-            formKit.AddBodyBottom(new Panel { Height = Dpi(16), BackColor = AppTheme.Canvas });
+            collBottomSpacer = new Panel { Height = Dpi(16), BackColor = AppTheme.Canvas };
+            formKit.AddBodyBottom(collBottomSpacer);
             formKit.AddBodyBottom(collChecklist);
             lblCollBlocked = new Label { AutoSize = true, Font = new Font("Segoe UI Semibold", 9.25F), ForeColor = AppTheme.DangerText, Margin = new Padding(0, Dpi(11), Dpi(12), 0), Cursor = Cursors.Hand, UseMnemonic = false };
-            lblCollBlocked.Click += (s, e) => formKit?.ScrollTo(collChecklist);
+            lblCollBlocked.Click += (s, e) => ShowCollChecklist();
             formKit.Actions?.Controls.Add(lblCollBlocked);
             InputGuard.MoneyOnly(numAmountPaid);
             InputGuard.ReferenceDashOnly(txtRefNo, Functions.DailyRules.ReferenceMax); // Nov 12
@@ -69,7 +69,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numAmountPaid.KeyUp += (s, e) => ScheduleCollGuide();
             cbPaymentMethod.TextChanged += (s, e) => ScheduleCollGuide();
             txtRefNo.TextChanged += (s, e) => ScheduleCollGuide();
-            refLookup = RichLookup.Attach(txtRefNo, ReceiptSuggestions, it => ScheduleCollGuide());
             collReady = new CollectionReadyPanel();
             collReady.PaymentRequested += OpenPayTarget;
             collReady.CountChanged += n => FinanceHubView.Of(this)?.SetTabBadge("Collections", n);
@@ -77,30 +76,36 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridCard.Controls.SetChildIndex(collReady, pnlGridCard.Controls.GetChildIndex(pnlGridHeaderBar));
             RefreshCollReady();
         }
+        /// <summary>The field a checklist line is about (null = no single field). Receipt no., method, reference and date are on step 2; the statement / invoice is on step 1.</summary>
+        private Control? ControlForCheck(PaymentCheck c)
+        {
+            string t = c.Text;
+            if (t.Contains("Receipt No.", StringComparison.OrdinalIgnoreCase)) return txtReceiptNo;
+            if (t.Contains("payment method", StringComparison.OrdinalIgnoreCase)) return cbPaymentMethod;
+            if (t.Contains("reference", StringComparison.OrdinalIgnoreCase) || t.Contains("cheque no", StringComparison.OrdinalIgnoreCase)) return txtRefNo;
+            if (t.Contains("payment date", StringComparison.OrdinalIgnoreCase)) return dtpPaymentDate;
+            if (t.Contains("statement", StringComparison.OrdinalIgnoreCase) || t.Contains("invoice", StringComparison.OrdinalIgnoreCase)) return cbInvoice;
+            return null;
+        }
         /// <summary>
-        /// Ledger Desk layout of the receipt form: the statement / invoice being paid on the left, the collection details and the open problems on the
-        /// right, one slim header with the live figures. Layout only: every field, handler and rule is the same.
+        /// Guidance on the step-by-step receipt form: only the open problems are listed, a line jumps to the field it is about (on whichever
+        /// step it is), the figures strip shows the amount due, and the stacked guidance bars are hidden (the step header replaces them).
+        /// Layout only: every field, handler and rule is the same.
         /// </summary>
-        private void ApplyCollWorkbench()
+        private void ApplyCollGuideLayout()
         {
             if (formKit == null || collChecklist == null) return;
             collChecklist.ShowOnlyProblems = true;
             collChecklist.FocusResolver = c =>
             {
-                string t = c.Text;
-                if (t.Contains("Receipt No.", StringComparison.OrdinalIgnoreCase)) return txtReceiptNo;
-                if (t.Contains("payment method", StringComparison.OrdinalIgnoreCase)) return cbPaymentMethod;
-                if (t.Contains("reference", StringComparison.OrdinalIgnoreCase) || t.Contains("cheque no", StringComparison.OrdinalIgnoreCase)) return txtRefNo;
-                if (t.Contains("payment date", StringComparison.OrdinalIgnoreCase)) return dtpPaymentDate;
-                if (t.Contains("statement", StringComparison.OrdinalIgnoreCase) || t.Contains("invoice", StringComparison.OrdinalIgnoreCase)) return cbInvoice;
-                return null;
+                var target = ControlForCheck(c);
+                wizard?.ShowStepFor(target);
+                return target;
             };
             collStrip.NetCaption = "Amount due";
             collStrip.FirstCaption = "Billed (amount + fuel)"; collStrip.SecondCaption = "Withholding tax"; // Nov 7: the statement's withholding is the only thing taken off
             collStrip.ShowPayment = false; // "Payment: Unpaid" means nothing on a receipt that is not recorded yet
-            collTape = new TapeCard();
-            collTape.Set("What is being paid", Array.Empty<(string, string)>(), "", "", "");
-            formKit.ApplyWorkbench(50f, new[] { 0 }, new[] { 1 }, collChecklist, new Control?[] { collStepper, collHelp }, collStrip, 620, new Control[] { collTape });
+            foreach (var h in new Control[] { collStepper, collHelp }) { h.Visible = false; h.Height = 0; }
         }
         private void ScheduleCollGuide()
         {
@@ -111,25 +116,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void OnCollFormShown(bool visible)
         {
             if (collChecklist == null) return;
-            if (!visible) { collGuideTimer.Stop(); refLookup?.HideList(); RefreshCollReady(); return; }
+            if (!visible) { collGuideTimer.Stop(); RefreshCollReady(); return; }
             collSaving = false;
             collGuideKey = int.MinValue;
             UpdateCollGuide();
         }
         /// <summary>The list of statements / invoices waiting for payment (the same list the receipt form offers).</summary>
         private void RefreshCollReady() => collReady?.RefreshData();
-        private IEnumerable<LookupItem> ReceiptSuggestions(string q)
-        {
-            int n = 0;
-            foreach (var r in allReceipts.Where(r => (r.ReferenceNumber ?? "").Contains(q, StringComparison.OrdinalIgnoreCase) || (r.ReceiptNumber ?? "").Contains(q, StringComparison.OrdinalIgnoreCase)))
-            {
-                bool self = selectedCollection != null && r.Id == selectedCollection.Id;
-                string val = string.IsNullOrWhiteSpace(r.ReferenceNumber) ? r.ReceiptNumber : r.ReferenceNumber;
-                yield return new LookupItem(val, $"Receipt {r.ReceiptNumber} · invoice {r.InvoiceNumber} · ₱{r.AmountPaid:N2} · {Fmt.Date(r.PaymentDate)} · {r.PaymentMethod}",
-                    self ? "This receipt" : "Already recorded — opens it", self ? BadgeKind.Info : BadgeKind.Warn);
-                if (++n >= 15) yield break;
-            }
-        }
         private static bool IsCash(string method) => string.Equals(method.Trim(), "Cash", StringComparison.OrdinalIgnoreCase);
         /// <summary>The invoice being paid and what other receipts already paid on it (reloaded when the invoice or receipt changes).</summary>
         private void ReloadCollInvoice()
@@ -174,6 +167,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var checks = new List<PaymentCheck>();
             bool editing = selectedCollection != null;
             var inv = collInvoice;
+            if (editing) checks.Add(new PaymentCheck($"Receipt {selectedCollection!.ReceiptNumber} is issued: an issued receipt can't be edited", false)); // Nov 24
             checks.Add(new PaymentCheck(inv == null ? (editing ? "The invoice of this receipt was not found" : "Pick the statement or invoice being paid") : $"Invoice {inv.InvoiceNumber} · {inv.ClientName}", inv != null));
             receiptNumberGuard?.Recheck();
             var rnCheck = receiptNumberGuard?.Current;
@@ -183,7 +177,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             checks.Add(new PaymentCheck(rnWhy ?? (rnTick ? "Tick the confirmation under the Collection Receipt No. (same digits as another document)" : editing ? $"Collection Receipt No. {rnText} (this receipt)" : $"Collection Receipt No. {rnText} is free"), rnWhy == null && !rnTick));
             decimal amt = numAmountPaid.Value;
             if (!editing && inv != null && chkVerifyAmount != null)
-                checks.Add(new PaymentCheck(chkVerifyAmount.Checked ? $"Overall amount PHP {verifyAmount:N2} checked" : $"Tick \"I checked the overall amount\" (PHP {verifyAmount:N2}) under the linked invoice", chkVerifyAmount.Checked));
+                checks.Add(new PaymentCheck(chkVerifyAmount.Checked ? $"Overall amount PHP {verifyAmount:N2} checked" : $"Tick \"I checked the overall amount\" (PHP {verifyAmount:N2}) under the linked invoice in step 1", chkVerifyAmount.Checked));
             if (inv != null)
             {
                 bool issued = !RowMenu.Is(inv.Status, "Draft") && inv.NetAmount > 0;
@@ -250,18 +244,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             decimal amt = numAmountPaid.Value;
             if (inv != null) collStrip.SetTotals(inv.TotalAmount, inv.Deductions, collPaidOthers, Math.Max(0, inv.NetAmount - collPaidOthers - amt), fails, warns, due: inv.NetAmount);
             else collStrip.SetTotals(0, 0, 0, 0, fails, warns);
-            if (collTape != null)
-            {
-                if (inv != null)
-                {
-                    decimal dueNow = Math.Max(0, inv.NetAmount - collPaidOthers);
-                    int days = (int)(inv.DueDate.Date - DateTime.Today).TotalDays;
-                    collTape.Set("What is being paid", ReceiptTapeRows(inv), "Amount due · paid in full", "₱" + dueNow.ToString("N2"), days < 0 ? $"{-days} d overdue" : days == 0 ? "due today" : $"due in {days} d");
-                }
-                else collTape.Set("What is being paid", Array.Empty<(string, string)>(), "", "", "");
-            }
             bool editing = selectedCollection != null;
-            if (editing) collStepper.SetProgress(fails > 0 ? 3 : 4, fails > 0 ? $"Editing receipt {selectedCollection!.ReceiptNumber}: {fails} to fix — see the checklist." : $"Receipt {selectedCollection!.ReceiptNumber} is valid — Edit receipt details saves the changes.");
+            if (editing) collStepper.SetProgress(4, $"Receipt {selectedCollection!.ReceiptNumber} is issued — it is complete and can't be edited.");
             else if (inv == null) collStepper.SetProgress(unpaidInvoices.Count > 0 ? 1 : 0, unpaidInvoices.Count > 0
                 ? $"{unpaidInvoices.Count} statement{(unpaidInvoices.Count == 1 ? " or invoice is" : "s or invoices are")} waiting for payment — pick the one being paid in full."
                 : "No invoices are waiting for payment.");
@@ -271,10 +255,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             FieldMarks.Mark(txtRefNo, checks.Any(c => !c.Passed && c.Text.StartsWith("Reference") || !c.Passed && c.Text.StartsWith("Enter the reference")) ? FieldState.Bad : txtRefNo.Text.Trim().Length > 0 ? FieldState.Ok : FieldState.None);
             FieldMarks.Mark(numAmountPaid, checks.Any(c => !c.Passed && (c.Text.Contains("full amount due") || c.Text.StartsWith("Enter the amount"))) ? FieldState.Bad : amt > 0 ? FieldState.Ok : FieldState.None);
             bool ok = fails == 0 && !collSaving;
-            if (btnSave.Visible) { btnSave.Enabled = ok; ApplyButtonVisualState(btnSave, ok, Pal.C(13, 110, 253), Pal.White); }
-            if (btnUpdate.Visible) { btnUpdate.Enabled = ok; ApplyButtonVisualState(btnUpdate, ok, Pal.C(25, 135, 84), Pal.White); }
+            if (saveVisWanted) { btnSave.Enabled = ok; ApplyButtonVisualState(btnSave, ok, Pal.C(13, 110, 253), Pal.White); } // (the step form shows Save / Update on the last step only, so "wanted", not Visible)
+            if (updateVisWanted) { btnUpdate.Enabled = ok; ApplyButtonVisualState(btnUpdate, ok, Pal.C(25, 135, 84), Pal.White); }
             lblCollBlocked.Text = fails > 0 ? $"✗ {fails} to fix before saving" : "";
-            lblCollBlocked.Visible = fails > 0;
+            lblCollBlocked.Visible = fails > 0 && OnLastWizardStep;
         }
         private bool CollGateBeforeSave()
         {
@@ -284,8 +268,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UpdateCollGuide();
             if (collChecklist.Failed > 0)
             {
+                // A problem on the first step (the statement / invoice) takes the person back there; otherwise the list below the payment fields shows it.
+                var firstProblem = ControlForCheck(collChecklist.Checks.First(c => !c.Passed));
+                if (firstProblem != null) wizard?.ShowStepFor(firstProblem);
                 MessageBox.Show(FindForm(), "This payment can't be saved yet:\n\n• " + string.Join("\n• ", collChecklist.Checks.Where(c => !c.Passed).Select(c => c.Text)), "Check the payment", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                formKit?.ScrollTo(collChecklist);
+                if (firstProblem == null) formKit?.ScrollTo(collChecklist);
                 return false;
             }
             collSaving = true;

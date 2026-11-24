@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -2089,8 +2089,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (MJdatabase.LiveReceiptCountForSoa(soa.Id) > 0)
                 {
-                    var go = MessageBox.Show(FindForm(), why + "\n\nOpen Collection Receipts now?", "Cancel statement", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
-                    if (go == DialogResult.Yes) FinanceHubView.Of(this)?.ShowCollections(soa.SoaNumber);
+                    var go = MessageBox.Show(FindForm(), why + "\n\nOpen Finance History now?", "Cancel statement", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+                    if (go == DialogResult.Yes) FinanceHubView.Of(this)?.ShowCompleted(soa.SoaNumber);
                 }
                 else QuietBox.Show(why, "Cancel statement", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 using System.Collections.Generic;
 
@@ -686,7 +686,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             {
 
-                                return $"CANNOT DELETE INVOICE:\nThis invoice has payment receipts recorded (#{r.GetString(0)}). Please delete or void the collection receipts first.";
+                                return $"CANNOT DELETE INVOICE:\nThis invoice has payment receipts recorded (#{r.GetString(0)}). Please void the collection receipts first (Finance History → Completed).";
 
                             }
 
@@ -11652,7 +11652,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (paid > 0)
 
-                    return $"Statement {soa.SoaNumber} can't be edited because its invoice already has payments (PHP {paid:N2}). Void the receipt in Collections first if the statement must change.";
+                    return $"Statement {soa.SoaNumber} can't be edited because its invoice already has payments (PHP {paid:N2}). Void the receipt in Finance History → Completed first if the statement must change.";
 
             }
 

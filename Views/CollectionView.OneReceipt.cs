@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -155,7 +155,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             OpenNewRecordForm();
             int idx = unpaidInvoices.FindIndex(i => i.Id == t.Id);
             if (idx >= 0) cbInvoice.SelectedIndex = idx;
-            txtReceiptNo?.Focus();
+            FocusStep(idx >= 0 ? chkVerifyAmount : cbInvoice); // invoice picked: stay on step 1 so the overall amount is checked and ticked, then Next
         }
 
         /// <summary>"Record payment" from the waiting list: opens a new receipt for that statement (or lone invoice), full amount filled in.</summary>
@@ -171,7 +171,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             OpenNewRecordForm();
             cbInvoice.SelectedIndex = idx;
-            txtReceiptNo?.Focus();
+            FocusStep(chkVerifyAmount); // statement picked: stay on step 1 so the overall amount is checked and ticked, then Next
+        }
+
+        /// <summary>The statement breakdown for the card (same rows and maths as ReceiptTapeRows; nothing recalculated differently).</summary>
+        private static (string, string)[] TargetBreakdown(PayTarget t)
+        {
+            string P(decimal v) => "₱" + v.ToString("N2");
+            if (t.IsSoa)
+            {
+                var r = SoaTotals.From(t.Gross - t.Fuel, t.Fuel);
+                if (SoaTotals.IsNewRule(r.TotalSales, r.Withholding, t.Net))
+                    return new[] { ("Total Sales + Fuel surcharge (VAT Inclusive)", P(r.TotalSales)), ("Less: VAT (12%)", P(r.Vat)), ("Amount: Net of VAT", P(r.NetOfVat)), ("Less: Withholding Tax (2%)", P(r.Withholding)) };
+            }
+            return new[] { ("Amount", P(t.Gross - t.Fuel)), ("Fuel surcharge", P(t.Fuel)), ("Less: withholding tax", P(t.Deductions)) };
         }
 
         private void ShowTargetInfo(PayTarget t)
@@ -182,6 +195,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblLinkedInvoiceInfo.Text = (t.IsSoa
                 ? $"Statement {t.SoaNumber} | {t.Client} | {t.Invoices.Count} invoice(s): {lines}{trPart}{Environment.NewLine}Freight PHP {(t.Gross - t.Fuel):N2} + fuel PHP {t.Fuel:N2} − withholding PHP {t.Deductions:N2} = OVERALL AMOUNT DUE PHP {t.Net:N2}"
                 : $"Invoice SI {t.Invoices[0].Number} | {t.Client}{trPart}{Environment.NewLine}Freight PHP {(t.Gross - t.Fuel):N2} + fuel PHP {t.Fuel:N2} − withholding PHP {t.Deductions:N2} = OVERALL AMOUNT DUE PHP {t.Net:N2}");
+            linkedCard.ShowDetails(t.IsSoa, t.IsSoa ? t.SoaNumber : "SI " + t.Invoices[0].Number, t.Client,
+                string.Join(Environment.NewLine, t.Invoices.Select(i => $"SI {i.Number} · ₱{i.Net:N2}")),
+                TripReportsOf(t, int.MaxValue), TargetBreakdown(t), t.Net);
             ShowVerifyFor(t); // Nov 10: the overall amount must be ticked as checked before the receipt can be issued
             FitCollectionBoxes();
             if (t.Net > numAmountPaid.Maximum) numAmountPaid.Maximum = t.Net * 2;
@@ -229,6 +245,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     && string.Equals(r.ReferenceNumber?.Trim(), refNum, StringComparison.OrdinalIgnoreCase));
                 if (dup != null) { valErrors.Add($"Payment reference '{refNum}' is already on receipt #{dup.ReceiptNumber} ({Fmt.Date(dup.PaymentDate)}). The same payment can't be recorded twice."); firstInvalid ??= txtRefNo; }
             }
+            if (valErrors.Count > 0) ShowStepFor(firstInvalid); // the field to fix may be on the other step: show it before focusing
             return ValidationHelper.ShowValidationSummaryIfAny(this, valErrors, firstInvalid);
         }
 
@@ -239,7 +256,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string method = cbPaymentMethod.Text.Trim();
             MJdatabase.SaveLookupItem("Payment Method", method);
             string rno = txtReceiptNo.Text.Trim();
-            if (chkVerifyAmount != null && !chkVerifyAmount.Checked) { MessageBox.Show(FindForm(), "Tick \"I checked the overall amount\" first. The receipt is issued only for the amount you checked.", "Verify the overall amount", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            if (chkVerifyAmount != null && !chkVerifyAmount.Checked) { FocusStep(chkVerifyAmount); MessageBox.Show(FindForm(), "Tick \"I checked the overall amount\" first. The receipt is issued only for the amount you checked.", "Verify the overall amount", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
             var rows = MJdatabase.SaveOneReceipt(rno, target, method, txtRefNo.Text.Trim(), DailyRules.CollapseSpaces(txtNotes.Text), dtpPaymentDate.Value.Date, receiptNumberGuard.CrossTypeConfirmed, verifiedAmount: verifyAmount);
             ClearFields();
             LoadData();
@@ -271,3 +288,4 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
     }
 }
+

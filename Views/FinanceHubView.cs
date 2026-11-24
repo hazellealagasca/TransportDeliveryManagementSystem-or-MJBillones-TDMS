@@ -118,7 +118,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public void ShowInvoices(string search) => OpenTab<BillingView>("Billing")?.FilterByText(search);
         /// <summary>Opens a new receipt for a special trip's payment (Mode of Payment and destination pre-filled).</summary>
         public void RecordSpecialTripCollection(Models.SpecialTrip trip) => OpenTab<CollectionView>("Collections")?.PrefillForSpecialTrip(trip);
-        public void ShowCollections(string search) => OpenTab<CollectionView>("Collections")?.FilterByText(search);
+        /// <summary>Nov 24: issued receipts are no longer listed in Collection Receipts; "show the payments" opens Finance History → Completed on that search.</summary>
+        public void ShowCollections(string search) => ShowCompleted(search);
+        /// <summary>Opens Finance History → Completed filtered by <paramref name="search"/> (read only).</summary>
+        public void ShowCompleted(string search)
+        {
+            var h = OpenTab<FinanceHistoryView>("History");
+            if (h == null) return;
+            h.ShowList(false);
+            h.CompletedList?.Search(search);
+        }
         public void ShowStatements(string search) => OpenTab<StatementOfAccountView>("StatementOfAccount")?.FilterByText(search);
         /// <summary>Hides the tabs this account may not open (Settings → User Accounts → Access &amp; permissions).</summary>
         private void ApplyAccess()
@@ -175,6 +184,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
         }
 
+
+        /// <summary>Reloads every Payments tab that was opened except the one showing (lists, waiting panels and tab badges follow a void / cancel done in Finance History).</summary>
+        public void RefreshOtherTabs()
+        {
+            var active = pnlContentHost.Controls.Count > 0 ? pnlContentHost.Controls[0] : null;
+            foreach (var v in cachedViews.Values)
+                if (v != active && v is IRefreshable r) { try { r.RefreshData(); } catch (Exception ex) { ErrLog.Swallowed(ex); } }
+        }
 
         public void RefreshData()
         {

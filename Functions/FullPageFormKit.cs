@@ -34,7 +34,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly Padding originalMasterPadding;
         private Control? strip;
         private List<Control> sectionCards = new();
+        private readonly List<Control> sectionSpacers = new();
         private bool workbench;
+        /// <summary>The numbered section cards built by <see cref="Build"/>, in order (opt-in: a step-by-step form hands them to <see cref="FormWizard"/>).</summary>
+        public IReadOnlyList<Control> SectionCards => sectionCards;
+        /// <summary>The gaps between the section cards (a step-by-step form hides them, since only one card shows at a time).</summary>
+        public IReadOnlyList<Control> SectionSpacers => sectionSpacers;
         /// <summary>True once <see cref="ApplyWorkbench"/> has re-homed the form into the two-pane layout.</summary>
         public bool IsWorkbench => workbench;
         /// <summary>Slim header (Payments): smaller title and less space above the form.</summary>
@@ -127,7 +132,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             for (int i = cards.Count - 1; i >= 0; i--)
             {
                 body.Controls.Add(cards[i]);
-                if (i > 0) body.Controls.Add(new Panel { Dock = DockStyle.Top, Height = D(16), BackColor = AppTheme.Canvas });
+                if (i > 0)
+                {
+                    var gap = new Panel { Dock = DockStyle.Top, Height = D(16), BackColor = AppTheme.Canvas };
+                    sectionSpacers.Add(gap);
+                    body.Controls.Add(gap);
+                }
             }
             body.AutoScroll = true;
             body.ResumeLayout(true);
