@@ -78,6 +78,7 @@ These live in Settings → Features & Pop-ups (code in `Functions\Features.cs`):
 
 | Date | Commit | Change |
 |---|---|---|
+| Nov 25 | `1814e21` | Step forms part 2 + payments: Collection Receipt in 2 steps (details card with VAT/withholding breakdown, big "I checked the overall amount" box required by Next); reference # and Service Invoice No. only validated (no search); Completed Delivery Trip hidden; Paid invoices / issued receipts read-only and off their tabs; Finance History = Completed (newest first) + Voided, admin Void receipt / Cancel invoice / Cancel statement there; locked Billed Client readable. Next: part 3 Service Invoice steps |
 | Nov 24 | `76e09c4` | Login: Enter moves to the next empty box (username, then password); logs in once both are filled |
 | Nov 24 | `d751302` | Print window shows print options only (copy label, watermark, paper, orientation, size, margins, style); title, header, labels, columns, signatures, notes and footer are edited in Settings → Print layouts (admin) |
 | Nov 24 | `8c37a47` | Step forms, part 1 of 5: shared step component `Functions\FormWizard.cs`; New Dispatch Order uses it (no visible change). Next: Collection Receipt, Service Invoice, Statement of Account, Trip Report. Plan: `Documents\TDMS extra files\PLAN - Step forms everywhere.md` |
