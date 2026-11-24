@@ -747,6 +747,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public int SoaId { get; set; }
         /// <summary>Always "Completed": a receipt is only recorded for the full amount.</summary>
         public string Status { get; set; } = "Completed";
+        /// <summary>Nov 25: display only. Filled by the Collection Receipts screen (the statement's or invoice's client); not stored in the database.</summary>
+        public string ClientName { get; set; } = string.Empty;
     }
 
     public class TruckRecommendation

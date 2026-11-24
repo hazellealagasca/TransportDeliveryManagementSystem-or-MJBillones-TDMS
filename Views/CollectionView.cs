@@ -14,7 +14,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private CollectionReceipt? selectedCollection = null;
         private List<Invoice> unpaidInvoices = new List<Invoice>();
         private List<CollectionReceipt> allReceipts = new List<CollectionReceipt>();
-        private string currentSortColumn = "ReceiptNumber";
+        private string currentSortColumn = ""; // Nov 25: no header sort until a column header is clicked (the Sort chip decides the order)
         private bool isSortAscending = true;
         private Button btnToggleForm = null!;
         private Button btnCloseForm = null!;
@@ -27,6 +27,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Pal.RemapTree(this);
             gridCollections.BringToFront();
             SetupGridColumns();
+            BuildReceiptPreview(); // Nov 25: read-only preview under the list
             InitListChips();
             SetupContextMenu();
             gridCollections.ColumnHeaderMouseClick += (s, e) => {
@@ -35,7 +36,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (string.IsNullOrEmpty(col)) return;
                 if (currentSortColumn == col) isSortAscending = !isSortAscending;
                 else { currentSortColumn = col; isSortAscending = true; }
-                FilterGridData();
+                FilterGridData(); // Nov 25: ApplyListChips orders by this column and the sort glyph is shown
             };
             LoadData();
 
@@ -186,11 +187,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridCollections.Columns.Clear();
             gridCollections.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ReceiptNumber", HeaderText = "Receipt #", FillWeight = 13, MinimumWidth = 100, ReadOnly = true });
             gridCollections.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "InvoiceNumber", HeaderText = "Invoice #", FillWeight = 13, MinimumWidth = 100, ReadOnly = true });
+            gridCollections.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ClientName", HeaderText = "Client", FillWeight = 16, MinimumWidth = 120, ReadOnly = true }); // Nov 25
             gridCollections.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "PaymentDate", HeaderText = "Date", DefaultCellStyle = { Format = "MM/dd/yyyy" }, FillWeight = 11, MinimumWidth = 85, ReadOnly = true });
             gridCollections.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "AmountPaid", HeaderText = "Amount Paid", DefaultCellStyle = { Format = "N2" }, FillWeight = 14, MinimumWidth = 100, ReadOnly = true });
             gridCollections.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "PaymentMethod", HeaderText = "Method", FillWeight = 12, MinimumWidth = 85, ReadOnly = true });
             gridCollections.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ReferenceNumber", HeaderText = "Reference #", FillWeight = 14, MinimumWidth = 100, ReadOnly = true });
-            gridCollections.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Notes", HeaderText = "Notes", FillWeight = 23, MinimumWidth = 120, ReadOnly = true });
+            gridCollections.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Notes", HeaderText = "Notes", FillWeight = 16, MinimumWidth = 120, ReadOnly = true });
         }
 
         private void CbInvoice_SelectedIndexChanged(object? sender, EventArgs e)
@@ -211,10 +213,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void GridCollections_SelectionChanged(object? sender, EventArgs e)
         {
             if (pnlForm.Visible) return; // the list is hidden while the form is open; keep what is being typed
-            if (gridCollections.SelectedRows.Count > 0 && gridCollections.SelectedRows[0].DataBoundItem is CollectionReceipt cr)
-            {
-                BindCollectionToForm(cr);
-            }
+            UpdateReceiptPreview(); // Nov 25: clicking an issued receipt only previews it (read-only); it is never loaded into the entry form
         }
 
         private void BindCollectionToForm(CollectionReceipt cr)
@@ -254,14 +253,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 LoadPayTargets(); // Nov 6: statements and lone invoices with nothing paid yet
 
                 allReceipts = GroupReceipts(MJdatabase.GetCollectionReceipts()); // one row per receipt number
+                FillReceiptClients(allReceipts); // Nov 25: the client of each receipt (display only)
+                RebuildClientChip();
                 FilterGridData();
                 if (!pnlForm.Visible) RefreshCollReady();
-                var receipts = allReceipts.Where(IsOpenReceipt).ToList();
+                var receipts = allReceipts; // Nov 25: the list shows every issued (completed) receipt, read-only
 
                 decimal totalPaid = receipts.Sum(c => c.AmountPaid);
                 lblSummary.Text = receipts.Count == 0
-                    ? "Statements and invoices waiting for payment are listed above. Issued receipts are kept in Finance History → Completed."
-                    : $"{receipts.Count:N0} receipt{(receipts.Count == 1 ? "" : "s")}  ·  ₱{totalPaid:N2} collected";
+                    ? "No receipts issued yet. Statements and invoices waiting for payment are listed above."
+                    : $"{receipts.Count:N0} issued receipt{(receipts.Count == 1 ? "" : "s")} · ₱{totalPaid:N2} collected · read-only. Click one to preview or print.";
             }
             catch (Exception ex)
             { ErrLog.Error("CollectionView", ex); 
@@ -280,7 +281,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             finally { CollSaveFinished(); }
         }
 
-        /// <summary>Nov 24: a receipt is only ever issued (Status Completed, full amount). An issued receipt is complete: it is listed in Finance History, not here, and can't be edited.</summary>
+        /// <summary>Nov 24: a receipt is only ever issued (Status Completed, full amount). An issued receipt can't be edited. Nov 25: no longer used to filter the list (it shows the completed receipts, read-only); kept for other code and tests.</summary>
         internal static bool IsOpenReceipt(CollectionReceipt r) => !string.Equals(r.Status, "Completed", StringComparison.OrdinalIgnoreCase);
 
         private void BtnUpdate_Click(object? sender, EventArgs e)
@@ -344,12 +345,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void FilterGridData()
         {
             string q = txtGridSearch.Text.Trim().ToLowerInvariant();
-            var listable = allReceipts.Where(IsOpenReceipt).ToList(); // Nov 24: issued receipts are not listed here (Finance History → Completed)
+            var listable = allReceipts.ToList(); // Nov 25: the completed (issued) receipts, preview only
             var filtered = string.IsNullOrEmpty(q)
                 ? listable
                 : listable.Where(r =>
                     (!string.IsNullOrEmpty(r.ReceiptNumber) && r.ReceiptNumber.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(r.InvoiceNumber) && r.InvoiceNumber.ToLower().Contains(q)) ||
+                    (!string.IsNullOrEmpty(r.ClientName) && r.ClientName.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(r.PaymentMethod) && r.PaymentMethod.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(r.ReferenceNumber) && r.ReferenceNumber.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(r.Notes) && r.Notes.ToLower().Contains(q))
@@ -359,18 +361,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridCollections.DataSource = null;
             gridCollections.DataSource = filtered;
             UpdateCollectionSummary(filtered.ToList());
-            lblGridHeader.Text = string.IsNullOrEmpty(q) && filtered.Count == listable.Count
-                ? $"Receipts ({listable.Count})"
-                : $"Receipts ({filtered.Count} of {listable.Count})";
-            if (filtered.Count > 0)
-            {
-                gridCollections.ClearSelection();
-                gridCollections.Rows[0].Selected = true;
-            }
-            else
-            {
-                ClearFields();
-            }
+            lblGridHeader.Text = filtered.Count == listable.Count
+                ? $"Completed receipts ({listable.Count})"
+                : $"Completed receipts ({filtered.Count} of {listable.Count})";
+            ShowHeaderSortGlyph();
+            // Nov 25: nothing is selected until a receipt is clicked; selecting never touches the entry form (selectedCollection stays null)
+            gridCollections.ClearSelection();
+            UpdateReceiptPreview();
         }
 
         private void TxtGridSearch_TextChanged(object? sender, EventArgs e)
@@ -391,12 +388,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void BtnPrintSlip_Click(object? sender, EventArgs e)
         {
-            if (selectedCollection == null)
+            var picked = gridCollections.SelectedRows.Count > 0 ? gridCollections.SelectedRows[0].DataBoundItem as CollectionReceipt : null; // Nov 25: the list's clicked row
+            if (picked == null)
             {
                 QuietBox.Show("Please select a collection receipt from the list first, then click Print Slip.", "Select a Receipt", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-            PrintHelper.PrintOfficialCollectionReceipt(selectedCollection);
+            PrintHelper.PrintOfficialCollectionReceipt(picked);
         }
 
         private void ClearFields()
@@ -488,7 +486,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return;
                 }
                 var cr = crs[0];
-                selectedCollection = cr;
                 m.Items.AddRange(RowMenu.Header($"💵  Receipt {cr.ReceiptNumber}",
                     $"{RowMenu.Money(cr.AmountPaid)} · {cr.PaymentMethod}{(string.IsNullOrWhiteSpace(cr.ReferenceNumber) ? "" : " #" + cr.ReferenceNumber)} · {Fmt.Date(cr.PaymentDate)} · invoice {cr.InvoiceNumber}"));
                 m.Items.Add(RowMenu.Item("Open details", () => RecordDetailsDialog.ShowDetails(this, cr)));
@@ -500,8 +497,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     ("Amount", cr.AmountPaid.ToString("N2")),
                     ("Summary", $"OR {cr.ReceiptNumber}: {RowMenu.Money(cr.AmountPaid)} by {cr.PaymentMethod} on {Fmt.Date(cr.PaymentDate)} for invoice {cr.InvoiceNumber}")));
                 m.Items.Add(RowMenu.ExportSub(gridCollections, "Collection_Receipts", "Collection Receipts", () => BtnPrint_Click(this, EventArgs.Empty)));
-                m.Items.Add(RowMenu.Sep());
-                m.Items.Add(RowMenu.Danger("Void / delete receipt…", () => { selectedCollection = cr; BtnDelete_Click(this, EventArgs.Empty); }));
+                // Nov 25: no Void / delete from the list: an issued receipt is preview only
             }, allowMultiSelect: true);
         }
         public void FilterByText(string text)

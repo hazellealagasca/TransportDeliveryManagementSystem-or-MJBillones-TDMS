@@ -13,7 +13,7 @@ namespace TDMS.Verify;
 /// <summary>
 /// Nov 24: completed work is locked and the working tabs show open work only.
 /// Service Invoice No. has no suggestion list (a used number is only refused); "Completed Delivery Trip" is hidden; a Paid invoice and an issued receipt
-/// can't be edited and are not listed in Service Invoices / Collection Receipts; Finance History lists the completed ones newest first and the cancelled /
+/// can't be edited; Service Invoices lists open work only and Collection Receipts lists issued receipts read-only (Nov 25); Finance History lists the completed ones newest first and the cancelled /
 /// voided ones under Voided.
 /// </summary>
 public static partial class Checks
@@ -188,7 +188,7 @@ public static partial class Checks
     }
 
     [Check]
-    public static string CompletedPayments_IssuedReceipt_NotListed_NotEditable()
+    public static string CompletedPayments_IssuedReceipt_ListedReadOnly_NotEditable()
     {
         Fresh(); RunBackfill();
         var (soa, ids, no) = CpPaidStatement("0311");
@@ -204,8 +204,18 @@ public static partial class Checks
             var bad = new List<string>();
             var grid = CpField<DataGridView>(view, "gridCollections");
             var listed = (grid.DataSource as List<CollectionReceipt>) ?? new List<CollectionReceipt>();
-            if (listed.Any(r => r.ReceiptNumber == no)) bad.Add("an issued receipt is listed in Collection Receipts");
-            if (grid.Rows.Count != 0) bad.Add($"the receipts list has {grid.Rows.Count} row(s) (issued receipts are not open work)");
+            // Nov 25: the list shows the issued receipts, preview only.
+            if (!listed.Any(r => r.ReceiptNumber == no)) bad.Add("an issued receipt is not listed in Collection Receipts");
+            var header = CpField<Label>(view, "lblGridHeader");
+            if (!header.Text.StartsWith("Completed receipts")) bad.Add("the list heading is '" + header.Text + "'");
+            int row = listed.FindIndex(r => r.ReceiptNumber == no);
+            if (row >= 0 && row < grid.Rows.Count)
+            {
+                grid.ClearSelection(); grid.Rows[row].Selected = true; Pump(300);
+                if (typeof(CollectionView).GetField("selectedCollection", CpF)!.GetValue(view) != null) bad.Add("clicking a listed receipt loads it into the entry form");
+                var title = CpField<Label>(view, "previewTitle");
+                if (!title.Text.Contains(no)) bad.Add("the preview does not show the clicked receipt");
+            }
             var ready = CpField<object>(view, "collReady");
             if (ready == null) bad.Add("the waiting-for-payment list is gone");
             // A saved receipt opened in the form (reflection) is read-only: no Update, boxes locked, Update refuses.

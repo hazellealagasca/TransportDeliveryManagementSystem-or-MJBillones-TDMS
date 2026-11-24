@@ -78,7 +78,8 @@ These live in Settings → Features & Pop-ups (code in `Functions\Features.cs`):
 
 | Date | Commit | Change |
 |---|---|---|
-| Nov 25 | (this commit) | Settings: Print layouts tab hidden (saved layouts still apply); print window hint no longer mentions it |
+| Nov 25 | (this commit) | Collection Receipts tab: the bottom list shows the completed (issued) receipts, read-only, with a preview panel under it (Print OR / Open details). Client column; Client, Method and Date chips; Sort chip (Newest first default, Oldest, Highest / Lowest amount, Client, Receipt #, Invoice #) and click-a-column-heading sort. Selecting a row never loads the entry form; no Void / delete in the row menu (admins void in Finance History). Verify check renamed `CompletedPayments_IssuedReceipt_ListedReadOnly_NotEditable`. Supersedes the Nov 24 "issued receipts are not listed here" rule. New file `Views\CollectionView.Preview.cs` |
+| Nov 25 | (earlier) | Settings: Print layouts tab hidden (saved layouts still apply); print window hint no longer mentions it |
 | Nov 25 | `3aecf06` | Service Invoices tab: "For collection · N invoices" heading above the list |
 | Nov 25 | `36e2487` | Statement of Account step 1: the trips card shows its "2 · Trips of this client" title again (no subtitle) |
 | Nov 25 | `a13e015` | Statement of Account step 1: trip search box, + Add trip and the card heading removed; the trips list sits under the client card |
