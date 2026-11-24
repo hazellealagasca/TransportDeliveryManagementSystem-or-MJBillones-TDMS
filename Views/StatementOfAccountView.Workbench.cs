@@ -45,9 +45,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var fieldGrid = soaCardClient.Controls.OfType<TableLayoutPanel>().FirstOrDefault();
             if (fieldGrid != null) ReflowFieldGrid(fieldGrid, 4, c => c.Controls.Cast<Control>().Any(x => x == pnlDatesHost()));
 
-            // ---- the trips card sits directly under the client card: its own heading (number badge, title, subtitle, divider) is not shown
-            { int n = soaCardPicker.Controls.Count; if (n >= 2) { soaCardPicker.Controls[n - 1].Visible = false; soaCardPicker.Controls[n - 2].Visible = false; } }
-            soaCardPicker.Padding = new Padding(Dpi(24), Dpi(12), Dpi(24), Dpi(16));
+            // ---- the trips card sits directly under the client card with its number badge and title only (no subtitle line, no divider)
+            { int n = soaCardPicker.Controls.Count; if (n >= 2) { soaCardPicker.Controls[n - 1].Tag = "titleOnly"; soaCardPicker.Controls[n - 1].Height = Dpi(38); soaCardPicker.Controls[n - 2].Height = Dpi(4); } }
 
             // ---- detach the stacked cards, then rebuild as three step panels
             var keepBoxes = pnlFormBody.Controls.Cast<Control>().Where(c => c is TextBox).ToList(); // the hidden SOA number box

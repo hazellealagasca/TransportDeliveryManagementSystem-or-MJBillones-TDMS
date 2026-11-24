@@ -120,14 +120,14 @@ public static partial class Checks
             if (picker.Columns["pkPick"]!.Visible || picker.Columns["pkSi"]!.Visible) bad.Add("the trips list still shows the tick or SI No. column");
             if (SwInside(FieldOf<Button>(view, "btnAddSelected")!, panels[0]) || SwInside(FieldOf<Button>(view, "btnPickAllReady")!, panels[0])) bad.Add("Tick all / Add ticked buttons are still on step 1");
 
-            // no type-a-number row and no card heading on step 1
+            // no type-a-number row on step 1; the trips card shows only its number badge and title
             var typed = FieldOf<TextBox>(view, "txtAddDispatch")!;
             if (typed.Visible) bad.Add("the type-a-trip-number box is visible on step 1");
             foreach (var b in panels[0].Controls.Find("btnAddTrip", true)) if (b.Visible) bad.Add("the + Add trip button is visible on step 1");
             foreach (var l in SwAll(panels[0])) if (l.Visible && (l is Button or Label) && (l.Text.Contains("+ Add trip") || l.Text.StartsWith("Fills in the trip report"))) bad.Add("visible on step 1: " + l.Text);
             var pickCard = FieldOf<Panel>(view, "soaCardPicker")!;
             int pc = pickCard.Controls.Count;
-            if (pickCard.Controls[pc - 1].Visible || pickCard.Controls[pc - 2].Visible) bad.Add("the trips card still shows its numbered heading");
+            if (!pickCard.Controls[pc - 1].Visible || pickCard.Controls[pc - 1].Tag as string != "titleOnly") bad.Add("the trips card should show its badge and title only (no subtitle line, no divider)");
 
             // opened with trips already added (Create statement): still starts on step 1
             var rows = MJdatabase.GetTripReportsWaitingForStatement().Where(c => c.ClientName == "CLIENT A")

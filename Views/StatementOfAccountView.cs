@@ -461,8 +461,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     TextRenderer.DrawText(g, step.ToString(), nf, circle, AppTheme.AccentText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
                 using (var tf = new Font("Segoe UI Semibold", 12F))
                     TextRenderer.DrawText(g, title, tf, new Point(d + Dpi(12), 0), AppTheme.TextPrimary, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
-                using (var sf = new Font("Segoe UI", 9F))
+                bool titleOnly = header.Tag as string == "titleOnly"; // the trips card on step 1: badge and title only
+                if (!titleOnly) using (var sf = new Font("Segoe UI", 9F))
                     TextRenderer.DrawText(g, subtitle, sf, new Rectangle(d + Dpi(12), Dpi(24), header.Width - d - Dpi(12), Dpi(22)), AppTheme.TextMuted, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
+                if (titleOnly) return;
                 using var pen = new Pen(AppTheme.Border);
                 g.DrawLine(pen, 0, header.Height - 1, header.Width, header.Height - 1);
             };
