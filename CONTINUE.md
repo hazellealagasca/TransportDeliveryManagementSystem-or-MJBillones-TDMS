@@ -4,7 +4,7 @@ A hand-off note so any Claude account on this computer (including Hazel Lea Laga
 
 **Claude: read this file first, then `git log --oneline -20` for anything newer. Add a line to the Patch log after every commit you make.**
 
-Last updated: Nov 20, 2026 (last commit `87e361f`).
+Last updated: Nov 24, 2026 (last app commit `5da0f6a`).
 
 ---
 
@@ -76,6 +76,7 @@ These live in Settings → Features & Pop-ups (code in `Functions\Features.cs`):
 
 | Date | Commit | Change |
 |---|---|---|
+| Nov 24 | `5da0f6a` | No "Mark complete": a departed dispatch shows Current and appears in the Trip Report tab; finishing its trip report completes it automatically (drafts don't count); truck and crew are free 24 h after departure. Plan: `Documents\TDMS extra files\PLAN - No Mark Complete.md` |
 | Nov 19 | `87e361f` | Dispatch entry row: labels no longer cut off; + Add store lines up with the text boxes |
 | Nov 19 | `ed7a842` | New Dispatch Order is a 3-step wizard (Client & stores → Crates, truck & crew → Schedule & status). Step 1 has a store entry row (code, name, G/E crates, Temp Type, + Add store); the store table is read-only and its Edit button is hidden |
 | Nov 19 | `8677e2d` | The mouse wheel never changes drop-downs, number, date or text boxes; it scrolls the page instead |
