@@ -71,6 +71,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public int BlankRows { get; set; } = 0;
         /// <summary>Nov 17: true once the person set the blank rows in the print window; only then is a saved number used (older saved layouts kept the old default of 8).</summary>
         public bool BlankRowsChosen { get; set; }
+        /// <summary>Saved-layout markers (see <see cref="PrintStore"/>): the print window's choices (paper, size, copy label…) and the Settings layout (title, header, labels, columns, signatures, notes) are stored in one record but written separately.</summary>
+        public bool HasPrintChoices { get; set; }
+        public bool HasLayout { get; set; }
+        /// <summary>A subtitle typed in Settings → Print layouts; blank keeps each record's own reference line.</summary>
+        public string CustomSubtitle { get; set; } = "";
+        /// <summary>A note typed in Settings → Print layouts, printed under every copy of the form.</summary>
+        public string CustomNote { get; set; } = "";
         public bool On(string key) => Sections.FirstOrDefault(s => s.Key == key)?.On ?? true;
         /// <summary>A column listed in the options follows its tick box; a column the saved options do not know yet is shown, except the optional store address (off until ticked).</summary>
         public bool Col(string key) => Columns.FirstOrDefault(s => s.Key == key)?.On ?? key != "store_address";
@@ -89,6 +96,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public PrintOptions Defaults = new();
         public Func<PrintOptions, string> Body = _ => "";
         public string ExtraCss = "";
+        /// <summary>Shown at the top of the Settings → Print layouts editor for this form (e.g. that a list's columns follow the list on screen).</summary>
+        public string LayoutHint = "";
     }
     /// <summary>Remembers each form's layout choices (not the record's data) in System Settings.</summary>
     public static class PrintStore
@@ -99,16 +108,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var o = def.Defaults.Clone();
             try
             {
-                string raw = Database.MJdatabase.GetSystemSetting(Key(def.Key), "");
-                if (string.IsNullOrWhiteSpace(raw)) return o;
-                var s = JsonSerializer.Deserialize<PrintOptions>(raw);
+                var s = ReadSaved(def.Key);
                 if (s == null) return o;
+                // A record saved before the two halves were kept apart carries both (the print window used to save everything).
+                bool legacy = !s.HasPrintChoices && !s.HasLayout;
+                if (s.HasPrintChoices || legacy)
+                {
+                    o.CopyLabel = s.CopyLabel; o.Watermark = s.Watermark; o.Paper = s.Paper; o.Orientation = s.Orientation;
+                    o.FontPct = s.FontPct is >= 70 and <= 140 ? s.FontPct : 100; o.Margins = s.Margins; o.Tone = s.Tone;
+                    if (o.HasBlankRows && s.BlankRowsChosen && s.BlankRows is >= 0 and <= 40) { o.BlankRows = s.BlankRows; o.BlankRowsChosen = true; }
+                }
+                if (!s.HasLayout && !legacy) return o;
                 o.Title = string.IsNullOrWhiteSpace(s.Title) ? o.Title : s.Title;
-                o.CopyLabel = s.CopyLabel; o.Watermark = s.Watermark; o.Paper = s.Paper; o.Orientation = s.Orientation;
-                o.FontPct = s.FontPct is >= 70 and <= 140 ? s.FontPct : 100; o.Margins = s.Margins; o.Tone = s.Tone; o.ShowLogo = s.ShowLogo;
+                o.ShowLogo = s.ShowLogo;
                 o.Footer = s.Footer;
-                if (!string.IsNullOrWhiteSpace(s.Notes) && string.IsNullOrWhiteSpace(o.Notes)) o.Notes = s.Notes;
-                if (o.HasBlankRows && s.BlankRowsChosen && s.BlankRows is >= 0 and <= 40) { o.BlankRows = s.BlankRows; o.BlankRowsChosen = true; }
+                if (!string.IsNullOrWhiteSpace(s.CustomSubtitle)) o.Subtitle = s.CustomSubtitle;
+                if (!string.IsNullOrWhiteSpace(s.CustomNote)) o.Notes = s.CustomNote;
                 MergeFields(o.Header, s.Header);
                 MergeFields(o.Fields, s.Fields);
                 foreach (var c in o.Sections) { var m = s.Sections.FirstOrDefault(x => x.Key == c.Key); if (m != null) c.On = m.On; }
@@ -139,20 +154,100 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!f.FromData) f.Value = m.Value;
             }
         }
+        private static PrintOptions? ReadSaved(string formKey)
+        {
+            string raw = Database.MJdatabase.GetSystemSetting(Key(formKey), "");
+            return string.IsNullOrWhiteSpace(raw) ? null : JsonSerializer.Deserialize<PrintOptions>(raw);
+        }
+        private static void Write(string formKey, PrintOptions? s)
+            => Database.MJdatabase.SetSystemSetting(Key(formKey), s == null ? "" : JsonSerializer.Serialize(s), "Print layout");
+        private static bool IsLegacy(PrintOptions s) => !s.HasPrintChoices && !s.HasLayout;
+        /// <summary>
+        /// The print window's "Remember my choices": stores only the print options (paper, orientation, text size, margins, style,
+        /// copy label, watermark, table rows). The layout saved in Settings is read back and written unchanged.
+        /// </summary>
         public static void Save(PrintOptions o)
         {
             try
             {
-                var copy = o.Clone();
-                foreach (var f in copy.Fields.Where(f => f.FromData)) f.Value = "";
-                copy.Notes = "";
-                Database.MJdatabase.SetSystemSetting(Key(o.FormKey), JsonSerializer.Serialize(copy), "Print layout");
+                var s = ReadSaved(o.FormKey) ?? new PrintOptions { FormKey = o.FormKey };
+                if (IsLegacy(s)) s.HasLayout = true;   // an older whole-form save: its layout half stays as it is
+                s.FormKey = o.FormKey;
+                s.HasPrintChoices = true;
+                s.CopyLabel = o.CopyLabel; s.Watermark = o.Watermark; s.Paper = o.Paper; s.Orientation = o.Orientation;
+                s.FontPct = o.FontPct; s.Margins = o.Margins; s.Tone = o.Tone;
+                s.BlankRows = o.BlankRows; s.BlankRowsChosen = o.BlankRowsChosen;
+                Write(o.FormKey, s);
             }
             catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
         }
+        /// <summary>
+        /// Settings → Print layouts: stores only what the form shows (title, subtitle, logo, header lines, labels, sections,
+        /// columns, signature lines, note, footer). Record values are never stored; the print options saved from the print window stay.
+        /// </summary>
+        public static void SaveLayout(PrintFormDef def, PrintOptions o)
+        {
+            try
+            {
+                var s = ReadSaved(def.Key) ?? new PrintOptions { FormKey = def.Key };
+                if (IsLegacy(s)) s.HasPrintChoices = true;   // an older whole-form save: its print-option half stays as it is
+                s.FormKey = def.Key;
+                s.HasLayout = true;
+                var c = o.Clone();
+                s.Title = c.Title;
+                s.CustomSubtitle = c.Subtitle != def.Defaults.Subtitle ? c.Subtitle : "";
+                s.CustomNote = c.Notes != def.Defaults.Notes ? c.Notes : "";
+                s.ShowLogo = c.ShowLogo; s.Footer = c.Footer;
+                s.Header = c.Header;
+                foreach (var f in c.Fields.Where(f => f.FromData)) f.Value = "";
+                s.Fields = c.Fields;
+                s.Sections = c.Sections; s.Columns = c.Columns;
+                foreach (var g in c.Signatures.Where(g => g.FromData)) g.Name = "";
+                s.Signatures = c.Signatures;
+                Write(def.Key, s);
+            }
+            catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
+        }
+        /// <summary>The print window's "Reset to defaults": puts the print options back to the form's own defaults and keeps the Settings layout.</summary>
+        public static void ResetPrintOptions(string formKey)
+        {
+            try
+            {
+                var s = ReadSaved(formKey);
+                if (s == null) return;
+                if (IsLegacy(s)) s.HasLayout = true;
+                if (!s.HasLayout) { Write(formKey, null); return; }
+                s.HasPrintChoices = false;
+                Write(formKey, s);
+            }
+            catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
+        }
+        /// <summary>Settings → Print layouts "Reset layout to standard": clears the saved layout and keeps the saved print options.</summary>
+        public static void ResetLayout(string formKey)
+        {
+            try
+            {
+                var s = ReadSaved(formKey);
+                if (s == null) return;
+                if (IsLegacy(s)) s.HasPrintChoices = true;
+                if (!s.HasPrintChoices) { Write(formKey, null); return; }
+                Write(formKey, new PrintOptions
+                {
+                    FormKey = formKey, HasPrintChoices = true, CopyLabel = s.CopyLabel, Watermark = s.Watermark, Paper = s.Paper, Orientation = s.Orientation,
+                    FontPct = s.FontPct, Margins = s.Margins, Tone = s.Tone, BlankRows = s.BlankRows, BlankRowsChosen = s.BlankRowsChosen
+                });
+            }
+            catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
+        }
+        /// <summary>True when a layout was saved for the form in Settings (or by an older print window).</summary>
+        public static bool HasSavedLayout(string formKey)
+        {
+            try { var s = ReadSaved(formKey); return s != null && (s.HasLayout || IsLegacy(s)); } catch { return false; }
+        }
+        /// <summary>Clears everything saved for the form (print options and layout).</summary>
         public static void Reset(string formKey)
         {
-            try { Database.MJdatabase.SetSystemSetting(Key(formKey), "", "Print layout"); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
+            try { Write(formKey, null); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
         }
     }
     /// <summary>The shared page: company header, title block, the form's body, notes, signatures and footer.</summary>

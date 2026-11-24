@@ -9,14 +9,18 @@ using System.Windows.Forms;
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Functions;
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Forms
 {
+    /// <summary>Print: the window every print goes through (print options only). Layout: the editor in Settings → Print layouts.</summary>
+    public enum PrintStudioMode { Print, Layout }
     /// <summary>
-    /// Opens before anything is printed. Left: what goes on the page — title, paper, company header, every field
-    /// (editable label and value), which parts and table columns to include, signature lines, notes. Right: a live
-    /// preview. Choices can be remembered per form.
+    /// Opens before anything is printed. Left: the print options (copy label, watermark, paper, orientation, text size,
+    /// margins, style, rows). Right: a live preview. What the form shows (title, header, labels, columns, signatures, notes)
+    /// is not editable here: it comes from the form's defaults and the layout saved in Settings → Print layouts, which opens
+    /// this same window in <see cref="PrintStudioMode.Layout"/> (the layout groups and the preview, no printing).
     /// </summary>
     public sealed class PrintStudioDialog : Form
     {
         private readonly PrintFormDef def;
+        private readonly PrintStudioMode mode;
         private PrintOptions o;
         private readonly Panel optionsHost;
         private readonly FlowLayoutPanel stack;
@@ -25,11 +29,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly System.Windows.Forms.Timer debounce = new System.Windows.Forms.Timer { Interval = 350 };
         private int keepScroll;
         private int D(int v) => (int)Math.Round(v * DeviceDpi / 96f);
-        public PrintStudioDialog(PrintFormDef def)
+        public PrintStudioDialog(PrintFormDef def, PrintStudioMode mode = PrintStudioMode.Print)
         {
             this.def = def;
+            this.mode = mode;
             o = PrintStore.Load(def);
-            Text = $"Print · {def.Name}";
+            Text = mode == PrintStudioMode.Layout ? $"Print layout · {def.Name}" : $"Print · {def.Name}";
             StartPosition = FormStartPosition.CenterParent;
             ShowInTaskbar = false;
             MinimizeBox = false;
@@ -46,29 +51,52 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Top
             var top = new Panel { Dock = DockStyle.Top, Height = D(80), BackColor = AppTheme.Surface, Padding = new Padding(D(22), D(12), D(22), D(10)) };
             top.Paint += (s, e) => { using var p = new Pen(AppTheme.Border); e.Graphics.DrawLine(p, 0, top.Height - 1, top.Width, top.Height - 1); };
-            top.Controls.Add(new Label { Text = "Choose what goes on the page — the preview on the right updates as you go. Untick anything you don't want printed; click a label to rename it.", Dock = DockStyle.Top, Height = D(26), ForeColor = AppTheme.TextMuted, Font = new Font("Segoe UI", 10F), AutoEllipsis = true, UseMnemonic = false });
-            top.Controls.Add(new Label { Text = "Print " + (def.Name.Length == 0 ? "" : def.Name.Contains(':') ? def.Name : char.ToLowerInvariant(def.Name[0]) + def.Name.Substring(1)), Dock = DockStyle.Top, Height = D(32), Font = new Font("Segoe UI Semibold", 15F), ForeColor = AppTheme.TextPrimary, AutoEllipsis = true, UseMnemonic = false });
+            bool layout = mode == PrintStudioMode.Layout;
+            string hint = layout
+                ? "Change what this form shows — the preview on the right updates as you go. This applies to every later print of the form. The preview uses made-up sample values; the real values come from each record."
+                : "Choose the paper and print options — the preview on the right updates as you go. To change what the form shows (title, header, labels, columns, signatures, notes), an admin can use Settings → Print layouts.";
+            if (layout && def.LayoutHint.Length > 0) hint += " " + def.LayoutHint;
+            int hintHeight = layout ? D(46) : D(26);
+            top.Height = D(54) + hintHeight;
+            top.Controls.Add(new Label { Text = hint, Dock = DockStyle.Top, Height = hintHeight, ForeColor = AppTheme.TextMuted, Font = new Font("Segoe UI", 10F), AutoEllipsis = true, UseMnemonic = false });
+            top.Controls.Add(new Label { Text = layout ? "Print layout: " + def.Name : "Print " + (def.Name.Length == 0 ? "" : def.Name.Contains(':') ? def.Name : char.ToLowerInvariant(def.Name[0]) + def.Name.Substring(1)), Dock = DockStyle.Top, Height = D(32), Font = new Font("Segoe UI Semibold", 15F), ForeColor = AppTheme.TextPrimary, AutoEllipsis = true, UseMnemonic = false });
             // Bottom
             var bottom = new Panel { Dock = DockStyle.Bottom, Height = D(70), BackColor = AppTheme.Surface, Padding = new Padding(D(22), D(14), D(22), D(14)) };
             bottom.Paint += (s, e) => { using var p = new Pen(AppTheme.Border); e.Graphics.DrawLine(p, 0, 0, bottom.Width, 0); };
             var right = new FlowLayoutPanel { Dock = DockStyle.Right, AutoSize = true, FlowDirection = FlowDirection.RightToLeft, WrapContents = false, BackColor = Color.Transparent };
-            right.Controls.Add(Btn("🖨  Print", "primary", (s, e) => Output(true)));
-            right.Controls.Add(Btn("Open in browser / PDF", "secondary", (s, e) => Output(false)));
-            right.Controls.Add(Btn("Save as file…", "secondary", (s, e) => SaveFile()));
-            right.Controls.Add(Btn("Cancel", "secondary", (s, e) => Close()));
             chkRemember = new CheckBox { Text = "Remember my choices for this form", Checked = true, AutoSize = true, Dock = DockStyle.Left, ForeColor = AppTheme.TextSecondary, Padding = new Padding(0, D(8), D(18), 0) };
-            var reset = new LinkLabel { Text = "Reset to defaults", AutoSize = true, Dock = DockStyle.Left, LinkColor = AppTheme.AccentText, Padding = new Padding(0, D(10), 0, 0), LinkBehavior = LinkBehavior.HoverUnderline };
-            reset.LinkClicked += (s, e) =>
+            var reset = new LinkLabel { Text = layout ? "Reset layout to standard" : "Reset to defaults", AutoSize = true, Dock = DockStyle.Left, LinkColor = AppTheme.AccentText, Padding = new Padding(0, D(10), 0, 0), LinkBehavior = LinkBehavior.HoverUnderline };
+            if (layout)
             {
-                if (MessageBox.Show(this, "Put this form back to its standard layout? Your saved choices for it will be cleared.", "Reset to defaults", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
-                PrintStore.Reset(def.Key);
-                o = def.Defaults.Clone();
-                BuildOptions();
-                Schedule();
-            };
+                right.Controls.Add(Btn("Save layout", "primary", (s, e) => SaveLayout()));
+                right.Controls.Add(Btn("Cancel", "secondary", (s, e) => Close()));
+                reset.LinkClicked += (s, e) =>
+                {
+                    if (MessageBox.Show(this, "Put this form's layout back to the standard one? The title, header, labels, columns, signatures and notes saved for it will be cleared. Paper and print options are kept.", "Reset layout", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                    PrintStore.ResetLayout(def.Key);
+                    o = PrintStore.Load(def);
+                    BuildOptions();
+                    Schedule();
+                };
+            }
+            else
+            {
+                right.Controls.Add(Btn("🖨  Print", "primary", (s, e) => Output(true)));
+                right.Controls.Add(Btn("Open in browser / PDF", "secondary", (s, e) => Output(false)));
+                right.Controls.Add(Btn("Save as file…", "secondary", (s, e) => SaveFile()));
+                right.Controls.Add(Btn("Cancel", "secondary", (s, e) => Close()));
+                reset.LinkClicked += (s, e) =>
+                {
+                    if (MessageBox.Show(this, "Put the paper and print options for this form back to their defaults? Your saved print choices for it will be cleared. The layout set in Settings is not changed.", "Reset to defaults", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                    PrintStore.ResetPrintOptions(def.Key);
+                    o = PrintStore.Load(def);   // the form's own print defaults again, with the Settings layout
+                    BuildOptions();
+                    Schedule();
+                };
+            }
             bottom.Controls.Add(right);
             bottom.Controls.Add(reset);
-            bottom.Controls.Add(chkRemember);
+            if (!layout) bottom.Controls.Add(chkRemember);
             // Left options
             // The options column is about 40% of the window (500–660 px), so labels and boxes have room.
             optionsHost = new Panel { Dock = DockStyle.Left, Width = OptionsWidth(Size.Width), AutoScroll = true, BackColor = AppTheme.Surface, Padding = new Padding(D(22), D(10), D(14), D(22)) };
@@ -158,12 +186,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             stack.SuspendLayout();
             foreach (Control c in stack.Controls.Cast<Control>().ToList()) c.Dispose();
             stack.Controls.Clear();
-            // Document
-            Group("Document");
-            Add(LabeledText("Title", o.Title, v => o.Title = v));
-            Add(LabeledText("Subtitle / reference", o.Subtitle, v => o.Subtitle = v, multiline: true));
-            Add(Pair(LabeledCombo("Copy label", new[] { "", "Original", "2nd copy", "3rd copy", "File copy", "Client copy" }, PrintKit.CopyLabelText(o.CopyLabel), v => o.CopyLabel = v, editable: true),
-                     LabeledCombo("Watermark", new[] { "", "Draft", "Copy", "Paid", "Cancelled", "Confidential" }, o.Watermark, v => o.Watermark = v, editable: true)));
+            if (mode == PrintStudioMode.Layout) BuildLayoutGroups();
+            else BuildPrintGroup();
+            stack.ResumeLayout(true);
+            FitRows();
+        }
+        /// <summary>Print mode: the one "Print options" group (plus the rows controls when the form has them). Nothing about the form's content is editable.</summary>
+        private void BuildPrintGroup()
+        {
+            Group("Print options");
+            Add(Pair(LabeledCombo("Copy label", new[] { "", "Original", "2nd copy", "3rd copy", "File copy", "Client copy" }, PrintKit.CopyLabelText(o.CopyLabel), v => o.CopyLabel = v),
+                     LabeledCombo("Watermark", new[] { "", "Draft", "Copy", "Paid", "Cancelled", "Confidential" }, o.Watermark, v => o.Watermark = v)));
             Add(Pair(LabeledCombo("Paper", new[] { "Letter", "A4", "Legal", "Long (8.5 x 13)" }, o.Paper, v => o.Paper = v),
                      LabeledCombo("Orientation", new[] { "Portrait", "Landscape" }, o.Orientation, v => o.Orientation = v)));
             var sizes = new Dictionary<string, int> { ["Small"] = 90, ["Normal"] = 100, ["Large"] = 112, ["Extra large"] = 125 };
@@ -193,17 +226,24 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 f.Controls.Add(num);
                 Add(f);
             }
+        }
+        /// <summary>Layout mode (Settings → Print layouts): what the form shows. Labels and show/hide only for the details; record values are never edited.</summary>
+        private void BuildLayoutGroups()
+        {
+            Group("Document");
+            Add(LabeledText("Title", o.Title, v => o.Title = v));
+            Add(LabeledText("Subtitle / reference (leave as it is to keep each record's own reference)", o.Subtitle, v => o.Subtitle = v, multiline: true));
             // Header
             Group("Company header");
             var logo = new CheckBox { Text = "Show the company logo", Checked = o.ShowLogo, AutoSize = true, Margin = new Padding(0, D(2), 0, D(10)) };
             logo.CheckedChanged += (s, e) => { o.ShowLogo = logo.Checked; Schedule(); };
             Add(logo);
-            foreach (var f in o.Header) Add(FieldRow(f));
+            foreach (var f in o.Header) Add(FieldRow(f, true));
             // Fields
             if (o.Fields.Count > 0)
             {
-                Group("Details on the form", "Tick what to show. Click a label to rename it; values come from the record but can be changed for this printout.");
-                foreach (var f in o.Fields) Add(FieldRow(f));
+                Group("Details on the form", "Tick what to show and click a label to rename it. The values come from each record and can't be edited; fixed text (such as payment instructions) can be.");
+                foreach (var f in o.Fields) Add(FieldRow(f, !f.FromData));
             }
             // Sections
             if (o.Sections.Count > 0)
@@ -230,13 +270,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Add(grid);
             }
             // Signatures
-            Group("Signature lines", "Caption, printed name and role under the line.");
+            Group("Signature lines", "Caption and role under the line. A name that comes from the record is filled in when printing.");
             var sigHost = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, BackColor = Color.Transparent, Margin = new Padding(0) };
             void RebuildSigs()
             {
                 foreach (Control c in sigHost.Controls.Cast<Control>().ToList()) c.Dispose();
                 sigHost.Controls.Clear();
-                foreach (var sig in o.Signatures.ToList()) sigHost.Controls.Add(SigRow(sig, () => { o.Signatures.Remove(sig); RebuildSigs(); Schedule(); }));
+                foreach (var sig in o.Signatures.ToList()) sigHost.Controls.Add(SigRow(sig, !sig.FromData,() => { o.Signatures.Remove(sig); RebuildSigs(); Schedule(); }));
                 foreach (Control c in sigHost.Controls) Fit(c);
             }
             RebuildSigs();
@@ -248,8 +288,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Group("Notes & footer");
             Add(LabeledText("Note printed under the form", o.Notes, v => o.Notes = v, multiline: true));
             Add(LabeledText("Footer text", o.Footer, v => o.Footer = v, multiline: true));
-            stack.ResumeLayout(true);
-            FitRows();
         }
         private void Add(Control c) { Fit(c); stack.Controls.Add(c); }
         /// <summary>A group heading with a line under it, and an optional hint below that wraps onto as many lines as it needs.</summary>
@@ -291,18 +329,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             p.Controls.Add(tb, 0, 1);
             return p;
         }
-        private Control LabeledCombo(string caption, string[] items, string value, Action<string> set, bool editable = false)
+        /// <summary>A drop-down list (no typing). A saved value that isn't one of the choices is added to the list so it still shows.</summary>
+        private Control LabeledCombo(string caption, string[] items, string value, Action<string> set)
         {
             var p = new TableLayoutPanel { ColumnCount = 1, RowCount = 2, AutoSize = true, BackColor = Color.Transparent, Margin = new Padding(0, 0, 0, D(12)), Dock = DockStyle.Fill };
             p.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            var cb = new ComboBox { DropDownStyle = editable ? ComboBoxStyle.DropDown : ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, FlatStyle = FlatStyle.Flat, BackColor = AppTheme.InputBack, ForeColor = AppTheme.TextPrimary, Margin = new Padding(0) };
+            var cb = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Fill, FlatStyle = FlatStyle.Flat, BackColor = AppTheme.InputBack, ForeColor = AppTheme.TextPrimary, Margin = new Padding(0) };
             WheelScrollsOptions(cb);
             cb.Items.AddRange(items.Select(i => (object)(i.Length == 0 ? "(none)" : i)).ToArray());
             string shown = string.IsNullOrEmpty(value) ? "(none)" : value;
-            if (cb.Items.Contains(shown)) cb.SelectedItem = shown; else if (editable) cb.Text = value; else if (cb.Items.Count > 0) cb.SelectedIndex = 0;
+            if (!cb.Items.Contains(shown)) cb.Items.Add(shown);
+            cb.SelectedItem = shown;
             void Push() { string v = cb.Text == "(none)" ? "" : cb.Text; set(v); Schedule(); }
             cb.SelectedIndexChanged += (s, e) => Push();
-            if (editable) cb.TextChanged += (s, e) => Push();
             p.Controls.Add(Caption(caption), 0, 0);
             p.Controls.Add(cb, 0, 1);
             return p;
@@ -320,7 +359,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return t;
         }
         /// <summary>[include] [editable label] [value] — one per field.</summary>
-        private Control FieldRow(PrintField f)
+        private Control FieldRow(PrintField f, bool allowValue)
         {
             var t = new TableLayoutPanel { ColumnCount = 3, RowCount = 1, AutoSize = true, BackColor = Color.Transparent, Margin = new Padding(0, 0, 0, D(8)) };
             t.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, D(30)));
@@ -328,12 +367,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             t.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             var chk = new CheckBox { Checked = f.On, AutoSize = true, Margin = new Padding(0, D(7), 0, 0) };
             var lbl = new TextBox { Text = f.Label, Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, BackColor = AppTheme.Surface, ForeColor = AppTheme.TextSecondary, Font = new Font("Segoe UI Semibold", 10F), Margin = new Padding(0, D(7), D(8), 0) };
+            // A record's value is never edited (allowValue is false for it): only its label and whether it shows.
             var val = new TextBox { Text = f.Value, Dock = DockStyle.Fill, Multiline = f.Multiline, Height = f.Multiline ? D(60) : D(30), ScrollBars = f.Multiline ? ScrollBars.Vertical : ScrollBars.None, BorderStyle = BorderStyle.FixedSingle, BackColor = AppTheme.InputBack, ForeColor = AppTheme.TextPrimary, Margin = new Padding(0) };
             var tips = new ToolTip();
             WheelScrollsOptions(lbl);
             if (!f.Multiline) WheelScrollsOptions(val);
             tips.SetToolTip(lbl, "Click to rename this label");
-            if (f.FromData) tips.SetToolTip(val, "Filled from the record — changes here only affect this printout");
             void Dim() { lbl.ForeColor = chk.Checked ? AppTheme.TextSecondary : AppTheme.TextMuted; val.Enabled = chk.Checked; }
             chk.CheckedChanged += (s, e) => { f.On = chk.Checked; Dim(); Schedule(); };
             lbl.TextChanged += (s, e) => { f.Label = lbl.Text; Schedule(); };
@@ -343,16 +382,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Dim();
             t.Controls.Add(chk, 0, 0);
             t.Controls.Add(lbl, 1, 0);
-            t.Controls.Add(val, 2, 0);
+            if (allowValue) t.Controls.Add(val, 2, 0);
+            else t.SetColumnSpan(lbl, 2);   // the value box is simply not shown
             return t;
         }
         /// <summary>
         /// One signature line: [include] Caption | Role on the first line, the printed name across the full width below
         /// (three narrow boxes in one line cut long names off), and ✕ to remove it.
         /// </summary>
-        private Control SigRow(PrintSig s, Action remove)
+        private Control SigRow(PrintSig s, bool allowName, Action remove)
         {
-            var t = new TableLayoutPanel { ColumnCount = 4, RowCount = 4, AutoSize = true, BackColor = Color.Transparent, Margin = new Padding(0, 0, 0, D(14)) };
+            var t = new TableLayoutPanel { ColumnCount = 4, RowCount = allowName ? 4 : 2, AutoSize = true, BackColor = Color.Transparent, Margin = new Padding(0, 0, 0, D(14)) };
             t.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, D(30)));
             t.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
             t.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55F));
@@ -380,10 +420,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             t.Controls.Add(del, 3, 0);
             t.Controls.Add(cap, 1, 1);
             t.Controls.Add(role, 2, 1);
-            t.Controls.Add(H("Printed name"), 1, 2);
-            t.SetColumnSpan(t.GetControlFromPosition(1, 2)!, 2);
-            t.Controls.Add(name, 1, 3);
-            t.SetColumnSpan(name, 2);
+            if (allowName)
+            {
+                t.Controls.Add(H("Printed name"), 1, 2);
+                t.SetColumnSpan(t.GetControlFromPosition(1, 2)!, 2);
+                t.Controls.Add(name, 1, 3);
+                t.SetColumnSpan(name, 2);
+            }
+            // else: the name on a signature line comes from the record, so its box is not shown
             Dim();
             return t;
         }
@@ -431,7 +475,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void Remember()
         {
-            if (chkRemember.Checked) PrintStore.Save(o);
+            if (mode == PrintStudioMode.Print && chkRemember.Checked) PrintStore.Save(o);   // print options only: the Settings layout is not touched
+        }
+        private void SaveLayout()
+        {
+            try
+            {
+                PrintStore.SaveLayout(def, o);
+                ToastHelper.ShowToast(this, "Layout saved — every later print of this form uses it", ToastType.Success);
+                DialogResult = DialogResult.OK;
+                Close();
+            }
+            catch (Exception ex)
+            { ErrLog.Error("PrintStudioDialog", ex);
+                MessageBox.Show(this, "Couldn't save the layout: " + ex.Message, "Print layouts", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
         private void Output(bool autoPrint)
         {
@@ -479,6 +537,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             catch (Exception ex)
             { ErrLog.Error("PrintStudioDialog", ex); 
                 MessageBox.Show("Unable to open the print window: " + ex.Message, "Print", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        /// <summary>Opens the layout editor for a form (Settings → Print layouts). True when a layout was saved.</summary>
+        public static bool ShowLayout(PrintFormDef def, IWin32Window? owner)
+        {
+            try
+            {
+                using var dlg = new Forms.PrintStudioDialog(def, Forms.PrintStudioMode.Layout);
+                return (owner != null ? dlg.ShowDialog(owner) : dlg.ShowDialog()) == DialogResult.OK;
+            }
+            catch (Exception ex)
+            { ErrLog.Error("PrintStudioDialog", ex);
+                MessageBox.Show("Unable to open the layout editor: " + ex.Message, "Print layouts", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
             }
         }
         public static void Show(Func<PrintFormDef> build)

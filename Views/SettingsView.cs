@@ -83,7 +83,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             Label lblSubtitle = new Label
             {
-                Text = "User accounts and permissions, appearance, preferences, features & pop-ups, change history and backups.",
+                Text = "User accounts and permissions, appearance, preferences, features & pop-ups, print layouts, change history and backups.",
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Pal.C(100, 116, 139),
                 AutoSize = true,
@@ -130,6 +130,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             AddTabButton(flowTabs, "Customization", "🧩  Preferences & Customization", (s, e) => LoadChildView(new SystemCustomizationView(currentUser), (Button)s!));
             if (isAdmin)
                 AddTabButton(flowTabs, "Features", "🔀  Features & Pop-ups", (s, e) => LoadChildView(new FeaturesSettingsView(), (Button)s!));
+            if (isAdmin)
+                AddTabButton(flowTabs, "PrintLayouts", "🖨️  Print layouts", (s, e) => LoadChildView(new PrintLayoutsSettingsView(), (Button)s!));
             if (isAdmin)
             {
                 AddTabButton(flowTabs, "AuditTrail", "📜  Audit Trail", (s, e) => LoadChildView(new AuditTrailView(), (Button)s!));

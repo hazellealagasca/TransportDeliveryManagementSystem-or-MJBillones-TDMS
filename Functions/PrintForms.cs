@@ -105,7 +105,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         // =====================================================================================================
         // Official / collection receipt
         // =====================================================================================================
-        public static PrintFormDef CollectionReceipt(CollectionReceipt cr)
+        public static PrintFormDef CollectionReceipt(CollectionReceipt cr, bool? forceSpecial = null)
         {
             // Nov 6: one receipt can pay a whole statement (one row per invoice in the database); the slip shows each invoice and the totals.
             var rcRows = MJdatabase.GetReceiptRows(cr.ReceiptNumber);
@@ -120,7 +120,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string method = string.IsNullOrWhiteSpace(cr.PaymentMethod) ? "Cash" : cr.PaymentMethod;
             // Nov 6 workflow: special trips get their own receipt slip (their trip reference and destination), normal trips the SI / trip slip.
             var tripInvs = MJdatabase.GetTripInvoices().Where(t => rcRows.Any(r => r.InvoiceId == t.Id)).ToList();
-            bool special = rcSoa != null ? rcSoa.SoaType == SoaTypes.Special : tripInvs.Count > 0 && tripInvs.All(t => t.SpecialTripId > 0);
+            bool special = forceSpecial ?? (rcSoa != null ? rcSoa.SoaType == SoaTypes.Special : tripInvs.Count > 0 && tripInvs.All(t => t.SpecialTripId > 0));   // forceSpecial: Settings → Print layouts builds each variant from a sample receipt
             var specialTrips = special ? MJdatabase.GetSpecialTrips().Where(t => tripInvs.Any(i => i.SpecialTripId == t.Id)).ToDictionary(t => t.Id) : new Dictionary<int, SpecialTrip>();
             var o = NewOptions(special ? "OfficialReceiptSpecial" : "OfficialReceipt", special ? "Collection Receipt — Special Trip" : "Collection Receipt", $"No. {cr.ReceiptNumber}");
             o.CopyLabel = "Original";
@@ -660,6 +660,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 groups.Add(g);
             }
             return LoadingSheet(groups, schedules.Count > 0 ? schedules.Min(s => s.ScheduleDate) : DateTime.Today);
+        }
+        /// <summary>The loading schedule built from a made-up route (Settings → Print layouts has no real record to build it from).</summary>
+        public static PrintFormDef LoadingSheetSample()
+        {
+            var g = new LoadGroup { Route = "Sample route", Departure = "06:00", Truck = "ABC 123 · 10-wheeler", Crew = "Driver / Helper", Client = "Sample client", Order = "DSP-0001" };
+            g.Stores.Add(("S001", "Sample store one", 60, 40));
+            g.Stores.Add(("S002", "Sample store two", 50, 30));
+            return LoadingSheet(new List<LoadGroup> { g }, DateTime.Today);
         }
         private static PrintFormDef LoadingSheet(List<LoadGroup> groups, DateTime date)
         {
