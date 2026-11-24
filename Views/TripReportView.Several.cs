@@ -328,7 +328,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MessageBox.Show(FindForm(), $"Only dispatches of {client} can be filed together. Remove: {string.Join(", ", wrong.Select(w => w.DispatchNumber))}.", "Different company", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            foreach (var d in group) if (!DispatchGate.RequireCompleted(this, DispatchGate.Fresh(d), "file its trip report")) return;
+            foreach (var d in group) if (!DispatchGate.RequireTripReportReady(this, DispatchGate.Fresh(d))) return;
             // the last chance before anything is saved: dispatches that differ in date, truck or driver get the same gate times and signatories
             var differ = RideDifferenceLines(primary, extraDispatches);
             if (differ.Count > 0)

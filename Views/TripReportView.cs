@@ -1097,7 +1097,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (pendingOpenDispatch != null) keepNumbers.Add(pendingOpenDispatch);
                 var ordered = allDeliveries
                     .Where(d => keepNumbers.Contains(d.DispatchNumber ?? "")
-                             || (!finishedReports.Contains(d.DispatchNumber ?? "") && (DispatchGate.IsCompleted(d.Status) || draftReports.Contains(d.DispatchNumber ?? ""))))
+                             || (!finishedReports.Contains(d.DispatchNumber ?? "") && (DispatchGate.CanFileTripReport(d) || draftReports.Contains(d.DispatchNumber ?? ""))))
                     .OrderBy(d => d.DispatchDate)
                     .ThenBy(d => d.DispatchNumber, StringComparer.OrdinalIgnoreCase)
                     .ToList();
@@ -1124,9 +1124,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 else if (ordered.Count == 0)
                 {
-                    cbDelivery.Text = allDeliveries.Any(d => DispatchGate.IsCompleted(d.Status))
-                        ? "(Every completed dispatch already has a trip report)"
-                        : "(No completed dispatches yet — mark a dispatch completed first)";
+                    cbDelivery.Text = allDeliveries.Any(d => DispatchGate.CanFileTripReport(d))
+                        ? "(Every dispatch that has left already has a trip report)"
+                        : "(No dispatch has left yet — a trip report can be filed once a truck is on the road)";
                     UpdatePickCount(0);
                 }
                 else
@@ -1219,7 +1219,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     MessageBox.Show(FindForm(), "A trip report can't be created without a dispatch number.", "Dispatch number required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
-                if (selDel != null && !DispatchGate.RequireCompleted(this, DispatchGate.Fresh(selDel), "file its trip report")) return;
+                if (selDel != null && !DispatchGate.RequireTripReportReady(this, DispatchGate.Fresh(selDel))) return;
                 if (selDel == null)
                 {
                     MessageBox.Show("Selected dispatch order not found. Please refresh and try again.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -1751,7 +1751,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
             var target = allDeliveries.FirstOrDefault(d => string.Equals(d.DispatchNumber, dispatchNumber, StringComparison.OrdinalIgnoreCase));
-            if (target != null && !DispatchGate.RequireCompleted(FindForm(), DispatchGate.Fresh(target), "file its trip report")) return;
+            if (target != null && !DispatchGate.RequireTripReportReady(FindForm(), DispatchGate.Fresh(target))) return;
             OpenNewTripReport();
             int idx = FindDeliveryItemIndex(dispatchNumber);
             if (idx >= 0 && cbDelivery.SelectedIndex != idx) cbDelivery.SelectedIndex = idx;

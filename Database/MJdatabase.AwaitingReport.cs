@@ -36,8 +36,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     public static partial class MJdatabase
     {
         /// <summary>
-        /// Dispatches whose status is Completed and that have no finished trip report: either no report at all, or only
-        /// a Draft. A report that is Completed or Invoiced (Invoiced = completed and billed) takes the dispatch off the list.
+        /// Dispatches that can have a trip report and have no finished one: Completed (old data) or On the road (In Transit / Delayed) with the departure time passed
+        /// (the departure test is made in GetDispatchesAwaitingReport, see CanFileTripReport); no report at all, or only a Draft. A report that is Completed or Invoiced (Invoiced = completed and billed) takes the dispatch off the list.
         /// Voided reports are ignored.
         /// </summary>
         public const string AwaitingReportSql = @"
@@ -48,9 +48,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         THEN 'Draft saved' ELSE 'No trip report yet' END,
                    COALESCE((SELECT t.TripReportNumber FROM TripReports t
                              WHERE t.DeliveryId = d.Id AND COALESCE(t.IsVoid,0) = 0 ORDER BY t.Id DESC LIMIT 1), ''),
-                   COALESCE(d.TotalCrates,0)
+                   COALESCE(d.TotalCrates,0), d.Status, COALESCE(d.DepartureTime,'')
             FROM Deliveries d
-            WHERE d.Status = 'Completed' COLLATE NOCASE
+            WHERE d.Status COLLATE NOCASE IN ('Completed', 'In Transit', 'Delayed')
               AND NOT EXISTS (SELECT 1 FROM TripReports t
                               WHERE t.DeliveryId = d.Id
                                 AND COALESCE(t.IsVoid,0) = 0
@@ -66,8 +66,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             using var cmd = conn.CreateCommand();
             cmd.CommandText = AwaitingReportSql;
             using var r = cmd.ExecuteReader();
+            var now = DateTime.Now;
             while (r.Read())
             {
+                DateTime.TryParse(Convert.ToString(r.GetValue(2)), out var depDay);
+                if (!CanFileTripReport(r.IsDBNull(10) ? "" : r.GetString(10), depDay, r.IsDBNull(11) ? "" : r.GetString(11), now)) continue;   // not left yet
                 list.Add(new AwaitingReportRow
                 {
                     DeliveryId = r.GetInt32(0),
@@ -86,7 +89,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>
-        /// "Create trip report" for a completed dispatch: saves an empty Draft report, which gives it its trip report number.
+        /// "Create trip report" for a dispatch that can have one (completed, or on the road and departed): saves an empty Draft report, which gives it its trip report number.
+        /// A Draft never completes the dispatch.
         /// If the dispatch already has a report (not void) nothing is created and that report's number is returned.
         /// </summary>
         public static string CreateTripReportForDispatch(int deliveryId)
@@ -105,7 +109,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 dispatchNumber = r.GetString(1);
             }
             var tr = new Models.TripReport { DeliveryId = deliveryId, DispatchNumber = dispatchNumber, Status = Models.TripReportStatus.Draft, ReportDate = DateTime.Now };
-            SaveTripReport(tr); // refuses a dispatch that is not Completed
+            SaveTripReport(tr); // refuses a dispatch that is not Completed and has not left
             return tr.TripReportNumber;
         }
 

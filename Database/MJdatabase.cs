@@ -160,15 +160,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 cmd.Transaction = tx;
 
-                cmd.CommandText = $"SELECT TruckId, DriverId, AideId, AideIds FROM Deliveries WHERE Status IN {ActiveDeliveryStatusesSql} AND (Status = 'In Transit' OR DATE(DispatchDate) <= DATE(@today))";
+                cmd.CommandText = $"SELECT TruckId, DriverId, AideId, AideIds, Status, DispatchDate, DepartureTime FROM Deliveries WHERE Status IN {ActiveDeliveryStatusesSql} AND (Status = 'In Transit' OR DATE(DispatchDate) <= DATE(@today))";
 
                 cmd.Parameters.AddWithValue("@today", today);
 
                 using var r = cmd.ExecuteReader();
 
+                var nowForHold = DateTime.Now;
+
                 while (r.Read())
 
                 {
+
+                    // Decision A: an In Transit dispatch 24 hours past its departure no longer holds its truck and crew (see HoldsResources).
+                    if (!HoldsResourcesRow(r.IsDBNull(4) ? "" : r.GetString(4), r.IsDBNull(5) ? null : r.GetValue(5)?.ToString(), r.IsDBNull(6) ? null : r.GetValue(6)?.ToString(), nowForHold)) continue;
 
                     if (!r.IsDBNull(0) && r.GetInt32(0) > 0) busyTrucks.Add(r.GetInt32(0));
 
@@ -5403,11 +5408,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 conn.Open();
                 using var cmd = conn.CreateCommand();
-                cmd.CommandText = $"SELECT TruckId FROM Deliveries WHERE DATE(DispatchDate) = DATE(@dd) AND Status IN {ActiveDeliveryStatusesSql}";
+                cmd.CommandText = $"SELECT TruckId, Status, DispatchDate, COALESCE(DepartureTime,'') FROM Deliveries WHERE DATE(DispatchDate) = DATE(@dd) AND Status IN {ActiveDeliveryStatusesSql}";
                 cmd.Parameters.AddWithValue("@dd", dispatchDate.ToString("yyyy-MM-dd"));
                 using (var r = cmd.ExecuteReader())
                 {
-                    while (r.Read()) if (!r.IsDBNull(0)) busyTruckIds.Add(r.GetInt32(0));
+                    var nowHold = DateTime.Now;
+                    while (r.Read())
+                        if (!r.IsDBNull(0) && HoldsResourcesRow(r.GetString(1), r.IsDBNull(2) ? null : r.GetValue(2)?.ToString(), r.GetString(3), nowHold)) busyTruckIds.Add(r.GetInt32(0));
                 }
                 try
                 {
@@ -7885,29 +7892,51 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         /// <summary>
 
-        /// A dispatch counts as "For Completion" (the list shows "Complete") once it has been In Transit for a full
-        /// <see cref="CompletionWaitHours"/> hours after its departure date and time. Before that it shows as Current.
-        /// Nov 17: it used to switch at midnight (dispatch date before today), so an order leaving at 01:01 PM read "Complete"
-        /// eleven hours later. The status in the database stays 'In Transit' (so the truck and crew stay locked) until someone marks the order complete.
+        /// Decision A (no "Mark complete"): a dispatch that is On the road (In Transit / Delayed) keeps showing Current until its trip report is
+        /// finished, but its truck, driver and aides are FREE once <see cref="CompletionWaitHours"/> hours have passed since its departure
+        /// date and time. Every place that treats an active dispatch as occupying a truck or crew goes through HoldsResources.
+        /// A dispatch that has not left, or is still inside its 24 hours, holds its resources as before.
 
         /// </summary>
 
         public const int CompletionWaitHours = 24;
 
-        public static bool IsAwaitingCompletion(Delivery d) => IsAwaitingCompletion(d, DateTime.Now);
+        /// <summary>True when the dispatch still occupies its truck, driver and aides at <paramref name="now"/>.</summary>
+        public static bool HoldsResources(Delivery? d, DateTime now) => d == null || HoldsResources(d.Status, d.DispatchDate, d.DepartureTime, now);
 
-        /// <summary>The same rule at a given moment (used by the checks).</summary>
-        public static bool IsAwaitingCompletion(Delivery? d, DateTime now)
+        public static bool HoldsResources(Delivery? d) => HoldsResources(d, DateTime.Now);
 
+        public static bool HoldsResources(string? status, DateTime dispatchDate, string? departureTime, DateTime now)
         {
-
-            if (d == null) return false;
-
-            return string.Equals(d.Status, "In Transit", StringComparison.OrdinalIgnoreCase) && now >= DepartureDateTime(d).AddHours(CompletionWaitHours);
-
+            bool onRoad = string.Equals((status ?? "").Trim(), "In Transit", StringComparison.OrdinalIgnoreCase) || string.Equals((status ?? "").Trim(), "Delayed", StringComparison.OrdinalIgnoreCase);
+            if (!onRoad) return true;
+            return now < DepartureDateTime(dispatchDate, departureTime).AddHours(CompletionWaitHours);
         }
 
-        /// <summary>Nov 17: when the next In Transit dispatch reaches its 24 hours (null = none waiting), so the open list can redraw at that moment.</summary>
+        /// <summary>
+        /// Can a trip report be filed for this dispatch now? Yes when it is Completed (old data) or on the road (In Transit / Delayed) and its
+        /// departure date and time has come. Scheduled, not-yet-departed and Cancelled dispatches never qualify. Invoices and statements still need Completed.
+        /// </summary>
+        public static bool CanFileTripReport(string? status, DateTime dispatchDate, string? departureTime, DateTime now)
+        {
+            string s = (status ?? "").Trim();
+            if (s.Equals("Completed", StringComparison.OrdinalIgnoreCase) || s.Equals("Delivered", StringComparison.OrdinalIgnoreCase)) return true;
+            // On the road = it has left: it goes In Transit automatically at its departure time, or earlier by "Start trip now".
+            if (s.Equals("In Transit", StringComparison.OrdinalIgnoreCase) || s.Equals("Delayed", StringComparison.OrdinalIgnoreCase))
+                return true;
+            return false;
+        }
+
+        public static bool CanFileTripReport(Delivery? d) => d != null && CanFileTripReport(d.Status, d.DispatchDate, d.DepartureTime, DateTime.Now);
+
+        /// <summary>The same rule for a raw database row (an unreadable date keeps the dispatch holding, the safe side).</summary>
+        public static bool HoldsResourcesRow(string? status, string? dispatchDateText, string? departureTime, DateTime now)
+        {
+            if (!DateTime.TryParse(dispatchDateText, out var day)) return true;
+            return HoldsResources(status, day, departureTime, now);
+        }
+
+        /// <summary>When the next On-the-road dispatch passes its 24 hours (null = none waiting), so the main window can free its truck and crew at that moment.</summary>
         public static DateTime? NextCompletionDue()
         {
             try
@@ -7915,7 +7944,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 using var conn = new SqliteConnection(connectionString);
                 conn.Open();
                 using var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT DispatchDate, COALESCE(DepartureTime,'') FROM Deliveries WHERE Status = 'In Transit' COLLATE NOCASE";
+                cmd.CommandText = "SELECT DispatchDate, COALESCE(DepartureTime,'') FROM Deliveries WHERE Status IN ('In Transit', 'Delayed') COLLATE NOCASE";
                 using var r = cmd.ExecuteReader();
                 DateTime? next = null;
                 while (r.Read())
@@ -7930,143 +7959,121 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>
-
-        /// Marks a dispatch order as fully completed: releases the truck, driver and aides, closes the linked
-
-        /// loading schedule(s) and marks pending stops as delivered. A trip report can still be filed afterwards.
-
+        /// Frees the truck, driver and aides of every In Transit / Delayed dispatch that is 24 hours past its departure (the dispatch itself stays In Transit).
+        /// It recomputes the busy trucks and crew with HoldsResources (ReconcileResourceStatuses), so a truck or crew member
+        /// that another dispatch still holds stays busy, a blocked truck (maintenance, inactive) is never touched, and running it again, or after the dispatch completes, changes nothing.
+        /// Returns how many dispatches are past their 24 hours.
         /// </summary>
-
-        public static (bool ok, string message) CompleteDelivery(int deliveryId, string? completedBy = null)
-
+        public static int ReleaseResourcesAfterWait()
         {
-
-            if (deliveryId <= 0) return (false, "No dispatch order selected.");
-
+            int past = 0;
             try
-
             {
+                using (var conn = new SqliteConnection(connectionString))
+                {
+                    conn.Open();
+                    using var cmd = conn.CreateCommand();
+                    cmd.CommandText = "SELECT Status, DispatchDate, COALESCE(DepartureTime,'') FROM Deliveries WHERE Status IN ('In Transit', 'Delayed') COLLATE NOCASE";
+                    using var r = cmd.ExecuteReader();
+                    var now = DateTime.Now;
+                    while (r.Read())
+                        if (!HoldsResourcesRow(r.GetString(0), r.IsDBNull(1) ? null : r.GetValue(1)?.ToString(), r.GetString(2), now)) past++;
+                }
+                ReconcileResourceStatuses();
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+            return past;
+        }
 
+        /// <summary>
+        /// Completes a dispatch order: releases the truck, driver and aides, closes the linked loading schedule(s) and marks pending stops as delivered.
+        /// Since the "Mark complete" button was removed this is only used by the trip report (see <see cref="CompleteDeliveryCore"/>), and kept as the
+        /// single public entry for tools and checks.
+        /// </summary>
+        public static (bool ok, string message) CompleteDelivery(int deliveryId, string? completedBy = null)
+        {
+            if (deliveryId <= 0) return (false, "No dispatch order selected.");
+            try
+            {
                 var planned = GetDeliveryById(deliveryId);
-
                 if (planned != null && planned.DispatchDate.Date > DateTime.Today)
-
                     return (false, $"Dispatch #{planned.DispatchNumber} is scheduled for {Fmt.Date(planned.DispatchDate)}. It can't be marked completed before its dispatch date.");
-
                 if (planned != null && !planned.Status.Equals("In Transit", StringComparison.OrdinalIgnoreCase) && !planned.Status.Equals("Delayed", StringComparison.OrdinalIgnoreCase)
-
                     && !planned.Status.Equals("Completed", StringComparison.OrdinalIgnoreCase) && !planned.Status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase)
-
                     && DepartureDateTime(planned) > DateTime.Now)
-
-                    return (false, $"Dispatch #{planned.DispatchNumber} hasn't left yet — it goes in transit automatically at {DepartureDateTime(planned):hh:mm tt}.\n\nIf the truck already left, use \"Start trip now\" first, then complete it when it arrives.");
-
-                using var conn = new SqliteConnection(connectionString);
-
-                conn.Open();
-
-                using var tx = conn.BeginTransaction();
-
-                string dspNum = "", status = "", aideIdsCsv = "";
-
-                int truckId = 0, driverId = 0, aideId = 0, lsId = 0;
-
-                using (var get = conn.CreateCommand())
-
+                    return (false, $"Dispatch #{planned.DispatchNumber} hasn't left yet — it goes in transit automatically at {DepartureDateTime(planned):hh:mm tt}.\n\nIf the truck already left, use \"Start trip now\" first.");
+                string dspNum, status;
+                using (var conn = new SqliteConnection(connectionString))
                 {
-
-                    get.Transaction = tx;
-
-                    get.CommandText = "SELECT DispatchNumber, Status, TruckId, DriverId, AideId, AideIds, LoadingScheduleId FROM Deliveries WHERE Id = @id";
-
-                    get.Parameters.AddWithValue("@id", deliveryId);
-
-                    using var r = get.ExecuteReader();
-
-                    if (!r.Read()) return (false, "This dispatch order no longer exists.");
-
-                    dspNum = r.IsDBNull(0) ? "" : r.GetString(0);
-
-                    status = r.IsDBNull(1) ? "" : r.GetString(1);
-
-                    truckId = r.IsDBNull(2) ? 0 : r.GetInt32(2);
-
-                    driverId = r.IsDBNull(3) ? 0 : r.GetInt32(3);
-
-                    aideId = r.IsDBNull(4) ? 0 : r.GetInt32(4);
-
-                    aideIdsCsv = r.IsDBNull(5) ? "" : r.GetString(5);
-
-                    lsId = r.IsDBNull(6) ? 0 : r.GetInt32(6);
-
+                    conn.Open();
+                    using var tx = conn.BeginTransaction();
+                    var res = CompleteDeliveryCore(conn, tx, deliveryId, false);
+                    if (!res.ok) return (false, res.message);
+                    tx.Commit();
+                    dspNum = res.dspNum; status = res.prevStatus;
                 }
-
-                if (status.Equals("Completed", StringComparison.OrdinalIgnoreCase)) return (false, $"Dispatch #{dspNum} is already completed.");
-
-                if (status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase)) return (false, $"Dispatch #{dspNum} was cancelled and cannot be completed.");
-
-                void Exec(string sql, params (string name, object value)[] ps)
-
-                {
-
-                    using var c = conn.CreateCommand();
-
-                    c.Transaction = tx;
-
-                    c.CommandText = sql;
-
-                    foreach (var (n, v) in ps) c.Parameters.AddWithValue(n, v);
-
-                    c.ExecuteNonQuery();
-
-                }
-
-                Exec("UPDATE Deliveries SET Status = 'Completed' WHERE Id = @id", ("@id", deliveryId));
-
-                if (truckId > 0) Exec($"UPDATE Trucks SET Status = 'Active' WHERE Id = @tid AND Status NOT IN {BlockedTruckStatusesSql}", ("@tid", truckId));
-
-                if (driverId > 0) Exec("UPDATE Crews SET IsAvailable = 1 WHERE Id = @cid", ("@cid", driverId));
-
-                var aides = ParseIdList(aideIdsCsv);
-
-                if (aideId > 0 && !aides.Contains(aideId)) aides.Add(aideId);
-
-                foreach (int a in aides) Exec("UPDATE Crews SET IsAvailable = 1 WHERE Id = @cid", ("@cid", a));
-
-                Exec("UPDATE DispatchStops SET Status = 'Delivered' WHERE DeliveryId = @did AND (Status IS NULL OR Status = '' OR Status = 'Pending')", ("@did", deliveryId));
-
-                Exec("UPDATE LoadingSchedules SET Status = 'Completed' WHERE Id IN (SELECT LoadingScheduleId FROM DispatchStops WHERE DeliveryId = @did AND LoadingScheduleId IS NOT NULL)", ("@did", deliveryId));
-
-                if (lsId > 0) Exec("UPDATE LoadingSchedules SET Status = 'Completed' WHERE Id = @lsid", ("@lsid", lsId));
-
-                ReconcileResourceStatuses(conn, tx);
-
-                tx.Commit();
-
-                try
-
-                {
-
-                    LogAuditTrail("ORDER_COMPLETED", "Deliveries", deliveryId, dspNum, "Status", status, "Completed",
-
-                        $"Dispatch #{dspNum} marked as completed{(string.IsNullOrWhiteSpace(completedBy) ? "" : " by " + completedBy)}");
-
-                }
-
-                catch (System.Exception swx43) { ErrLog.Swallowed(swx43); }
-
+                LogDispatchCompleted(deliveryId, dspNum, status, $"Dispatch #{dspNum} marked as completed{(string.IsNullOrWhiteSpace(completedBy) ? "" : " by " + completedBy)}");
                 return (true, $"Dispatch #{dspNum} is now completed. The truck and crew are available again.");
-
             }
-
             catch (Exception ex)
-
             {
-
                 return (false, $"Could not complete the order: {ex.Message}");
-
             }
+        }
 
+        /// <summary>The audit entry for a completed dispatch (written after the transaction commits, like every audit entry).</summary>
+        internal static void LogDispatchCompleted(int deliveryId, string dspNum, string prevStatus, string note)
+        {
+            try { LogAuditTrail("ORDER_COMPLETED", "Deliveries", deliveryId, dspNum, "Status", prevStatus, "Completed", note); }
+            catch (System.Exception swx43) { ErrLog.Swallowed(swx43); }
+        }
+
+        /// <summary>
+        /// The completion itself, inside the caller's transaction (so a trip report and its dispatch's completion succeed or fail together):
+        /// Status = Completed, the truck is freed (unless blocked), the driver and aides are freed, pending stops become Delivered, the loading
+        /// schedule(s) become Completed, and the busy trucks / crew are recomputed. Refuses a dispatch that is already Completed or Cancelled unless
+        /// <paramref name="allowAlreadyCompleted"/> (then the effects are simply applied again, which is harmless). It does not commit.
+        /// </summary>
+        internal static (bool ok, string message, string dspNum, string prevStatus) CompleteDeliveryCore(SqliteConnection conn, SqliteTransaction tx, int deliveryId, bool allowAlreadyCompleted)
+        {
+            string dspNum = "", status = "", aideIdsCsv = "";
+            int truckId = 0, driverId = 0, aideId = 0, lsId = 0;
+            using (var get = conn.CreateCommand())
+            {
+                get.Transaction = tx;
+                get.CommandText = "SELECT DispatchNumber, Status, TruckId, DriverId, AideId, AideIds, LoadingScheduleId FROM Deliveries WHERE Id = @id";
+                get.Parameters.AddWithValue("@id", deliveryId);
+                using var r = get.ExecuteReader();
+                if (!r.Read()) return (false, "This dispatch order no longer exists.", "", "");
+                dspNum = r.IsDBNull(0) ? "" : r.GetString(0);
+                status = r.IsDBNull(1) ? "" : r.GetString(1);
+                truckId = r.IsDBNull(2) ? 0 : r.GetInt32(2);
+                driverId = r.IsDBNull(3) ? 0 : r.GetInt32(3);
+                aideId = r.IsDBNull(4) ? 0 : r.GetInt32(4);
+                aideIdsCsv = r.IsDBNull(5) ? "" : r.GetString(5);
+                lsId = r.IsDBNull(6) ? 0 : r.GetInt32(6);
+            }
+            if (status.Equals("Completed", StringComparison.OrdinalIgnoreCase) && !allowAlreadyCompleted) return (false, $"Dispatch #{dspNum} is already completed.", dspNum, status);
+            if (status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase)) return (false, $"Dispatch #{dspNum} was cancelled and cannot be completed.", dspNum, status);
+            void Exec(string sql, params (string name, object value)[] ps)
+            {
+                using var c = conn.CreateCommand();
+                c.Transaction = tx;
+                c.CommandText = sql;
+                foreach (var (n, v) in ps) c.Parameters.AddWithValue(n, v);
+                c.ExecuteNonQuery();
+            }
+            Exec("UPDATE Deliveries SET Status = 'Completed' WHERE Id = @id", ("@id", deliveryId));
+            if (truckId > 0) Exec($"UPDATE Trucks SET Status = 'Active' WHERE Id = @tid AND Status NOT IN {BlockedTruckStatusesSql}", ("@tid", truckId));
+            if (driverId > 0) Exec("UPDATE Crews SET IsAvailable = 1 WHERE Id = @cid", ("@cid", driverId));
+            var aides = ParseIdList(aideIdsCsv);
+            if (aideId > 0 && !aides.Contains(aideId)) aides.Add(aideId);
+            foreach (int a in aides) Exec("UPDATE Crews SET IsAvailable = 1 WHERE Id = @cid", ("@cid", a));
+            Exec("UPDATE DispatchStops SET Status = 'Delivered' WHERE DeliveryId = @did AND (Status IS NULL OR Status = '' OR Status = 'Pending')", ("@did", deliveryId));
+            Exec("UPDATE LoadingSchedules SET Status = 'Completed' WHERE Id IN (SELECT LoadingScheduleId FROM DispatchStops WHERE DeliveryId = @did AND LoadingScheduleId IS NOT NULL)", ("@did", deliveryId));
+            if (lsId > 0) Exec("UPDATE LoadingSchedules SET Status = 'Completed' WHERE Id = @lsid", ("@lsid", lsId));
+            ReconcileResourceStatuses(conn, tx);
+            return (true, "", dspNum, status);
         }
 
         public static Delivery? GetDeliveryById(int id)
@@ -8868,6 +8875,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             bool isNew = deliveryId <= 0 && specialTripId <= 0;
 
+            ReleaseResourcesAfterWait();   // trucks and crew whose dispatch passed its 24 hours are free before the availability flags below are read
+
             bool isToday = dispatchDate.Date == DateTime.Today;
 
             string dd = dispatchDate.ToString("yyyy-MM-dd");
@@ -8976,7 +8985,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     var cmdTruck = conn.CreateCommand();
 
-                    cmdTruck.CommandText = $@"SELECT DispatchNumber, Status FROM Deliveries
+                    cmdTruck.CommandText = $@"SELECT DispatchNumber, Status, DispatchDate, COALESCE(DepartureTime,'') FROM Deliveries
 
                                              WHERE TruckId = @tid AND DATE(DispatchDate) = DATE(@dd) AND Id <> @id AND Status IN {ActiveDeliveryStatusesSql}";
 
@@ -8990,9 +8999,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        if (reader.Read())
+                        while (reader.Read())
 
                         {
+
+                            if (!HoldsResourcesRow(reader.GetString(1), reader.IsDBNull(2) ? null : reader.GetValue(2)?.ToString(), reader.GetString(3), DateTime.Now)) continue;   // 24 h past departure: the truck is free again
 
                             return $"TRUCK DISPATCH CONFLICT:\nThe selected vehicle is already on active dispatch #{reader.GetString(0)} ({reader.GetString(1)}) for {Fmt.Date(dispatchDate)}.";
 
@@ -9008,7 +9019,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     var cmdCrew = conn.CreateCommand();
 
-                    cmdCrew.CommandText = $@"SELECT DispatchNumber, Status FROM Deliveries
+                    cmdCrew.CommandText = $@"SELECT DispatchNumber, Status, DispatchDate, COALESCE(DepartureTime,'') FROM Deliveries
 
                                             WHERE (DriverId = @cid OR AideId = @cid OR {AideIdsContainsSql})
 
@@ -9024,9 +9035,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     using var reader = cmdCrew.ExecuteReader();
 
-                    if (reader.Read())
+                    while (reader.Read())
 
                     {
+
+                        if (!HoldsResourcesRow(reader.GetString(1), reader.IsDBNull(2) ? null : reader.GetValue(2)?.ToString(), reader.GetString(3), DateTime.Now)) continue;   // 24 h past departure: the crew member is free again
 
                         return $"{c.Label} ASSIGNMENT CONFLICT:\nThe selected crew member is already assigned to active dispatch #{reader.GetString(0)} ({reader.GetString(1)}) for {Fmt.Date(dispatchDate)}.";
 
@@ -10386,6 +10399,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             bool wasNew = tr.Id <= 0;
 
+            string tripDeliveryStatus = "";
+            int completeId = 0;
+            bool completeAllowDone = false;
+            (int id, string number, string prev)? completedByReport = null;
+
             if (tr.SpecialTripId > 0) EnsureSpecialTripColumns();
             EnsureWorkflowColumns();
             // A finished report whose trip is billed on a live invoice is not changed (the screen asks first; this is the net under it).
@@ -10511,11 +10529,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                 stCmd.Transaction = tx;
 
-                                stCmd.CommandText = "SELECT Status FROM Deliveries WHERE Id = @did";
+                                stCmd.CommandText = "SELECT Status, DispatchDate, COALESCE(DepartureTime,'') FROM Deliveries WHERE Id = @did";
 
                                 stCmd.Parameters.AddWithValue("@did", tr.DeliveryId);
 
-                                string delStatus = stCmd.ExecuteScalar()?.ToString() ?? "";
+                                string delStatus = "", delDate = "", delTime = "";
+
+                                using (var stR = stCmd.ExecuteReader())
+                                {
+                                    if (stR.Read())
+                                    {
+                                        delStatus = stR.IsDBNull(0) ? "" : stR.GetString(0);
+                                        delDate = stR.IsDBNull(1) ? "" : stR.GetValue(1)?.ToString() ?? "";
+                                        delTime = stR.IsDBNull(2) ? "" : stR.GetString(2);
+                                    }
+                                }
 
                                 if (delStatus.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
 
@@ -10525,13 +10553,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                 }
 
-                                if (!delStatus.Equals("Completed", StringComparison.OrdinalIgnoreCase) && !delStatus.Equals("Delivered", StringComparison.OrdinalIgnoreCase))
+                                // A trip report can be filed for a completed dispatch (old data) or for one that is on the road and has already left.
+                                DateTime.TryParse(delDate, out var delDay);
+                                if (!CanFileTripReport(delStatus, delDay, delTime, DateTime.Now))
 
                                 {
 
-                                    throw new InvalidOperationException($"This dispatch is still \"{delStatus}\". Mark it completed in Dispatch before filing its trip report.");
+                                    throw new InvalidOperationException($"This dispatch is still \"{delStatus}\". A trip report can be filed once it has left.");
 
                                 }
+
+                                tripDeliveryStatus = delStatus;
 
                             }
 
@@ -10541,119 +10573,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                                                 VALUES (@trn, @did, @dn, @at, @dt, @dgc, @dec, @dc, @rgc, @rec, @rc, @sm, @r, @rd, @smln, @smfn, @smmn, @tti, @tto, @dtra, @rcb, @dtrp, @drp, @drc, @gn, @trst)";
 
-                            var updateDel = conn.CreateCommand();
-
-                            updateDel.Transaction = tx;
-
-                            updateDel.CommandText = "UPDATE Deliveries SET Status='Completed' WHERE Id=@did";
-
-                            updateDel.Parameters.AddWithValue("@did", tr.DeliveryId);
-
-                            updateDel.ExecuteNonQuery();
-
-                            var releaseTr = conn.CreateCommand();
-
-                            releaseTr.Transaction = tx;
-
-                            releaseTr.CommandText = $"UPDATE Trucks SET Status='Active' WHERE Id=(SELECT TruckId FROM Deliveries WHERE Id=@did) AND Status NOT IN {BlockedTruckStatusesSql}";
-
-                            releaseTr.Parameters.AddWithValue("@did", tr.DeliveryId);
-
-                            releaseTr.ExecuteNonQuery();
-
-                            var releaseDriver = conn.CreateCommand();
-
-                            releaseDriver.Transaction = tx;
-
-                            releaseDriver.CommandText = "UPDATE Crews SET IsAvailable=1 WHERE Id=(SELECT DriverId FROM Deliveries WHERE Id=@did)";
-
-                            releaseDriver.Parameters.AddWithValue("@did", tr.DeliveryId);
-
-                            releaseDriver.ExecuteNonQuery();
-
-                            var getAidesCmd = conn.CreateCommand();
-
-                            getAidesCmd.Transaction = tx;
-
-                            getAidesCmd.CommandText = "SELECT AideId, AideIds FROM Deliveries WHERE Id=@did";
-
-                            getAidesCmd.Parameters.AddWithValue("@did", tr.DeliveryId);
-
-                            using (var r = getAidesCmd.ExecuteReader())
-
-                            {
-
-                                if (r.Read())
-
-                                {
-
-                                    int singleAideId = r.GetInt32(0);
-
-                                    string multiAideIds = r.IsDBNull(1) ? "" : r.GetString(1);
-
-                                    var tokens = multiAideIds.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
-
-                                    var idsToRelease = new HashSet<int>();
-
-                                    if (singleAideId > 0) idsToRelease.Add(singleAideId);
-
-                                    foreach (var t in tokens)
-
-                                    {
-
-                                        if (int.TryParse(t.Trim(), out int parsed) && parsed > 0) idsToRelease.Add(parsed);
-
-                                    }
-
-                                    foreach (int aideId in idsToRelease)
-
-                                    {
-
-                                        var releaseAideCmd = conn.CreateCommand();
-
-                                        releaseAideCmd.Transaction = tx;
-
-                                        releaseAideCmd.CommandText = "UPDATE Crews SET IsAvailable=1 WHERE Id=@aid";
-
-                                        releaseAideCmd.Parameters.AddWithValue("@aid", aideId);
-
-                                        releaseAideCmd.ExecuteNonQuery();
-
-                                    }
-
-                                }
-
-                            }
-
-                            var updateLs = conn.CreateCommand();
-
-                            updateLs.Transaction = tx;
-
-                            updateLs.CommandText = "UPDATE LoadingSchedules SET Status='Completed' WHERE Id=(SELECT LoadingScheduleId FROM Deliveries WHERE Id=@did)";
-
-                            updateLs.Parameters.AddWithValue("@did", tr.DeliveryId);
-
-                            updateLs.ExecuteNonQuery();
-
-                            var updateStopsCmd = conn.CreateCommand();
-
-                            updateStopsCmd.Transaction = tx;
-
-                            updateStopsCmd.CommandText = "UPDATE DispatchStops SET Status='Delivered' WHERE DeliveryId=@did AND Status='Pending'";
-
-                            updateStopsCmd.Parameters.AddWithValue("@did", tr.DeliveryId);
-
-                            updateStopsCmd.ExecuteNonQuery();
-
-                            var updateStopsLs = conn.CreateCommand();
-
-                            updateStopsLs.Transaction = tx;
-
-                            updateStopsLs.CommandText = "UPDATE LoadingSchedules SET Status='Completed' WHERE Id IN (SELECT LoadingScheduleId FROM DispatchStops WHERE DeliveryId=@did AND LoadingScheduleId IS NOT NULL)";
-
-                            updateStopsLs.Parameters.AddWithValue("@did", tr.DeliveryId);
-
-                            updateStopsLs.ExecuteNonQuery();
+                            // The dispatch is completed right after this report row is written (below, in this same transaction), and only for a finished report.
+                            bool wasDone = tripDeliveryStatus.Equals("Completed", StringComparison.OrdinalIgnoreCase) || tripDeliveryStatus.Equals("Delivered", StringComparison.OrdinalIgnoreCase);
+                            if (wasDone || !string.Equals(tr.Status, TripReportStatus.Draft, StringComparison.OrdinalIgnoreCase)) { completeId = tr.DeliveryId; completeAllowDone = wasDone; }
 
                         }
 
@@ -10664,6 +10586,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                             cmd.CommandText = @"UPDATE TripReports SET ArrivalTime=@at, DepartureTime=@dt, DeliveredGCrates=@dgc, DeliveredECrates=@dec, DeliveredCrates=@dc, ReturnedGCrates=@rgc, ReturnedECrates=@rec, ReturnedCrates=@rc, StoreManagerName=@sm, Remarks=@r, StoreManagerLastName=@smln, StoreManagerFirstName=@smfn, StoreManagerMiddleName=@smmn, TruckTimeIn=@tti, TruckTimeOut=@tto, DtrApprovedBy=@dtra, ReturnCheckedBy=@rcb, DtrPreparedBy=@dtrp, DrPreparedBy=@drp, DrCheckedBy=@drc, GuardName=@gn, Status = CASE WHEN COALESCE(Status,'') = 'Invoiced' THEN Status ELSE @trst END WHERE Id=@id";
 
                             cmd.Parameters.AddWithValue("@id", tr.Id);
+
+                            // A Draft finished here (Status Completed, not Draft): its dispatch, if still on the road, is completed in this same save.
+                            if (tr.SpecialTripId <= 0 && !string.Equals(tr.Status, TripReportStatus.Draft, StringComparison.OrdinalIgnoreCase))
+                            {
+                                using var look = conn.CreateCommand();
+                                look.Transaction = tx;
+                                look.CommandText = "SELECT d.Id, d.Status FROM TripReports t JOIN Deliveries d ON d.Id = t.DeliveryId WHERE t.Id = @tid AND COALESCE(t.SpecialTripId,0) = 0";
+                                look.Parameters.AddWithValue("@tid", tr.Id);
+                                using var lr = look.ExecuteReader();
+                                if (lr.Read())
+                                {
+                                    string ls = lr.IsDBNull(1) ? "" : lr.GetString(1);
+                                    if (ls.Equals("In Transit", StringComparison.OrdinalIgnoreCase) || ls.Equals("Delayed", StringComparison.OrdinalIgnoreCase)) completeId = lr.GetInt32(0);
+                                }
+                            }
 
                         }
 
@@ -10721,6 +10658,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                         cmd.ExecuteNonQuery();
 
+                        // A finished report completes its dispatch in this same transaction: both are saved or neither (Draft saves never complete).
+                        if (completeId > 0)
+                        {
+                            var done = CompleteDeliveryCore(conn, tx, completeId, completeAllowDone);
+                            if (!done.ok) throw new InvalidOperationException(done.message);
+                            if (!done.prevStatus.Equals("Completed", StringComparison.OrdinalIgnoreCase)) completedByReport = (completeId, done.dspNum, done.prevStatus);
+                        }
+
                         if (tr.SpecialTripId > 0)
 
                         {
@@ -10756,6 +10701,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         }
 
                         catch (System.Exception swx50) { ErrLog.Swallowed(swx50); }
+
+                        if (completedByReport.HasValue)
+                        {
+                            string by = Functions.SessionContext.CurrentUsername ?? "";
+                            LogDispatchCompleted(completedByReport.Value.id, completedByReport.Value.number, completedByReport.Value.prev,
+                                $"Dispatch #{completedByReport.Value.number} completed by trip report {tr.TripReportNumber}{(string.IsNullOrWhiteSpace(by) ? "" : " by " + by)}");
+                        }
 
                     }
 
@@ -11216,7 +11168,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (d != null && string.Equals(d.Status, "Cancelled", StringComparison.OrdinalIgnoreCase) && !chargeableCancelled)
                     throw new InvalidOperationException($"Dispatch {d.DispatchNumber} was cancelled with no charge, so it can't be billed. Nothing was saved.");
                 if (d != null && !chargeableCancelled && !string.Equals(d.Status, "Completed", StringComparison.OrdinalIgnoreCase) && !string.Equals(d.Status, "Delivered", StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidOperationException($"Dispatch {d.DispatchNumber} is still \"{d.Status}\". Mark it completed in Dispatch before billing it.");
+                    throw new InvalidOperationException($"Dispatch {d.DispatchNumber} is still \"{d.Status}\". Finish its trip report first (that completes the dispatch) before billing it.");
                 // Nov 6 workflow: a trip report saved as a Draft is not finished yet, so its trip can't be invoiced.
                 if (d != null && !chargeableCancelled && HasOnlyDraftTripReport(d.Id))
                     throw new InvalidOperationException($"The trip report of {d.DispatchNumber} is still a Draft. Finish it (Issue Invoice on Trip Reports) before billing the trip. Nothing was saved.");
@@ -12359,6 +12311,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
 
                 RunOperationalLifecycleAutomation();
+
+                ReleaseResourcesAfterWait();   // app start: trucks and crew of dispatches 24 hours past departure are free
 
             }
 
@@ -14380,15 +14334,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 var cmd = conn.CreateCommand();
 
-                cmd.CommandText = $"SELECT COUNT(1) FROM Deliveries WHERE TruckId = @tid AND Status IN {ActiveDeliveryStatusesSql} AND Id != @excludeId";
+                cmd.CommandText = $"SELECT Status, DispatchDate, COALESCE(DepartureTime,'') FROM Deliveries WHERE TruckId = @tid AND Status IN {ActiveDeliveryStatusesSql} AND Id != @excludeId";
 
                 cmd.Parameters.AddWithValue("@tid", truckId);
 
                 cmd.Parameters.AddWithValue("@excludeId", excludeDeliveryId);
 
-                var count = Convert.ToInt32(cmd.ExecuteScalar());
+                using var rd = cmd.ExecuteReader();
 
-                return count > 0;
+                var nowHold = DateTime.Now;
+
+                while (rd.Read())
+                    if (HoldsResourcesRow(rd.GetString(0), rd.IsDBNull(1) ? null : rd.GetValue(1)?.ToString(), rd.GetString(2), nowHold)) return true;
+
+                return false;
 
             }
 
@@ -14408,15 +14367,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 var cmd = conn.CreateCommand();
 
-                cmd.CommandText = $"SELECT COUNT(1) FROM Deliveries WHERE DriverId = @did AND Status IN {ActiveDeliveryStatusesSql} AND Id != @excludeId";
+                cmd.CommandText = $"SELECT Status, DispatchDate, COALESCE(DepartureTime,'') FROM Deliveries WHERE DriverId = @did AND Status IN {ActiveDeliveryStatusesSql} AND Id != @excludeId";
 
                 cmd.Parameters.AddWithValue("@did", driverId);
 
                 cmd.Parameters.AddWithValue("@excludeId", excludeDeliveryId);
 
-                var count = Convert.ToInt32(cmd.ExecuteScalar());
+                using var rd = cmd.ExecuteReader();
 
-                return count > 0;
+                var nowHold = DateTime.Now;
+
+                while (rd.Read())
+                    if (HoldsResourcesRow(rd.GetString(0), rd.IsDBNull(1) ? null : rd.GetValue(1)?.ToString(), rd.GetString(2), nowHold)) return true;
+
+                return false;
 
             }
 

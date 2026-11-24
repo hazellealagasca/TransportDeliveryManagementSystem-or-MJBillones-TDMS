@@ -36,6 +36,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (var d in allDispatches)
             {
                 if (d.Id == editingId || !IsActiveTrip(d.Status)) continue;
+                if (!MJdatabase.HoldsResources(d, DateTime.Now)) continue;   // on the road for 24+ hours: its truck and crew are free again (it stays Current until its trip report)
                 bool sameDay = d.DispatchDate.Date == date;
                 bool stillOut = date == DateTime.Today && d.DispatchDate.Date < date && RowMenu.Is(d.Status, "In Transit", "Delayed");
                 if (!sameDay && !stillOut) continue;

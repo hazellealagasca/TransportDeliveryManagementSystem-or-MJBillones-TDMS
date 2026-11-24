@@ -59,9 +59,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private Button btnToggleForm = null!;
 
-        private Button? btnCompleteOrder;
 
-        private Button? btnAwaitingCompletion;
 
         private Button? btnShowFinished;
 
@@ -142,7 +140,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             SetupContextMenu();
 
-            WireRowCompleteButtons();
 
             InitSortAndStatusPickers();
 
@@ -812,96 +809,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
             Features.Bind(btnSpecialTrip, () => btnSpecialTrip.Visible = Features.On(Features.SpecialTrips), Features.SpecialTrips);
-
-            btnCompleteOrder = new Button
-
-            {
-
-                Name = "btnCompleteOrder",
-
-                Text = "✔ Complete order",
-
-                AutoSize = true,
-
-                AutoSizeMode = AutoSizeMode.GrowOnly,
-
-                MinimumSize = new Size(150, 30),
-
-                Padding = new Padding(10, 0, 10, 0),
-
-                BackColor = Pal.C(5, 150, 105),
-
-                ForeColor = Pal.White,
-
-                FlatStyle = FlatStyle.Flat,
-
-                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-
-                Cursor = Cursors.Hand,
-
-                Margin = new Padding(0, 4, 8, 4),
-
-                Enabled = false
-
-            };
-
-            btnCompleteOrder.FlatAppearance.BorderSize = 0;
-
-            btnCompleteOrder.FlatAppearance.MouseOverBackColor = Pal.C(4, 120, 87);
-
-            btnCompleteOrder.Click += (s, e) => CompleteSelectedOrder();
-
-            btnCompleteOrder.Visible = false; // completion now lives in each order's Status cell
-
-            btnAwaitingCompletion = new Button
-
-            {
-
-                Name = "btnAwaitingCompletion",
-
-                Text = "⏰ 0 awaiting completion",
-
-                AutoSize = true,
-
-                AutoSizeMode = AutoSizeMode.GrowOnly,
-
-                MinimumSize = new Size(120, 30),
-
-                Padding = new Padding(10, 0, 10, 0),
-
-                BackColor = Pal.C(254, 243, 199),
-
-                ForeColor = Pal.C(180, 83, 9),
-
-                FlatStyle = FlatStyle.Flat,
-
-                Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-
-                Cursor = Cursors.Hand,
-
-                Margin = new Padding(0, 4, 8, 4),
-
-                Visible = false
-
-            };
-
-            btnAwaitingCompletion.FlatAppearance.BorderSize = 0;
-
-            btnAwaitingCompletion.FlatAppearance.MouseOverBackColor = Pal.C(253, 230, 138);
-
-            btnAwaitingCompletion.Click += (s, e) =>
-
-            {
-
-                currentStatusFilter = currentStatusFilter == AwaitingCompletionFilter ? "" : AwaitingCompletionFilter;
-
-                FilterGridData();
-
-                UpdateSummaryButtonStyles();
-
-            };
-
-            pnlGridActionsFlow.Controls.Add(btnAwaitingCompletion);
 
             try { showFinished = string.Equals(MJdatabase.GetSystemSetting(ShowFinishedKey, "False").Trim(), "True", StringComparison.OrdinalIgnoreCase); } catch (System.Exception swxSf) { ErrLog.Swallowed(swxSf); }
 
@@ -4117,24 +4024,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string status = e.Value.ToString() ?? "";
                 e.Value = StatusText.Display(status);   // "In Transit" reads "Current"; the stored value is unchanged
 
-                if (gridDispatch.DataSource is IList<Delivery> boundList && e.RowIndex < boundList.Count && boundList[e.RowIndex] is Delivery rowDel && MJdatabase.IsAwaitingCompletion(rowDel))
-
-                {
-
-                    e.Value = CompleteCellText;
-
-                    e.FormattingApplied = true;
-
-                    e.CellStyle.BackColor = Pal.C(254, 243, 199);
-
-                    e.CellStyle.ForeColor = Pal.C(180, 83, 9);
-
-                    e.CellStyle.Font = FontCache.Get(gridDispatch.Font, FontStyle.Bold);
-
-                    return;
-
-                }
-
                 if (status.Equals("Completed", StringComparison.OrdinalIgnoreCase))
 
                 {
@@ -4722,71 +4611,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             // replace the order being typed (orders are opened for editing explicitly, see EditDeliveryOrder).
 
-            if (pnlForm.Visible) { UpdateCompleteOrderButton(); return; }
+            if (pnlForm.Visible) return;
 
             if (gridDispatch.SelectedRows.Count > 0 && gridDispatch.SelectedRows[0].DataBoundItem is Delivery d)
             {
                 BindDeliveryToForm(d);
             }
-            UpdateCompleteOrderButton();
 
         }
 
         // ------------------------------------------------------------------ Order completion
-
-        private const string AwaitingCompletionFilter = "__AwaitingCompletion";
 
         private const string AllOrdersFilter = "__AllOrders";
 
         /// <summary>Completed or cancelled: the order is finished and leaves the active list.</summary>
 
         private static bool IsFinished(Delivery d) => RowMenu.Is(d.Status, "Completed", "Cancelled");
-
-        internal const string CompleteCellText = "✔ Complete";
-
-        private void WireRowCompleteButtons()
-
-        {
-
-            gridDispatch.CellClick += (s, e) =>
-
-            {
-
-                if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
-
-                if (gridDispatch.Columns[e.ColumnIndex].DataPropertyName != "Status") return;
-
-                if (gridDispatch.Rows[e.RowIndex].DataBoundItem is Delivery d && IsOnTheRoad(d))
-
-                {
-
-                    gridDispatch.ClearSelection();
-
-                    gridDispatch.Rows[e.RowIndex].Selected = true;
-
-                    CompleteSelectedOrder(d);
-
-                }
-
-            };
-
-            gridDispatch.CellMouseEnter += (s, e) =>
-
-            {
-
-                if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
-
-                bool hot = gridDispatch.Columns[e.ColumnIndex].DataPropertyName == "Status" &&
-
-                           gridDispatch.Rows[e.RowIndex].DataBoundItem is Delivery d && IsOnTheRoad(d);
-
-                gridDispatch.Cursor = hot ? Cursors.Hand : Cursors.Default;
-
-            };
-
-            gridDispatch.MouseLeave += (s, e) => gridDispatch.Cursor = Cursors.Default;
-
-        }
 
         /// <summary>On the road: in transit / delayed, or its departure time has passed (the auto check may not have run yet).</summary>
 
@@ -4806,17 +4646,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         }
 
-        /// <summary>Complete is allowed once the truck is on the road — including when it arrives early.</summary>
-
-        private static bool CanCompleteOrder(Delivery? d) => IsOnTheRoad(d);
-
         private void StartTripNow(Delivery d)
 
         {
 
             var leaves = MJdatabase.DepartureDateTime(d);
 
-            if (MessageBox.Show($"Start dispatch {d.DispatchNumber} now?\n\nIt is set to leave at {Fmt.ShortDateTime(leaves)}. Use this when the truck left early — the order goes Current and can be completed when it arrives.",
+            if (MessageBox.Show($"Start dispatch {d.DispatchNumber} now?\n\nIt is set to leave at {Fmt.ShortDateTime(leaves)}. Use this when the truck left early — the order goes Current; its trip report completes it.",
 
                     "Start trip now", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
 
@@ -4839,30 +4675,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (gridDispatch.SelectedRows.Count > 0 && gridDispatch.SelectedRows[0].DataBoundItem is Delivery d) return d;
 
             return selectedDelivery;
-
-        }
-
-        private void UpdateCompleteOrderButton()
-
-        {
-
-            if (btnCompleteOrder == null) return;
-
-            var d = GetGridSelectedDelivery();
-
-            bool can = CanCompleteOrder(d);
-
-            btnCompleteOrder.Enabled = can;
-
-            if (can && d != null && MJdatabase.IsAwaitingCompletion(d))
-
-                btnCompleteOrder.Text = $"✔ Complete {d.DispatchNumber}";
-
-            else
-
-                btnCompleteOrder.Text = "✔ Complete order";
-
-            btnCompleteOrder.Invalidate();
 
         }
 
@@ -4897,116 +4709,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Text added to the "completed"/"cancelled" notice when the order is about to leave the list.</summary>
 
         private string FinishedNote => showFinished ? "" : " · moved to finished orders (Show finished or Order History)";
-
-        private void UpdateAwaitingCompletionBadge()
-
-        {
-
-            if (btnAwaitingCompletion == null) return;
-
-            int n = allDispatches.Count(MJdatabase.IsAwaitingCompletion);
-
-            btnAwaitingCompletion.Visible = n > 0 || currentStatusFilter == AwaitingCompletionFilter;
-
-            btnAwaitingCompletion.Text = currentStatusFilter == AwaitingCompletionFilter
-
-                ? $"⏰ {n} awaiting completion ✕"
-
-                : $"⏰ {n} awaiting completion";
-
-        }
-
-        private void CompleteSelectedOrder(Delivery? target = null)
-
-        {
-
-            var d = target ?? GetGridSelectedDelivery();
-
-            if (d == null)
-
-            {
-
-                QuietBox.Show("Please select a dispatch order in the table first.", "Select an Order", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                return;
-
-            }
-
-            if (!CanCompleteOrder(d))
-
-            {
-
-                if (RowMenu.Is(d.Status, "Completed", "Cancelled"))
-
-                    QuietBox.Show($"Dispatch #{d.DispatchNumber} is already {d.Status.ToLowerInvariant()}.", "Complete Order", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                else if (MessageBox.Show($"Dispatch #{d.DispatchNumber} hasn't left yet — it goes in transit automatically at {Fmt.ShortDateTime(MJdatabase.DepartureDateTime(d))}.\n\nDid the truck already leave? Click Yes to start the trip now.", "Not on the road yet", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-
-                    StartTripNow(d);
-
-                return;
-
-            }
-
-            int days = Math.Max(0, (DateTime.Today - d.DispatchDate.Date).Days);
-
-            string age = days == 0 ? "today" : days == 1 ? "1 day ago" : $"{days} days ago";
-
-            string notStarted = DateTime.Today == d.DispatchDate.Date ? "\n\nArrived early? That's fine — completing it now frees the truck and crew for the next trip." : "";
-
-            var confirm = MessageBox.Show(
-
-                $"Mark this order as COMPLETED?\n\n" +
-
-                $"Dispatch #:  {d.DispatchNumber}\n" +
-
-                $"Client:  {d.ClientName}\n" +
-
-                $"Truck:  {d.TruckInfo}\n" +
-
-                $"Driver:  {d.DriverName}\n" +
-
-                $"Dispatched:  {Fmt.Date(d.DispatchDate)} ({age})" +
-
-                notStarted +
-
-                "\n\nThis frees the truck, driver and aides, and closes the linked loading schedule. " +
-
-                "You can still file the trip report afterwards.",
-
-                "Complete Order", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
-            if (confirm != DialogResult.Yes) return;
-
-            var (ok, message) = MJdatabase.CompleteDelivery(d.Id, SessionContext.CurrentUsername);
-
-            if (!ok)
-
-            {
-
-                MessageBox.Show(message, "Complete Order", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-
-                return;
-
-            }
-
-            ToastHelper.ShowToast(this, message + FinishedNote, ToastType.Success);
-
-            if (selectedDelivery != null && selectedDelivery.Id == d.Id)
-
-            {
-
-                ClearFields();
-
-                SetFormVisibility(false);
-
-            }
-
-            LoadDropdownsAndGrid();
-
-            try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
-
-        }
 
         private void HandleDispatchNumberInput()
         {
@@ -5091,7 +4793,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 PopulateRouteStoresGrid(matchedDspRoute, savedStops);
                 CalculateCratesAndRecommendation();
                 UpdateDestinationHint();
-                lblFormHeader.Text = $"Dispatch #{selectedDelivery.DispatchNumber}  ·  {(MJdatabase.IsAwaitingCompletion(selectedDelivery) ? "For Completion" : StatusText.Display(selectedDelivery.Status))}";
+                lblFormHeader.Text = $"Dispatch #{selectedDelivery.DispatchNumber}  ·  {StatusText.Display(selectedDelivery.Status)}";
 
             }
             finally
@@ -6411,13 +6113,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-        /// <summary>Active first: awaiting completion, in transit, delayed, scheduled; then completed, then cancelled.</summary>
+        /// <summary>Active first: in transit, delayed, scheduled; then completed, then cancelled.</summary>
 
         private static int StatusRank(Delivery d)
 
         {
-            if (MJdatabase.IsAwaitingCompletion(d)) return 0;
-
             string status = d.Status ?? "";
 
             if (RowMenu.Is(status, "In Transit")) return 1;
@@ -6448,15 +6148,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             else if (currentStatusFilter != AllOrdersFilter)
 
             {
-                if (currentStatusFilter == AwaitingCompletionFilter)
-
-                {
-
-                    query = query.Where(MJdatabase.IsAwaitingCompletion);
-
-                }
-
-                else if (currentStatusFilter == "Scheduled" || currentStatusFilter == "Pending")
+                if (currentStatusFilter == "Scheduled" || currentStatusFilter == "Pending")
 
                 {
                     query = query.Where(d => string.Equals(d.Status, "Scheduled", StringComparison.OrdinalIgnoreCase) || string.Equals(d.Status, "Pending", StringComparison.OrdinalIgnoreCase));
@@ -6499,13 +6191,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             UpdateDispatchSummary(filtered);
 
-            string filterTag = currentStatusFilter == AwaitingCompletionFilter ? " [Awaiting completion]"
-
-                : currentStatusFilter == AllOrdersFilter ? " [All orders]"
+            string filterTag = currentStatusFilter == AllOrdersFilter ? " [All orders]"
 
                 : !string.IsNullOrEmpty(currentStatusFilter) ? $" [{currentStatusFilter}]" : "";
-
-            UpdateAwaitingCompletionBadge();
 
             UpdateShowFinishedButton();
 

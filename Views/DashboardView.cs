@@ -542,9 +542,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tCrates.Caption = $"Crates {when}";
             tCrates.Value = crates.ToString("N0");
             tCrates.Note = $"G {inScope.Sum(d => d.GCrate):N0}  ·  E {inScope.Sum(d => d.ECrate):N0}";
-            var busyTrucks = dels.Where(d => Active(d.Status)).Select(d => d.TruckId).Where(i => i > 0).ToHashSet();
+            var holdNow = DateTime.Now;   // on the road for 24+ hours: truck and crew are free again (MJdatabase.HoldsResources)
+            var busyTrucks = dels.Where(d => Active(d.Status) && MJdatabase.HoldsResources(d, holdNow)).Select(d => d.TruckId).Where(i => i > 0).ToHashSet();
             var busyCrew = new HashSet<int>();
-            foreach (var d in dels.Where(d => Active(d.Status))) foreach (var (id, _) in MJdatabase.GetDeliveryCrewIds(d)) busyCrew.Add(id);
+            foreach (var d in dels.Where(d => Active(d.Status) && MJdatabase.HoldsResources(d, holdNow))) foreach (var (id, _) in MJdatabase.GetDeliveryCrewIds(d)) busyCrew.Add(id);
             int ready = data.Trucks.Count(t => MJdatabase.IsTruckReadyStatus(t.Status) && !busyTrucks.Contains(t.Id));
             int maint = data.Trucks.Count(t => MJdatabase.IsTruckBlockedStatus(t.Status) && !MJdatabase.IsDecommissioned(t.Status));
             tTrucks.Value = $"{ready} of {data.Trucks.Count}";
@@ -597,7 +598,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 foreach (var d in dels.Where(d => RowMenu.Is(d.Status, "Delayed") || (RowMenu.Is(d.Status, "In Transit") && d.DispatchDate.Date < DateTime.Today)).OrderBy(d => d.DispatchDate).Take(10))
                 {
                     var dd = d;
-                    items.Add(new ActionList.Item(AppTheme.Warning, $"{d.DispatchNumber} is still on the road", $"Left {Fmt.Short(d.DispatchDate)} · {d.ClientName} · mark it completed once delivered", "Open", () => Forms.DispatchDetailsDialog.ShowFor(this, dd), "Dispatches", 1, d.DispatchDate));
+                    items.Add(new ActionList.Item(AppTheme.Warning, $"{d.DispatchNumber} is still on the road", $"Left {Fmt.Short(d.DispatchDate)} · {d.ClientName} · file its trip report once delivered", "Open", () => Forms.DispatchDetailsDialog.ShowFor(this, dd), "Dispatches", 1, d.DispatchDate));
                 }
                 if (needReport.Count == 1)
                 {

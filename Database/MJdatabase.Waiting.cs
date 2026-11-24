@@ -111,7 +111,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return rows.OrderByDescending(r => r.DaysWaiting).ThenBy(r => r.Number, StringComparer.OrdinalIgnoreCase).ToList();
         }
 
-        /// <summary>Completed dispatches that cannot be billed yet because their trip report is missing or only a draft.</summary>
+        /// <summary>Dispatches that wait for their trip report: Completed ones (old data) and ones on the road (In Transit / Delayed) whose departure time has passed, with no report or only a draft.</summary>
         public static List<WaitingReportRow> GetTripsWaitingForTripReport()
         {
             DateTime today = DateTime.Today;

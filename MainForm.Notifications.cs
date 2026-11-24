@@ -25,8 +25,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         switch (module)
                         {
                             case "tripreports":
-                                if (DispatchGate.IsCompleted(delivery.Status)) OpenTripReportForDispatch(delivery);
-                                else { NavigateToOperations("Dispatch"); DispatchDetailsDialog.ShowFor(this, delivery); ToastHelper.ShowToast(this, $"{delivery.DispatchNumber} isn't completed yet — mark it complete to file its trip report.", ToastType.Info); }
+                                if (DispatchGate.CanFileTripReport(delivery)) OpenTripReportForDispatch(delivery);
+                                else { NavigateToOperations("Dispatch"); DispatchDetailsDialog.ShowFor(this, delivery); ToastHelper.ShowToast(this, $"{delivery.DispatchNumber} hasn't left yet — its trip report can be filed once the truck is on the road.", ToastType.Info); }
                                 return;
                             case "incidents":
                                 ShowIncidentsForDispatch(delivery.DispatchNumber);

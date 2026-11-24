@@ -766,7 +766,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tmrOperationalAlerts.Start();
         }
 
-        /// <summary>Nov 17: when the next In Transit dispatch reaches 24 hours after departure (see MJdatabase.IsAwaitingCompletion).</summary>
+        /// <summary>When the next dispatch on the road reaches 24 hours after departure: its truck, driver and aides are freed then (see MJdatabase.ReleaseResourcesAfterWait).</summary>
         private DateTime? nextCompletionDue;
 
         private void SetupAutoTransitCheckTimer()
@@ -777,8 +777,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try
                 {
                     var result = MJdatabase.RunOperationalLifecycleAutomation();
-                    // Nov 17: a dispatch that has just reached 24 hours after departure turns from Current to Complete on screen.
+                    // A dispatch that has just reached 24 hours after departure frees its truck and crew (it stays Current until its trip report is finished).
                     bool completionDue = nextCompletionDue.HasValue && DateTime.Now >= nextCompletionDue.Value;
+                    if (completionDue) MJdatabase.ReleaseResourcesAfterWait();
                     nextCompletionDue = MJdatabase.NextCompletionDue();   // re-read every tick: covers orders started by hand ("Start trip now") too
                     bool anyChanged = result.transitStarted > 0 || result.invoicesOverdue > 0 || result.schedulesPastDue > 0 || completionDue;
                     if (anyChanged)
@@ -1213,7 +1214,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public void OpenTripReportForDispatch(Delivery delivery)
         {
             delivery = DispatchGate.Fresh(delivery);
-            if (!DispatchGate.RequireCompleted(this, delivery, "file its trip report")) return;
+            if (!DispatchGate.RequireTripReportReady(this, delivery)) return;
             GetOperationsHub("TripReports")?.OpenTripReportForDispatch(delivery);
         }
         public void ShowTripReportsForDispatch(string dispatchNumber)

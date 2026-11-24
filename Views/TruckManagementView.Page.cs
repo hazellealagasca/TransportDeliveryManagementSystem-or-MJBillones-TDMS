@@ -75,8 +75,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             try
             {
+                var now = DateTime.Now;
                 busyTruckIds = MJdatabase.GetDeliveries()
-                    .Where(d => RowMenu.Is(d.Status, "Scheduled", "Pending", "In Transit", "Rescheduled", "Dispatched", "Delayed"))
+                    .Where(d => RowMenu.Is(d.Status, "Scheduled", "Pending", "In Transit", "Rescheduled", "Dispatched", "Delayed") && MJdatabase.HoldsResources(d, now))
                     .Select(d => d.TruckId).Where(id => id > 0).ToHashSet();
             }
             catch { busyTruckIds = new HashSet<int>(); }

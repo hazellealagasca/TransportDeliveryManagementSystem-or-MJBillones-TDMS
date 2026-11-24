@@ -1170,7 +1170,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 var d = MJdatabase.GetDeliveryById(id);
                 if (d == null) continue;
-                if (!DispatchGate.IsCompleted(d.Status)) problems.Add($"{d.DispatchNumber} is still \"{d.Status}\" — mark it completed in Dispatch first");
+                if (!DispatchGate.IsCompleted(d.Status)) problems.Add($"{d.DispatchNumber} is still \"{d.Status}\" — finish its trip report first (that completes the dispatch)");
                 else if (billed.TryGetValue(id, out var other)) problems.Add($"{d.DispatchNumber} is already billed on {other}");
                 // The statement is made from completed trip reports: a report voided after the trip was added can't be billed.
                 else if (!reported.Contains(id)) problems.Add($"{d.DispatchNumber} has no saved trip report any more (it may have been voided) — file it again or remove these rows");

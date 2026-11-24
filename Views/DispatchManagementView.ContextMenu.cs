@@ -99,7 +99,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try { invoice = MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == d.Id); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
             try { incidents = MJdatabase.GetIncidentReports().Count(i => i.DeliveryId == d.Id); } catch (System.Exception swx3) { ErrLog.Swallowed(swx3); }
             bool active = IsActiveStatus(d), completed = IsCompletedStatus(d), cancelled = IsCancelledStatus(d);
-            string status = MJdatabase.IsAwaitingCompletion(d) ? "Awaiting completion" : StatusText.Display(d.Status);
+            string status = StatusText.Display(d.Status);
             string client = string.IsNullOrWhiteSpace(d.ClientName) ? "No client" : d.ClientName;
             m.Items.AddRange(Header(d.DispatchNumber, $"{client}  ·  {Fmt.Short(d.DispatchDate)}  ·  {status}"));
             m.Items.Add(new ToolStripSeparator());
@@ -110,20 +110,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // What to do next, depending on where the order stands
             if (active)
             {
-                if (IsOnTheRoad(d))
-                    m.Items.Add(Item("✔  Mark order complete (arrived)", () => CompleteSelectedOrder(d), color: AppTheme.SuccessText));
-                else
-                {
+                if (!IsOnTheRoad(d))
                     m.Items.Add(Item($"🚚  Start trip now (set to leave {Fmt.ShortDateTime(MJdatabase.DepartureDateTime(d))})", () => StartTripNow(d), enabled: d.DispatchDate.Date <= DateTime.Today));
-                    m.Items.Add(Item("✔  Complete — available once the truck is on the road", () => { }, enabled: false));
-                }
                 m.Items.Add(Item("📅  Reschedule…", () => RescheduleOrder(d)));
             }
             if (!cancelled)
             {
-                m.Items.Add(completed || trip != null
+                m.Items.Add(completed || trip != null || DispatchGate.CanFileTripReport(d)
                     ? Item(trip == null ? "📝  File trip report" : $"📝  Open trip report ({trip.TripReportNumber})", () => MainForm.Instance?.OpenTripReportForDispatch(d))
-                    : Item("📝  Trip report — mark the order complete first", () => { }, enabled: false));
+                    : Item("📝  Trip report — available once the truck leaves", () => { }, enabled: false));
                 if (completed && invoice != null)
                 {
                     m.Items.Add(
@@ -175,8 +170,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             decimal crates = list.Sum(x => x.TotalCrates > 0 ? x.TotalCrates : x.GCrate + x.ECrate);
             m.Items.AddRange(Header($"{list.Count} orders selected", $"{crates:N0} crates  ·  {activeOnes.Count} still active"));
             m.Items.Add(new ToolStripSeparator());
-            m.Items.Add(Item(activeOnes.Count > 0 ? $"✔  Mark {activeOnes.Count} active order{(activeOnes.Count == 1 ? "" : "s")} complete" : "✔  Mark complete (none active)",
-                () => CompleteMany(activeOnes), enabled: activeOnes.Count > 0, color: activeOnes.Count > 0 ? AppTheme.SuccessText : (Color?)null));
+
             m.Items.Add(Item($"🖨  Print loading sheet for {list.Count} orders", () => PrintLoadingSheet(list), "Ctrl+P"));
             m.Items.Add(new ToolStripSeparator());
             m.Items.Add(Sub("📋  Copy",
@@ -233,25 +227,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 LoadDropdownsAndGrid();
                 ToastHelper.ShowToast(this, $"{d.DispatchNumber} rescheduled to {Fmt.Short(dlg.RescheduledDate)}", ToastType.Success);
             }
-        }
-        private void CompleteMany(List<Delivery> list)
-        {
-            if (list.Count == 0) return;
-            if (list.Count == 1) { CompleteSelectedOrder(list[0]); return; }
-            var confirm = MessageBox.Show($"Mark these {list.Count} orders as completed?\n\n" + string.Join("\n", list.Take(12).Select(x => $"• {x.DispatchNumber}  ({x.ClientName}, {Fmt.Short(x.DispatchDate)})")) + (list.Count > 12 ? $"\n• … and {list.Count - 12} more" : "") +
-                "\n\nThis frees their trucks, drivers and aides. Trip reports can still be filed afterwards.", "Complete orders", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm != DialogResult.Yes) return;
-            int ok = 0;
-            var failed = new List<string>();
-            foreach (var d in list)
-            {
-                var (success, message) = MJdatabase.CompleteDelivery(d.Id, SessionContext.CurrentUsername);
-                if (success) ok++; else failed.Add($"{d.DispatchNumber}: {message}");
-            }
-            LoadDropdownsAndGrid();
-            try { MainForm.Instance?.UpdateHeaderKpiBadges(); } catch (System.Exception swx5) { ErrLog.Swallowed(swx5); }
-            if (failed.Count > 0) MessageBox.Show($"{ok} completed. These could not be completed:\n\n" + string.Join("\n", failed), "Complete orders", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            else ToastHelper.ShowToast(this, $"{ok} orders marked complete" + FinishedNote, ToastType.Success);
         }
         private void CancelOrder(Delivery d)
         {

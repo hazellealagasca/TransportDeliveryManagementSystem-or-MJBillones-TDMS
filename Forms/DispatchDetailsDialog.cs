@@ -246,14 +246,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Crew? FindCrew(int id) => id > 0 ? crews.FirstOrDefault(c => c.Id == id) : null;
         private string StatusLabel()
         {
-            if (IsInTransit && MJdatabase.IsAwaitingCompletion(del)) return "Awaiting completion";
             return string.IsNullOrWhiteSpace(del.Status) ? "Scheduled" : StatusText.Display(del.Status);
         }
         private (Color back, Color fore) StatusColors()
         {
             if (IsCompleted) return (AppTheme.SuccessSoft, AppTheme.SuccessText);
             if (IsCancelled) return (AppTheme.DangerSoft, AppTheme.DangerText);
-            if (IsInTransit) return MJdatabase.IsAwaitingCompletion(del) ? (AppTheme.WarningSoft, AppTheme.WarningText) : (AppTheme.InfoSoft, AppTheme.InfoText);
+            if (IsInTransit) return (AppTheme.InfoSoft, AppTheme.InfoText);
             if (string.Equals(del.Status, "Rescheduled", StringComparison.OrdinalIgnoreCase)) return (AppTheme.AccentSoft, AppTheme.AccentText);
             return (AppTheme.WarningSoft, AppTheme.WarningText);
         }
@@ -380,18 +379,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else if (IsInTransit)
             {
-                text = MJdatabase.IsAwaitingCompletion(del)
-                    ? $"On the road since {Fmt.Short(del.DispatchDate)} ({daysAgo} day{(daysAgo == 1 ? "" : "s")}). Mark it complete once the truck is back."
-                    : "The truck is on the road. Mark the order complete when it returns.";
-                back = MJdatabase.IsAwaitingCompletion(del) ? AppTheme.WarningSoft : AppTheme.InfoSoft;
-                fore = MJdatabase.IsAwaitingCompletion(del) ? AppTheme.WarningText : AppTheme.InfoText;
-                actions.Add(ActionButton("✔  Mark order complete", "primary", CompleteOrder));
+                text = daysAgo > 0
+                    ? $"On the road since {Fmt.Short(del.DispatchDate)} ({daysAgo} day{(daysAgo == 1 ? "" : "s")}). File the trip report when the trip is done: finishing it completes this order."
+                    : "The truck is on the road. File the trip report when the trip is done: finishing it completes this order.";
+                back = AppTheme.InfoSoft; fore = AppTheme.InfoText;
+                if (MJdatabase.CanFileTripReport(del)) actions.Add(ActionButton(trip == null ? "📝  File trip report" : "📝  Open trip report", "primary", OpenTripReport));
             }
             else if (IsActiveOrder)
             {
                 text = daysAgo < 0
                     ? $"Departs in {-daysAgo} day{(daysAgo == -1 ? "" : "s")}, on {Fmt.DayShort(del.DispatchDate)} at {del.DepartureTime}."
-                    : daysAgo == 0 ? $"Departs today at {del.DepartureTime}." : $"Was due to leave {daysAgo} day{(daysAgo == 1 ? "" : "s")} ago and hasn't been marked in transit or complete.";
+                    : daysAgo == 0 ? $"Departs today at {del.DepartureTime}." : $"Was due to leave {daysAgo} day{(daysAgo == 1 ? "" : "s")} ago and hasn't been marked in transit.";
                 back = AppTheme.AccentSoft; fore = AppTheme.AccentText;
                 actions.Add(ActionButton("📅  Reschedule", "secondary", RescheduleOrder));
                 actions.Add(ActionButton("✎  Edit order", "primary", EditOrder));
@@ -750,8 +748,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             else
             {
-                items.Add(DocRow("📝", "Trip report", IsCompleted ? "Not filed yet. File it to record store sign-offs, returned crates and crew pay." : "Filed after the trip is delivered.",
-                    IsCompleted ? ("File trip report", "primary", OpenTripReport) : default));
+                bool canReport = IsCompleted || MJdatabase.CanFileTripReport(del);
+                items.Add(DocRow("📝", "Trip report", IsCompleted ? "Not filed yet. File it to record store sign-offs, returned crates and crew pay." : canReport ? "Not filed yet. Finishing it completes this order." : "Filed once the truck has left.",
+                    canReport ? ("File trip report", "primary", OpenTripReport) : default));
             }
             // Invoice
             if (invoice != null)
@@ -960,10 +959,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 left.Controls.Add(btnRes);
                 if (Views.DispatchManagementView.IsOnTheRoad(del))
                 {
-                    var btnComplete = MakeButton("✔  Complete", "primary", D(124));
-                    btnComplete.Click += (s, e) => CompleteOrder();
-                    tips.SetToolTip(btnComplete, "The truck arrived (even if early): mark the order delivered and free the truck and crew");
-                    left.Controls.Add(btnComplete);
+                    if (MJdatabase.CanFileTripReport(del))
+                    {
+                        var btnTripRep = MakeButton(trip == null ? "📝  File trip report" : "📝  Trip report", "primary", D(160));
+                        btnTripRep.Click += (s, e) => OpenTripReport();
+                        tips.SetToolTip(btnTripRep, "Finishing the trip report completes this order and frees the truck and crew");
+                        left.Controls.Add(btnTripRep);
+                    }
                 }
                 else
                 {
@@ -1091,23 +1093,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (MessageBox.Show(this, $"Start dispatch {del.DispatchNumber} now? It is set to leave at {Fmt.ShortDateTime(MJdatabase.DepartureDateTime(del))}.", "Start trip now", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
             var (ok, message) = MJdatabase.StartTripNow(del.Id, SessionContext.CurrentUsername);
             if (!ok) { MessageBox.Show(this, message, "Start trip now", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
-            RefreshParent();
-            Reload(del);
-            ToastHelper.ShowToast(this, message, ToastType.Success);
-        }
-        private void CompleteOrder()
-        {
-            if (!IsActiveOrder) return;
-            var confirm = MessageBox.Show(this,
-                $"Mark dispatch {del.DispatchNumber} as completed?\n\nThis frees the truck, driver and aides and closes the linked loading schedule. You can still file the trip report afterwards.",
-                "Complete order", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm != DialogResult.Yes) return;
-            var (ok, message) = MJdatabase.CompleteDelivery(del.Id, SessionContext.CurrentUsername);
-            if (!ok)
-            {
-                MessageBox.Show(this, message, "Complete order", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
             RefreshParent();
             Reload(del);
             ToastHelper.ShowToast(this, message, ToastType.Success);

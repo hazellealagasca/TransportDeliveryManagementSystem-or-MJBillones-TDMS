@@ -9,7 +9,7 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.F
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
 {
-    /// <summary>Sort and status pickers for the dispatch list. Active first by default: awaiting completion, in transit, delayed, scheduled; finished orders last.</summary>
+    /// <summary>Sort and status pickers for the dispatch list. Active first by default: in transit, delayed, scheduled; finished orders last.</summary>
     public partial class DispatchManagementView
     {
         private ChoiceChip? cbSortBy, cbStatusPick;
@@ -28,7 +28,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static readonly (string Label, string Filter)[] StatusOptions =
         {
             ("Active orders", ""),
-            ("Awaiting completion", AwaitingCompletionFilter),
             ("Scheduled", "Scheduled"),
             ("Current", "In Transit"),
             ("Delayed", "Delayed"),

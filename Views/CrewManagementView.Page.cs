@@ -45,7 +45,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 var set = new HashSet<int>();
-                foreach (var d in MJdatabase.GetDeliveries().Where(d => RowMenu.Is(d.Status, "Scheduled", "Pending", "In Transit", "Rescheduled", "Dispatched", "Delayed")))
+                var now = DateTime.Now;
+                foreach (var d in MJdatabase.GetDeliveries().Where(d => RowMenu.Is(d.Status, "Scheduled", "Pending", "In Transit", "Rescheduled", "Dispatched", "Delayed") && MJdatabase.HoldsResources(d, now)))
                     foreach (var (id, _) in MJdatabase.GetDeliveryCrewIds(d)) set.Add(id);
                 busyCrewIds = set;
             }

@@ -93,13 +93,13 @@ public static partial class Checks
 
 public static partial class Checks
 {
-    /// <summary>Trip Reports opens on Completed dispatches with no finished report (none, or only a Draft).</summary>
+    /// <summary>Trip Reports opens on Completed dispatches (and ones that have left) with no finished report (none, or only a Draft); a Scheduled one is not listed.</summary>
     [Check]
     public static string AwaitingReport_ListsCompletedWithoutFinishedReport()
     {
         Fresh(); RunBackfill();
         int none = Seed.Delivery(), draft = Seed.Delivery(), done = Seed.Delivery(), billed = Seed.Delivery(), open = Seed.Delivery(), voided = Seed.Delivery();
-        Exec("UPDATE Deliveries SET Status='Completed'"); Exec("UPDATE Deliveries SET Status='In Transit' WHERE Id=@i", ("@i", open));
+        Exec("UPDATE Deliveries SET Status='Completed'"); Exec("UPDATE Deliveries SET Status='Scheduled' WHERE Id=@i", ("@i", open));   // a dispatch that has not left: no trip report yet (an In Transit one that has left is covered by AutoCompleteByTripReport)
         int rd = Seed.TripReport(draft); Exec("UPDATE TripReports SET Status='Draft' WHERE Id=@i", ("@i", rd));
         Seed.TripReport(done);
         int rb = Seed.TripReport(billed); Exec("UPDATE TripReports SET Status='Invoiced' WHERE Id=@i", ("@i", rb));
@@ -118,7 +118,7 @@ public static partial class Checks
     {
         Fresh(); RunBackfill();
         int done = Seed.Delivery(), open = Seed.Delivery();
-        Exec("UPDATE Deliveries SET Status='Completed'"); Exec("UPDATE Deliveries SET Status='In Transit' WHERE Id=@i", ("@i", open));
+        Exec("UPDATE Deliveries SET Status='Completed'"); Exec("UPDATE Deliveries SET Status='Scheduled' WHERE Id=@i", ("@i", open));   // a dispatch that has not left: no trip report yet (an In Transit one that has left is covered by AutoCompleteByTripReport)
         string n1 = MJdatabase.CreateTripReportForDispatch(done);
         string n2 = MJdatabase.CreateTripReportForDispatch(done);
         long count = Long("SELECT COUNT(*) FROM TripReports WHERE DeliveryId=@d", ("@d", done));
