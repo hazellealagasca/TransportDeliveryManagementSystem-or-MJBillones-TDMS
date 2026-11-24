@@ -62,7 +62,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnCloseForm.Font = new Font("Segoe UI Semibold", 9F);
             // Sticky totals strip right under the header (outside the scrolling body).
             soaStrip = new PaymentSummaryStrip { Cursor = Cursors.Hand };
-            soaStrip.Click += (s, e) => { try { pnlFormBody.ScrollControlIntoView(soaChecklist); } catch (Exception ex) { ErrLog.Swallowed(ex); } };
+            soaStrip.Click += (s, e) => ShowSoaChecklist();
             new ToolTip().SetToolTip(soaStrip, "Live totals of this statement. Click to see the validation checklist.");
             pnlForm.SuspendLayout();
             pnlForm.Controls.Add(soaStrip);
@@ -93,7 +93,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlFormBody.ResumeLayout(true);
             // "n to fix" note left of the buttons in the Save bar.
             lblSaveBlocked = new Label { AutoSize = true, Font = new Font("Segoe UI Semibold", 9.25F), ForeColor = AppTheme.DangerText, Margin = new Padding(0, Dpi(11), Dpi(12), 0), Cursor = Cursors.Hand, UseMnemonic = false };
-            lblSaveBlocked.Click += (s, e) => { try { pnlFormBody.ScrollControlIntoView(soaChecklist); } catch (Exception ex) { ErrLog.Swallowed(ex); } };
+            lblSaveBlocked.Click += (s, e) => ShowSoaChecklist();
             flowFormActions.Controls.Add(lblSaveBlocked);
             // Money boxes: no minus sign, 2 decimals.
             foreach (var n in new[] { numTotalSales, numVat, numNetOfVat, numFuelSurchargeTotal, numWithholdingTax, numTotalAmountDue }) InputGuard.MoneyOnly(n);
@@ -432,7 +432,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Save gate
             btnSaveSoa.Enabled = fails == 0 && !soaSaving;
             lblSaveBlocked.Text = fails > 0 ? $"✗ {fails} to fix before saving" : "";
-            lblSaveBlocked.Visible = fails > 0;
+            lblSaveBlocked.Visible = fails > 0 && OnLastSoaStep;
         }
             // ------------------------------------------------------------------ Ready for a statement (list page)
         private StatementReadyPanel soaReadyBanner = null!;
@@ -471,7 +471,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (DataGridViewRow r in gridPicker.Rows)
                 if (r.Tag is PickRow pr && pr.State == PickState.Ready && !r.Cells["pkPick"].ReadOnly
                     && (onlyInvoiceIds == null || onlyInvoiceIds.Contains(pr.Invoice != null ? pr.Invoice.Id : pr.Delivery.Id))) { r.Cells["pkPick"].Value = true; ticked++; } // trip-report rows (Nov 9) are keyed by their dispatch id
-            if (ticked > 0) { AddTickedDispatches(); SoaShowTab(false); } // show the trip table (type Amount and Fuel surcharge there)
+            if (ticked > 0) { AddTickedDispatches(); } // a new statement always opens on step 1 (the trips are in the table on step 2)
             LoadSoaGuideCache();
             lastGoodClient = cbClient.Text.Trim();
             UpdateSoaGuide();

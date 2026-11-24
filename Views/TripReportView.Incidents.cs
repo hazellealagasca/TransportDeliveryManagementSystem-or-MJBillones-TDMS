@@ -133,8 +133,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>The whole card appears only while the trip-incident switch is on.</summary>
         private void ApplyIncidentFeature()
         {
-            if (cardIncident != null) cardIncident.Visible = IncidentStepOn;
-            UpdateTripStepper();
+            BuildTripWizard();   // 3 steps while the switch is on, 2 (Save on step 2) while it is off
         }
 
         private void ShowIncidentFields()
@@ -142,7 +141,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (pnlIncFields == null || gridInc == null || btnIncRemove == null) return;
             pnlIncFields.Visible = true;
             RefreshIncidentGrid();
-            UpdateTripStepper();
         }
 
         /// <summary>"No" with incident lines on the list asks before taking them off the trip.</summary>
@@ -163,7 +161,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             pnlIncFields.Visible = false;
             RefreshIncidentGrid();
-            UpdateTripStepper();
         }
 
         private void RefreshIncidentGrid()
@@ -219,7 +216,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 RefreshIncidentGrid();
             }
             finally { incidentBusy = false; }
-            UpdateTripStepper();
         }
 
         /// <summary>Nov 18: "🚚 Truck: … · 👤 Driver: … · 🤝 Aides: …" of the trip step 3 belongs to.</summary>
@@ -360,7 +356,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             });
             ClearIncidentFields();
             RefreshIncidentGrid();
-            UpdateTripStepper();
             return true;
         }
 
@@ -370,7 +365,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (line.Id > 0) removedIncidentIds.Add(line.Id);
             tripIncidentLines.Remove(line);
             RefreshIncidentGrid();
-            UpdateTripStepper();
         }
 
         /// <summary>Nov 18: crates not returned, per store (delivered minus returned, E and G, never negative) as in the Trip &amp; Crate Summary.</summary>

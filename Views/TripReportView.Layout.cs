@@ -104,8 +104,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 BackColor = AppTheme.Surface, TextAlign = ContentAlignment.MiddleRight, UseMnemonic = false
             };
             UpdateDeliveredCrateTotals();
+            // The delivered-crate totals (lblDeliveredCrateTotals) are the footer above the action bar, on every step (BuildTripCrateFooter).
             var card2 = CreateSectionCard("1", "Stores, DRs & times", "Each store's arrival and departure time, who received it, its DR numbers and the empties that came back.",
-                pnlMultiDropInfo, lblDeliveredCrateTotals, CreateGap(Dpi(8)), tblTimes, tblManagerNames);
+                pnlMultiDropInfo, tblTimes, tblManagerNames);
+            card2.Name = "pnlStep1Stores";
+            pnlStep1Stores = card2;
             _ = tblCrateTotals; // Nov 6 workflow: no delivered-crate totals or crate cards on the form (the values are still worked out)
             // Nov 6 workflow: crew pay is internal and is recorded in Resources → Crew Trip History, not on the trip report.
             var card4 = CreateSectionCard("2", "Plant gate & sign-off", "Truck times at the plant, the people who signed, and any remarks.",
@@ -115,19 +118,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var card5 = CreateSectionCard("•", "Attachments", "Proof of delivery, receipts, trip sheets and photos for this trip. Drop files in or click Add.", tripAttachments);
             cardIncident = CreateSectionCard("3", "Incident / Damage Report", "Any damaged or missing crates on this trip? Kept for reference only: it never reaches a statement, invoice or receipt.", BuildIncidentStep());
             Features.Bind(this, ApplyIncidentFeature, Features.TripIncidents);
-            pnlFormBody.Controls.Add(card5);
-            pnlFormBody.Controls.Add(CreateSectionSpacer());
+            cardIncident.Name = "pnlStep3Incident";
+            // Step 2 holds the plant gate card and the attachments card.
+            pnlStep2Gate = new Panel { Name = "pnlStep2PlantGate", Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = AppTheme.Canvas, Margin = new Padding(0) };
+            pnlStep2Gate.Controls.Add(card5);
+            pnlStep2Gate.Controls.Add(CreateSectionSpacer());
+            pnlStep2Gate.Controls.Add(card4);
+            // Top to bottom: dispatch card (banner, overview), step header, then the one step shown (FormWizard, see BuildTripWizard).
+            tripHeaderHost = new Panel { Name = "pnlTripStepHeaderHost", Dock = DockStyle.Top, Height = Dpi(64), BackColor = AppTheme.Canvas, Margin = new Padding(0) };
             pnlFormBody.Controls.Add(cardIncident);
-            pnlFormBody.Controls.Add(CreateSectionSpacer());
-            pnlFormBody.Controls.Add(card4);
-            pnlFormBody.Controls.Add(CreateSectionSpacer());
+            pnlFormBody.Controls.Add(pnlStep2Gate);
             pnlFormBody.Controls.Add(card2);
+            pnlFormBody.Controls.Add(tripHeaderHost);
             pnlFormBody.Controls.Add(CreateSectionSpacer());
             pnlFormBody.Controls.Add(card1);
-            pnlFormBody.Controls.Add(CreateSectionSpacer());
-            pnlFormBody.Controls.Add(BuildTripStepper()); // the 4-step bar across the top
             pnlFormBody.ResumeLayout(true);
-            WireStepperRefresh();
+            WirePlantGateValidation();
         }
         private Panel CreateGap(int h) => new Panel { Height = h, BackColor = AppTheme.Surface };
         private Panel CreateSectionSpacer() => new Panel { Dock = DockStyle.Top, Height = Dpi(16), BackColor = AppTheme.Canvas };
@@ -215,6 +221,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Resize -= PnlForm_ResizeCenter;
             pnlForm.Resize += PnlForm_ResizeCenter;
             BuildFormActionBar();
+            BuildTripCrateFooter();
+            BuildTripWizard();
             CenterFormContent();
         }
         private void PnlForm_ResizeCenter(object? sender, EventArgs e) => CenterFormContent();
@@ -225,6 +233,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlFormHeaderBar.Padding = new Padding(side, pnlFormHeaderBar.Padding.Top, side, pnlFormHeaderBar.Padding.Bottom);
             pnlFormBody.Padding = new Padding(side, 0, side + SystemInformation.VerticalScrollBarWidth / 2, Dpi(16));
             pnlFormActionsBar.Padding = new Padding(side, Dpi(12), side, Dpi(12));
+            if (pnlTripCrateFooter != null) pnlTripCrateFooter.Padding = new Padding(side, 0, side, 0);
         }
         private void BuildFormActionBar()
         {
@@ -311,6 +320,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 CenterFormContent();
                 pnlFormBody.AutoScrollPosition = new Point(0, 0);
+                if (!keep.Resuming) wizard?.GoToStep(1);   // a form opens on its first step (a kept draft comes back on the step it was left on)
             }
             if (gridTripReports.Columns.Count > 0)
             {
@@ -371,9 +381,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void ApplyFormMode()
         {
-            btnSave.Visible = !isEditingExistingReport;
-            btnUpdate.Visible = isEditingExistingReport;
-            btnClear.Visible = !isEditingExistingReport;
+            if (wizard == null)
+            {
+                btnSave.Visible = !isEditingExistingReport;
+                btnUpdate.Visible = isEditingExistingReport;
+                btnClear.Visible = !isEditingExistingReport;
+            }   // with the wizard, the last step shows Proceed / Save changes (see BuildTripWizard)
             cbDelivery.Enabled = !isEditingExistingReport;
             SetPickControlsEnabled(!isEditingExistingReport);
             RefreshExtraUi();

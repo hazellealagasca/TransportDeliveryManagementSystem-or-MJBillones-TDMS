@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -8,18 +8,20 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.F
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
 {
     /// <summary>
-    /// Ledger Desk layout of the Statement of Account form (60 / 40). Layout only: the section cards, every field and every handler are the same
-    /// controls, re-homed. Left: the client and statement details, then a two-tab area (② ready service invoices │ ③ trips and stores) so the page
-    /// never scrolls. Right: the live totals tape with the burgundy total slab, the sign-off, and the open problems pinned at the bottom.
+    /// Layout of the Statement of Account form: three step panels, one visible at a time (the wizard itself is in StatementOfAccountView.Wizard.cs).
+    /// Layout only: the section cards, every field and every handler are the same controls, re-homed.
+    ///   Step 1 "Client &amp; trips": the client card, then the read-only list of the client's trips.
+    ///   Step 2 "Trips &amp; totals": the trips table (with the sheet's totals block), the live totals tape with the total amount due, the adjustment reason.
+    ///   Step 3 "Sign-off &amp; save": the sign-off, the open problems (checklist) and, for a statement that can't be edited, its history.
+    /// The totals strip in the header (Sales + fuel, Withholding, Total due) stays on every step.
     /// </summary>
     public partial class StatementOfAccountView
     {
         private Panel? soaCardClient, soaCardPicker, soaCardLines, soaCardTotals, soaCardSign;
         private TapeCard? soaTape;
         private bool soaWorkbench;
-        private Button? btnTabInvoices, btnTabLines;
 
-        private void ApplySoaWorkbench()
+        private void ApplySoaWizard()
         {
             if (soaWorkbench || soaCardClient == null || soaCardPicker == null || soaCardLines == null || soaCardTotals == null || soaCardSign == null) return;
             soaWorkbench = true;
@@ -29,11 +31,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             soaChecklist.FocusResolver = c =>
             {
                 string t = c.Text;
-                if (t.Contains("adjustment reason", StringComparison.OrdinalIgnoreCase) || t.Contains("changed by hand", StringComparison.OrdinalIgnoreCase)) return txtSoaAdjustReason;
-                if (t.Contains("client", StringComparison.OrdinalIgnoreCase)) return cbClient;
-                if (t.Contains("period", StringComparison.OrdinalIgnoreCase)) return dtpPeriodFrom;
-                if (t.Contains("statement date", StringComparison.OrdinalIgnoreCase)) return dtpIssueDate;
-                return gridItems; // everything else is about the trip lines or their invoices
+                Control target = gridItems; // everything else is about the trip lines or their invoices
+                if (t.Contains("adjustment reason", StringComparison.OrdinalIgnoreCase) || t.Contains("changed by hand", StringComparison.OrdinalIgnoreCase)) target = txtSoaAdjustReason;
+                else if (t.Contains("client", StringComparison.OrdinalIgnoreCase)) target = cbClient;
+                else if (t.Contains("period", StringComparison.OrdinalIgnoreCase)) target = dtpPeriodFrom;
+                else if (t.Contains("statement date", StringComparison.OrdinalIgnoreCase)) target = dtpIssueDate;
+                ShowStepFor(target); // the control must be on the step that is showing before it is focused
+                return target;
             };
 
             // ---- the client card: 7 fields in 4 columns instead of 2 (saves a third of its height); the period dates take two columns
@@ -41,74 +45,54 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var fieldGrid = soaCardClient.Controls.OfType<TableLayoutPanel>().FirstOrDefault();
             if (fieldGrid != null) ReflowFieldGrid(fieldGrid, 4, c => c.Controls.Cast<Control>().Any(x => x == pnlDatesHost()));
 
-            // ---- the two tab cards: the tab already says what they are, so their own headers (title + subtitle) are not shown and the padding is tighter
-            foreach (var card in new[] { soaCardPicker, soaCardLines })
-            {
-                int n = card.Controls.Count;
-                if (n >= 2) { card.Controls[n - 1].Visible = false; card.Controls[n - 2].Visible = false; } // the painted header and the 10 px spacer under it
-                card.Padding = new Padding(Dpi(16), Dpi(10), Dpi(16), Dpi(12));
-            }
-
-            // ---- detach the stacked cards, then rebuild as two panes
-            var keep = pnlFormBody.Controls.Cast<Control>().Where(c => c is TextBox).ToList(); // the hidden SOA number box
+            // ---- detach the stacked cards, then rebuild as three step panels
+            var keepBoxes = pnlFormBody.Controls.Cast<Control>().Where(c => c is TextBox).ToList(); // the hidden SOA number box
             foreach (Control c in pnlFormBody.Controls.Cast<Control>().ToList()) pnlFormBody.Controls.Remove(c);
 
-            // ONE page, ONE scroll bar (Nov 9): the whole form scrolls together. Three rows that grow with their content:
-            //   row 1: client card | live totals     row 2 (full width): the two tabs and the table     row 3: sign-off & notes | what needs attention
-            Panel Grow() => new Panel { Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = AppTheme.Canvas, Margin = new Padding(0) };
+            Panel Step(string name) => new Panel { Name = name, Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = AppTheme.Canvas, Margin = new Padding(0), Padding = new Padding(Dpi(24), Dpi(16), Dpi(24), Dpi(16)), Visible = false };
             Panel Gap() => new Panel { Dock = DockStyle.Top, Height = Dpi(14), BackColor = AppTheme.Canvas };
+            // cards dock to the top: the last one added sits highest
+            soaCardClient.Dock = DockStyle.Top; soaCardPicker.Dock = DockStyle.Top; soaCardLines.Dock = DockStyle.Top; soaCardSign.Dock = DockStyle.Top;
+            pnlSoaAdjust.Dock = DockStyle.Top;
 
-            var tabs = new Panel { Dock = DockStyle.Top, Height = Dpi(48), BackColor = AppTheme.Canvas, Padding = new Padding(0, Dpi(6), 0, Dpi(6)) };
-            btnTabInvoices = MakeFormButton("③  Ready service invoices", "primary", Dpi(250));
-            btnTabLines = MakeFormButton("④  Trips and stores on this statement", "secondary", Dpi(310));
-            btnTabInvoices.Dock = DockStyle.Left; btnTabLines.Dock = DockStyle.Left;
-            btnTabInvoices.Click += (s, e) => SoaShowTab(true);
-            btnTabLines.Click += (s, e) => SoaShowTab(false);
-            tabs.Controls.Add(btnTabLines);
-            tabs.Controls.Add(new Panel { Dock = DockStyle.Left, Width = Dpi(8) });
-            tabs.Controls.Add(btnTabInvoices);
-            soaCardLines.Dock = DockStyle.Top; soaCardPicker.Dock = DockStyle.Top; soaCardClient.Dock = DockStyle.Top;
-
-            var topLeft = Grow(); topLeft.Margin = new Padding(0, 0, Dpi(8), 0); topLeft.Controls.Add(soaCardClient);
             soaTape = new TapeCard { EmptyText = "Pick the ready service invoices to see the statement add up.", Dock = DockStyle.Top };
             soaTape.Set("The statement adds up to", Array.Empty<(string, string)>(), "Total amount due", "₱0.00", "");
-            var topRight = Grow(); topRight.Margin = new Padding(Dpi(8), 0, 0, 0); topRight.Controls.Add(soaTape);
+            var tapeHost = new Panel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = AppTheme.Canvas, Margin = new Padding(0) };
+            tapeHost.Controls.Add(soaTape);
 
-            var middle = Grow();
-            middle.Controls.Add(soaCardLines);
-            middle.Controls.Add(soaCardPicker);
-            middle.Controls.Add(tabs);
-            middle.Controls.Add(Gap());
-
-            soaCardSign.Dock = DockStyle.Top; pnlSoaAdjust.Dock = DockStyle.Top;
             BuildSoaHistoryCard(); // shown only when a statement that can't be edited is opened (Nov 8)
-            var bottomLeft = Grow(); bottomLeft.Margin = new Padding(0, 0, Dpi(8), 0);
-            bottomLeft.Controls.Add(soaCardSign);
-            bottomLeft.Controls.Add(Gap());
-            bottomLeft.Controls.Add(pnlSoaAdjust);
-            bottomLeft.Controls.Add(Gap());
-            bottomLeft.Controls.Add(soaHistoryCard!);
-            var bottomRight = Grow(); bottomRight.Margin = new Padding(Dpi(8), 0, 0, 0);
             soaChecklist.Dock = DockStyle.Top;
-            bottomRight.Controls.Add(soaChecklist);
-            var left = topLeft; var right = topRight; var rightScroll = bottomRight;
 
-            var split = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 2, RowCount = 3, BackColor = AppTheme.Canvas, Padding = new Padding(Dpi(24), Dpi(16), Dpi(24), Dpi(16)) };
-            split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60f));
-            split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40f));
-            for (int i = 0; i < 3; i++) split.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            split.Controls.Add(topLeft, 0, 0); split.Controls.Add(topRight, 1, 0);
-            split.Controls.Add(middle, 0, 1); split.SetColumnSpan(middle, 2);
-            split.Controls.Add(bottomLeft, 0, 2); split.Controls.Add(bottomRight, 1, 2);
+            var step1 = Step("pnlStep1ClientInvoices");
+            step1.Controls.Add(soaCardPicker);
+            step1.Controls.Add(Gap());
+            step1.Controls.Add(soaCardClient);
+
+            var step2 = Step("pnlStep2TripsTotals");
+            step2.Controls.Add(pnlSoaAdjust);
+            step2.Controls.Add(Gap());
+            step2.Controls.Add(tapeHost);
+            step2.Controls.Add(Gap());
+            step2.Controls.Add(soaCardLines);
+
+            var step3 = Step("pnlStep3SignSave");
+            step3.Controls.Add(soaChecklist);
+            step3.Controls.Add(Gap());
+            step3.Controls.Add(soaHistoryCard!);
+            step3.Controls.Add(Gap());
+            step3.Controls.Add(soaCardSign);
+
             pnlFormBody.AutoScroll = true;
-            pnlFormBody.Controls.Add(split);
+            pnlFormBody.Controls.Add(step3);
+            pnlFormBody.Controls.Add(step2);
+            pnlFormBody.Controls.Add(step1);
             // the old totals card keeps its boxes (they are read-only and still feed the tape), but is not shown
             soaCardTotals.Visible = false;
             pnlFormBody.Controls.Add(soaCardTotals);
-            foreach (var k in keep) pnlFormBody.Controls.Add(k);
-            Smooth.Enable(split); Smooth.Enable(left); Smooth.Enable(right); Smooth.Enable(rightScroll); Smooth.Enable(pnlFormBody);
+            foreach (var k in keepBoxes) pnlFormBody.Controls.Add(k);
+            Smooth.Enable(step1); Smooth.Enable(step2); Smooth.Enable(step3); Smooth.Enable(pnlFormBody);
 
-            // one slim header: Back + title + the live figures
+            // one slim header: Back + title + the live figures (on every step)
             soaStrip.Compact = true;
             soaStrip.ShowPayment = false;
             soaStrip.FirstCaption = "Sales + fuel"; soaStrip.SecondCaption = "Withholding tax"; soaStrip.NetCaption = "Total due"; // Nov 7: the sheet's total
@@ -120,8 +104,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlFormHeaderBar.Controls.Add(soaStrip); // added last: docks first, the title fills what is left
             pnlFormHeaderBar.Height = Dpi(56);
 
-            btnAddSelected.Click += (s, e) => { if (gridItems.Rows.Count > 0) SoaShowTab(false); };
-            SoaShowTab(true);
+            BuildSoaWizard(step1, step2, step3);
             pnlFormHeaderBar.ResumeLayout(true); pnlFormBody.ResumeLayout(true); pnlForm.ResumeLayout(true);
             CenterFormContent();
         }
@@ -154,18 +137,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             for (int r = 0; r < grid.RowCount; r++) grid.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(66)));
             grid.Height = grid.RowCount * Dpi(66);
             grid.ResumeLayout(true);
-        }
-
-        /// <summary>Shows the ready-invoices card (true) or the trips-and-stores card (false) in the left pane.</summary>
-        private void SoaShowTab(bool invoices)
-        {
-            if (!soaWorkbench || soaCardPicker == null || soaCardLines == null) return;
-            pnlFormBody.SuspendLayout();
-            soaCardPicker.Visible = invoices;
-            soaCardLines.Visible = !invoices;
-            if (btnTabInvoices != null) UIThemeHelper.SetButtonRole(btnTabInvoices, invoices ? "primary" : "secondary");
-            if (btnTabLines != null) UIThemeHelper.SetButtonRole(btnTabLines, invoices ? "secondary" : "primary");
-            pnlFormBody.ResumeLayout(true);
         }
 
         /// <summary>Feeds the totals tape from the (read-only) total boxes.</summary>

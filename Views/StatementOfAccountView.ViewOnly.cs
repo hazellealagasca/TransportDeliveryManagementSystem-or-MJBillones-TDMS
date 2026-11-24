@@ -101,8 +101,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnSaveSoa.Visible = false; btnDeleteSoa.Visible = false; btnClearForm.Visible = false;
             soaChecklist.Visible = false;
             if (pnlSoaAdjust != null) pnlSoaAdjust.Visible = false;
-            if (btnTabInvoices != null) btnTabInvoices.Visible = false;
-            if (btnTabLines != null) SoaShowTab(false);
+            wizard?.GoToStep(2);   // the trips and the figures first; the history is on step 3
+            SyncSoaWizardButtons();
             lblFormHeader.Text = $"Statement  ·  {soa.SoaNumber}  ·  view only";
             FillSoaHistory(soa, why);
             if (soaHistoryCard != null) soaHistoryCard.Visible = true;
@@ -115,10 +115,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             foreach (var undo in soaViewOnlyRestore) { try { undo(); } catch (Exception ex) { ErrLog.Swallowed(ex); } }
             soaViewOnlyRestore.Clear();
             soaViewOnly = false;
-            btnSaveSoa.Visible = true;
             soaChecklist.Visible = true;
-            if (btnTabInvoices != null) btnTabInvoices.Visible = true;
             if (soaHistoryCard != null) soaHistoryCard.Visible = false;
+            SyncSoaWizardButtons();   // Save comes back on the last step
         }
 
         private void LockSoaControls(Control parent)

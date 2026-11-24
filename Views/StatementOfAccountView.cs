@@ -406,7 +406,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Resize += (s, e) => CenterFormContent();
             BuildFormControls();
             InitSoaGuide();
-            if (Features.On(Features.PaymentsWorkbench)) ApplySoaWorkbench(); // Ledger Desk layout (Settings → Features can switch it off)
+            ApplySoaWizard(); // the statement is a 3-step form (Client & service invoices → Trips & totals → Sign-off & save)
         }
         private void CenterFormContent()
         {
@@ -845,7 +845,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             // ---------------- Cards
             var card1 = CreateSectionCard(1, "Client", Features.On(Features.SpecialTrips) ? "Who the statement is for, and whether it bills normal dispatches or special trips (never both)." : "Who the statement is for. The address and TIN come from the client's profile.", gridClient, lblPopulateHint);
-            var cardPicker = CreateSectionCard(2, "Ready service invoices", "Tick the client's service invoices to put on this statement, or type a trip report or dispatch number.", BuildDispatchPicker());
+            var cardPicker = CreateSectionCard(2, "Trips of this client", "Every completed trip report of this client that isn't billed yet is put on this statement. Type a trip report or dispatch number to add one that is missing.", BuildDispatchPicker());
             var card2 = CreateSectionCard(3, "Trips & stores", "Every trip and store billed on this statement.", bar, lblItemsHint, pnlItemsGridHost, lblItemsTotals);
             var card3 = CreateSectionCard(4, "Totals", "VAT, withholding tax and the amount the client pays. They follow the service invoices and can't be typed.", taxLayout, BuildSoaAdjustPanel());
             var card4 = CreateSectionCard(5, "Sign-off", "The service invoices on this statement and the people who prepare and receive it.", gridSign, lblSiHint);
@@ -980,6 +980,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblFormHeader.Text = isEditingExisting && selectedSoa != null
                 ? $"Statement  ·  {selectedSoa.SoaNumber}" + (string.IsNullOrWhiteSpace(selectedSoa.SalesInvoiceNo) ? "" : $"  (SI {selectedSoa.SalesInvoiceNo})")
                 : $"New Statement of Account  ·  {txtSoaNumber.Text}";
+            SyncSoaWizardButtons(); // a saved statement makes every step clickable; Reset belongs to step 1 of a new one
         }
 
         private void SetupGridColumns()
@@ -1221,6 +1222,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (visible)
             {
                 CenterFormContent();
+                if (!keep.Resuming) wizard?.GoToStep(1); // a form opens on its first step (a kept draft comes back on the step it was left on)
                 pnlFormBody.AutoScrollPosition = new Point(0, 0);
                 UpdateItemsSummary();
                 OnSoaFormOpened();
@@ -1539,6 +1541,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             numWithholdingTax.SetSafe(0);
             numTotalAmountDue.SetSafe(0);
             UpdateItemsSummary();
+            wizard?.GoToStep(1); // Reset goes back to step 1
             if (pnlForm.Visible) ApplyFormMode();
         }
 
@@ -1734,7 +1737,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 MessageBox.Show(this.FindForm(), "This statement can't be saved yet:\n\n• " + string.Join("\n• ", soaChecklist.Checks.Where(c => !c.Passed).Select(c => c.Text)),
                     "Check the statement", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                try { pnlFormBody.ScrollControlIntoView(soaChecklist); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+                ShowSoaChecklist();
                 return;
             }
             soaSaving = true;
@@ -1744,15 +1747,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (string.IsNullOrWhiteSpace(cbClient.Text))
                 {
                     MessageBox.Show("Please select or enter the client company name.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    FocusStep(cbClient);
                     return;
                 }
-                if (cbDeliveryType.SelectedIndex < 0) { MessageBox.Show("Please choose the delivery type (REF or DRY).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbDeliveryType.Focus(); return; } // Nov 6
-                if (string.IsNullOrWhiteSpace(txtPreparedBy.Text)) { MessageBox.Show("Please type who prepared this statement (Prepared by).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); txtPreparedBy.Focus(); return; }
-                if (!SoaPreparedByAllowed(txtPreparedBy.Text)) { MessageBox.Show("Prepared by must be a name: letters, spaces, period, hyphen or apostrophe (up to 100 characters).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); txtPreparedBy.Focus(); txtPreparedBy.SelectAll(); return; } // Nov 12
+                if (cbDeliveryType.SelectedIndex < 0) { MessageBox.Show("Please choose the delivery type (REF or DRY).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); FocusStep(cbDeliveryType); return; } // Nov 6
+                if (string.IsNullOrWhiteSpace(txtPreparedBy.Text)) { MessageBox.Show("Please type who prepared this statement (Prepared by).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); FocusStep(txtPreparedBy); return; }
+                if (!SoaPreparedByAllowed(txtPreparedBy.Text)) { MessageBox.Show("Prepared by must be a name: letters, spaces, period, hyphen or apostrophe (up to 100 characters).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); FocusStep(txtPreparedBy); txtPreparedBy.SelectAll(); return; } // Nov 12
 
                 if (gridItems.Rows.Count == 0)
                 {
                     MessageBox.Show("Please add at least one trip or store line to the Statement of Account.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    FocusStep(gridItems);
                     return;
                 }
 
@@ -1760,6 +1765,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (dtpPeriodTo.Value.Date < dtpPeriodFrom.Value.Date)
                 {
                     MessageBox.Show("The period's end date is before its start date.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    FocusStep(dtpPeriodFrom);
                     return;
                 }
                 // A statement creates (or updates) the client's invoice, so it must be for a real amount.
@@ -1769,6 +1775,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         ? $"Total sales is negative (PHP {numTotalSales.Value:N2}). Check the amounts and deductions on the trip lines."
                         : "The total amount due is PHP 0.00. Enter the amount for each trip line before saving.\n\nSaving creates an invoice for the client, so it must be more than PHP 0.00.",
                         "Check amounts", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    FocusStep(gridItems);
                     return;
                 }
                 {
@@ -1777,14 +1784,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (!MJdatabase.IsIndividualClient(cbClient.Text) && tin.Length != 9 && tin.Length != 12)   // Nov 14: the TIN is required for Corporate clients only
                     {
                         MessageBox.Show(FindForm(), tin.Length == 0 ? "The client's TIN is required on a statement. It comes from the client's profile: add it in Master Data › Clients (edit the client), then pick the client again." : "The TIN should have 9 digits (or 12 with the branch code), e.g. 006-896-371-000.", "Client TIN required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        txtClientTin.Focus();
+                        FocusStep(txtClientTin);
                         return;
                     }
                     var noDr = gridItems.Rows.Cast<DataGridViewRow>().Where(r => !r.IsNewRow && DrList.Parse(r.Cells["colDr"].Value?.ToString()).Count == 0).Select(SoaLineLabel).ToList();
                     if (noDr.Count > 0)
                     {
                         MessageBox.Show(FindForm(), "A Delivery Receipt (DR) number is required on every trip line. Missing on:\n\n• " + string.Join("\n• ", noDr.Take(10)) + (noDr.Count > 10 ? $"\n• … and {noDr.Count - 10} more" : "") + "\n\nFill the DR numbers in the Trip Report (stores table), then Refresh lines from trip reports.", "DR number required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        gridItems.Focus();
+                        FocusStep(gridItems);
                         return;
                     }
                     // Nov 10: a DR number is 4 to 8 digits.
@@ -1792,7 +1799,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     if (badDr.Count > 0)
                     {
                         MessageBox.Show(FindForm(), "A DR number must be 4 to 8 digits (numbers only). Fix:\n\n• " + string.Join("\n• ", badDr.Take(10)), "DR number", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        gridItems.Focus();
+                        FocusStep(gridItems);
                         return;
                     }
                 }

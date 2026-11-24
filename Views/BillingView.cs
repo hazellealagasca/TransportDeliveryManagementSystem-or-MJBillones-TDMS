@@ -217,14 +217,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             billNumberGuard = new NumberFieldGuard(txtInvoiceNumber, NumberKind.SI, () => selectedInvoice?.Id ?? 0);
             billNumberGuard.Changed += () => ScheduleBillGuide();
             BuildSoaPicker();
+            BuildBillTapes();
             formKit =new FullPageFormKit(this, tblMasterContent, pnlForm, pnlGridCard, pnlFormHeaderBar, lblFormHeader, btnCloseForm, pnlFormBody, pnlFormActionsBar, "Back to invoices");
             formKit.Build(new[]
             {
-                new FullPageFormKit.Section("Invoice & order", "Which statement of account (or trip) this invoice bills and who it is for.",lblInvoiceNumber, txtInvoiceNumber, billNumberGuard.Message, billNumberGuard.Tick, lblSoa, cbSoa, chkDirectTrip, lblDel, cbDelivery, lblLoadingSchedule, txtLoadingSchedule, lblClient, cbClient),
-                new FullPageFormKit.Section("Amounts", "Gross amount, deductions and the net amount due.", pnlClientSpacer, tblAmounts, pnlAmountsSpacer, pnlNetDue, pnlNetDueSpacer, lblTariffMatch, BuildBillAdjustPanel())
+                new FullPageFormKit.Section("Invoice & statement", "Which statement of account (or trip) this invoice bills and who it is for.",lblInvoiceNumber, txtInvoiceNumber, billNumberGuard.Message, billNumberGuard.Tick, lblSoa, cbSoa, chkDirectTrip, lblDel, cbDelivery, lblLoadingSchedule, txtLoadingSchedule, lblClient, cbClient, new Panel { Height = Dpi(14) }, billTape),
+                new FullPageFormKit.Section("Amounts & save", "The amount, the fuel surcharge and what the invoice adds up to.", pnlClientSpacer, tblAmounts, pnlAmountsSpacer, pnlNetDue, pnlNetDueSpacer, lblTariffMatch, BuildBillAdjustPanel(), new Panel { Height = Dpi(14) }, billNetTape)
             });
             InitBillGuide();
-            if (Features.On(Features.PaymentsWorkbench)) ApplyBillWorkbench(); // Ledger Desk layout (Settings → Features can switch it off)
+            ApplyBillGuideLayout();
+            BuildBillWizard(); // the invoice is a 2-step form (Invoice & statement -> Amounts & save), like New Dispatch Order and the Collection Receipt
             if (btnToggleForm != null)
             {
                 btnToggleForm.Text = "＋ New service invoice";
@@ -265,6 +267,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             // Nov 6: a form is blank whenever it is opened or left.
             if (!visible && pnlForm.Visible && IsHandleCreated && !keep.Keeping) ClearFields();
+            if (visible && !keep.Resuming) wizard?.GoToStep(1); // a form opens on its first step (a kept draft comes back on the step it was left on)
             if (visible) formDirty ??= new FormDirtyTracker(pnlForm);
             if (!keep.Keeping && !(visible && keep.Resuming)) formDirty?.Reset();
             if (visible) keep.Restored(btnToggleForm);
@@ -636,6 +639,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!ValidationHelper.ValidateRequiredCombo(cbClient, "Client Company", valErrors)) firstInvalid ??= cbClient;
                 if (!ValidationHelper.ValidatePositiveNumber(numTotalAmount, "Amount (freight tariff)", valErrors)) firstInvalid ??= numTotalAmount;
 
+                if (valErrors.Count > 0) ShowStepFor(firstInvalid); // the field to fix may be on the other step: show it before focusing
                 if (!ValidationHelper.ShowValidationSummaryIfAny(this, valErrors, firstInvalid))
                 {
                     return;
@@ -661,14 +665,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 string invNum = txtInvoiceNumber.Text.Trim();
                 var siWhy = MJdatabase.CheckSiNumber(invNum, selectedInvoice?.Id ?? 0); // Nov 6: typed, required, never repeated
-                if (siWhy != null) { MessageBox.Show(siWhy, "Service Invoice No.", MessageBoxButtons.OK, MessageBoxIcon.Warning); txtInvoiceNumber.Focus(); return; }
+                if (siWhy != null) { ShowStepFor(txtInvoiceNumber); MessageBox.Show(siWhy, "Service Invoice No.", MessageBoxButtons.OK, MessageBoxIcon.Warning); FocusStep(txtInvoiceNumber); return; }
 
                 var duplicateNum = existingInvoices.Find(i => (selectedInvoice == null || i.Id != selectedInvoice.Id) &&
                     !string.IsNullOrWhiteSpace(i.InvoiceNumber) && i.InvoiceNumber.Equals(invNum, StringComparison.OrdinalIgnoreCase));
                 if (duplicateNum != null)
                 {
+                    ShowStepFor(txtInvoiceNumber);
                     MessageBox.Show($"Invoice Reference Number '{invNum}' is already in use by another invoice (Client: {duplicateNum.ClientName}). Please provide a unique reference number.", "Reference Number Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtInvoiceNumber.Focus();
+                    FocusStep(txtInvoiceNumber);
                     return;
                 }
 
@@ -681,7 +686,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (total <= 0)
                 {
                     MessageBox.Show("Enter the amount. An invoice of PHP 0.00 can't be saved.", "Amount Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    (numTotalAmount.Value <= 0 ? numTotalAmount : numFuel).Focus();
+                    FocusStep(numTotalAmount.Value <= 0 ? numTotalAmount : numFuel);
                     return;
                 }
                 // Nov 7: no deductions on an invoice; the net due is the whole amount.
@@ -740,26 +745,29 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string invNum = txtInvoiceNumber.Text.Trim();
                 if (string.IsNullOrWhiteSpace(invNum))
                 {
+                    ShowStepFor(txtInvoiceNumber);
                     MessageBox.Show("Please enter an Invoice Reference Number.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtInvoiceNumber.Focus();
+                    FocusStep(txtInvoiceNumber);
                     return;
                 }
-                { var siWhy2 = MJdatabase.CheckSiNumber(invNum, selectedInvoice.Id); if (siWhy2 != null) { MessageBox.Show(siWhy2, "Service Invoice No.", MessageBoxButtons.OK, MessageBoxIcon.Warning); txtInvoiceNumber.Focus(); return; } } // Nov 6
+                { var siWhy2 = MJdatabase.CheckSiNumber(invNum, selectedInvoice.Id); if (siWhy2 != null) { ShowStepFor(txtInvoiceNumber); MessageBox.Show(siWhy2, "Service Invoice No.", MessageBoxButtons.OK, MessageBoxIcon.Warning); FocusStep(txtInvoiceNumber); return; } } // Nov 6
 
                 var existingInvoices = MJdatabase.GetInvoices();
                 var duplicateNum = existingInvoices.Find(i => i.Id != selectedInvoice.Id &&
                     !string.IsNullOrWhiteSpace(i.InvoiceNumber) && i.InvoiceNumber.Equals(invNum, StringComparison.OrdinalIgnoreCase));
                 if (duplicateNum != null)
                 {
+                    ShowStepFor(txtInvoiceNumber);
                     MessageBox.Show($"Invoice Reference Number '{invNum}' is already in use by another invoice (Client: {duplicateNum.ClientName}). Please provide a unique reference number.", "Reference Number Already Exists", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtInvoiceNumber.Focus();
+                    FocusStep(txtInvoiceNumber);
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(cbClient.Text))
                 {
+                    ShowStepFor(cbClient);
                     MessageBox.Show("Please pick the client this invoice is for.", "Client Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    cbClient.Focus();
+                    FocusStep(cbClient);
                     return;
                 }
                 selectedInvoice.InvoiceNumber = invNum;
@@ -771,7 +779,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (total <= 0)
                 {
                     MessageBox.Show("Enter the amount. An invoice of PHP 0.00 can't be saved.", "Amount Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    numTotalAmount.Focus();
+                    FocusStep(numTotalAmount);
                     return;
                 }
                 // Nov 7: no deductions on an invoice; the net due is the whole amount.
@@ -955,6 +963,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void ClearFields()
         {
             selectedInvoice = null;
+            wizard?.GoToStep(1); // Reset returns to the first step
             cbDelivery.SelectedIndex = -1; // Nov 7: Clear form frees the trip box again
             cbDelivery.Enabled = true;
             txtInvoiceNumber.Text = "";
@@ -984,10 +993,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bool exists = selectedInvoice != null && !string.IsNullOrWhiteSpace(invNum);
             bool locked = selectedInvoice != null && IsInvoiceLocked(selectedInvoice); // Paid: no Issue and no Update
 
+            saveVisWanted = !exists; updateVisWanted = exists && !locked;
             btnSave.Enabled = !exists;
-            btnSave.Visible = !exists;
             btnUpdate.Enabled = exists && !locked;
-            btnUpdate.Visible = exists && !locked;
+            if (wizard == null) { btnSave.Visible = !exists; btnUpdate.Visible = exists && !locked; }
+            else { wizard.Refresh(); wizardHeader?.Invalidate(); } // Issue / Update show on the last step only; a saved invoice makes every step clickable
             ApplyButtonVisualState(btnSave, !exists, Pal.C(13, 110, 253), Pal.White);
             ApplyButtonVisualState(btnUpdate, exists && !locked, Pal.C(25, 135, 84), Pal.White);
             ScheduleBillGuide(); // the checklist decides whether Issue / Update can be clicked

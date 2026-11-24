@@ -227,10 +227,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try
             {
                 var s = SelectedSoa();
-                if (s == null) { MessageBox.Show(FindForm(), "Pick a Statement of Account to invoice.", "Statement of Account", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+                if (s == null) { ShowStepFor(cbSoa); MessageBox.Show(FindForm(), "Pick a Statement of Account to invoice.", "Statement of Account", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
                 string invNum = txtInvoiceNumber.Text.Trim();
                 var siWhy = MJdatabase.CheckSiNumber(invNum, 0);
-                if (siWhy != null) { MessageBox.Show(FindForm(), siWhy, "Service Invoice No.", MessageBoxButtons.OK, MessageBoxIcon.Warning); txtInvoiceNumber.Focus(); return; }
+                if (siWhy != null) { ShowStepFor(txtInvoiceNumber); MessageBox.Show(FindForm(), siWhy, "Service Invoice No.", MessageBoxButtons.OK, MessageBoxIcon.Warning); FocusStep(txtInvoiceNumber); return; }
                 var inv = MJdatabase.SaveInvoiceForSoa(s.SoaId, invNum, billNumberGuard.CrossTypeConfirmed);
                 BillAfterSave(inv.Id, inv.InvoiceNumber);
                 QuietBox.Show($"Service Invoice {inv.InvoiceNumber} was issued for statement {s.SoaNumber}: total amount due PHP {inv.NetAmount:N2}, 15-day credit terms.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);

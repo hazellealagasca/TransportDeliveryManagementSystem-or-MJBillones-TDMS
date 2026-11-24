@@ -271,7 +271,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private bool PassBlankFormChecks()
         {
             var list = BlankFormChecks();
-            return list.Count == 0 || ValidationHelper.ShowValidationSummaryIfAny(this, list.Select(x => x.Message).ToList(), list[0].Field);
+            if (list.Count == 0) return true;
+            Control? first = null;
+            foreach (var (_, field) in list) first = EarlierStep(first, field);   // jump to the step of the first problem
+            return ShowFormProblems(list.Select(x => x.Message).ToList(), first);
         }
     }
 }

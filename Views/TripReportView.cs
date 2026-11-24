@@ -1200,8 +1200,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     firstInvalid ??= numDeliveredGCrates;
                 }
 
-                if (!asDraft) foreach (var (bfMsg, bfField) in BlankFormChecks()) { valErrors.Add(bfMsg); firstInvalid ??= bfField; } // Nov 6: times and sign-off names are typed
-                if (!ValidationHelper.ShowValidationSummaryIfAny(this, valErrors, firstInvalid))
+                if (!asDraft) foreach (var (bfMsg, bfField) in BlankFormChecks()) { valErrors.Add(bfMsg); firstInvalid = EarlierStep(firstInvalid, bfField); } // Nov 6: times and sign-off names are typed
+                if (!ShowFormProblems(valErrors, firstInvalid))   // shows the step of the first problem, then the list
                 {
                     return;
                 }
@@ -1614,6 +1614,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void BtnClear_Click(object? sender, EventArgs e)
         {
             ClearFields();
+            wizard?.GoToStep(1);   // Reset form goes back to the first step
             if (pnlForm.Visible) LoadSelectedDeliveryIntoForm();
         }
 
@@ -1826,6 +1827,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ResetIncidentStep();           // Nov 14: step 3 back to No with nothing listed
             if (pnlMultiDropInfo != null) pnlMultiDropInfo.Visible = false;
             if (tripCrateSummary != null) tripCrateSummary.Visible = false; // shown again with the store table
+            wizard?.GoToStep(1);           // a cleared form is on its first step
         }
 
         [System.ComponentModel.Browsable(false)]

@@ -51,9 +51,11 @@ public static partial class Checks
             Open(openSoa);
             Pump(900);
             if (Flag("soaViewOnly")) bad.Add("the next statement is still view-only");
-            if (!save.Visible) bad.Add("Save is hidden on a statement that can be edited");
+            view.GoToStep(3); Pump(200);   // the statement form is a 3-step wizard: Save is on the last step
+            if (!save.Visible) bad.Add("Save is hidden on the last step of a statement that can be edited");
             if (items.ReadOnly) bad.Add("the lines stayed read-only");
-            if (!Field<ComboBox>("cbClient").Enabled) bad.Add("the client box stayed disabled");
+            // (the client box stays locked while trips are on a statement, by the client lock; so check a box only view-only locks)
+            if (Field<TextBox>("txtPreparedBy").ReadOnly || !Field<ComboBox>("cbDeliveryType").Enabled) bad.Add("the sign-off / delivery type boxes stayed locked");
             host.Close();
             return string.Join("; ", bad);
         });

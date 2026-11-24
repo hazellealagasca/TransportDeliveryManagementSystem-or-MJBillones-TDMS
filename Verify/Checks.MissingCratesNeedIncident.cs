@@ -33,7 +33,8 @@ public static partial class Checks
             var hint = FieldOf<Label>(view, "lblIncHint")!;
             var yes = FieldOf<RadioButton>(view, "rbIncYes")!;
             if (!Listed().Contains("crate(s) are missing")) problems.Add("missing crates with step 3 = No were not refused: " + Listed());
-            if (!hint.Visible || !hint.Text.StartsWith("Missing crates on this trip")) problems.Add("the live hint is not shown: '" + hint.Text + "'");
+            view.GoToStep(3); Pump(200);   // the hint is on step 3 of the wizard: only the current step's controls are visible
+            if (!hint.Visible ||!hint.Text.StartsWith("Missing crates on this trip")) problems.Add("the live hint is not shown: '" + hint.Text + "'");
             var done = typeof(TripReportView).GetMethod("StepIncidentDone", NonPub)!;
             if ((bool)done.Invoke(view, null)!) problems.Add("step 3 shows done while crates are missing and no incident is added");
 

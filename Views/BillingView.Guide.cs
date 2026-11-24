@@ -54,7 +54,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit.Compact = true;
             formKit.Restyle();
             billStrip = new PaymentSummaryStrip { Cursor = Cursors.Hand };
-            billStrip.Click += (s, e) => formKit?.ScrollTo(billChecklist);
+            billStrip.Click += (s, e) => ShowBillChecklist();
             new ToolTip().SetToolTip(billStrip, "Live totals of this invoice. Click to see the validation checklist.");
             formKit.AddStrip(billStrip);
             billStepper = new WorkflowStepper("Dispatch created", "Trip report completed", "Invoice filled from trip", "Review", "Validated & ready");
@@ -69,10 +69,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             formKit.AddBodyTop(new Panel { Height = Dpi(8), BackColor = AppTheme.Canvas });
             formKit.AddBodyTop(billHelp);
             formKit.AddBodyTop(billStepper);
-            formKit.AddBodyBottom(new Panel { Height = Dpi(16), BackColor = AppTheme.Canvas });
+            billBottomSpacer = new Panel { Height = Dpi(16), BackColor = AppTheme.Canvas };
+            formKit.AddBodyBottom(billBottomSpacer);
             formKit.AddBodyBottom(billChecklist);
             lblBillBlocked = new Label { AutoSize = true, Font = new Font("Segoe UI Semibold", 9.25F), ForeColor = AppTheme.DangerText, Margin = new Padding(0, Dpi(11), Dpi(12), 0), Cursor = Cursors.Hand, UseMnemonic = false };
-            lblBillBlocked.Click += (s, e) => formKit?.ScrollTo(billChecklist);
+            lblBillBlocked.Click += (s, e) => ShowBillChecklist();
             formKit.Actions?.Controls.Add(lblBillBlocked);
             InputGuard.MoneyOnly(numTotalAmount);
             InputGuard.MoneyOnly(numFuel);
@@ -96,33 +97,47 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             RefreshBillReady();
         }
         /// <summary>
-        /// Ledger Desk layout of the invoice form (55 / 45): the invoice and the trip on the left, the amounts and the open problems on the right, one slim
-        /// header with the live figures. Layout only: every field, handler and rule is the same.
+        /// The two painted cards: "the statement being billed" (step 1) and "what this invoice adds up to" (step 2). Made before the form kit builds the section cards.
         /// </summary>
-        private void ApplyBillWorkbench()
+        private void BuildBillTapes()
+        {
+            billTape = new TapeCard { EmptyText = "The statement or trip being billed shows here." };
+            billTape.Set("The statement being billed", Array.Empty<(string, string)>(), "", "", "");
+            billNetTape = new TapeCard();
+            billNetTape.Set("What this invoice adds up to", Array.Empty<(string, string)>(), "", "", "");
+        }
+        /// <summary>The field a checklist line is about (null = no single field). Invoice no., statement and client are on step 1; the amounts and the reason on step 2.</summary>
+        private Control? ControlForBillCheck(PaymentCheck c)
+        {
+            string t = c.Text;
+            if (t.Contains("adjustment reason", StringComparison.OrdinalIgnoreCase)) return txtBillAdjustReason;
+            if (t.Contains("Service Invoice No", StringComparison.OrdinalIgnoreCase) || t.StartsWith("Invoice #", StringComparison.OrdinalIgnoreCase)) return txtInvoiceNumber;
+            if (cbSoa.Visible && t.Contains("statement", StringComparison.OrdinalIgnoreCase) && !t.StartsWith("Client", StringComparison.OrdinalIgnoreCase)) return cbSoa;
+            if (t.Contains("trip", StringComparison.OrdinalIgnoreCase) || t.Contains("dispatch", StringComparison.OrdinalIgnoreCase)) return cbDelivery;
+            if (t.Contains("client", StringComparison.OrdinalIgnoreCase)) return cbClient;
+            if (t.Contains("fuel", StringComparison.OrdinalIgnoreCase)) return numFuel;
+            if (t.Contains("amount", StringComparison.OrdinalIgnoreCase) || t.Contains("Rate Matrix", StringComparison.OrdinalIgnoreCase) || t.StartsWith("Total", StringComparison.OrdinalIgnoreCase)) return numTotalAmount;
+            return null;
+        }
+        /// <summary>
+        /// Guidance on the step-by-step invoice form: only the open problems are listed, a line jumps to the field it is about (on whichever step it is),
+        /// the figures strip stays under the header on every step, and the stacked guidance bars are hidden (the step header replaces them).
+        /// Layout only: every field, handler and rule is the same.
+        /// </summary>
+        private void ApplyBillGuideLayout()
         {
             if (formKit == null || billChecklist == null) return;
             billChecklist.ShowOnlyProblems = true;
             billChecklist.FocusResolver = c =>
             {
-                string t = c.Text;
-                if (t.Contains("adjustment reason", StringComparison.OrdinalIgnoreCase)) return txtBillAdjustReason;
-                if (t.Contains("Service Invoice No", StringComparison.OrdinalIgnoreCase) || t.StartsWith("Invoice #", StringComparison.OrdinalIgnoreCase)) return txtInvoiceNumber;
-                if (cbSoa.Visible && t.Contains("statement", StringComparison.OrdinalIgnoreCase) && !t.StartsWith("Client", StringComparison.OrdinalIgnoreCase)) return cbSoa;
-                if (t.Contains("trip", StringComparison.OrdinalIgnoreCase) || t.Contains("dispatch", StringComparison.OrdinalIgnoreCase)) return cbDelivery;
-                if (t.Contains("client", StringComparison.OrdinalIgnoreCase)) return cbClient;
-                if (t.Contains("fuel", StringComparison.OrdinalIgnoreCase)) return numFuel;
-                if (t.Contains("amount", StringComparison.OrdinalIgnoreCase) || t.Contains("Rate Matrix", StringComparison.OrdinalIgnoreCase) || t.StartsWith("Total", StringComparison.OrdinalIgnoreCase)) return numTotalAmount;
-                return null;
+                var target = ControlForBillCheck(c);
+                wizard?.ShowStepFor(target);
+                return target;
             };
             billStrip.ShowPayment = false; // "Payment: Unpaid" means nothing on an invoice that is not issued yet
             billStrip.FirstCaption = "Amount"; billStrip.SecondCaption = "Fuel surcharge"; billStrip.ShowNet = false; // Nov 7: an invoice shows only what was typed (amount, fuel surcharge): no total, tax or withholding; the first computation is on the statement
-            billTape = new TapeCard { EmptyText = "The statement or trip being billed shows here." };
-            billTape.Set("The trip being billed", Array.Empty<(string, string)>(), "", "", "");
-            billNetTape = new TapeCard();
-            billNetTape.Set("What was typed on this invoice", Array.Empty<(string, string)>(), "", "", "");
-            pnlNetDue.Visible = false; // replaced by the tape on the right (not removed: its labels are still updated by the form)
-            formKit.ApplyWorkbench(55f, new[] { 0 }, new[] { 1 }, billChecklist, new Control?[] { billStepper, billHelp }, billStrip, 620, new Control[] { billTape }, new Control[] { billNetTape });
+            pnlNetDue.Visible = false; // replaced by the "what this invoice adds up to" card (not removed: its labels are still updated by the form)
+            foreach (var h in new Control[] { billStepper, billHelp }) { h.Visible = false; h.Height = 0; h.Parent?.Controls.Remove(h); } // the step header replaces them (kept referenced, so their code keeps working)
         }
         /// <summary>
         /// The amounts tape on the right: Amount, + Fuel surcharge, = Invoice total (the same sum the save stores, InvoiceTotal.Of), and the payment due date.
@@ -256,7 +271,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 billPaidLockApplied = true;
                 txtInvoiceNumber.ReadOnly = true;
                 numTotalAmount.Enabled = false; numFuel.Enabled = false; SetClientLocked(true); cbDelivery.Enabled = false;
+                saveVisWanted = false; updateVisWanted = false;
                 btnSave.Visible = false; btnUpdate.Visible = false; btnSave.Enabled = false; btnUpdate.Enabled = false;
+                wizardHeader?.Invalidate();
                 lblFormHeader.Text = $"Invoice #{inv!.InvoiceNumber} · paid (read only)";
             }
             else if (billPaidLockApplied)
@@ -409,10 +426,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             FieldMarks.Mark(txtInvoiceNumber, txtInvoiceNumber.Text.Trim().Length == 0 ? FieldState.None : checks.Any(c => !c.Passed && c.Text.StartsWith("Invoice #")) ? FieldState.Bad : FieldState.Ok);
             // Save gate (Issue for a new invoice, Update for an existing one).
             bool ok = fails == 0 && !billSaving;
-            if (btnSave.Visible) { btnSave.Enabled = ok; ApplyButtonVisualState(btnSave, ok, Pal.C(13, 110, 253), Pal.White); }
-            if (btnUpdate.Visible) { btnUpdate.Enabled = ok; ApplyButtonVisualState(btnUpdate, ok, Pal.C(25, 135, 84), Pal.White); }
+            if (saveVisWanted) { btnSave.Enabled = ok; ApplyButtonVisualState(btnSave, ok, Pal.C(13, 110, 253), Pal.White); } // (the step form shows Issue / Update on the last step only, so "wanted", not Visible)
+            if (updateVisWanted) { btnUpdate.Enabled = ok; ApplyButtonVisualState(btnUpdate, ok, Pal.C(25, 135, 84), Pal.White); }
             lblBillBlocked.Text = fails > 0 ? $"✗ {fails} to fix before saving" : "";
-            lblBillBlocked.Visible = fails > 0;
+            lblBillBlocked.Visible = fails > 0 && OnLastWizardStep;
         }
         /// <summary>Runs before Issue / Update: the checklist must be all green, and only one save at a time.</summary>
         private bool BillGateBeforeSave()
@@ -422,8 +439,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UpdateBillGuide();
             if (billChecklist.Failed > 0)
             {
+                // A problem on the first step (invoice no., statement, client) takes the person back there; otherwise the list below the amounts shows it.
+                var firstProblem = ControlForBillCheck(billChecklist.Checks.First(c => !c.Passed));
+                if (firstProblem != null) wizard?.ShowStepFor(firstProblem);
                 MessageBox.Show(FindForm(), "This invoice can't be saved yet:\n\n• " + string.Join("\n• ", billChecklist.Checks.Where(c => !c.Passed).Select(c => c.Text)), "Check the invoice", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                formKit?.ScrollTo(billChecklist);
+                if (firstProblem == null) formKit?.ScrollTo(billChecklist);
                 return false;
             }
             billSaving = true;

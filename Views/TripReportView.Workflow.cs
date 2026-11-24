@@ -18,7 +18,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     /// </summary>
     public partial class TripReportView
     {
-        private TripStepper? tripStepper;
         private TextBox? txtTripOverview;
         private Button btnSaveDraft = null!;
         private Button btnIssueExisting = null!;
@@ -65,21 +64,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void ApplyWorkflowFormMode()
         {
             if (btnSaveDraft == null) return;
-            btnSaveDraft.Visible = !isEditingExistingReport;
-            btnIssueExisting.Visible = isEditingExistingReport && selectedTripReport != null && !RowMenu.Is(selectedTripReport.Status, TripReportStatus.Invoiced);
+            btnSaveDraft.Visible = !isEditingExistingReport;   // a draft can be saved from any step
+            if (wizard == null) btnIssueExisting.Visible = isEditingExistingReport && selectedTripReport != null && !RowMenu.Is(selectedTripReport.Status, TripReportStatus.Invoiced);
             if (isEditingExistingReport && selectedTripReport != null)
             {
                 lblFormHeader.Text = $"Trip Report  ·  {selectedTripReport.TripReportNumber}  ·  {selectedTripReport.Status}";
                 // Tell the person up front that a billed report can't be changed (Update says why).
                 try { if (MJdatabase.WhyTripReportIsLocked(selectedTripReport).Length > 0) lblFormHeader.Text += "  ·  billed, locked"; } catch (Exception ex) { ErrLog.Swallowed(ex); }
             }
-            UpdateTripStepper();
-        }
-
-        private TripStepper BuildTripStepper()
-        {
-            tripStepper = new TripStepper { Dock = DockStyle.Top, Height = Dpi(58), Margin = new Padding(0) };
-            return tripStepper;
+            RefreshTripWizard();
         }
 
         private const string TripOverviewPlaceholder = "Start from the waiting list (Create trip report): the dispatch's trip and crate overview shows here.";   // Nov 18: the picker is hidden
@@ -94,7 +87,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 txtTripOverview.Height = Dpi(10) + 2 * TextRenderer.MeasureText("X", txtTripOverview.Font).Height;
             }
             if (gridStores != null && gridStores.DataSource == null) gridStores.Rows.Clear();
-            UpdateTripStepper();
         }
 
         private TextBox BuildTripOverview()
@@ -132,54 +124,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int lines = txtTripOverview.Lines.Length;
             txtTripOverview.Height = Dpi(10) + lines * TextRenderer.MeasureText("X", txtTripOverview.Font).Height;
             txtTripOverview.ForeColor = incidentNote.Length > 0 ? AppTheme.DangerText : AppTheme.TextPrimary;
-            UpdateTripStepper();
-        }
-
-        // ------------------------------------------------------------------ The four steps
-
-        private static bool Filled(TextBox? t) => t != null && t.Text.Trim().Length > 0;
-
-        /// <summary>Step 1: every store has its time in, time out and who received the delivery.</summary>
-        private bool StepStoresDone()
-        {
-            if (gridStores == null || gridStores.Rows.Count == 0) return false;
-            foreach (DataGridViewRow r in gridStores.Rows)
-            {
-                if (r.IsNewRow) continue;
-                string V(string col) => gridStores.Columns.Contains(col) ? (r.Cells[col].Value?.ToString() ?? "").Trim() : "x";
-                if (V("colIn").Length == 0 || V("colOut").Length == 0 || V("colRep").Length == 0) return false;
-            }
-            return true;
-        }
-        /// <summary>Step 2 (first part): the truck's time in and time out at the plant gate (12-hour, or an older stored HHMM).</summary>
-        private bool StepGateDone() => txtTruckTimeIn != null && txtTruckTimeOut != null
-            && Fmt.TryParseTime(txtTruckTimeIn.Text, out _) && Fmt.TryParseTime(txtTruckTimeOut.Text, out _);
-        /// <summary>Step 2 (second part): the people who checked, prepared and approved the trip signed it.</summary>
-        private bool StepVerificationDone() => Filled(txtDtrApprovedBy) && Filled(txtDtrPreparedBy) && Filled(txtDrPreparedBy) && Filled(txtDrCheckedBy) && Filled(txtGuardName);
-
-        private void UpdateTripStepper()
-        {
-            if (tripStepper == null) return;
-            bool invoiced = isEditingExistingReport && selectedTripReport != null && RowMenu.Is(selectedTripReport.Status, TripReportStatus.Invoiced);
-            tripStepper.SetSteps(StepStoresDone(), StepGateDone() && StepVerificationDone(), IncidentStepOn ? StepIncidentDone() : (bool?)null, invoiced);
-        }
-
-        /// <summary>Re-draws the step bar while the person types (times, names, store cells).</summary>
-        private void WireStepperRefresh()
-        {
-            WirePlantGateValidation();
-            foreach (var t in new[] { txtTruckTimeIn, txtTruckTimeOut, txtDtrApprovedBy, txtDtrPreparedBy, txtDrPreparedBy, txtDrCheckedBy, txtGuardName, txtReturnCheckedBy })
-                if (t != null) t.TextChanged += (s, e) => UpdateTripStepper();
-            foreach (var t in new[] { txtIncCause, txtIncNotes })
-                if (t != null) t.TextChanged += (s, e) => UpdateTripStepper();
-            if (numIncQty != null) numIncQty.ValueChanged += (s, e) => UpdateTripStepper();
-            if (numIncCost != null) numIncCost.ValueChanged += (s, e) => UpdateTripStepper();
-            if (gridStores != null)
-            {
-                gridStores.CellValueChanged += (s, e) => UpdateTripStepper();
-                gridStores.RowsAdded += (s, e) => UpdateTripStepper();
-                gridStores.RowsRemoved += (s, e) => UpdateTripStepper();
-            }
         }
 
         // ------------------------------------------------------------------ List: Active / History and Issue Invoice (Selected)
@@ -460,58 +404,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 return;
             }
             MainForm.Instance?.OpenBillingFromTripReports(trips);
-        }
-    }
-
-    /// <summary>The 4-step progress bar across the top of the trip report form.</summary>
-    internal sealed class TripStepper : Control
-    {
-        // Nov 14: 1 Stores & DRs, 2 Plant gate & sign-off, 3 Trip report (damaged or missing crates; only while the trip-incident switch is on), then the statement.
-        // Nov 18: step 3 is called "Incident / Damage Report" (Nov 17 it was "Trip report", before that "Incident report").
-        private static readonly string[] AllTitles = { "Stores & DRs", "Plant gate & sign-off", "Incident / Damage Report", "Goes to Statement of Account" };
-        private string[] Titles = AllTitles;
-        private bool[] done = new bool[4];
-
-        public TripStepper()
-        {
-            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.UserPaint, true);
-            BackColor = AppTheme.Surface;
-        }
-
-        /// <summary><paramref name="incident"/> is null when the incident step is switched off (the bar then has three steps).</summary>
-        public void SetSteps(bool stores, bool gate, bool? incident, bool invoiced)
-        {
-            if (incident.HasValue) { Titles = AllTitles; done = new[] { stores, gate, incident.Value, invoiced }; }
-            else { Titles = new[] { AllTitles[0], AllTitles[1], AllTitles[3] }; done = new[] { stores, gate, invoiced }; }
-            Invalidate();
-        }
-
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            base.OnPaint(e);
-            var g = e.Graphics;
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            float dpi = DeviceDpi / 96f;
-            int n = Titles.Length;
-            float w = Width / (float)n;
-            int current = Array.FindIndex(done, x => !x);
-            using var lineDone = new Pen(AppTheme.Success, 3 * dpi);
-            using var lineTodo = new Pen(AppTheme.Border, 3 * dpi);
-            using var font = new Font("Segoe UI Semibold", 8.75F);
-            using var numFont = new Font("Segoe UI", 9F, FontStyle.Bold);
-            float r = 11 * dpi, cy = 16 * dpi;
-            for (int i = 0; i < n; i++)
-            {
-                float cx = w * i + w / 2;
-                if (i < n - 1) g.DrawLine(done[i] ? lineDone : lineTodo, cx + r, cy, cx + w - r, cy);
-                Color fill = done[i] ? AppTheme.Success : i == current ? AppTheme.Accent : AppTheme.Canvas;
-                Color fore = done[i] || i == current ? Color.White : AppTheme.TextMuted;
-                using (var b = new SolidBrush(fill)) g.FillEllipse(b, cx - r, cy - r, 2 * r, 2 * r);
-                using (var p = new Pen(done[i] ? AppTheme.Success : AppTheme.Border, 1.5f * dpi)) g.DrawEllipse(p, cx - r, cy - r, 2 * r, 2 * r);
-                TextRenderer.DrawText(g, done[i] ? "✓" : (i + 1).ToString(), numFont, new Rectangle((int)(cx - r), (int)(cy - r), (int)(2 * r), (int)(2 * r)), fore, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                TextRenderer.DrawText(g, $"Step {i + 1}: {Titles[i]}", font, new Rectangle((int)(w * i), (int)(cy + r + 3 * dpi), (int)w, (int)(20 * dpi)),
-                    done[i] ? AppTheme.SuccessText : i == current ? AppTheme.TextPrimary : AppTheme.TextMuted, TextFormatFlags.HorizontalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
-            }
         }
     }
 }

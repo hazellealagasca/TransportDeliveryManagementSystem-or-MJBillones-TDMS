@@ -301,7 +301,9 @@ public static partial class Checks
             var fields = FieldOf<TableLayoutPanel>(view, "pnlIncFields")!; var card = FieldOf<Panel>(view, "cardIncident")!;
             var cause = FieldOf<TextBox>(view, "txtIncCause")!; var notes = FieldOf<TextBox>(view, "txtIncNotes")!;
             var qty = FieldOf<NumericUpDown>(view, "numIncQty")!; var cost = FieldOf<NumericUpDown>(view, "numIncCost")!; var crew = FieldOf<CheckBox>(view, "chkIncCrew")!;
-            if (!card.Visible) problems.Add("the incident card is not shown");
+            if (card.Visible) problems.Add("the incident card shows on step 1 (it is step 3 of the wizard)");
+            view.GoToStep(3); Pump(200);   // the wizard shows one step at a time: the incident question is on step 3
+            if (!card.Visible) problems.Add("the incident card is not shown on step 3");
             if (!no_.Checked || yes.Checked) problems.Add("the answer is not No by default");
             if (fields.Visible) problems.Add("the incident fields show while the answer is No");
             if (P4Walk(view).OfType<Label>().All(l => l.Text != "Any damaged or missing crates?")) problems.Add("the question 'Any damaged or missing crates?' is missing");
@@ -401,6 +403,7 @@ public static partial class Checks
                 var tr = MJdatabase.GetTripReports().First(t => t.DeliveryId == id);
                 typeof(TripReportView).GetMethod("OpenEditTripReport", NonPub)!.Invoke(view, new object[] { tr });
                 Pump(1200);
+                view.GoToStep(3); Pump(200);   // a saved report's header opens any step: the incident lines are on step 3
                 if (!yes.Checked || !fields.Visible) problems.Add("a trip with a saved incident does not open on Yes");
                 if (grid.Rows.Count != 1 || grid.Rows[0].Cells["colIncCause"].Value?.ToString() != "Wet crates") problems.Add("the saved incident is not listed in step 3");
                 // choosing No takes it off the trip (asks first; the answer here is Yes)

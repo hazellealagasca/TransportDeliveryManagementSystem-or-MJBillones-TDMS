@@ -172,6 +172,7 @@ public static partial class Checks
             // An open invoice still opens for editing.
             var o = MJdatabase.GetInvoices().First(i => i.Id == open);
             typeof(BillingView).GetMethod("BindInvoiceToForm", CpF)!.Invoke(view, new object[] { o }); Pump(300);
+            view.GoToStep(2); Pump(200); // the step form shows Update on its last step only
             if (CpField<TextBox>(view, "txtInvoiceNumber").ReadOnly || !CpField<Button>(view, "btnUpdate").Visible) bad.Add("an open invoice can no longer be edited");
             host.Close();
             return string.Join("; ", bad);

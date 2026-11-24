@@ -73,10 +73,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             addRow.Controls.Add(btnAddByNumber, 1, 0);
             addRow.Controls.Add(lblAddDispatchResult, 2, 0);
             // Toolbar
-            var bar = new TableLayoutPanel { Height = Dpi(46), ColumnCount = 5, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
+            var bar = new TableLayoutPanel { Height = Dpi(46), ColumnCount = 3, RowCount = 1, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             lblPickerInfo = new Label { Dock = DockStyle.Fill, Font = new Font("Segoe UI Semibold", 10F), ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true, UseMnemonic = false, Text = "Completed trip reports" };
@@ -96,8 +94,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             bar.Controls.Add(lblPickerInfo, 0, 0);
             bar.Controls.Add(chkPickerAllClients, 1, 0);
             bar.Controls.Add(btnRefreshFromTrips, 2, 0);
-            bar.Controls.Add(btnPickAllReady, 3, 0);
-            bar.Controls.Add(btnAddSelected, 4, 0);
+            // Nov 25: the list is read-only (picking the client puts every ready trip on the statement); "Tick all ready" / "Add ticked" are not shown.
             // Grid
             pnlPickerHost = new Panel { Height = Dpi(240), BackColor = AppTheme.Surface };
             gridPicker = new DataGridView
@@ -120,13 +117,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             UIThemeHelper.ApplyGridTheme(gridPicker);
             gridPicker.RowTemplate.Height = Dpi(32);
-            gridPicker.Columns.Add(new DataGridViewCheckBoxColumn { Name = "pkPick", HeaderText = "", FillWeight = 26, MinimumWidth = Dpi(36) });
+            gridPicker.Columns.Add(new DataGridViewCheckBoxColumn { Name = "pkPick", HeaderText = "", FillWeight = 26, MinimumWidth = Dpi(36), Visible = false });
             DataGridViewTextBoxColumn Ro(string name, string header, int weight, bool right = false) => new DataGridViewTextBoxColumn
             {
                 Name = name, HeaderText = header, FillWeight = weight, ReadOnly = true,
                 DefaultCellStyle = right ? new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleRight } : new DataGridViewCellStyle()
             };
-            gridPicker.Columns.Add(Ro("pkSi", "SI No.", 80));
+            gridPicker.Columns.Add(Ro("pkSi", "SI No.", 80)); gridPicker.Columns["pkSi"]!.Visible = false;
             gridPicker.Columns.Add(Ro("pkDate", "Issue date", 80));
             gridPicker.Columns.Add(Ro("pkReport", "Trip report #", 170));
             // Wide enough for a whole number such as TRIP-20261105-022839-71078.
@@ -137,38 +134,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridPicker.Columns.Add(Ro("pkState", "On a statement", 110));
             gridPicker.CurrentCellDirtyStateChanged += (s, e) => { if (gridPicker.IsCurrentCellDirty) gridPicker.CommitEdit(DataGridViewDataErrorContexts.Commit); };
             gridPicker.CellValueChanged += (s, e) => UpdatePickerButtons();
-            gridPicker.CellDoubleClick += (s, e) =>
-            {
-                if (e.RowIndex < 0 || gridPicker.Rows[e.RowIndex].Tag is not PickRow pr) return;
-                if (pr.State != PickState.Ready) return;
-                if (pr.Special != null) { AppendSpecialTrips(new List<SpecialTrip> { pr.Special }); AfterLinesAdded(); }
-                else AddDeliveriesToStatement(new List<Delivery> { pr.Delivery });
-            };
-            gridPicker.KeyDown += (s, e) =>
-            {
-                if (e.KeyCode == Keys.Space && gridPicker.SelectedRows.Count > 1)
-                {
-                    // Space ticks / unticks every highlighted row (Shift/Ctrl-click to highlight several).
-                    bool target = !gridPicker.SelectedRows.Cast<DataGridViewRow>().All(r => r.Cells["pkPick"].Value is true);
-                    foreach (DataGridViewRow r in gridPicker.SelectedRows)
-                        if (r.Tag is PickRow pr && pr.State == PickState.Ready) r.Cells["pkPick"].Value = target;
-                    e.Handled = true;
-                    UpdatePickerButtons();
-                }
-            };
             pnlPickerHost.Controls.Add(gridPicker);
-            var hint = new Label
-            {
-                Height = Dpi(26),
-                Font = new Font("Segoe UI", 8.75F),
-                ForeColor = AppTheme.TextMuted,
-                TextAlign = ContentAlignment.BottomLeft,
-                AutoEllipsis = true,
-                Text = "Tick the service invoices to bill (Shift/Ctrl-click to highlight several, then Space to tick them), or double-click one to add it straight away."
-            };
             pickerRefreshTimer.Tick += (s, e) => { pickerRefreshTimer.Stop(); RefreshPicker(); };
             pickerReady = true;
-            return new Control[] { addRow, new Panel { Height = Dpi(6), BackColor = AppTheme.Surface }, bar, pnlPickerHost, hint };
+            return new Control[] { addRow, new Panel { Height = Dpi(6), BackColor = AppTheme.Surface }, bar, pnlPickerHost };
         }
         private void SchedulePickerRefresh()
         {
@@ -376,7 +345,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var list = deliveryCache.Where(d => ids.Contains(d.Id)).ToList();
                 if (list.Count == 0) return;
                 AddDeliveriesToStatement(list);
-                if (gridItems.Rows.Cast<DataGridViewRow>().Any(r => !r.IsNewRow)) SoaShowTab(false);
             }
             catch (Exception ex) { ErrLog.Swallowed(ex); }
         }

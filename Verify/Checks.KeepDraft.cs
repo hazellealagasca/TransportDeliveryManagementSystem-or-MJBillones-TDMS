@@ -96,7 +96,7 @@ public static partial class Checks
     [Check] public static string KeepDraft_RateMatrix() => KeepOn(() => new RateMatrixView(), "OpenNewRecordForm");
     [Check] public static string KeepDraft_Incidents() => KeepOn(() => new IncidentReportView(), "OpenNewRecordForm");
     [Check] public static string KeepDraft_Collection() => KeepOn(() => new CollectionView(), "OpenNewRecordForm");
-    [Check] public static string KeepDraft_Billing() => KeepOn(() => new BillingView(), "OpenNewRecordForm");
+    [Check] public static string KeepDraft_Billing() => KeepOn(() => new BillingView(), "OpenNewRecordForm", "txtInvoiceNumber"); // the step form lists the Amounts card (with its hidden reason box) first, so name the field a person types
     [Check] public static string KeepDraft_TripReports() => KeepOn(() => new TripReportView(), "OpenNewTripReport");
     [Check] public static string KeepDraft_Statements() => KeepOn(() => new StatementOfAccountView(), "OpenNewStatement", "txtPreparedBy");
     [Check] public static string KeepDraft_Dispatch() => KeepOn(() => new DispatchManagementView(), "OpenNewOrderForm");
