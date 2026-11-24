@@ -4,7 +4,9 @@ A hand-off note so any Claude account on this computer (including Hazel Lea Laga
 
 **Claude: read this file first, then `git log --oneline -20` for anything newer. Add a line to the Patch log after every commit you make.**
 
-Last updated: Nov 24, 2026 (last app commit `5da0f6a`).
+Last updated: Nov 24, 2026 (last app commit `8c37a47`).
+
+> **Note:** Smart App Control was turned off on this PC (Nov 24) because it blocked every new build, including F5 and the Verify checks. If builds are blocked again, that's the cause; don't try to bypass it.
 
 ---
 
@@ -76,6 +78,7 @@ These live in Settings → Features & Pop-ups (code in `Functions\Features.cs`):
 
 | Date | Commit | Change |
 |---|---|---|
+| Nov 24 | `8c37a47` | Step forms, part 1 of 5: shared step component `Functions\FormWizard.cs`; New Dispatch Order uses it (no visible change). Next: Collection Receipt, Service Invoice, Statement of Account, Trip Report. Plan: `Documents\TDMS extra files\PLAN - Step forms everywhere.md` |
 | Nov 24 | `5da0f6a` | No "Mark complete": a departed dispatch shows Current and appears in the Trip Report tab; finishing its trip report completes it automatically (drafts don't count); truck and crew are free 24 h after departure. Plan: `Documents\TDMS extra files\PLAN - No Mark Complete.md` |
 | Nov 19 | `87e361f` | Dispatch entry row: labels no longer cut off; + Add store lines up with the text boxes |
 | Nov 19 | `ed7a842` | New Dispatch Order is a 3-step wizard (Client & stores → Crates, truck & crew → Schedule & status). Step 1 has a store entry row (code, name, G/E crates, Temp Type, + Add store); the store table is read-only and its Edit button is hidden |
