@@ -101,8 +101,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             else if (e.KeyCode == Keys.Enter && btnLogin.Enabled)
             {
                 e.SuppressKeyPress = true;
-                btnLogin_Click(this, EventArgs.Empty);
+                EnterPressed();
             }
+        }
+
+        /// <summary>Enter goes to the next box that still needs filling in (username, then password); once both are filled it logs in.</summary>
+        private void EnterPressed()
+        {
+            if (string.IsNullOrWhiteSpace(txtUsername.Text)) { txtUsername.Focus(); return; }
+            if (string.IsNullOrEmpty(txtPassword.Text)) { txtPassword.Focus(); return; }
+            btnLogin_Click(this, EventArgs.Empty);
         }
 
         private void Input_KeyDown(object? sender, KeyEventArgs e)
@@ -110,7 +118,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (e.KeyCode == Keys.Enter && btnLogin.Enabled)
             {
                 e.SuppressKeyPress = true;
-                btnLogin_Click(this, EventArgs.Empty);
+                EnterPressed();
             }
             else if (e.KeyCode == Keys.Escape)
             {
