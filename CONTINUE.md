@@ -78,6 +78,8 @@ These live in Settings → Features & Pop-ups (code in `Functions\Features.cs`):
 
 | Date | Commit | Change |
 |---|---|---|
+| Nov 24 | `76e09c4` | Login: Enter moves to the next empty box (username, then password); logs in once both are filled |
+| Nov 24 | `d751302` | Print window shows print options only (copy label, watermark, paper, orientation, size, margins, style); title, header, labels, columns, signatures, notes and footer are edited in Settings → Print layouts (admin) |
 | Nov 24 | `8c37a47` | Step forms, part 1 of 5: shared step component `Functions\FormWizard.cs`; New Dispatch Order uses it (no visible change). Next: Collection Receipt, Service Invoice, Statement of Account, Trip Report. Plan: `Documents\TDMS extra files\PLAN - Step forms everywhere.md` |
 | Nov 24 | `5da0f6a` | No "Mark complete": a departed dispatch shows Current and appears in the Trip Report tab; finishing its trip report completes it automatically (drafts don't count); truck and crew are free 24 h after departure. Plan: `Documents\TDMS extra files\PLAN - No Mark Complete.md` |
 | Nov 19 | `87e361f` | Dispatch entry row: labels no longer cut off; + Add store lines up with the text boxes |
