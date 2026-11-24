@@ -85,7 +85,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!MJdatabase.IsIndividualClient(cbClient.Text) && tin.Length != 9 && tin.Length != 12)
                     return SoaWarn(tin.Length == 0 ? "The client's TIN is required on a statement. It comes from the client's profile: add it in Master Data › Clients (edit the client), then pick the client again." : "The TIN should have 9 digits (or 12 with the branch code), e.g. 006-896-371-000.", "Client TIN required", txtClientTin);
                 if (!gridItems.Rows.Cast<DataGridViewRow>().Any(r => !r.IsNewRow))
-                    return SoaWarn("Please add at least one trip or store line to the Statement of Account. They are put on it when the client is picked, or type a trip report # above.", "Validation Error", gridPicker);
+                    return SoaWarn("Please add at least one trip or store line to the Statement of Account. The client's trips are put on it when the client is picked.", "Validation Error", gridPicker);
                 return true;
             }
             if (step == 2)

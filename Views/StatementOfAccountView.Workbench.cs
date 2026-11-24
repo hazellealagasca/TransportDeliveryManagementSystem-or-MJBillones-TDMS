@@ -45,6 +45,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var fieldGrid = soaCardClient.Controls.OfType<TableLayoutPanel>().FirstOrDefault();
             if (fieldGrid != null) ReflowFieldGrid(fieldGrid, 4, c => c.Controls.Cast<Control>().Any(x => x == pnlDatesHost()));
 
+            // ---- the trips card sits directly under the client card: its own heading (number badge, title, subtitle, divider) is not shown
+            { int n = soaCardPicker.Controls.Count; if (n >= 2) { soaCardPicker.Controls[n - 1].Visible = false; soaCardPicker.Controls[n - 2].Visible = false; } }
+            soaCardPicker.Padding = new Padding(Dpi(24), Dpi(12), Dpi(24), Dpi(16));
+
             // ---- detach the stacked cards, then rebuild as three step panels
             var keepBoxes = pnlFormBody.Controls.Cast<Control>().Where(c => c is TextBox).ToList(); // the hidden SOA number box
             foreach (Control c in pnlFormBody.Controls.Cast<Control>().ToList()) pnlFormBody.Controls.Remove(c);

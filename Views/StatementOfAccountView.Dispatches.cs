@@ -137,7 +137,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlPickerHost.Controls.Add(gridPicker);
             pickerRefreshTimer.Tick += (s, e) => { pickerRefreshTimer.Stop(); RefreshPicker(); };
             pickerReady = true;
-            return new Control[] { addRow, new Panel { Height = Dpi(6), BackColor = AppTheme.Surface }, bar, pnlPickerHost };
+            // Nov 25: the type-a-number row (box, "+ Add trip", hint) is not shown on step 1: the trips are put on the statement when the client is picked. The controls stay (hidden) for the code that uses them.
+            addRow.Visible = false;
+            return new Control[] { addRow, bar, pnlPickerHost };
         }
         private void SchedulePickerRefresh()
         {

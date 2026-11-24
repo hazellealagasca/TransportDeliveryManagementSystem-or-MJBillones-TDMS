@@ -13,6 +13,8 @@ public static partial class Checks
     private static T SwGet<T>(Control root, string name) where T : Control =>
         (root.Controls.Find(name, true).OfType<T>().FirstOrDefault()) ?? throw new InvalidOperationException("control not found: " + name);
 
+    private static IEnumerable<Control> SwAll(Control root) { foreach (Control c in root.Controls) { yield return c; foreach (var k in SwAll(c)) yield return k; } }
+
     private static bool SwInside(Control c, Control p) { for (var x = c; x != null; x = x.Parent) if (x == p) return true; return false; }
 
     [Check]
@@ -117,6 +119,15 @@ public static partial class Checks
             var picker = FieldOf<DataGridView>(view, "gridPicker")!;
             if (picker.Columns["pkPick"]!.Visible || picker.Columns["pkSi"]!.Visible) bad.Add("the trips list still shows the tick or SI No. column");
             if (SwInside(FieldOf<Button>(view, "btnAddSelected")!, panels[0]) || SwInside(FieldOf<Button>(view, "btnPickAllReady")!, panels[0])) bad.Add("Tick all / Add ticked buttons are still on step 1");
+
+            // no type-a-number row and no card heading on step 1
+            var typed = FieldOf<TextBox>(view, "txtAddDispatch")!;
+            if (typed.Visible) bad.Add("the type-a-trip-number box is visible on step 1");
+            foreach (var b in panels[0].Controls.Find("btnAddTrip", true)) if (b.Visible) bad.Add("the + Add trip button is visible on step 1");
+            foreach (var l in SwAll(panels[0])) if (l.Visible && (l is Button or Label) && (l.Text.Contains("+ Add trip") || l.Text.StartsWith("Fills in the trip report"))) bad.Add("visible on step 1: " + l.Text);
+            var pickCard = FieldOf<Panel>(view, "soaCardPicker")!;
+            int pc = pickCard.Controls.Count;
+            if (pickCard.Controls[pc - 1].Visible || pickCard.Controls[pc - 2].Visible) bad.Add("the trips card still shows its numbered heading");
 
             // opened with trips already added (Create statement): still starts on step 1
             var rows = MJdatabase.GetTripReportsWaitingForStatement().Where(c => c.ClientName == "CLIENT A")
