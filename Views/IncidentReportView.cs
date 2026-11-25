@@ -448,7 +448,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (cbDelivery.SelectedIndex < 0)
                 {
-                    MessageBox.Show("Please select a trip order.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MissingInput.Show(cbDelivery, "Please select a trip order.", FindForm());
                     return;
                 }
 
@@ -569,6 +569,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void ClearForm()
         {
+            MissingInput.ClearAll(this); // Nov 25: a fresh form never shows a stale red box
             selectedIncident = null;
             cbDelivery.SelectedIndex = -1; // Nov 6: blank until picked
             numDamagedQty.SetSafe(numDamagedQty.Minimum);

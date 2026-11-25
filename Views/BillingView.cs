@@ -674,7 +674,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (cbDelivery.SelectedIndex < 0 || completedDeliveries.Count <= cbDelivery.SelectedIndex)
                 {
-                    MessageBox.Show("Please select a completed trip to invoice.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MissingInput.Show(cbDelivery, "Please select a completed trip to invoice.", FindForm(), goTo: FocusStep);
                     return;
                 }
 
@@ -773,8 +773,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (string.IsNullOrWhiteSpace(invNum))
                 {
                     ShowStepFor(txtInvoiceNumber);
-                    MessageBox.Show("Please enter an Invoice Reference Number.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    FocusStep(txtInvoiceNumber);
+                    MissingInput.Show(txtInvoiceNumber, "Please enter an Invoice Reference Number.", FindForm(), goTo: FocusStep);
                     return;
                 }
                 { var siWhy2 = MJdatabase.CheckSiNumber(invNum, selectedInvoice.Id); if (siWhy2 != null) { ShowStepFor(txtInvoiceNumber); MessageBox.Show(siWhy2, "Service Invoice No.", MessageBoxButtons.OK, MessageBoxIcon.Warning); FocusStep(txtInvoiceNumber); return; } } // Nov 6
@@ -990,6 +989,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void ClearFields()
         {
+            MissingInput.ClearAll(this); // Nov 25: a fresh form never shows a stale red box
             selectedInvoice = null;
             wizard?.GoToStep(1); // Reset returns to the first step
             cbDelivery.SelectedIndex = -1; // Nov 7: Clear form frees the trip box again

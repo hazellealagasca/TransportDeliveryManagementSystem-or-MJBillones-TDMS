@@ -11187,7 +11187,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     if (string.IsNullOrWhiteSpace(inv.InvoiceNumber))
                     {
-                        throw new InvalidOperationException("Type the Service Invoice No. before saving. It is not made by the system."); // Nov 6
+                        throw new InvalidOperationException("Type the Service Invoice No. before saving."); // Nov 6
                     }
                     cmd.CommandText = @"INSERT INTO Invoices (InvoiceNumber, NumberKey, SoaId, DeliveryId, ClientName, IssueDate, DueDate, TotalAmount, Deductions, NetAmount, Status, FuelSurcharge)
                                         VALUES (@in, @nk, @soa, @did, @c, @id, @dd, @ta, @d, @na, @s, @fuel);

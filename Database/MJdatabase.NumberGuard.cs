@@ -57,7 +57,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>The message to show when <see cref="Blocked"/>.</summary>
         public string Why()
         {
-            if (Empty) return $"Type the {NumberKey.Label(Kind)} (it is not made by the system).";
+            if (Empty) return $"Type the {NumberKey.Label(Kind)}."; // Nov 25: no "(it is not made by the system)"
             if (FormatError != null) return FormatError;
             if (Conflict == null) return "";
             var c = Conflict;

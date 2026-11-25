@@ -475,8 +475,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             LoadSoaGuideCache();
             lastGoodClient = cbClient.Text.Trim();
             UpdateSoaGuide();
-            string note = onlyInvoiceIds != null && ticked < onlyInvoiceIds.Count ? $" ({onlyInvoiceIds.Count - ticked} chosen invoice(s) could not be added: see the picker)" : "";
-            ToastHelper.ShowToast(this, ticked > 0 ? $"Filled from {ticked} service invoice{(ticked == 1 ? "" : "s")} of {client}{note} — review, then Save" : $"No ready service invoices found for {client} in that period", ticked > 0 ? ToastType.Success : ToastType.Info);
+            // Nov 25: no service-invoice pop-ups here (neither "Filled from ..." nor "No ready service invoices found"); the trips table shows what was added
         }
     }
 }

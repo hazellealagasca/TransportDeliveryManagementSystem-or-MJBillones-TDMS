@@ -560,15 +560,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     if (selectedDests.Count == 0)
                     {
-                        MessageBox.Show("Please select or type at least one destination coverage.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MissingInput.Show(clbDestinations, "Please select or type at least one destination coverage.", FindForm());
                         return;
                     }
 
                     string ttypeMulti = cbTruckType.Text.Trim();
                     if (string.IsNullOrWhiteSpace(ttypeMulti))
                     {
-                        MessageBox.Show("Please select assigned truck type.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        cbTruckType.Focus();
+                        MissingInput.Show(cbTruckType, "Please select assigned truck type.", FindForm());
                         return;
                     }
 
@@ -591,15 +590,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (string.IsNullOrWhiteSpace(dest))
                 {
-                    MessageBox.Show("Please select or enter destination coverage.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    cbDestination.Focus();
+                    MissingInput.Show(cbDestination, "Please select or enter destination coverage.", FindForm());
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(ttype))
                 {
-                    MessageBox.Show("Please select assigned truck type.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    cbTruckType.Focus();
+                    MissingInput.Show(cbTruckType, "Please select assigned truck type.", FindForm());
                     return;
                 }
 
@@ -656,8 +653,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (string.IsNullOrWhiteSpace(dest))
                 {
-                    MessageBox.Show("Please select or enter destination coverage.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    cbDestination.Focus();
+                    MissingInput.Show(cbDestination, "Please select or enter destination coverage.", FindForm());
                     return;
                 }
 
@@ -831,6 +827,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void ClearFields()
         {
+            MissingInput.ClearAll(this); // Nov 25: a fresh form never shows a stale red box
             selectedRate = null;
             cbDestination.Text = "";
             txtQuickAddDest.Clear();

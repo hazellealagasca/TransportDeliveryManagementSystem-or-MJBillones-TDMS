@@ -50,7 +50,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblAddress = new Label { Text = "Address *", AutoSize = true, Dock = DockStyle.Top, Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold), ForeColor = AppTheme.TextPrimary, Padding = new Padding(0, Dp(4), 0, Dp(2)) };
             txtAddress = new TextBox { Dock = DockStyle.Top, Font = new Font("Segoe UI", 10F), MaxLength = CrewRules.AddressMax, PlaceholderText = "House no., street, barangay, city" };
             UIThemeHelper.StyleInput(txtAddress);
-            txtAddress.TextChanged += (s, e) => { if (txtAddress.Tag as string == "InvalidInput") ValidationHelper.ApplyValidationState(txtAddress, true, ""); };
+            txtAddress.TextChanged += (s, e) => { if (MissingInput.IsMarked(txtAddress)) ValidationHelper.ApplyValidationState(txtAddress, true, ""); };
             // Pay and availability are not part of this form any more.
             chkAvailable.Visible = false;
             if (tblCheckboxes != null) tblCheckboxes.Visible = false;

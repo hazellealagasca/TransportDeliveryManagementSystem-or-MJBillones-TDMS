@@ -419,8 +419,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string plateNumber = txtPlate.Text.Trim();
                 if (string.IsNullOrWhiteSpace(plateNumber))
                 {
-                    MessageBox.Show("Please enter a valid Plate Number.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtPlate.Focus();
+                    MissingInput.Show(txtPlate, "Please enter a valid Plate Number.", FindForm());
                     return;
                 }
 
@@ -441,7 +440,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int capacity = (int)numCapacity.Value;
                 if (capacity <= 0)
                 {
-                    MessageBox.Show("Please specify a valid crate capacity greater than zero.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MissingInput.Mark(numCapacity); MessageBox.Show("Please specify a valid crate capacity greater than zero.", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     numCapacity.Focus();
                     return;
                 }
@@ -454,7 +453,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 string? truckType = CommitCategoryFromForm(capacity);
                 if (truckType == null) return;
-                if (cbCargoType.SelectedIndex < 0) { MessageBox.Show("Please choose the crate type (Cold / Chilled, Dry Goods or Combi).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbCargoType.Focus(); return; } // Nov 6
+                if (cbCargoType.SelectedIndex < 0) { MissingInput.Show(cbCargoType, "Please choose the crate type (Cold / Chilled, Dry Goods or Combi).", FindForm()); return; } // Nov 6
                 capacity = MJdatabase.LockedCapacity(truckType, cbCargoType.SelectedItem?.ToString(), capacity);
                 Truck truck = new Truck
                 {
@@ -497,8 +496,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string plateNumber = txtPlate.Text.Trim();
                 if (string.IsNullOrWhiteSpace(plateNumber))
                 {
-                    MessageBox.Show("Please enter a valid Plate Number.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtPlate.Focus();
+                    MissingInput.Show(txtPlate, "Please enter a valid Plate Number.", FindForm());
                     return;
                 }
 
@@ -519,7 +517,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 int capacity = (int)numCapacity.Value;
                 if (capacity <= 0)
                 {
-                    MessageBox.Show("Please specify a valid crate capacity greater than zero.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MissingInput.Mark(numCapacity); MessageBox.Show("Please specify a valid crate capacity greater than zero.", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     numCapacity.Focus();
                     return;
                 }
@@ -544,7 +542,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string statusReason = "";
                 DateTime? breakdownDate = null, fixDate = null;
                 if (statusChanged && !AskStatusReason(selectedTruck, oldStatus, newStatus, out statusReason, out breakdownDate, out fixDate)) return;
-                if (cbCargoType.SelectedIndex < 0) { MessageBox.Show("Please choose the crate type (Cold / Chilled, Dry Goods or Combi).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbCargoType.Focus(); return; } // Nov 6
+                if (cbCargoType.SelectedIndex < 0) { MissingInput.Show(cbCargoType, "Please choose the crate type (Cold / Chilled, Dry Goods or Combi).", FindForm()); return; } // Nov 6
                 capacity = MJdatabase.LockedCapacity(truckType, cbCargoType.SelectedItem?.ToString(), capacity);
                 selectedTruck.PlateNumber = plateNumber;
                 selectedTruck.TruckType = truckType;
@@ -729,6 +727,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void ClearFields()
         {
+            MissingInput.ClearAll(this); // Nov 25: a fresh form never shows a stale red box
             selectedTruck = null;
             txtPlate.Text = "";
             cbType.SelectedIndex = -1;
@@ -1245,8 +1244,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string name = txtCatName.Text.Trim();
             if (string.IsNullOrEmpty(name))
             {
-                MessageBox.Show("Please enter a category name.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                txtCatName.Focus();
+                MissingInput.Show(txtCatName, "Please enter a category name.", FindForm());
                 return;
             }
 
@@ -1278,8 +1276,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string name = txtCatName.Text.Trim();
             if (string.IsNullOrEmpty(name))
             {
-                MessageBox.Show("Please enter a category name.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                txtCatName.Focus();
+                MissingInput.Show(txtCatName, "Please enter a category name.", FindForm());
                 return;
             }
 

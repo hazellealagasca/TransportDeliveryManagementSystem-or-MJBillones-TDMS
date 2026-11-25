@@ -76,13 +76,13 @@ public static partial class Checks
             Fmt.ApplyTimeBox(tb);
             var leave = typeof(Control).GetMethod("OnLeave", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
             tb.Text = "842p"; leave.Invoke(tb, new object[] { EventArgs.Empty });
-            if (tb.Text != "08:42 PM" || tb.Tag as string == "InvalidInput") bad.Add("a typed 842p became '" + tb.Text + "'");
+            if (tb.Text != "08:42 PM" || MissingInput.IsMarked(tb)) bad.Add("a typed 842p became '" + tb.Text + "'");
             tb.Text = "2042"; leave.Invoke(tb, new object[] { EventArgs.Empty });
             if (tb.Text != "08:42 PM") bad.Add("an old 2042 became '" + tb.Text + "'");
             tb.Text = "99:99"; leave.Invoke(tb, new object[] { EventArgs.Empty });
-            if (tb.Tag as string != "InvalidInput") bad.Add("an unreadable time was not marked red");
+            if (!MissingInput.IsMarked(tb)) bad.Add("an unreadable time was not marked red");
             tb.Text = "8:15 AM";
-            if (tb.Tag as string == "InvalidInput") bad.Add("a readable time left the box red");
+            if (MissingInput.IsMarked(tb)) bad.Add("a readable time left the box red");
             return string.Join("; ", bad);
         });
     }

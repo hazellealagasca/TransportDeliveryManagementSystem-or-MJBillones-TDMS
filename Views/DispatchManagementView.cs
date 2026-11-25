@@ -4997,9 +4997,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        MessageBox.Show("Please select or enter a Client Company name.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-
-                        FocusStep(cbClient);
+                        MissingInput.Show(cbClient, "Please select or enter a Client Company name.", FindForm(), goTo: FocusStep);
 
                         return;
 
@@ -5027,7 +5025,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        ShowStepFor(cbClient); MessageBox.Show("Please add at least 1 destination stop to configure the multi-drop route.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MissingInput.Show(gridRouteStores, "Please add at least 1 destination stop to configure the multi-drop route.", FindForm(), goTo: ShowStepFor, isFilled: () => currentStops.Count > 0);
 
                         return;
 
@@ -5045,7 +5043,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    MessageBox.Show("Client name cannot exceed 150 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    ShowStepFor(cbClient); MissingInput.Mark(cbClient, () => cbClient.Text.Trim().Length <= 150); MessageBox.Show("Client name cannot exceed 150 characters.", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                     FocusStep(cbClient);
 
@@ -5057,7 +5055,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    MessageBox.Show("Destination cannot exceed 200 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    ShowStepFor(cbDestination); MissingInput.Mark(cbDestination, () => cbDestination.Text.Trim().Length <= 200); MessageBox.Show("Destination cannot exceed 200 characters.", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                     FocusStep(cbDestination);
 
@@ -5498,9 +5496,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        MessageBox.Show("Please select or enter a Client Company name.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-
-                        FocusStep(cbClient);
+                        MissingInput.Show(cbClient, "Please select or enter a Client Company name.", FindForm(), goTo: FocusStep);
 
                         return;
 
@@ -5528,7 +5524,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     {
 
-                        ShowStepFor(cbClient); MessageBox.Show("Please add at least 1 destination stop to configure the multi-drop route.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MissingInput.Show(gridRouteStores, "Please add at least 1 destination stop to configure the multi-drop route.", FindForm(), goTo: ShowStepFor, isFilled: () => currentStops.Count > 0);
 
                         return;
 
@@ -5546,7 +5542,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    MessageBox.Show("Client name cannot exceed 150 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    ShowStepFor(cbClient); MissingInput.Mark(cbClient, () => cbClient.Text.Trim().Length <= 150); MessageBox.Show("Client name cannot exceed 150 characters.", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                     FocusStep(cbClient);
 
@@ -5558,7 +5554,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 {
 
-                    MessageBox.Show("Destination cannot exceed 200 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    ShowStepFor(cbDestination); MissingInput.Mark(cbDestination, () => cbDestination.Text.Trim().Length <= 200); MessageBox.Show("Destination cannot exceed 200 characters.", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                     FocusStep(cbDestination);
 
@@ -6282,6 +6278,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void ClearFields()
         {
+            MissingInput.ClearAll(this); // Nov 25: a fresh form never shows a stale red box
             isBindingForm = true;
             try
             {

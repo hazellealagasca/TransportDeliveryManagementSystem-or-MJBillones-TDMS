@@ -556,7 +556,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (notes.Length > 500)
             {
-                MessageBox.Show("Remarks / operational notes cannot exceed 500 characters.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MissingInput.Mark(txtNotes, () => txtNotes.Text.Trim().Length <= 500); MessageBox.Show("Remarks / operational notes cannot exceed 500 characters.", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtNotes.Focus();
                 return;
             }

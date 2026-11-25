@@ -213,7 +213,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var s = SelectedSoa();
             if (s == null) { billTape.Set("The statement being billed", Array.Empty<(string, string)>(), "", "", ""); return; }
             billTape.Set("The statement being billed", new List<(string, string)> { ("Statement", s.SoaNumber), ("Client", s.ClientName), ("Trips", s.Trips.ToString("N0")), ("Trip reports", s.TripReports.Length > 0 ? s.TripReports : "—") },
-                "Total amount due", "₱" + s.Totals.Due.ToString("N2"), "worked out on the statement");
+                "Total amount due", "₱" + s.Totals.Due.ToString("N2"), "");  // Nov 25: no caption under the total
             var t = s.Totals;
             var rows = new List<(string, string)> { ("Total Sales + Fuel surcharge (VAT Inclusive)", "₱" + t.TotalSales.ToString("N2")), ("Less: VAT (12%)", "₱" + t.Vat.ToString("N2")), ("Amount: Net of VAT", "₱" + t.NetOfVat.ToString("N2")),
                 ("Less: Withholding Tax (2%)", "₱" + t.Withholding.ToString("N2")) };

@@ -1208,7 +1208,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (cbDelivery.SelectedIndex < 0)
                 {
-                    MessageBox.Show("Please select a dispatch order to complete.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MissingInput.Show(cbDelivery, "Please select a dispatch order to complete.", FindForm(), goTo: ShowStepFor);
                     return;
                 }
 
@@ -1222,7 +1222,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (selDel != null && !DispatchGate.RequireTripReportReady(this, DispatchGate.Fresh(selDel))) return;
                 if (selDel == null)
                 {
-                    MessageBox.Show("Selected dispatch order not found. Please refresh and try again.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Selected dispatch order not found. Please refresh and try again.", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
@@ -1799,6 +1799,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void ClearFields()
         {
+            MissingInput.ClearAll(this); // Nov 25: a fresh form never shows a stale red box
             selectedTripReport = null;
             ResetTripType();
             txtArrivalTime.Text = "";

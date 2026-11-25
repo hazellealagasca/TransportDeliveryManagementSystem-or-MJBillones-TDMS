@@ -630,7 +630,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (string.IsNullOrWhiteSpace(txtLastName.Text) || string.IsNullOrWhiteSpace(txtFirstName.Text) || string.IsNullOrWhiteSpace(cbRole.Text))
                 {
-                    MessageBox.Show("Last Name, First Name, and Crew Role are required.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    // Nov 25: tint every blank box, go to the first one
+                    var blanks = new List<Control>();
+                    if (string.IsNullOrWhiteSpace(txtLastName.Text)) blanks.Add(txtLastName);
+                    if (string.IsNullOrWhiteSpace(txtFirstName.Text)) blanks.Add(txtFirstName);
+                    if (string.IsNullOrWhiteSpace(cbRole.Text)) blanks.Add(cbRole);
+                    foreach (var b in blanks.Skip(1)) MissingInput.Mark(b);
+                    MissingInput.Show(blanks[0], "Last Name, First Name, and Crew Role are required.", FindForm());
                     return;
                 }
 
@@ -969,6 +975,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void ClearFields()
         {
+            MissingInput.ClearAll(this); // Nov 25: a fresh form never shows a stale red box
             selectedCrew = null;
             txtLastName.Text = "";
             txtFirstName.Text = "";

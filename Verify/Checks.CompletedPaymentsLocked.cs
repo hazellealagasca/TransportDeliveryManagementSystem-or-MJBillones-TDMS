@@ -213,8 +213,17 @@ public static partial class Checks
             {
                 grid.ClearSelection(); grid.Rows[row].Selected = true; Pump(300);
                 if (typeof(CollectionView).GetField("selectedCollection", CpF)!.GetValue(view) != null) bad.Add("clicking a listed receipt loads it into the entry form");
-                var title = CpField<Label>(view, "previewTitle");
-                if (!title.Text.Contains(no)) bad.Add("the preview does not show the clicked receipt");
+                // Nov 25: double-click opens the read-only details window (no inline preview panel any more)
+                using var dlg = Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Forms.CollectionReceiptDetailsDialog.Create(view, listed[row]);
+                dlg.Show(host); Pump(300);
+                var all = new List<Control>();
+                void Walk(Control c) { all.Add(c); foreach (Control k in c.Controls) Walk(k); }
+                Walk(dlg);
+                if (!dlg.Text.Contains(no) || !all.OfType<Label>().Any(l => l.Text.Contains(no))) bad.Add("the details window does not show the receipt number");
+                if (all.Any(c => c is TextBox || c is ComboBox || c is NumericUpDown || c is DateTimePicker)) bad.Add("the details window has an editable control");
+                if (all.OfType<DataGridView>().Any(gv => !gv.ReadOnly || gv.AllowUserToAddRows || gv.AllowUserToDeleteRows)) bad.Add("a table in the details window is editable");
+                if (!all.OfType<Button>().Any(b => b.Text.Contains("Print"))) bad.Add("the details window has no Print button");
+                dlg.Close();
             }
             var ready = CpField<object>(view, "collReady");
             if (ready == null) bad.Add("the waiting-for-payment list is gone");

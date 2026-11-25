@@ -346,14 +346,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (string.IsNullOrWhiteSpace(username))
                 {
-                    MessageBox.Show("Username cannot be empty.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtUsername.Focus();
+                    MissingInput.Show(txtUsername, "Username cannot be empty.", FindForm());
                     return;
                 }
 
                 if (username.Length < 3)
                 {
-                    MessageBox.Show("Username must be at least 3 characters long.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MissingInput.Mark(txtUsername, () => txtUsername.Text.Trim().Length >= 3); MessageBox.Show("Username must be at least 3 characters long.", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtUsername.Focus();
                     return;
                 }
@@ -387,32 +386,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (string.IsNullOrWhiteSpace(lastName) || !SecurityHelper.IsValidName(lastName))
                 {
-                    MessageBox.Show("Please enter a valid last name containing only letters, spaces, hyphens, and apostrophes (2 to 60 characters).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MissingInput.Mark(txtLastName, () => SecurityHelper.IsValidName(txtLastName.Text.Trim())); MessageBox.Show("Please enter a valid last name containing only letters, spaces, hyphens, and apostrophes (2 to 60 characters).", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtLastName.Focus();
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(firstName) || !NameHelper.FirstNameOk(firstName))
                 {
-                    MessageBox.Show("Please enter a valid first name containing only letters, spaces, hyphens, and apostrophes (2 to 60 characters).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MissingInput.Mark(txtFirstName, () => NameHelper.FirstNameOk(txtFirstName.Text.Trim())); MessageBox.Show("Please enter a valid first name containing only letters, spaces, hyphens, and apostrophes (2 to 60 characters).", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtFirstName.Focus();
                     return;
                 }
 
                 if (!string.IsNullOrWhiteSpace(middleName) && !SecurityHelper.IsValidName(middleName))
                 {
-                    MessageBox.Show("Please enter a valid middle name containing only letters, spaces, hyphens, and apostrophes, or leave it blank.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MissingInput.Mark(txtMiddleName, () => string.IsNullOrWhiteSpace(txtMiddleName.Text) || SecurityHelper.IsValidName(txtMiddleName.Text.Trim())); MessageBox.Show("Please enter a valid middle name containing only letters, spaces, hyphens, and apostrophes, or leave it blank.", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtMiddleName.Focus();
                     return;
                 }
 
-                if (string.IsNullOrWhiteSpace(cbRole.Text)) { MessageBox.Show("Please choose the user's role.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbRole.Focus(); return; } // Nov 6
+                if (string.IsNullOrWhiteSpace(cbRole.Text)) { MissingInput.Show(cbRole, "Please choose the user's role.", FindForm()); return; } // Nov 6
                 string fullName = NameHelper.FormatFullName(lastName, firstName, middleName);
 
                 string contact = txtContact.Text.Trim();
                 if (!string.IsNullOrEmpty(contact) && !SecurityHelper.IsValidPhone(contact))
                 {
-                    MessageBox.Show("The contact number must be 11 digits starting with 09 (e.g. 09123456789).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MissingInput.Mark(txtContact, () => string.IsNullOrWhiteSpace(txtContact.Text) || SecurityHelper.IsValidPhone(txtContact.Text.Trim())); MessageBox.Show("The contact number must be 11 digits starting with 09 (e.g. 09123456789).", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtContact.Focus();
                     return;
                 }
@@ -455,7 +454,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string username = txtUsername.Text.Trim();
                 if (string.IsNullOrWhiteSpace(username) || username.Length < 3)
                 {
-                    MessageBox.Show("Username must be at least 3 characters long.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MissingInput.Mark(txtUsername, () => txtUsername.Text.Trim().Length >= 3); MessageBox.Show("Username must be at least 3 characters long.", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtUsername.Focus();
                     return;
                 }
@@ -516,32 +515,32 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 if (string.IsNullOrWhiteSpace(lastName) || !SecurityHelper.IsValidName(lastName))
                 {
-                    MessageBox.Show("Please enter a valid last name containing only letters, spaces, hyphens, and apostrophes (2 to 60 characters).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MissingInput.Mark(txtLastName, () => SecurityHelper.IsValidName(txtLastName.Text.Trim())); MessageBox.Show("Please enter a valid last name containing only letters, spaces, hyphens, and apostrophes (2 to 60 characters).", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtLastName.Focus();
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(firstName) || !NameHelper.FirstNameOk(firstName))
                 {
-                    MessageBox.Show("Please enter a valid first name containing only letters, spaces, hyphens, and apostrophes (2 to 60 characters).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MissingInput.Mark(txtFirstName, () => NameHelper.FirstNameOk(txtFirstName.Text.Trim())); MessageBox.Show("Please enter a valid first name containing only letters, spaces, hyphens, and apostrophes (2 to 60 characters).", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtFirstName.Focus();
                     return;
                 }
 
                 if (!string.IsNullOrWhiteSpace(middleName) && !SecurityHelper.IsValidName(middleName))
                 {
-                    MessageBox.Show("Please enter a valid middle name containing only letters, spaces, hyphens, and apostrophes, or leave it blank.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MissingInput.Mark(txtMiddleName, () => string.IsNullOrWhiteSpace(txtMiddleName.Text) || SecurityHelper.IsValidName(txtMiddleName.Text.Trim())); MessageBox.Show("Please enter a valid middle name containing only letters, spaces, hyphens, and apostrophes, or leave it blank.", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtMiddleName.Focus();
                     return;
                 }
 
-                if (string.IsNullOrWhiteSpace(cbRole.Text)) { MessageBox.Show("Please choose the user's role.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); cbRole.Focus(); return; } // Nov 6
+                if (string.IsNullOrWhiteSpace(cbRole.Text)) { MissingInput.Show(cbRole, "Please choose the user's role.", FindForm()); return; } // Nov 6
                 string fullName = NameHelper.FormatFullName(lastName, firstName, middleName);
 
                 string contact = txtContact.Text.Trim();
                 if (!string.IsNullOrEmpty(contact) && !SecurityHelper.IsValidPhone(contact))
                 {
-                    MessageBox.Show("The contact number must be 11 digits starting with 09 (e.g. 09123456789).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MissingInput.Mark(txtContact, () => string.IsNullOrWhiteSpace(txtContact.Text) || SecurityHelper.IsValidPhone(txtContact.Text.Trim())); MessageBox.Show("The contact number must be 11 digits starting with 09 (e.g. 09123456789).", "Check the input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtContact.Focus();
                     return;
                 }
@@ -736,6 +735,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void ClearFields()
         {
+            MissingInput.ClearAll(this); // Nov 25: a fresh form never shows a stale red box
             selectedUser = null;
             txtUsername.Text = "";
             txtPassword.Text = "";

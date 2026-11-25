@@ -27,7 +27,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Pal.RemapTree(this);
             gridCollections.BringToFront();
             SetupGridColumns();
-            BuildReceiptPreview(); // Nov 25: read-only preview under the list
             InitListChips();
             SetupContextMenu();
             gridCollections.ColumnHeaderMouseClick += (s, e) => {
@@ -129,7 +128,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (e.RowIndex < 0 || gridCollections.Rows[e.RowIndex].DataBoundItem is not CollectionReceipt dc) return;
                 gridCollections.ClearSelection();
                 gridCollections.Rows[e.RowIndex].Selected = true;
-                RecordDetailsDialog.ShowDetails(this, dc); // Nov 24: an issued receipt is only viewed (details + print), never edited
+                Forms.CollectionReceiptDetailsDialog.ShowFor(this, dc); // Nov 25: an issued receipt is only viewed in its own window (details + print), never edited
+            };
+            // Nov 25: Enter on a selected receipt opens its details window too
+            gridCollections.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode != Keys.Enter || gridCollections.CurrentRow?.DataBoundItem is not CollectionReceipt er) return;
+                e.Handled = true; e.SuppressKeyPress = true;
+                Forms.CollectionReceiptDetailsDialog.ShowFor(this, er);
             };
             ApplyCollGuideLayout();
             BuildCollWizard(); // the receipt is a 2-step form (What is being paid → Payment & save), like New Dispatch Order
@@ -140,7 +146,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (keep.Kept) { keep.Resume(this, SetFormVisibility); return; } // a kept draft comes back as it was left, never blank
             ClearFields();
-            lblFormHeader.Text = "New payment receipt";
+            lblFormHeader.Text = "New collection receipt";
             SetFormVisibility(true);
         }
         // Nov 6: unsaved-typing tracking for the add / edit form (see FormGuard).
@@ -212,8 +218,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void GridCollections_SelectionChanged(object? sender, EventArgs e)
         {
-            if (pnlForm.Visible) return; // the list is hidden while the form is open; keep what is being typed
-            UpdateReceiptPreview(); // Nov 25: clicking an issued receipt only previews it (read-only); it is never loaded into the entry form
+            // Nov 25: selecting an issued receipt only selects it; it is never loaded into the entry form (double-click opens its details window)
         }
 
         private void BindCollectionToForm(CollectionReceipt cr)
@@ -262,7 +267,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 decimal totalPaid = receipts.Sum(c => c.AmountPaid);
                 lblSummary.Text = receipts.Count == 0
                     ? "No receipts issued yet. Statements and invoices waiting for payment are listed above."
-                    : $"{receipts.Count:N0} issued receipt{(receipts.Count == 1 ? "" : "s")} · ₱{totalPaid:N2} collected · read-only. Click one to preview or print.";
+                    : $"{receipts.Count:N0} issued receipt{(receipts.Count == 1 ? "" : "s")} · ₱{totalPaid:N2} collected · read-only. Double-click one to see its details or print it.";
             }
             catch (Exception ex)
             { ErrLog.Error("CollectionView", ex); 
@@ -367,7 +372,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ShowHeaderSortGlyph();
             // Nov 25: nothing is selected until a receipt is clicked; selecting never touches the entry form (selectedCollection stays null)
             gridCollections.ClearSelection();
-            UpdateReceiptPreview();
         }
 
         private void TxtGridSearch_TextChanged(object? sender, EventArgs e)
@@ -399,9 +403,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void ClearFields()
         {
+            MissingInput.ClearAll(this); // Nov 25: a fresh form never shows a stale red box
             selectedCollection = null;
             wizard?.GoToStep(1);
-            lblFormHeader.Text = "Record Payment Receipt";
+            lblFormHeader.Text = "New collection receipt";
             SetLinkedInfo("📄 Linked invoice: (none selected)", "Pick a statement or invoice above");
             ShowVerifyFor(null);
             cbPaymentMethod.SelectedIndex = -1; cbPaymentMethod.Text = ""; // Nov 6: blank until picked
@@ -488,7 +493,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var cr = crs[0];
                 m.Items.AddRange(RowMenu.Header($"💵  Receipt {cr.ReceiptNumber}",
                     $"{RowMenu.Money(cr.AmountPaid)} · {cr.PaymentMethod}{(string.IsNullOrWhiteSpace(cr.ReferenceNumber) ? "" : " #" + cr.ReferenceNumber)} · {Fmt.Date(cr.PaymentDate)} · invoice {cr.InvoiceNumber}"));
-                m.Items.Add(RowMenu.Item("Open details", () => RecordDetailsDialog.ShowDetails(this, cr)));
+                m.Items.Add(RowMenu.Item("Open details", () => Forms.CollectionReceiptDetailsDialog.ShowFor(this, cr)));
                 m.Items.Add(RowMenu.Good("Print official receipt (OR)", () => PrintHelper.PrintOfficialCollectionReceipt(cr)));
                 m.Items.Add(RowMenu.Sep());
                 m.Items.Add(RowMenu.Item($"Show invoice {cr.InvoiceNumber}", () => FinanceHubView.Of(this)?.ShowInvoices(cr.InvoiceNumber), "", !string.IsNullOrWhiteSpace(cr.InvoiceNumber)));

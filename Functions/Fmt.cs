@@ -287,7 +287,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string text = tb.Text.Trim();
                 if (text.Length == 0) { ValidationHelper.ApplyValidationState(tb, true, ""); return; }
                 if (TryParseTime(text, out var t)) { tb.Text = Time(t); ValidationHelper.ApplyValidationState(tb, true, ""); }
-                else ValidationHelper.ApplyValidationState(tb, false, "Enter a time like 08:42 PM.");
+                else { ValidationHelper.ApplyValidationState(tb, false, "Enter a time like 08:42 PM."); MissingInput.Mark(tb, () => TryParseTime(tb.Text, out _)); } // Nov 25: stays red until the time is readable
             }
             // Nov 17: clock button inside the box, F4 / Alt+Down, and one automatic clock when a mouse click lands in an empty box.
             bool picking = false, autoOpened = false;
@@ -321,7 +321,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             tb.TextChanged += (s, e) =>
             {
-                if (tb.Tag as string == "InvalidInput" && TryParseTime(tb.Text, out _)) ValidationHelper.ApplyValidationState(tb, true, "");
+                if (MissingInput.IsMarked(tb) && TryParseTime(tb.Text, out _)) ValidationHelper.ApplyValidationState(tb, true, "");
             };
         }
     }

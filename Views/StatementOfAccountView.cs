@@ -1525,6 +1525,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void ClearForm()
         {
+            MissingInput.ClearAll(this); // Nov 25: a fresh form never shows a stale red box
             selectedSoa = null;
             txtSoaNumber.Text = MJdatabase.GenerateNextSoaNumber();
             cbClient.SelectedIndex = -1; cbClient.Text = ""; txtClientAddress.Text = ""; txtClientTin.Text = ""; // Nov 6: blank until a client is picked
@@ -1748,25 +1749,23 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 if (string.IsNullOrWhiteSpace(cbClient.Text))
                 {
-                    MessageBox.Show("Please select or enter the client company name.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    FocusStep(cbClient);
+                    MissingInput.Show(cbClient, "Please select or enter the client company name.", FindForm(), goTo: FocusStep);
                     return;
                 }
-                if (cbDeliveryType.SelectedIndex < 0) { MessageBox.Show("Please choose the delivery type (REF or DRY).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); FocusStep(cbDeliveryType); return; } // Nov 6
-                if (string.IsNullOrWhiteSpace(txtPreparedBy.Text)) { MessageBox.Show("Please type who prepared this statement (Prepared by).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); FocusStep(txtPreparedBy); return; }
-                if (!SoaPreparedByAllowed(txtPreparedBy.Text)) { MessageBox.Show("Prepared by must be a name: letters, spaces, period, hyphen or apostrophe (up to 100 characters).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); FocusStep(txtPreparedBy); txtPreparedBy.SelectAll(); return; } // Nov 12
+                if (cbDeliveryType.SelectedIndex < 0) { MissingInput.Show(cbDeliveryType, "Please choose the delivery type (REF or DRY).", FindForm(), goTo: FocusStep); return; } // Nov 6
+                if (string.IsNullOrWhiteSpace(txtPreparedBy.Text)) { MissingInput.Show(txtPreparedBy, "Please type who prepared this statement (Prepared by).", FindForm(), goTo: FocusStep); return; }
+                if (!SoaPreparedByAllowed(txtPreparedBy.Text)) { MissingInput.Show(txtPreparedBy, "Prepared by must be a name: letters, spaces, period, hyphen or apostrophe (up to 100 characters).", FindForm(), goTo: FocusStep, isFilled: () => SoaPreparedByAllowed(txtPreparedBy.Text)); return; } // Nov 12
 
                 if (gridItems.Rows.Count == 0)
                 {
-                    MessageBox.Show("Please add at least one trip or store line to the Statement of Account.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    FocusStep(gridItems);
+                    MissingInput.Show(gridItems, "Please add at least one trip or store line to the Statement of Account.", FindForm(), goTo: FocusStep);
                     return;
                 }
 
                 gridItems.EndEdit();
                 if (dtpPeriodTo.Value.Date < dtpPeriodFrom.Value.Date)
                 {
-                    MessageBox.Show("The period's end date is before its start date.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    ShowStepFor(dtpPeriodFrom); MissingInput.Mark(dtpPeriodFrom, () => dtpPeriodTo.Value.Date >= dtpPeriodFrom.Value.Date); MessageBox.Show("The period's end date is before its start date.", "Check the dates", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     FocusStep(dtpPeriodFrom);
                     return;
                 }

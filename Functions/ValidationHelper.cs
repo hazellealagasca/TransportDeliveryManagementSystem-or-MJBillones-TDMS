@@ -88,16 +88,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ep.SetError(control, isValid ? "" : errorMessage);
             }
 
-            if (isValid)
-            {
-                control.BackColor = Pal.White;
-                control.Tag = null;
-            }
-            else
-            {
-                control.BackColor = Pal.C(254, 242, 242);
-                control.Tag = "InvalidInput";
-            }
+            // Nov 25: tint + outline through MissingInput (clears as soon as a proper value is entered); Tag is no longer touched
+            if (isValid) MissingInput.Clear(control);
+            else MissingInput.Mark(control);
         }
 
         public static void ClearErrors(Control parent, ErrorProvider? ep = null)
@@ -107,27 +100,19 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 ep.Clear();
             }
 
-            foreach (Control c in GetAllControls(parent))
-            {
-                if (c.Tag as string == "InvalidInput")
-                {
-                    c.BackColor = Pal.White;
-                    c.Tag = null;
-                }
-            }
+            MissingInput.ClearAll(parent); // Nov 25
         }
 
         public static bool ShowValidationSummaryIfAny(IWin32Window owner, List<string> errors, Control? firstInvalidControl = null)
         {
             if (errors == null || errors.Count == 0) return true;
 
-            if (firstInvalidControl != null && firstInvalidControl.CanFocus)
+            if (firstInvalidControl != null)
             {
-                firstInvalidControl.Focus();
-                if (firstInvalidControl is TextBox tb)
-                {
-                    tb.SelectAll();
-                }
+                // Nov 25: scroll to it and tint it before the message; focus it after OK
+                for (var p = firstInvalidControl.Parent; p != null; p = p.Parent)
+                    if (p is ScrollableControl sc && sc.AutoScroll) { try { sc.ScrollControlIntoView(firstInvalidControl); } catch (Exception ex) { ErrLog.Swallowed(ex); } break; }
+                MissingInput.Mark(firstInvalidControl);
             }
 
             string bulletList = string.Join(Environment.NewLine + " • ", errors.Take(7));
@@ -139,10 +124,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             MessageBox.Show(
                 owner,
                 "Please complete all required fields before proceeding:" + Environment.NewLine + Environment.NewLine + " • " + bulletList,
-                "Validation Error — Required Inputs Missing",
+                "Missing input",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Warning
             );
+
+            if (firstInvalidControl != null && !firstInvalidControl.IsDisposed && firstInvalidControl.CanFocus)
+            {
+                firstInvalidControl.Focus();
+                if (firstInvalidControl is TextBox tb) tb.SelectAll();
+            }
 
             return false;
         }

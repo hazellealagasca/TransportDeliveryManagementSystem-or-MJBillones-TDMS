@@ -837,6 +837,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void ResetFormForNew()
         {
+            MissingInput.ClearAll(this); // Nov 25: a fresh form never shows a stale red box
             currentTripId = 0;
             loadedTrip = null;
             txtOrderRef.Text = MJdatabase.GenerateNextSpecialTripReference();
@@ -1197,8 +1198,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string company = cbCompany.Text.Trim();
             if (string.IsNullOrWhiteSpace(company))
             {
-                MessageBox.Show("Please enter or select a Company name.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                cbCompany.Focus();
+                MissingInput.Show(cbCompany, "Please enter or select a Company name.", this);
                 return;
             }
 

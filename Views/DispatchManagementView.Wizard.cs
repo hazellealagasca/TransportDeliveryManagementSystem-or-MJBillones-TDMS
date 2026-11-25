@@ -50,14 +50,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 case 1:
                     if (string.IsNullOrWhiteSpace(txtDispatchNumber.Text))
                     {
-                        MessageBox.Show("Please enter the Order Reference / Dispatch #.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        txtDispatchNumber.Focus();
+                        MissingInput.Show(txtDispatchNumber, "Please enter the Order Reference / Dispatch #.", FindForm(), goTo: FocusStep);
                         return false;
                     }
                     if (string.IsNullOrWhiteSpace(cbClient.Text))
                     {
-                        MessageBox.Show("Please select or enter a Client Company name.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        cbClient.Focus();
+                        MissingInput.Show(cbClient, "Please select or enter a Client Company name.", FindForm(), goTo: FocusStep);
                         return false;
                     }
                     if (cbTempType != null && cbTempType.SelectedIndex < 0)

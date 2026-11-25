@@ -128,7 +128,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.lblFormHeader.Name = "lblFormHeader";
             this.lblFormHeader.Size = new System.Drawing.Size(185, 21);
             this.lblFormHeader.TabIndex = 0;
-            this.lblFormHeader.Text = "Record Payment Receipt";
+            this.lblFormHeader.Text = "New collection receipt";
 
             this.lblInv.AutoSize = true;
             this.lblInv.Dock = System.Windows.Forms.DockStyle.Top;

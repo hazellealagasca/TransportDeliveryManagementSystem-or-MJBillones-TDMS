@@ -62,6 +62,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private bool SoaWarn(string text, string caption, Control? focus)
         {
+            // Nov 25: missing input is tinted light red, the step is shown, the box scrolled to and focused after OK
+            if (caption == "Missing input" && focus != null) { MissingInput.Show(focus, text, FindForm(), FocusStep, caption); return false; }
+            if (focus != null) { ShowStepFor(focus); MissingInput.Mark(focus); }
             MessageBox.Show(FindForm(), text, caption, MessageBoxButtons.OK, MessageBoxIcon.Warning);
             FocusStep(focus);
             return false;
@@ -77,21 +80,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try { gridItems.EndEdit(); } catch (Exception ex) { ErrLog.Swallowed(ex); }
             if (step == 1)
             {
-                if (string.IsNullOrWhiteSpace(cbClient.Text)) return SoaWarn("Please select or enter the client company name.", "Validation Error", cbClient);
-                if (cbDeliveryType.SelectedIndex < 0) return SoaWarn("Please choose the delivery type (REF or DRY).", "Validation Error", cbDeliveryType);
-                if (dtpPeriodTo.Value.Date < dtpPeriodFrom.Value.Date) return SoaWarn("The period's end date is before its start date.", "Validation Error", dtpPeriodFrom);
+                if (string.IsNullOrWhiteSpace(cbClient.Text)) return SoaWarn("Please select or enter the client company name.", "Missing input", cbClient);
+                if (cbDeliveryType.SelectedIndex < 0) return SoaWarn("Please choose the delivery type (REF or DRY).", "Missing input", cbDeliveryType);
+                if (dtpPeriodTo.Value.Date < dtpPeriodFrom.Value.Date) return SoaWarn("The period's end date is before its start date.", "Check the dates", dtpPeriodFrom);
                 var profile = ClientProfileDetails(cbClient.Text);
                 string tin = new string((profile.Found ? profile.Tin : txtClientTin.Text).Where(char.IsDigit).ToArray());
                 if (!MJdatabase.IsIndividualClient(cbClient.Text) && tin.Length != 9 && tin.Length != 12)
                     return SoaWarn(tin.Length == 0 ? "The client's TIN is required on a statement. It comes from the client's profile: add it in Master Data › Clients (edit the client), then pick the client again." : "The TIN should have 9 digits (or 12 with the branch code), e.g. 006-896-371-000.", "Client TIN required", txtClientTin);
                 if (!gridItems.Rows.Cast<DataGridViewRow>().Any(r => !r.IsNewRow))
-                    return SoaWarn("Please add at least one trip or store line to the Statement of Account. The client's trips are put on it when the client is picked.", "Validation Error", gridPicker);
+                    return SoaWarn("Please add at least one trip or store line to the Statement of Account. The client's trips are put on it when the client is picked.", "Missing input", gridPicker);
                 return true;
             }
             if (step == 2)
             {
                 if (!gridItems.Rows.Cast<DataGridViewRow>().Any(r => !r.IsNewRow))
-                    return SoaWarn("Please add at least one trip or store line to the Statement of Account.", "Validation Error", gridItems);
+                    return SoaWarn("Please add at least one trip or store line to the Statement of Account.", "Missing input", gridItems);
                 if (numTotalSales.Value < 0 || numTotalAmountDue.Value <= 0)
                     return SoaWarn(numTotalSales.Value < 0
                         ? $"Total sales is negative (PHP {numTotalSales.Value:N2}). Check the amounts and deductions on the trip lines."

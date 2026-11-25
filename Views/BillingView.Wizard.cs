@@ -69,6 +69,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string? numWhy = MJdatabase.CheckSiNumber(invNum, selectedInvoice?.Id ?? 0);
             if (numWhy == null && billNumberGuard != null && billNumberGuard.TickMissing)
                 numWhy = "Tick the confirmation under the Service Invoice No. (same digits as another document)";
+            if (invNum.Length == 0) // Nov 25: an empty number is missing input: tinted red, focused after OK
+            {
+                MissingInput.Show(txtInvoiceNumber, "Type the Service Invoice No.", FindForm(), FocusStep);
+                return false;
+            }
             if (numWhy != null)
             {
                 ValidationHelper.ApplyValidationState(txtInvoiceNumber, false, numWhy);
@@ -88,8 +93,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
             if (SelectedBillDelivery() != null) return true;
             const string whyTrip = "Please select a completed trip to invoice.";
-            FocusStep(cbDelivery);
-            MessageBox.Show(FindForm(), whyTrip, "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MissingInput.Show(cbDelivery, whyTrip, FindForm(), goTo: FocusStep); // Nov 25
             return false;
         }
 
