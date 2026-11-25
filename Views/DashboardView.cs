@@ -363,7 +363,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
                 grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
                 grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-                grid.Controls.Add(Figure("Still to collect", out lblMoneyDue), 0, 0);
+                grid.Controls.Add(Figure("For collection", out lblMoneyDue), 0, 0); // Nov 25: was "Still to collect"
                 grid.Controls.Add(Figure("Overdue", out lblMoneyOverdue), 1, 0);
                 grid.Controls.Add(Figure("Collected this month", out lblMoneyCollected), 0, 1);
                 var forCollection = Figure("For collection", out lblMoneyDraft);
