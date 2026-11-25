@@ -96,7 +96,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Multiline = true, ReadOnly = true, WordWrap = false, ScrollBars = ScrollBars.None, TabStop = false,
                 BorderStyle = BorderStyle.FixedSingle, BackColor = AppTheme.Canvas, ForeColor = AppTheme.TextPrimary,
                 Font = new Font("Consolas", 9.5F), Height = Dpi(118), Margin = new Padding(0, Dpi(6), 0, 0),
-                Text = TripOverviewPlaceholder
+                Text = TripOverviewPlaceholder,
+                Visible = false // Nov 25: the text overview box is not shown on the trip report (the green dispatch line above already names the order, truck and crew)
             };
             return txtTripOverview;
         }
