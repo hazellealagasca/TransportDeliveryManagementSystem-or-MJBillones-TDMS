@@ -366,7 +366,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 grid.Controls.Add(Figure("Still to collect", out lblMoneyDue), 0, 0);
                 grid.Controls.Add(Figure("Overdue", out lblMoneyOverdue), 1, 0);
                 grid.Controls.Add(Figure("Collected this month", out lblMoneyCollected), 0, 1);
-                grid.Controls.Add(Figure("For collection", out lblMoneyDraft), 1, 1);
+                var forCollection = Figure("For collection", out lblMoneyDraft);
+                forCollection.Visible = false; // Nov 25: "For collection" is hidden on the dashboard (still counted, not shown)
+                grid.Controls.Add(forCollection, 1, 1);
                 moneyCard = Card("Billing", "Invoices and payments.", grid, out _, "Open ›", () => MainForm.Instance?.NavigateToFinance("Billing"));
                 stack.Add(moneyCard);
             }
