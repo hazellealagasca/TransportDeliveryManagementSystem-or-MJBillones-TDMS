@@ -10,26 +10,27 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 {
     /// <summary>
     /// The New / open Trip Report form on the shared <see cref="FormWizard"/> (same header, footer and Next rules as New Dispatch Order and the Collection Receipt):
-    /// 1 Stores, DRs &amp; times, 2 Plant gate, sign-off &amp; attachments, 3 Incident / Damage Report &amp; save.
-    /// While <see cref="Features.TripIncidents"/> is off the form has 2 steps and Save sits on step 2 (step 3 does not exist then).
+    /// Nov 26: always 2 steps. 1 Plant gate, sign-off, stores &amp; DRs (the plant gate card, then the stores card), 2 Incident / Damage Report, then Attachments, &amp; save.
+    /// While <see cref="Features.TripIncidents"/> is off step 2 is "Attachments &amp; save": the incident card is hidden inside it, Save is still on step 2.
     /// The dispatch banner / overview card stays above the steps and the delivered-crate totals sit above the action bar on every step.
     /// Every field, handler, check and save is the existing one: this file only groups them into steps and navigates.
     /// </summary>
     public partial class TripReportView
     {
-        private static readonly string[] TripStepNames3 = { "Stores, DRs & times", "Plant gate, sign-off & attachments", "Incident / Damage Report & save" };
-        private static readonly string[] TripStepNames2 = { "Stores, DRs & times", "Plant gate, sign-off & attachments" };
+        private static readonly string[] TripStepNames3 = { "Plant gate, sign-off, stores & DRs", "Incident / Damage Report & save" };   // incident switch on
+        private static readonly string[] TripStepNames2 = { "Plant gate, sign-off, stores & DRs", "Attachments & save" };   // incident switch off
 
         private FormWizard? wizard;
-        private Panel? pnlStep1Stores, pnlStep2Gate, tripHeaderHost, pnlTripCrateFooter;
+        private Panel? pnlStepGateStores, pnlStepIncidentAttach, cardAttachments, incidentAttachSpacer, tripHeaderHost, pnlTripCrateFooter;
+        private bool? wizardIncidentOn;   // Nov 26: the incident switch state the wizard was built for (the step count is always 2 now)
         private Control? tripWizardLeft;
         private Panel[] tripStepPanels = Array.Empty<Panel>();
 
-        /// <summary>The step (1-3) currently shown.</summary>
+        /// <summary>The step (1-2) currently shown.</summary>
         public int CurrentWizardStep => wizard?.CurrentStep ?? 1;
 
-        /// <summary>How many steps the form has now (3, or 2 while the trip-incident switch is off).</summary>
-        public int WizardStepCount => wizard?.StepCount ?? 3;
+        /// <summary>How many steps the form has (always 2 since Nov 26).</summary>
+        public int WizardStepCount => wizard?.StepCount ?? 2;
 
         /// <summary>Shows a step with no validation (used by the header of a saved report, Back, Reset and error jumps).</summary>
         public void GoToStep(int step) => wizard?.GoToStep(step);
@@ -68,12 +69,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             return ValidationHelper.ShowValidationSummaryIfAny(this, messages, first);
         }
 
-        /// <summary>Next on step 1 or 2: the form's own messages for the fields of that step (the same checks Save runs).</summary>
+        /// <summary>Next on step 1: the form's own messages for the fields of that step (the same checks Save runs).</summary>
         private bool ValidateTripStep(int step)
         {
-            var msgs = new List<string>();
-            Control? first = null;
-            void Add(string m, Control? f) { msgs.Add(m); first ??= f; }
+            // Nov 26: problems are listed (and the cursor goes) in on-screen order: the Plant gate & sign-off box comes before the stores on step 1
+            var found = new List<(string Message, Control? Field)>();
+            void Add(string m, Control? f) => found.Add((m, f));
             ValidationHelper.ClearErrors(pnlFormBody);
             try { gridStores?.EndEdit(); } catch (Exception ex) { ErrLog.Swallowed(ex); }
             if (step == 1 && !isEditingExistingReport)
@@ -96,7 +97,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (StepOfControl(field) == step) Add(message, field);
                 else ValidationHelper.ApplyValidationState(field, true, "");   // a later step's field is not marked yet
             }
-            return ShowFormProblems(msgs, first);
+            var plantGate = pnlFormBody.Controls.Find("pnlPlantGateCard", true).FirstOrDefault();
+            bool InPlantGate(Control? c) { for (var p = c; p != null; p = p.Parent) if (p == plantGate) return true; return false; }
+            var ordered = found.Select((x, i) => (x, i)).OrderBy(t => InPlantGate(t.x.Field) ? 0 : 1).ThenBy(t => t.i).Select(t => t.x).ToList();
+            return ShowFormProblems(ordered.Select(x => x.Message).ToList(), ordered.Select(x => x.Field).FirstOrDefault(c => c != null));
         }
 
         /// <summary>Re-applies the Save / Update / Proceed buttons and Reset for the current mode (new report or saved report).</summary>
@@ -114,14 +118,20 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
 
         /// <summary>
-        /// Builds (or, when the trip-incident switch changed, rebuilds with 2 or 3 steps) the wizard over the three step panels:
+        /// Builds (or, when the trip-incident switch changed, rebuilds with the step 2 name for it) the wizard over the two step panels:
         /// header in the body above the steps, Reset / Back on the left of the action bar, Next / Save on the right.
         /// </summary>
         private void BuildTripWizard()
         {
-            if (flowFormActions == null || tripHeaderHost == null || pnlStep1Stores == null || pnlStep2Gate == null || cardIncident == null) return;
-            int count = IncidentStepOn ? 3 : 2;
-            if (wizard != null && wizard.StepCount == count) { RefreshTripWizard(); return; }
+            if (flowFormActions == null || tripHeaderHost == null || pnlStepGateStores == null || pnlStepIncidentAttach == null || cardIncident == null) return;
+            bool incOn = IncidentStepOn;
+            const int count = 2;
+            // Nov 26: inside step 2 the incident card (and the spacer under it) show only while the switch is on; FormWizard only shows / hides the step panel itself.
+            cardIncident.Visible = incOn;
+            if (incidentAttachSpacer != null) incidentAttachSpacer.Visible = incOn;
+            cardAttachments?.Invalidate(true);   // its badge number depends on the switch
+            if (wizard != null && wizardIncidentOn == incOn) { RefreshTripWizard(); return; }
+            wizardIncidentOn = incOn;
             int keepStep = wizard?.CurrentStep ?? 1;
             if (wizard != null)
             {
@@ -131,16 +141,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 wizard.NextButton.Dispose();
                 foreach (var old in tripHeaderHost.Controls.Cast<Control>().ToList()) { tripHeaderHost.Controls.Remove(old); old.Dispose(); }
             }
-            var w = new FormWizard(this, count == 3 ? TripStepNames3 : TripStepNames2, () => isEditingExistingReport, ValidateTripStep);
+            var w = new FormWizard(this, incOn ? TripStepNames3 : TripStepNames2, () => isEditingExistingReport, ValidateTripStep);
             wizard = w;
             w.FirstStepButton = btnClear;
             w.ScrollHost = pnlFormBody;
             w.AddLastStepButton(btnSave, () => !isEditingExistingReport);
             w.AddLastStepButton(btnUpdate, () => isEditingExistingReport);
             w.AddLastStepButton(btnIssueExisting, () => isEditingExistingReport && selectedTripReport != null && !RowMenu.Is(selectedTripReport.Status, TripReportStatus.Invoiced));
-            tripStepPanels = count == 3 ? new[] { pnlStep1Stores, pnlStep2Gate, cardIncident } : new[] { pnlStep1Stores, pnlStep2Gate };
+            tripStepPanels = new[] { pnlStepGateStores, pnlStepIncidentAttach };
             w.SetPanels(tripStepPanels);
-            cardIncident.Visible = false;   // only step 3 shows it (and only while the switch is on)
             w.StepChanged = _ => ApplyTripResetVisibility();
             foreach (var b in new[] { w.BackButton, w.NextButton })
             {

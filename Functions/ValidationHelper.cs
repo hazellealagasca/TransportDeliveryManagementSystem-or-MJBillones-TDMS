@@ -115,10 +115,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 MissingInput.Mark(firstInvalidControl);
             }
 
-            string bulletList = string.Join(Environment.NewLine + " • ", errors.Take(7));
-            if (errors.Count > 7)
+            string bulletList = string.Join(Environment.NewLine + " • ", errors.Take(15)); // Nov 26: up to 15 lines (a trip report step can list plant gate and store problems together)
+            if (errors.Count > 15)
             {
-                bulletList += Environment.NewLine + $" • ...and {errors.Count - 7} more item(s)";
+                bulletList += Environment.NewLine + $" • ...and {errors.Count - 15} more item(s)";
             }
 
             MessageBox.Show(

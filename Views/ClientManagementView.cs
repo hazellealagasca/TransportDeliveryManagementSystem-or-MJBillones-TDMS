@@ -676,6 +676,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlProfilePage.Controls.Add(pnlProfileActions);
             pnlProfilePage.Controls.Add(pnlProfileHeader);
             pnlProfilePage.Resize += (s, e) => CenterProfileContent();
+            UiZoom.OnApplied(this, "center", CenterProfileContent);
         }
 
         private void StyleAfterTheme()
@@ -695,7 +696,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void CenterProfileContent()
         {
             if (pnlProfilePage == null || pnlProfilePage.Width <= 0) return;
-            int side = Math.Max(Dpi(24), (pnlProfilePage.ClientSize.Width - Dpi(FormContentMaxWidth)) / 2);
+            int side = Math.Max(Dpi(24), (pnlProfilePage.ClientSize.Width - (int)Math.Round(Dpi(FormContentMaxWidth) * UiZoom.Factor)) / 2);
             pnlProfileHeader.Padding = new Padding(side, Dpi(10), side, Dpi(14));
             pnlProfileBody.Padding = new Padding(side, 0, side + SystemInformation.VerticalScrollBarWidth / 2, Dpi(16));
             pnlProfileActions.Padding = new Padding(side, Dpi(12), side, Dpi(12));

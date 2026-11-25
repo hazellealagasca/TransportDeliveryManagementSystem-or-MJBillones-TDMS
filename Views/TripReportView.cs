@@ -386,25 +386,25 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlTripFooter = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = Dpi(150),
+                Height = Dpi(62), // Nov 26: one row of eight fields (was two rows of four)
                 BackColor = AppTheme.Surface,
                 Padding = new Padding(0),
                 Margin = new Padding(0)
             };
 
-            var tblFooter = new TableLayoutPanel
+            tblFooter = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 4,
-                RowCount = 4,
+                ColumnCount = 8,
+                RowCount = 4, // Nov 26: rows 3-4 are used only when one row of eight is too narrow (bigger display size)
                 BackColor = AppTheme.Surface
             };
-            for (int i = 0; i < 4; i++) tblFooter.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            tblFooter.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(24)));
-            tblFooter.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(44)));
-            tblFooter.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(24)));
-            tblFooter.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(44)));
-            Label MakeLbl(string t) => new Label { Text = t, Dock = DockStyle.Fill, TextAlign = ContentAlignment.BottomLeft, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextSecondary, Margin = new Padding(0, 0, Dpi(12), Dpi(2)) };
+            for (int i = 0; i < 8; i++) tblFooter.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 12.5F));
+            tblFooter.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(22)));
+            tblFooter.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(40)));
+            tblFooter.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(22)));
+            tblFooter.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(40)));
+            Label MakeLbl(string t) { var l = new Label { Text = t, Dock = DockStyle.Fill, TextAlign = ContentAlignment.BottomLeft, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextSecondary, Margin = new Padding(0, 0, Dpi(12), Dpi(2)) }; plantGateLabels.Add(l); return l; }
             TextBox MakeTxt(string def) => new TextBox { Text = def, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10F), Margin = new Padding(0, Dpi(2), Dpi(12), Dpi(6)) };
             txtTruckTimeIn = MakeTxt("");
             txtTruckTimeOut = MakeTxt("");
@@ -426,17 +426,57 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblFooter.Controls.Add(txtDtrApprovedBy, 2, 1);
             tblFooter.Controls.Add(txtReturnCheckedBy, 3, 1);
 
-            tblFooter.Controls.Add(MakeLbl("DTR prepared by"), 0, 2);
-            tblFooter.Controls.Add(MakeLbl("DR prepared by"), 1, 2);
-            tblFooter.Controls.Add(MakeLbl("DR checked by"), 2, 2);
-            tblFooter.Controls.Add(MakeLbl("Guard name & sign"), 3, 2);
-            tblFooter.Controls.Add(txtDtrPreparedBy, 0, 3);
-            tblFooter.Controls.Add(txtDrPreparedBy, 1, 3);
-            tblFooter.Controls.Add(txtDrCheckedBy, 2, 3);
-            tblFooter.Controls.Add(txtGuardName, 3, 3);
+            tblFooter.Controls.Add(MakeLbl("DTR prepared by"), 4, 0);
+            tblFooter.Controls.Add(MakeLbl("DR prepared by"), 5, 0);
+            tblFooter.Controls.Add(MakeLbl("DR checked by"), 6, 0);
+            tblFooter.Controls.Add(MakeLbl("Guard name & sign"), 7, 0);
+            tblFooter.Controls.Add(txtDtrPreparedBy, 4, 1);
+            tblFooter.Controls.Add(txtDrPreparedBy, 5, 1);
+            tblFooter.Controls.Add(txtDrCheckedBy, 6, 1);
+            tblFooter.Controls.Add(txtGuardName, 7, 1);
 
             pnlTripFooter.Controls.Add(tblFooter);
+            tblFooter.SizeChanged += (s, e) => ReflowPlantGate();
+            UiZoom.OnApplied(this, "tripPlantGate", ReflowPlantGate);
             BuildTripReportCards();
+        }
+
+        private TableLayoutPanel? tblFooter;
+        private readonly List<Label> plantGateLabels = new();
+        private bool plantGateTwoRows, reflowingPlantGate;
+        /// <summary>
+        /// Nov 26: the eight plant-gate fields sit on one row; when a caption no longer fits its column (a bigger display size or a narrow window)
+        /// they move to two rows of four, and back when there is room again. The panel's height follows the rows in use.
+        /// </summary>
+        private void ReflowPlantGate()
+        {
+            if (tblFooter == null || reflowingPlantGate || tblFooter.Width <= 0) return;
+            reflowingPlantGate = true;
+            try
+            {
+                int colW = tblFooter.ClientSize.Width / 8;
+                bool tooNarrow = plantGateLabels.Any(l => TextRenderer.MeasureText(l.Text, l.Font).Width + l.Margin.Horizontal > colW);
+                if (tooNarrow != plantGateTwoRows)
+                {
+                    tblFooter.SuspendLayout();
+                    foreach (Control c in tblFooter.Controls.Cast<Control>().ToList())
+                    {
+                        var p = tblFooter.GetPositionFromControl(c);
+                        if (tooNarrow && p.Column >= 4) tblFooter.SetCellPosition(c, new TableLayoutPanelCellPosition(p.Column - 4, p.Row + 2));
+                        else if (!tooNarrow && p.Row >= 2) tblFooter.SetCellPosition(c, new TableLayoutPanelCellPosition(p.Column + 4, p.Row - 2));
+                    }
+                    for (int i = 0; i < 8; i++)
+                        tblFooter.ColumnStyles[i] = new ColumnStyle(SizeType.Percent, tooNarrow ? (i < 4 ? 25F : 0F) : 12.5F);
+                    plantGateTwoRows = tooNarrow;
+                    tblFooter.ResumeLayout(true);
+                }
+                int rows = plantGateTwoRows ? 4 : 2;
+                int h = 0;
+                for (int i = 0; i < rows && i < tblFooter.RowStyles.Count; i++) h += (int)tblFooter.RowStyles[i].Height;
+                if (h > 0 && pnlTripFooter.Height != h) pnlTripFooter.Height = h;
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+            finally { reflowingPlantGate = false; }
         }
         private void SizeStoreTable(int rowCount)
         {
@@ -451,8 +491,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try { gridStores.AutoResizeRows(DataGridViewAutoSizeRowsMode.AllCells); } catch (Exception ex) { ErrLog.Swallowed(ex); }
             int chrome = Dpi(46) + Dpi(24) + Dpi(22);
             int rowsH = gridStores.Rows.Cast<DataGridViewRow>().Sum(r => r.Height);
-            int h = chrome + Math.Max(gridStores.ColumnHeadersHeight, Dpi(34)) + Math.Max(rowsH, 3 * Dpi(30));
-            pnlMultiDropInfo.Height = Math.Clamp(h, Dpi(240), Dpi(720));
+            int h = chrome + Math.Max(gridStores.ColumnHeadersHeight, Dpi(34)) + Math.Max(rowsH, Dpi(30)); // Nov 26: as tall as its rows (was at least 3 rows) so step 1 fits one screen
+            pnlMultiDropInfo.Height = Math.Clamp(h, Dpi(140), Dpi(720));
         }
 
         private void UpdateMultiDropTripInfo(Delivery d)
@@ -504,6 +544,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     int lines = lblDispatchInfoBanner.Text.Split('\n').Length;
                     lblDispatchInfoBanner.Height = Dpi(16) + lines * Dpi(21);
+                    PlaceTripBanner(); // Nov 26: beside the title, or wrapped above the steps when it does not fit there
                 }
                 ShowTripOverview(d, refNum, routeTitle, stops.Count, incidents.Count > 0 ? string.Join(" | ", incidents.Select(i => $"{i.Cause}: {i.DamagedQuantity} damaged crates")) : "");
                 lblMultiDropDetails.Text = $"🏪 Stores for this trip  ·  {routeTitle} ({stops.Count} stores)";

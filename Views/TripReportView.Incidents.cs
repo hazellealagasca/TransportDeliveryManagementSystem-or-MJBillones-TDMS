@@ -10,7 +10,7 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.M
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
 {
     /// <summary>
-    /// Nov 14: the incident report is step 3 of the trip report. A panel asks "Any damaged or missing crates?" (No by default). Yes shows the
+    /// Nov 14: the incident report is on step 2 of the trip report (step 3 before Nov 26). A panel asks "Any damaged or missing crates?" (No by default). Yes shows the
     /// incident fields (cause, damaged quantity, estimated cost, chargeable to crew, notes); each incident is added to a list and saved to
     /// IncidentReports with the trip's DeliveryId when the trip report is saved. Several incidents per trip are allowed. The lines are read-only
     /// reference: no statement, invoice, receipt or total reads them. The whole step follows <see cref="Features.TripIncidents"/>.
@@ -43,7 +43,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Nov 18: "Truck · Driver · Aides" of that dispatch, at the top of step 3.</summary>
         private Label? lblIncTrip;
 
-        /// <summary>True while step 3 is shown (the trip-incident switch is on).</summary>
+        /// <summary>True while the incident card is shown on step 2 (the trip-incident switch is on).</summary>
         private bool IncidentStepOn => Features.On(Features.TripIncidents);
 
         /// <summary>The panel of step 3 (built once; Layout puts it in its own card).</summary>
@@ -133,7 +133,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>The whole card appears only while the trip-incident switch is on.</summary>
         private void ApplyIncidentFeature()
         {
-            BuildTripWizard();   // 3 steps while the switch is on, 2 (Save on step 2) while it is off
+            BuildTripWizard();   // Nov 26: always 2 steps; step 2 is "Incident / Damage Report & save" while the switch is on, "Attachments & save" (incident card hidden) while it is off
         }
 
         private void ShowIncidentFields()

@@ -71,7 +71,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtRefNo.TextChanged += (s, e) => ScheduleCollGuide();
             collReady = new CollectionReadyPanel();
             collReady.PaymentRequested += OpenPayTarget;
-            collReady.CountChanged += n => FinanceHubView.Of(this)?.SetTabBadge("Collections", n);
+            collReady.CountChanged += n => { FinanceHubView.Of(this)?.SetTabBadge("Collections", n); collWaitingCount = n; UpdateCollTitles(); }; // Nov 26: the page title counts them too
             pnlGridCard.Controls.Add(collReady);
             pnlGridCard.Controls.SetChildIndex(collReady, pnlGridCard.Controls.GetChildIndex(pnlGridHeaderBar));
             RefreshCollReady();

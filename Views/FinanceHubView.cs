@@ -23,7 +23,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Smooth.Enable(this);           // H2: double-buffer the hub and its content host
             Smooth.Enable(pnlContentHost);
             NoWheel.Attach(this);          // H1: scrolling the page can never change a number, choice or date in any Payments tab
-            InitZoom();                    // Display size: A- / A+ in the header, Ctrl + / - / 0
             Pal.RemapTree(this);
             SetupTabs();
             ApplyAccess();
@@ -180,7 +179,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     refreshable.RefreshData();
                 }
-                UiZoom.Apply(view); // Display size (at 100 % this only remembers the original sizes)
+                UiZoom.ApplyChild(view); // Display size (at 100 % this only remembers the original sizes)
             }
         }
 

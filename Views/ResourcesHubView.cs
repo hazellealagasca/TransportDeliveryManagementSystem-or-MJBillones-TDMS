@@ -130,7 +130,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlContentHost.SuspendLayout();
             pnlContentHost.Controls.Clear();
             view.Dock = DockStyle.Fill;
-            pnlContentHost.Controls.Add(view);
+            pnlContentHost.Controls.Add(view); UiZoom.ApplyChild(view);
             pnlContentHost.ResumeLayout(true);
 
             if (view is IRefreshable refreshable)

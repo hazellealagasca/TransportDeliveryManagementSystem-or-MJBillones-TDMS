@@ -38,6 +38,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblRem.TextAlign = ContentAlignment.BottomLeft;
             txtRemarks.Height = Dpi(64);
             txtRemarks.Font = new Font("Segoe UI", 10F);
+            lblRem.Visible = false; txtRemarks.Visible = false; // Nov 26: no QA / store remarks box on the trip report (an old report keeps its saved remarks)
             foreach (var l in new[] { lblDelGCrate, lblDelECrate, lblRetGCrate, lblRetECrate })
             {
                 l.Font = new Font("Segoe UI Semibold", 9F);
@@ -105,39 +106,51 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             UpdateDeliveredCrateTotals();
             // The delivered-crate totals (lblDeliveredCrateTotals) are the footer above the action bar, on every step (BuildTripCrateFooter).
-            var card2 = CreateSectionCard("1", "Stores, DRs & times", "Each store's arrival and departure time, who received it, its DR numbers and the empties that came back.",
+            var card2 = CreateSectionCard("2", "Stores, DRs & times", "Each store's arrival and departure time, who received it, its DR numbers and the empties that came back.",
                 pnlMultiDropInfo, tblTimes, tblManagerNames);
             card2.Name = "pnlStep1Stores";
-            pnlStep1Stores = card2;
+            // Nov 26: the form is 2 steps: 1 = plant gate card then this stores card; 2 = incident card then attachments card.
             _ = tblCrateTotals; // Nov 6 workflow: no delivered-crate totals or crate cards on the form (the values are still worked out)
             // Nov 6 workflow: crew pay is internal and is recorded in Resources → Crew Trip History, not on the trip report.
-            var card4 = CreateSectionCard("2", "Plant gate & sign-off", "Truck times at the plant, the people who signed, and any remarks.",
+            var card4 = CreateSectionCard("1", "Plant gate & sign-off", "Truck times at the plant and the people who signed.",
                 pnlTripFooter, lblRem, txtRemarks);
-            tripAttachments = new AttachmentPanel("Proof of delivery (POD)") { Height = Dpi(250) };
+            tripAttachments = new AttachmentPanel("Proof of delivery (POD)") { Height = Dpi(170) }; // Nov 26: was 250 (step 2 fits one screen)
             tripAttachments.AttachmentsChanged += (s, e) => FilterGridData();
-            var card5 = CreateSectionCard("•", "Attachments", "Proof of delivery, receipts, trip sheets and photos for this trip. Drop files in or click Add.", tripAttachments);
+            // Nov 26: Attachments sit under the incident card on step 2; the badge is "4" with the incident card and "3" without it (read at paint time).
+            var card5 = CreateSectionCard(() => IncidentStepOn ? "4" : "3", "Attachments", "Proof of delivery, receipts, trip sheets and photos for this trip. Drop files in or click Add.", tripAttachments);
             cardIncident = CreateSectionCard("3", "Incident / Damage Report", "Any damaged or missing crates on this trip? Kept for reference only: it never reaches a statement, invoice or receipt.", BuildIncidentStep());
             Features.Bind(this, ApplyIncidentFeature, Features.TripIncidents);
-            cardIncident.Name = "pnlStep3Incident";
-            // Step 2 holds the plant gate card and the attachments card.
-            pnlStep2Gate = new Panel { Name = "pnlStep2PlantGate", Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = AppTheme.Canvas, Margin = new Padding(0) };
-            pnlStep2Gate.Controls.Add(card5);
-            pnlStep2Gate.Controls.Add(CreateSectionSpacer());
-            pnlStep2Gate.Controls.Add(card4);
-            // Top to bottom: dispatch card (banner, overview), step header, then the one step shown (FormWizard, see BuildTripWizard).
+            cardIncident.Name = "pnlIncidentCard";
+            card4.Name = "pnlPlantGateCard";
+            card5.Name = "pnlAttachmentsCard";
+            cardAttachments = card5;
+            // Nov 26: step 1 holds the plant gate card, then the stores card; step 2 holds the incident card, then the attachments card (Dock Top: the last one added is the top one).
+            pnlStepGateStores = new Panel { Name = "pnlStep1GateAndStores", Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = AppTheme.Canvas, Margin = new Padding(0) };
+            pnlStepGateStores.Controls.Add(card2);
+            pnlStepGateStores.Controls.Add(CreateSectionSpacer());
+            pnlStepGateStores.Controls.Add(card4);
+            incidentAttachSpacer = CreateSectionSpacer();
+            pnlStepIncidentAttach = new Panel { Name = "pnlStep2IncidentAndAttachments", Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = AppTheme.Canvas, Margin = new Padding(0) };
+            pnlStepIncidentAttach.Controls.Add(card5);
+            pnlStepIncidentAttach.Controls.Add(incidentAttachSpacer);
+            pnlStepIncidentAttach.Controls.Add(cardIncident);
+            // Top to bottom: dispatch card (banner, overview), step header, then the one step shown (FormWizard, see BuildTripWizard):
+            // step 1 = Plant gate & sign-off, Stores, DRs & times; step 2 = Incident / Damage Report, Attachments (Nov 26).
             tripHeaderHost = new Panel { Name = "pnlTripStepHeaderHost", Dock = DockStyle.Top, Height = Dpi(64), BackColor = AppTheme.Canvas, Margin = new Padding(0) };
-            pnlFormBody.Controls.Add(cardIncident);
-            pnlFormBody.Controls.Add(pnlStep2Gate);
-            pnlFormBody.Controls.Add(card2);
+            pnlFormBody.Controls.Add(pnlStepIncidentAttach);
+            pnlFormBody.Controls.Add(pnlStepGateStores);
             pnlFormBody.Controls.Add(tripHeaderHost);
-            pnlFormBody.Controls.Add(CreateSectionSpacer());
+            // Nov 26: no spacer between the slim dispatch card and the step header (each step fits one screen)
             pnlFormBody.Controls.Add(card1);
             pnlFormBody.ResumeLayout(true);
             WirePlantGateValidation();
+            CompactTripLayout(card1);
         }
         private Panel CreateGap(int h) => new Panel { Height = h, BackColor = AppTheme.Surface };
-        private Panel CreateSectionSpacer() => new Panel { Dock = DockStyle.Top, Height = Dpi(16), BackColor = AppTheme.Canvas };
-        private Panel CreateSectionCard(string step, string title, string subtitle, params Control?[] contentTopToBottom)
+        private Panel CreateSectionSpacer() => new Panel { Dock = DockStyle.Top, Height = Dpi(8), BackColor = AppTheme.Canvas }; // Nov 26: was 16 (the steps fit one screen)
+        private Panel CreateSectionCard(string step, string title, string subtitle, params Control?[] contentTopToBottom) =>
+            CreateSectionCard(() => step, title, subtitle, contentTopToBottom);
+        private Panel CreateSectionCard(Func<string> step, string title, string subtitle, params Control?[] contentTopToBottom)
         {
             var card = new Panel
             {
@@ -145,7 +158,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 BackColor = AppTheme.Surface,
-                Padding = new Padding(Dpi(24), Dpi(18), Dpi(24), Dpi(22)),
+                Padding = new Padding(Dpi(24), Dpi(6), Dpi(24), Dpi(8)), // Nov 26: tighter (was 18 / 22)
                 Margin = new Padding(0)
             };
             card.Paint += (s, e) =>
@@ -161,28 +174,111 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 c.Dock = DockStyle.Top;
                 card.Controls.Add(c);
             }
-            var header = new Panel { Dock = DockStyle.Top, Height = Dpi(56), BackColor = AppTheme.Surface };
+            var header = new Panel { Dock = DockStyle.Top, Height = Dpi(36), BackColor = AppTheme.Surface }; // Nov 26: one line (title, then the description beside it); was 56
             header.Paint += (s, e) =>
             {
                 var g = e.Graphics;
                 Gfx.HighQuality(g);
-                int d = Dpi(30);
+                int titleRight = 0;
+                float zf = UiZoom.Factor; // Nov 26: card titles follow the display size
+                int d = (int)(Dpi(26) * zf);
                 var circle = new Rectangle(0, Dpi(2), d, d);
                 using (var b = new SolidBrush(AppTheme.AccentSoft)) g.FillEllipse(b, circle);
-                using (var nf = new Font("Segoe UI Semibold", 10F))
-                    TextRenderer.DrawText(g, step, nf, circle, AppTheme.AccentText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
-                using (var tf = new Font("Segoe UI Semibold", 12F))
-                    TextRenderer.DrawText(g, title, tf, new Point(d + Dpi(12), 0), AppTheme.TextPrimary, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
-                using (var sf = new Font("Segoe UI", 9F))
-                    TextRenderer.DrawText(g, subtitle, sf, new Rectangle(d + Dpi(12), Dpi(24), header.Width - d - Dpi(12), Dpi(22)), AppTheme.TextMuted, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
+                using (var nf = new Font("Segoe UI Semibold", 10F * zf))
+                    TextRenderer.DrawText(g, step(), nf, circle, AppTheme.AccentText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+                using (var tf = new Font("Segoe UI Semibold", 12F * zf))
+                {
+                    TextRenderer.DrawText(g, title, tf, new Rectangle(d + Dpi(10), Dpi(2), header.Width, d), AppTheme.TextPrimary, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.VerticalCenter);
+                    titleRight = d + Dpi(10) + TextRenderer.MeasureText(g, title, tf).Width + (int)(Dpi(12) * zf);
+                }
+                using (var sf = new Font("Segoe UI", 9F * zf))
+                    TextRenderer.DrawText(g, subtitle, sf, new Rectangle(titleRight, Dpi(2), Math.Max(0, header.Width - titleRight), d), AppTheme.TextMuted, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis | TextFormatFlags.VerticalCenter);
                 using var pen = new Pen(AppTheme.Border);
                 g.DrawLine(pen, 0, header.Height - 1, header.Width, header.Height - 1);
             };
             header.Resize += (s, e) => header.Invalidate();
-            var gap = new Panel { Dock = DockStyle.Top, Height = Dpi(10), BackColor = AppTheme.Surface };
+            var gap = new Panel { Dock = DockStyle.Top, Height = Dpi(6), BackColor = AppTheme.Surface };
             card.Controls.Add(gap);
             card.Controls.Add(header);
             return card;
+        }
+        /// <summary>
+        /// Nov 26: each step fits one screen: the green dispatch banner sits in the page header beside the title (no "Dispatch order" card heading),
+        /// and the dispatch card keeps only its other rows with a slim padding.
+        /// </summary>
+        private void CompactTripLayout(Panel dispatchCard)
+        {
+            // the dispatch card: no heading row, slim padding
+            if (dispatchCard.Controls.Count >= 2)
+            {
+                dispatchCard.Controls[dispatchCard.Controls.Count - 1].Visible = false;   // heading (added last = top)
+                dispatchCard.Controls[dispatchCard.Controls.Count - 2].Visible = false;   // the gap under it
+            }
+            dispatchCard.Padding = new Padding(Dpi(24), 0, Dpi(24), 0);
+            if (lblDispatchInfoBanner == null) return;
+            tripDispatchCard = dispatchCard;
+            // the banner sits beside the title in the page header while it fits there (always at 100 %); at bigger display sizes it moves back
+            // into the form above the steps, where it has the full width and wraps (Nov 26)
+            lblDispatchInfoBanner.Margin = new Padding(0);
+            MoveBannerToHeader();
+            lblDispatchInfoBanner.TextChanged += (s, e) => PlaceTripBanner();
+            pnlFormHeaderBar.SizeChanged += (s, e) => PlaceTripBanner();
+            UiZoom.OnApplied(this, "tripHeaderBanner", PlaceTripBanner);
+        }
+        private Panel? tripDispatchCard;
+        private bool placingTripBanner;
+        private void MoveBannerToHeader()
+        {
+            var b = lblDispatchInfoBanner!;
+            b.Parent?.Controls.Remove(b);
+            b.Dock = DockStyle.Fill;
+            pnlFormHeaderBar.Controls.Add(b);
+            ArrangeTripHeader();
+        }
+        /// <summary>Nov 26: the dispatch banner beside the title when its text fits the header; otherwise (bigger display size, long names) at the top of the form body, wrapped.</summary>
+        private void PlaceTripBanner()
+        {
+            var b = lblDispatchInfoBanner;
+            if (b == null || tripDispatchCard == null || placingTripBanner || pnlFormHeaderBar.Width < Dpi(400)) return;
+            placingTripBanner = true;
+            try
+            {
+                int avail = pnlFormHeaderBar.ClientSize.Width - pnlFormHeaderBar.Padding.Horizontal - btnCloseForm.Width - (pnlHeaderSpacer?.Width ?? 0) - lblFormHeader.Width;
+                var flags = TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix;
+                int needInHeader = TextRenderer.MeasureText(b.Text, b.Font, new Size(Math.Max(1, avail - b.Padding.Horizontal), int.MaxValue), flags).Height + b.Padding.Vertical;
+                int inner = pnlFormHeaderBar.ClientSize.Height - pnlFormHeaderBar.Padding.Vertical;
+                bool fits = avail > Dpi(200) && needInHeader <= inner + Dpi(2);
+                if (fits && b.Parent != pnlFormHeaderBar) MoveBannerToHeader();
+                else if (!fits)
+                {
+                    if (b.Parent != tripDispatchCard)
+                    {
+                        b.Parent?.Controls.Remove(b);
+                        b.Dock = DockStyle.Top;
+                        tripDispatchCard.Controls.Add(b);
+                        tripDispatchCard.Controls.SetChildIndex(b, 0);
+                    }
+                    int cardW = Math.Max(1, tripDispatchCard.ClientSize.Width - tripDispatchCard.Padding.Horizontal - b.Padding.Horizontal);
+                    b.Height = TextRenderer.MeasureText(b.Text, b.Font, new Size(cardW, int.MaxValue), flags).Height + b.Padding.Vertical + Dpi(4);
+                }
+            }
+            catch (Exception ex) { ErrLog.Swallowed(ex); }
+            finally { placingTripBanner = false; }
+        }
+        /// <summary>Nov 26: page header, left to right: Back button, gap, title (its own width), then the dispatch banner filling the rest.</summary>
+        private void ArrangeTripHeader()
+        {
+            if (lblDispatchInfoBanner == null || lblDispatchInfoBanner.Parent != pnlFormHeaderBar) return;
+            pnlFormHeaderBar.Height = Dpi(58);
+            pnlFormHeaderBar.Padding = new Padding(pnlFormHeaderBar.Padding.Left, Dpi(4), pnlFormHeaderBar.Padding.Right, Dpi(6));
+            lblFormHeader.Dock = DockStyle.Left;
+            lblFormHeader.AutoSize = true;
+            lblFormHeader.Padding = new Padding(0, 0, Dpi(16), 0);
+            // docking runs from the highest index down: Back, gap and title take the left, the banner (index 0) fills what is left
+            pnlFormHeaderBar.Controls.SetChildIndex(lblDispatchInfoBanner, 0);
+            pnlFormHeaderBar.Controls.SetChildIndex(lblFormHeader, 1);
+            if (pnlHeaderSpacer != null && pnlFormHeaderBar.Controls.Contains(pnlHeaderSpacer)) pnlFormHeaderBar.Controls.SetChildIndex(pnlHeaderSpacer, 2);
+            if (pnlFormHeaderBar.Controls.Contains(btnCloseForm)) pnlFormHeaderBar.Controls.SetChildIndex(btnCloseForm, 3);
         }
         private void StyleFullPageForm()
         {
@@ -217,9 +313,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlFormHeaderBar.Controls.SetChildIndex(lblFormHeader, 0);
             pnlFormHeaderBar.Controls.SetChildIndex(pnlHeaderSpacer, 1);
             pnlFormHeaderBar.Controls.SetChildIndex(btnCloseForm, 2);
-            pnlFormBody.Padding = new Padding(0, 0, 0, Dpi(16));
+            ArrangeTripHeader(); // Nov 26: the dispatch banner beside the title, when it has been moved there
+            pnlFormBody.Padding = new Padding(0, 0, 0, Dpi(4)); // Nov 26: was 16 (each step fits one screen)
             pnlForm.Resize -= PnlForm_ResizeCenter;
             pnlForm.Resize += PnlForm_ResizeCenter;
+            UiZoom.OnApplied(this, "center", CenterFormContent);
             BuildFormActionBar();
             BuildTripCrateFooter();
             BuildTripWizard();
@@ -229,9 +327,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void CenterFormContent()
         {
             if (pnlForm == null || pnlForm.Width <= 0) return;
-            int side = Math.Max(Dpi(24), (pnlForm.ClientSize.Width - Dpi(FormContentMaxWidth)) / 2);
+            int side = Math.Max(Dpi(24), (pnlForm.ClientSize.Width - (int)Math.Round(Dpi(FormContentMaxWidth) * UiZoom.Factor)) / 2);
             pnlFormHeaderBar.Padding = new Padding(side, pnlFormHeaderBar.Padding.Top, side, pnlFormHeaderBar.Padding.Bottom);
-            pnlFormBody.Padding = new Padding(side, 0, side + SystemInformation.VerticalScrollBarWidth / 2, Dpi(16));
+            pnlFormBody.Padding = new Padding(side, 0, side + SystemInformation.VerticalScrollBarWidth / 2, Dpi(4)); // Nov 26: was 16
             pnlFormActionsBar.Padding = new Padding(side, Dpi(12), side, Dpi(12));
             if (pnlTripCrateFooter != null) pnlTripCrateFooter.Padding = new Padding(side, 0, side, 0);
         }

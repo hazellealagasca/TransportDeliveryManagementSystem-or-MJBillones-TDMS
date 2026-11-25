@@ -9,7 +9,7 @@ namespace TDMS.Verify;
 
 public static partial class Checks
 {
-    /// <summary>Nov 18: missing crates (a store returned fewer than delivered) must be answered in step 3: Yes with an incident. Blocks the final save, shows a hint, and step 3 is not done until then.</summary>
+    /// <summary>Nov 18: missing crates (a store returned fewer than delivered) must be answered in step 2: Yes with an incident. Blocks the final save, shows a hint, and step 2 is not done until then.</summary>
     [Check]
     public static string MissingCrates_MustBeAnsweredInIncidentStep()
     {
@@ -32,11 +32,11 @@ public static partial class Checks
             string Listed() => string.Join(" | ", ((System.Collections.IEnumerable)blank.Invoke(view, null)!).Cast<object>().Select(o => o.ToString() ?? ""));
             var hint = FieldOf<Label>(view, "lblIncHint")!;
             var yes = FieldOf<RadioButton>(view, "rbIncYes")!;
-            if (!Listed().Contains("crate(s) are missing")) problems.Add("missing crates with step 3 = No were not refused: " + Listed());
-            view.GoToStep(3); Pump(200);   // the hint is on step 3 of the wizard: only the current step's controls are visible
+            if (!Listed().Contains("crate(s) are missing")) problems.Add("missing crates with the incident answer = No were not refused: " + Listed());
+            view.GoToStep(2); Pump(200);   // Nov 26: the hint is on step 2 of the wizard: only the current step's controls are visible
             if (!hint.Visible ||!hint.Text.StartsWith("Missing crates on this trip")) problems.Add("the live hint is not shown: '" + hint.Text + "'");
             var done = typeof(TripReportView).GetMethod("StepIncidentDone", NonPub)!;
-            if ((bool)done.Invoke(view, null)!) problems.Add("step 3 shows done while crates are missing and no incident is added");
+            if ((bool)done.Invoke(view, null)!) problems.Add("the incident step shows done while crates are missing and no incident is added");
 
             yes.Checked = true; Pump(200);
             if (!Listed().Contains("crate(s) are missing")) problems.Add("Yes with no incident line was not refused: " + Listed());
@@ -48,7 +48,7 @@ public static partial class Checks
             if (!added) problems.Add("the incident line was not added");
             if (Listed().Contains("crate(s) are missing")) problems.Add("the message stays after an incident was added: " + Listed());
             if (hint.Text.StartsWith("Missing crates on this trip")) problems.Add("the hint stays after an incident was added");
-            if (!(bool)done.Invoke(view, null)!) problems.Add("step 3 is not done after the incident was added");
+            if (!(bool)done.Invoke(view, null)!) problems.Add("the incident step is not done after the incident was added");
             return "";
         });
     }

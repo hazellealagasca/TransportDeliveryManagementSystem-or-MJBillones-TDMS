@@ -566,6 +566,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Resize -= PnlForm_ResizeCenter;
 
             pnlForm.Resize += PnlForm_ResizeCenter;
+            UiZoom.OnApplied(this, "center", CenterFormContent);
 
             BuildFormActionBar();
 
@@ -583,7 +584,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (pnlForm == null || pnlForm.Width <= 0) return;
 
-            int side = Math.Max(Dpi(24), (pnlForm.ClientSize.Width - Dpi(FormContentMaxWidth)) / 2);
+            int side = Math.Max(Dpi(24), (pnlForm.ClientSize.Width - (int)Math.Round(Dpi(FormContentMaxWidth) * UiZoom.Factor)) / 2);
 
             pnlFormHeaderBar.Padding = new Padding(side, pnlFormHeaderBar.Padding.Top, side, pnlFormHeaderBar.Padding.Bottom);
 
@@ -778,6 +779,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
 
             pnlGridActionsFlow.Controls.Add(btnToggleForm);
+            pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0); // Nov 26: "+ Add order" sits first, to the left of the search box
 
             Button btnSpecialTrip = new Button
             {

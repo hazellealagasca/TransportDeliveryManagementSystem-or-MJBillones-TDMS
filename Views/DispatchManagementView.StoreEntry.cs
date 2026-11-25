@@ -22,13 +22,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private Label EntryCaption(string text)
         {
+            var font = new Font("Segoe UI Semibold", 9F);
             return new Label
             {
+                MinimumSize = new Size(TextRenderer.MeasureText(text, font, Size.Empty, TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding).Width + Dpi(14), 0), // its column is never narrower than the caption
                 Text = text,
                 Dock = DockStyle.Fill,
                 AutoSize = false,
                 UseMnemonic = false,
-                Font = new Font("Segoe UI Semibold", 9F),
+                Font = font,
                 ForeColor = AppTheme.TextSecondary,
                 TextAlign = ContentAlignment.BottomLeft,
                 Padding = new Padding(0, 0, 4, Dpi(2)),
@@ -69,11 +71,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 0, 0, 3),
                 Padding = new Padding(0, 0, 0, Dpi(10))
             };
-            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));   // code
-            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32F));   // name
-            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10F));   // G
-            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10F));   // E
-            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14F));   // temp
+            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38F));   // code
+            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 62F));   // name
+            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));       // G (as wide as its caption, so the caption is never cut at a bigger display size)
+            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));       // E
+            tbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));       // temp
             tbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));       // add button
             tbl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));       // season (routes off)
             tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(LargePrint.Px(26, 22))));   // caption row: fixed height so the captions are never cut off
@@ -91,6 +93,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             lblTempType.AutoSize = false;
             lblTempType.Padding = new Padding(0, 0, 4, Dpi(2));
             lblTempType.Margin = new Padding(0, 0, Dpi(8), 0);
+            lblTempType.MinimumSize = new Size(TextRenderer.MeasureText(lblTempType.Text, lblTempType.Font, Size.Empty, TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding).Width + Dpi(14), 0);
+            foreach (var nb in new[] { txtEntryG, txtEntryE }) nb.MinimumSize = new Size(Dpi(84), 0); // the number boxes keep a comfortable width now that their columns fit the captions
             cbTempType!.Dock = DockStyle.Fill;
             cbTempType.Margin = new Padding(0, 0, Dpi(8), 0);
 

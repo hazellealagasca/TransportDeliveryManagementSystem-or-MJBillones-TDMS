@@ -11,7 +11,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     public static class UITheme
     {
         public static readonly Font TitleFont          = new Font("Segoe UI Semibold", 16F, FontStyle.Bold);
-        public static readonly Font CardHeaderFont     = new Font("Segoe UI Semibold", 11.5F, FontStyle.Bold);
+        public static readonly Font CardHeaderFont     = new Font("Segoe UI Semibold", 12.5F); // Nov 26: every page / list title is this one size (was 11.5 bold)
         public static readonly Font FieldLabelFont     = new Font("Segoe UI Semibold", 9F, FontStyle.Regular);
         public static readonly Font InputFont          = new Font("Segoe UI", 9.75F, FontStyle.Regular);
         public static readonly Font ButtonPrimaryFont   = new Font("Segoe UI Semibold", 9.5F, FontStyle.Regular);

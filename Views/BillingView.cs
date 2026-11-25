@@ -167,7 +167,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void BuildForCollectionHeading()
         {
             lblForCollectionCount = new Label { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10.5F), TextAlign = ContentAlignment.MiddleLeft, UseMnemonic = false, BackColor = Color.Transparent };
-            lblForCollectionTitle = new Label { Dock = DockStyle.Left, AutoSize = false, Width = Dpi(150), Font = new Font("Segoe UI Semibold", 15.5F), Text = "For collection", TextAlign = ContentAlignment.MiddleLeft, UseMnemonic = false, BackColor = Color.Transparent };
+            lblForCollectionTitle = new Label { Dock = DockStyle.Left, AutoSize = false, Width = Dpi(150), Font = UITheme.CardHeaderFont, Text = "For collection", TextAlign = ContentAlignment.MiddleLeft, UseMnemonic = false, BackColor = Color.Transparent };
             pnlForCollection = new Panel { Name = "pnlForCollectionHeading", Dock = DockStyle.Top, Height = Dpi(40), BackColor = Color.Transparent, Padding = new Padding(0, Dpi(4), 0, Dpi(2)) };
             pnlForCollection.Controls.Add(lblForCollectionCount);
             pnlForCollection.Controls.Add(lblForCollectionTitle);
@@ -300,7 +300,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (visible) keep.Restored(btnToggleForm);
             if (formKit != null) formKit.Show(visible);
             else pnlForm.Visible = visible;
-            if (btnToggleForm != null) btnToggleForm.Visible = !visible;
+            if (btnToggleForm != null) btnToggleForm.Visible = false; // Nov 26: no "+ New service invoice" button: a completed Statement of Account comes here by itself (the waiting list above, Invoice ▸)
             OnBillFormShown(visible);
             MainForm.Instance?.NotifyDrawerToggled(visible);
         }
@@ -930,8 +930,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int openCount = allInvoices.Count(IsOpenWork); // Nov 24: only open work is listed (paid ones: Finance History → Completed; cancelled: → Voided)
             UpdateForCollectionCount(filtered.Count);
             lblGridHeader.Text = string.IsNullOrEmpty(q) && filtered.Count == openCount
-                ? $"Invoices ({openCount})"
-                : $"Invoices ({filtered.Count} of {openCount})";
+                ? $"Creation of Service Invoice ({openCount})" // Nov 26: was "Invoices (N)"
+                : $"Creation of Service Invoice ({filtered.Count} of {openCount})";
             if (filtered.Count > 0)
             {
                 gridInvoices.ClearSelection();

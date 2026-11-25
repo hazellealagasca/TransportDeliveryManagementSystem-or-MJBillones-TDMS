@@ -49,7 +49,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (showAwaiting) SetHistoryMode(false);   // these tiles are about finished reports: show the Active list
                 FilterGridData();
             };
-            filterBar = new FlowLayoutPanel { Dock = DockStyle.Top, Height = Dc(44), WrapContents = false, AutoScroll = false, BackColor = pnlGridCard.BackColor, Padding = new Padding(0, Dc(6), 0, 0) };
+            filterBar = new FlowLayoutPanel { Dock = DockStyle.Top, Height = Dc(44), MinimumSize = new Size(0, Dc(44)), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, AutoScroll = false, BackColor = pnlGridCard.BackColor, Padding = new Padding(0, Dc(6), 0, 0) };
             ComboBox Combo(int w, params string[] items)
             {
                 var c = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = Dc(w), Font = new Font("Segoe UI", 9.5F), Margin = new Padding(0, 0, Dc(8), 0) };

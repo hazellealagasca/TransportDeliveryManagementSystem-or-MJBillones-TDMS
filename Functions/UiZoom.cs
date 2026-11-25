@@ -28,6 +28,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static float Factor { get { if (!loaded) Load(); return factor; } }
         /// <summary>Raised after the factor changed (on the caller's thread).</summary>
         public static event Action? Changed;
+        /// <summary>Raised after a screen or window was scaled (<see cref="Apply"/>): layout code that depends on the display size (a centred form column) recomputes here.</summary>
+        public static event Action? Applied;
+        private static readonly ConditionalWeakTable<Control, HashSet<string>> appliedHooks = new();
+        /// <summary>Runs <paramref name="act"/> after every scaling pass for as long as <paramref name="owner"/> lives (one hook per key).</summary>
+        public static void OnApplied(Control owner, string key, Action act)
+        {
+            var set = appliedHooks.GetOrCreateValue(owner);
+            if (!set.Add(key)) return;
+            Action h = () => { if (!owner.IsDisposed) { try { act(); } catch (Exception ex) { ErrLog.Swallowed(ex); } } };
+            Applied += h;
+            owner.Disposed += (s, e) => Applied -= h;
+        }
 
         private static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MJ Billones Transport", "TDMS", "ui-zoom.txt");
 
@@ -72,7 +84,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private sealed class Base
         {
             public Font? Font, LastFont;
-            public Size Size, Min, LastSize, LastMin;
+            public Size Size, Min, LastSize, LastMin; public Point Loc, LastLoc;
             public Padding Pad, Margin, LastPad, LastMargin;
             public int RowH, HeaderH, LastRowH, LastHeaderH;
             public Font? CellFont, HeaderFont, LastCellFont, LastHeaderFont;
@@ -99,17 +111,113 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public static void Apply(Control? root)
         {
             if (root == null || root.IsDisposed) return;
+            if (root is Form fm) { ApplyForm(fm); return; }
             using (new RedrawFreeze(root))
             {
                 root.SuspendLayout();
                 try { Walk(root, Factor, true); }
                 finally { root.ResumeLayout(true); }
+                Applied?.Invoke(); FitText(root);
             }
+        }
+
+        /// <summary>
+        /// Scales a screen that was just put inside an already scaled host (a tab inside a hub): its own font follows the host's font,
+        /// its sizes / paddings / explicit fonts are scaled like any other child.
+        /// </summary>
+        public static void ApplyChild(Control? view)
+        {
+            if (view == null || view.IsDisposed) return;
+            using (new RedrawFreeze(view))
+            {
+                view.SuspendLayout();
+                try { Walk(view, Factor, false); }
+                finally { view.ResumeLayout(true); }
+                Applied?.Invoke(); FitText(view);
+            }
+        }
+
+        private sealed class FormBase { public Size Client, LastClient; }
+        private static readonly ConditionalWeakTable<Form, FormBase> formBases = new();
+
+        /// <summary>A window (dialog): its content is scaled like a screen, absolutely placed controls are moved with it, and the window grows or shrinks with the content.</summary>
+        private static void ApplyForm(Form fm)
+        {
+            float f = Factor;
+            var fb = formBases.GetValue(fm, x => new FormBase { Client = x.ClientSize, LastClient = x.ClientSize });
+
+            if (fm.ClientSize != fb.LastClient) { fb.Client = fm.ClientSize; fb.LastClient = fm.ClientSize; } // sized by someone else since: that is the new original
+            bool normal = fm.WindowState == FormWindowState.Normal;
+            using (new RedrawFreeze(fm))
+            {
+                fm.SuspendLayout();
+                try
+                {
+                    var before = fm.ClientSize;
+                    if (normal && fm.FormBorderStyle is not FormBorderStyle.None)
+                    {
+                        var wa = Screen.FromControl(fm).WorkingArea;
+                        var chrome = new Size(fm.Width - fm.ClientSize.Width, fm.Height - fm.ClientSize.Height);
+                        var want = S(fb.Client, f);
+                        want = new Size(Math.Min(want.Width, Math.Max(200, wa.Width - chrome.Width)), Math.Min(want.Height, Math.Max(150, wa.Height - chrome.Height)));
+                        fm.ClientSize = want;
+                        fb.LastClient = fm.ClientSize;
+                        if (fm.Visible)
+                        {
+                            var loc = new Point(fm.Left - (fm.ClientSize.Width - before.Width) / 2, fm.Top - (fm.ClientSize.Height - before.Height) / 2);
+                            loc.X = Math.Max(wa.Left, Math.Min(loc.X, wa.Right - fm.Width)); loc.Y = Math.Max(wa.Top, Math.Min(loc.Y, wa.Bottom - fm.Height));
+                            fm.Location = loc;
+                        }
+                    }
+                    Walk(fm, f, true, true);
+                }
+                finally { fm.ResumeLayout(true); }
+                Applied?.Invoke(); FitText(fm);
+            }
+        }
+
+        /// <summary>
+        /// After scaling, a one-line caption or button whose text is a little wider than its box (the box is a share of the window width, the text grew
+        /// with the font) gets a slightly smaller font so the whole text shows (never below 80 % of the zoomed size). Undone by the next zoom pass,
+        /// which always starts from the remembered original font. Only controls with their own font are touched.
+        /// </summary>
+        private static void FitText(Control c)
+        {
+            if (Math.Abs(Factor - 1f) < 0.001f) return;
+            try { FitWalk(c); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+        }
+
+        private static void FitWalk(Control c)
+        {
+            if (c is IZoomAware) return;
+            if (c.Visible && c.Width > 8 && bases.TryGetValue(c, out var b) && b.Applied && !b.FontAmbient && b.Font != null && ReferenceEquals(c.Font, b.LastFont))
+            {
+                int extra = 0; bool eligible = false;
+                switch (c)
+                {
+                    case Label l: eligible = !l.AutoSize && !l.AutoEllipsis && l.Image == null; break;
+                    case CheckBox cb: eligible = !cb.AutoSize && !cb.AutoEllipsis && cb.Image == null && cb.Appearance == Appearance.Normal; extra = 22; break;
+                    case RadioButton rb: eligible = !rb.AutoSize && !rb.AutoEllipsis && rb.Image == null && rb.Appearance == Appearance.Normal; extra = 22; break;
+                    case Button bt: eligible = !bt.AutoSize && !bt.AutoEllipsis && bt.Image == null && bt.BackgroundImage == null; extra = 10; break;
+                }
+                if (eligible && c.Text.Length > 0 && !c.Text.Contains('\n') && c.Height < c.Font.Height * 2 + 8)
+                {
+                    int avail = c.ClientSize.Width - c.Padding.Horizontal - extra;
+                    int need = TextRenderer.MeasureText(c.Text, c.Font, new Size(int.MaxValue, 0), TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding).Width;
+                    if (avail > 8 && need > avail)
+                    {
+                        float ratio = Math.Max(0.8f, (float)avail / need * 0.97f);
+                        c.Font = Scaled(b.Font, Factor * ratio); b.LastFont = c.Font;
+                    }
+                }
+            }
+            if (NoRecurse(c)) return;
+            foreach (Control k in c.Controls) FitWalk(k);
         }
 
         private static bool NoRecurse(Control c) => c is DataGridView or NumericUpDown or DomainUpDown or ComboBox or DateTimePicker or TextBoxBase or ScrollBar;
 
-        private static void Walk(Control c, float f, bool isRoot)
+        private static void Walk(Control c, float f, bool isRoot, bool abs = false)
         {
             if (c is IZoomAware za) { try { za.ZoomChanged(); } catch (Exception ex) { ErrLog.Swallowed(ex); } return; }
             // A container with AutoScaleMode.Font rescales ITS CHILDREN whenever its font changes, which would scale everything twice. Zoom does the scaling itself.
@@ -118,7 +226,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var b = bases.GetValue(c, ctl => new Base
             {
                 FontAmbient = ctl.Parent != null && ReferenceEquals(ctl.Font, ctl.Parent.Font), // follows its parent's font: the parent's font is scaled instead
-                Font = ctl.Font, LastFont = ctl.Font, Size = ctl.Size, LastSize = ctl.Size, Min = ctl.MinimumSize, LastMin = ctl.MinimumSize,
+                Font = ctl.Font, LastFont = ctl.Font, Loc = ctl.Location, LastLoc = ctl.Location, Size = ctl.Size, LastSize = ctl.Size, Min = ctl.MinimumSize, LastMin = ctl.MinimumSize,
                 Pad = ctl.Padding, LastPad = ctl.Padding, Margin = ctl.Margin, LastMargin = ctl.Margin,
                 RowH = g0?.RowTemplate.Height ?? 0, LastRowH = g0?.RowTemplate.Height ?? 0, HeaderH = g0?.ColumnHeadersHeight ?? 0, LastHeaderH = g0?.ColumnHeadersHeight ?? 0,
                 CellFont = g0?.DefaultCellStyle.Font, LastCellFont = g0?.DefaultCellStyle.Font, HeaderFont = g0?.ColumnHeadersDefaultCellStyle.Font, LastHeaderFont = g0?.ColumnHeadersDefaultCellStyle.Font,
@@ -149,6 +257,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (c.MinimumSize != b.LastMin) { b.Min = c.MinimumSize; b.LastMin = c.MinimumSize; }
             if (c.Padding != b.LastPad) { b.Pad = c.Padding; b.LastPad = c.Padding; }
             if (c.Margin != b.LastMargin) { b.Margin = c.Margin; b.LastMargin = c.Margin; }
+            bool locFree = abs && !isRoot && c.Dock == DockStyle.None && c.Anchor == (AnchorStyles.Top | AnchorStyles.Left) && c.Parent is not (TableLayoutPanel or FlowLayoutPanel);
+            if (locFree && c.Location != b.LastLoc) { b.Loc = c.Location; b.LastLoc = c.Location; }
             if (g0 != null)
             {
                 if (g0.RowTemplate.Height != b.LastRowH) { b.RowH = g0.RowTemplate.Height; b.LastRowH = b.RowH; }
@@ -156,13 +266,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (!ReferenceEquals(g0.DefaultCellStyle.Font, b.LastCellFont)) { b.CellFont = g0.DefaultCellStyle.Font; b.LastCellFont = b.CellFont; }
                 if (!ReferenceEquals(g0.ColumnHeadersDefaultCellStyle.Font, b.LastHeaderFont)) { b.HeaderFont = g0.ColumnHeadersDefaultCellStyle.Font; b.LastHeaderFont = b.HeaderFont; }
             }
-            if (Math.Abs(f - 1f) < 0.001f && !b.Applied) { if (!NoRecurse(c)) foreach (Control child in c.Controls) Walk(child, f, false); return; } // at 100 % nothing was changed yet: only remember the originals
+            if (Math.Abs(f - 1f) < 0.001f && !b.Applied) { if (!NoRecurse(c)) foreach (Control child in c.Controls) Walk(child, f, false, abs); return; } // at 100 % nothing was changed yet: only remember the originals
             b.Applied = true;
             if (scaleFont && b.Font != null) { c.Font = Scaled(b.Font, f); b.LastFont = c.Font; }
             if (!isRoot)
             {
                 c.Padding = S(b.Pad, f); b.LastPad = c.Padding;
                 c.Margin = S(b.Margin, f); b.LastMargin = c.Margin;
+                if (locFree) { c.Location = new Point(S(b.Loc.X, f), S(b.Loc.Y, f)); b.LastLoc = c.Location; }
                 if (!c.AutoSize && c is not Form)
                 {
                     if (useW) { c.Width = S(b.Size.Width, f); b.LastSize = new Size(c.Width, b.LastSize.Height); }
@@ -189,7 +300,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 b.LastCols = t.ColumnStyles.Cast<ColumnStyle>().Select(r => (r.SizeType, r.Width)).ToArray();
             }
             if (NoRecurse(c)) return;
-            foreach (Control child in c.Controls) Walk(child, f, false);
+            foreach (Control child in c.Controls) Walk(child, f, false, abs);
         }
     }
 }

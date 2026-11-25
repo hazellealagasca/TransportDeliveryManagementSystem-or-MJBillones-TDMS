@@ -30,6 +30,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     GuardAutoComplete(f);
                     if (f is LoginForm || f is MainForm) continue;
                     Apply(f);
+                    // display size: windows opened after the size was chosen follow it
+                    if (f.Visible && f.FormBorderStyle != FormBorderStyle.None && Math.Abs(UiZoom.Factor - 1f) > 0.001f) { try { UiZoom.Apply(f); } catch (Exception zx) { ErrLog.Swallowed(zx); } }
                 }
             }
             catch (InvalidOperationException) { /* the open-forms list changed while sweeping; next tick */ }

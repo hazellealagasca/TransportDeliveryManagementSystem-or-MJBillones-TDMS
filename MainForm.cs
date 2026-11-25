@@ -56,6 +56,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Instance = this;
             InitializeComponent();
             DarkModeKit.Install();
+            HookUiZoom();
             UIThemeHelper.EnableDoubleBuffering(this);
             currentUser = user;
             SessionContext.ActiveUser = user;
@@ -707,6 +708,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlKpiFlow.Controls.Add(btnKpiInTransit);
             pnlKpiFlow.Controls.Add(btnKpiUnpaid);
             pnlKpiFlow.Controls.Add(btnNotificationBell);
+            foreach (var zb in BuildZoomButtons()) pnlKpiFlow.Controls.Add(zb); // display size: A- / 100% / A+ beside Settings
             pnlKpiFlow.Controls.Add(btnHeaderSettings);
             pnlKpiFlow.Controls.Add(btnLogout);
 
@@ -1105,6 +1107,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }
 
             if (!skipRefresh) ((IRefreshable)view).RefreshData();
+            ZoomShownView(view);
             SetActiveNav(btn);
             UpdateHeaderKpiBadges();
         }
@@ -1121,6 +1124,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             viewControl.Dock = DockStyle.Fill;
             panelMainContent.Controls.Add(viewControl);
             panelMainContent.ResumeLayout(true);
+            ZoomShownView(viewControl);
 
             SetActiveNav(btn);
             UpdateHeaderKpiBadges();

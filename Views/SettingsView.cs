@@ -223,7 +223,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 }
                 pnlContent.Controls.Clear();
                 child.Dock = DockStyle.Fill;
-                pnlContent.Controls.Add(child);
+                pnlContent.Controls.Add(child); UiZoom.ApplyChild(child);
                 if (child is IRefreshable refreshable)
                 {
                     refreshable.RefreshData();

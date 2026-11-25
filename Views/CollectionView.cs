@@ -24,9 +24,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             InitializeComponent();
             PageKit.SummaryUnderTitle(pnlSummary, lblSummary, pnlGridHeaderBar, lblGridHeader); // totals line under the title, not cut off at the bottom
+            lblSummary.Visible = false; // Nov 26: no "N issued receipts · collected · read-only" line under the title
             Pal.RemapTree(this);
             gridCollections.BringToFront();
             SetupGridColumns();
+            BuildCompletedTitle(); // Nov 26
             InitListChips();
             SetupContextMenu();
             gridCollections.ColumnHeaderMouseClick += (s, e) => {
@@ -366,12 +368,31 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridCollections.DataSource = null;
             gridCollections.DataSource = filtered;
             UpdateCollectionSummary(filtered.ToList());
-            lblGridHeader.Text = filtered.Count == listable.Count
-                ? $"Completed receipts ({listable.Count})"
-                : $"Completed receipts ({filtered.Count} of {listable.Count})";
+            // Nov 26: the page title counts what is waiting for a receipt; the completed list has its own title right above it
+            UpdateCollTitles();
+            if (lblCompletedTitle != null) lblCompletedTitle.Text = filtered.Count == listable.Count
+                ? $"Completed Collection receipts ({listable.Count})"
+                : $"Completed Collection receipts ({filtered.Count} of {listable.Count})";
             ShowHeaderSortGlyph();
             // Nov 25: nothing is selected until a receipt is clicked; selecting never touches the entry form (selectedCollection stays null)
             gridCollections.ClearSelection();
+        }
+
+        private Label? lblCompletedTitle;
+        private int collWaitingCount;
+        /// <summary>Nov 26: page title = the statements / invoices waiting for their collection receipt.</summary>
+        private void UpdateCollTitles()
+        {
+            lblGridHeader.Text = $"For Collection Receipt ({collWaitingCount:N0})";
+            // Nov 26: titles share UITheme.CardHeaderFont (one size everywhere)
+        }
+        /// <summary>Nov 26: "Completed Collection receipts (N)" directly above the completed receipts list.</summary>
+        private void BuildCompletedTitle()
+        {
+            lblCompletedTitle = new Label { Dock = DockStyle.Top, /* no Name: the theme restyles named labels, this one keeps the shared title font */ Height = Dpi(44), Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, BackColor = Color.Transparent, TextAlign = ContentAlignment.BottomLeft, Padding = new Padding(Dpi(8), 0, 0, Dpi(4)), UseMnemonic = false, Text = "Completed Collection receipts" };
+            gridCollections.BringToFront();
+            pnlGridCard.Controls.Add(lblCompletedTitle);
+            pnlGridCard.Controls.SetChildIndex(lblCompletedTitle, 1); // just above the list (index 0 = the list, Fill)
         }
 
         private void TxtGridSearch_TextChanged(object? sender, EventArgs e)

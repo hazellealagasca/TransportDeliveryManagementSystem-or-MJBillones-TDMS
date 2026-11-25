@@ -91,9 +91,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (backwards.Count > 0)
                     list.Add(($"A store's time out can't be earlier than its time in. Fix it for: {string.Join(", ", backwards.Take(6))}{(backwards.Count > 6 ? ", …" : "")}.", gridStores));
             }
-            // Nov 18: missing crates must be answered in step 3 (Yes with an incident). Blocks Proceed / Save, not Save draft.
+            // Nov 18: missing crates must be answered in step 2 (Yes with an incident; was step 3 before Nov 26). Blocks Proceed / Save, not Save draft.
             if (MissingCratesNeedIncident(out int missingCrates, out var missingStores))
-                list.Add(($"{missingCrates:N0} crate(s) are missing (returned fewer than delivered: {string.Join(", ", missingStores.Take(6))}{(missingStores.Count > 6 ? ", …" : "")}). Answer Yes under 'Any damaged or missing crates?' in step 3 Incident / Damage Report and add the incident.", (Control?)rbIncYes ?? gridStores!));
+                list.Add(($"{missingCrates:N0} crate(s) are missing (returned fewer than delivered: {string.Join(", ", missingStores.Take(6))}{(missingStores.Count > 6 ? ", …" : "")}). Answer Yes under 'Any damaged or missing crates?' in step 2 Incident / Damage Report and add the incident.", (Control?)rbIncYes ?? gridStores!));
             IncidentChecks(list);   // step 3: Yes needs at least one incident
             foreach (var (tb, nm) in SignOffBoxes())
                 if (tb != null && !string.IsNullOrWhiteSpace(tb.Text) && !SecurityHelper.IsValidName(tb.Text.Trim())) list.Add(($"{nm} must be a name (letters only).", tb));

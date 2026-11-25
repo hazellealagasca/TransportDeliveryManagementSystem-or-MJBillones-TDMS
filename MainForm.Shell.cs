@@ -149,6 +149,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             StyleHeaderChip(btnLogout, AppTheme.Surface, AppTheme.TextSecondary, AppTheme.DangerSoft, outline: true);
             btnLogout.MouseEnter += (s, e) => btnLogout.ForeColor = AppTheme.DangerText;
             btnLogout.MouseLeave += (s, e) => btnLogout.ForeColor = AppTheme.TextSecondary;
+            StyleZoomButtons();
             foreach (var b in new[] { btnKpiScheduled, btnKpiInTransit, btnKpiUnpaid, btnNotificationBell, btnHeaderSettings, btnLogout })
             {
                 b.Margin = new Padding(0, 0, 8, 0);

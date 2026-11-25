@@ -119,7 +119,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 Text = title,
                 AutoSize = true,
-                Font = new Font("Segoe UI Semibold", 16F),
+                Font = UITheme.CardHeaderFont, // Nov 26: page titles are the same size as every other title (was 16)
                 ForeColor = AppTheme.TextPrimary,
                 UseMnemonic = false,
                 Margin = new Padding(0, 0, 0, 2)
@@ -167,7 +167,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            Title.Font = new Font("Segoe UI Semibold", 12.5F);
+            Title.Font = UITheme.CardHeaderFont;
             Title.Anchor = AnchorStyles.Left;
             Title.Margin = new Padding(0, 0, (int)Math.Round(12 * DeviceDpi / 96f), 0);
             Subtitle.AutoSize = false;

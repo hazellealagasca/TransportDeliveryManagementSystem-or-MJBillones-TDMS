@@ -206,8 +206,12 @@ public static partial class Checks
             var listed = (grid.DataSource as List<CollectionReceipt>) ?? new List<CollectionReceipt>();
             // Nov 25: the list shows the issued receipts, preview only.
             if (!listed.Any(r => r.ReceiptNumber == no)) bad.Add("an issued receipt is not listed in Collection Receipts");
+            // Nov 26: the page title counts what waits for a receipt; the completed list has its own title right above it
             var header = CpField<Label>(view, "lblGridHeader");
-            if (!header.Text.StartsWith("Completed receipts")) bad.Add("the list heading is '" + header.Text + "'");
+            if (!header.Text.StartsWith("For Collection Receipt (")) bad.Add("the page title is '" + header.Text + "'");
+            var done = CpField<Label>(view, "lblCompletedTitle");
+            if (!done.Text.StartsWith("Completed Collection receipts (")) bad.Add("the completed list title is '" + done.Text + "'");
+            if (CpField<Label>(view, "lblSummary").Visible) bad.Add("the issued receipts line is still shown under the title");
             int row = listed.FindIndex(r => r.ReceiptNumber == no);
             if (row >= 0 && row < grid.Rows.Count)
             {

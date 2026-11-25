@@ -217,7 +217,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             btnViewInvoice.FlatAppearance.BorderColor = Pal.C(203, 213, 225);
             btnViewInvoice.Click += (s, e) => OpenLinkedInvoice();
-            pnlGridActionsFlow.Controls.Add(btnViewInvoice);
+            // Nov 26: no "View linked invoice" button on the list (the row's right-click menu still opens its invoice)
 
             // Fix a saved statement (wrong amounts, forgotten trips); each line can open its dispatch.
             var btnEditSoa = new Button
@@ -283,7 +283,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlGridActionsFlow.SizeChanged += (s, e) => FitTopBar();
             pnlTopBar.Resize += (s, e) => FitTopBar();
             this.Controls.Add(pnlTopBar);
-
+            // Nov 26: "For collection (N)" title above the list's buttons, like the page title at the top
+            lblForCollectionTitle = new Label { Dock = DockStyle.Top, Height = Dpi(40), Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, BackColor = Color.Transparent, TextAlign = ContentAlignment.BottomLeft, Padding = new Padding(Dpi(16), 0, Dpi(16), Dpi(2)), Text = "Statement of Account", UseMnemonic = false };
+            this.Controls.Add(lblForCollectionTitle);
             // Bottom action bar of the list: Print official SOA and + New statement side by side.
             pnlListActionsBar = new Panel { Dock = DockStyle.Bottom, Height = Dpi(52), BackColor = Pal.White, Padding = new Padding(Dpi(12), Dpi(8), Dpi(12), Dpi(8)) };
             pnlListActionsBar.Paint += (s, e) => { using var pen = new Pen(Pal.C(226, 232, 240)); e.Graphics.DrawLine(pen, 0, 0, pnlListActionsBar.Width, 0); };
@@ -294,7 +296,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             this.Controls.Add(pnlListActionsBar);
 
             // Page title like the other list pages (Trucks, Crew, Order History).
-            var soaHeader = PageKit.Header("Statements of Account", "A statement groups the service invoices of one client into one bill. Pick the invoices that are ready, make the statement, then collect one payment in Collections.");
+            var soaHeader = PageKit.Header("Creation of Statement of Account", "A statement groups the service invoices of one client into one bill. Pick the invoices that are ready, make the statement, then collect one payment in Collections.");
             var soaHeaderHost = soaPageHeaderHost = new Panel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(Dpi(16), Dpi(8), Dpi(16), Dpi(4)), BackColor = Color.Transparent };
             soaHeader.MakeCompact();
             soaHeaderHost.Controls.Add(soaHeader);
@@ -404,6 +406,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlForm.Controls.Add(pnlFormActionsBar);
             pnlForm.Controls.Add(pnlFormHeaderBar);
             pnlForm.Resize += (s, e) => CenterFormContent();
+            UiZoom.OnApplied(this, "center", CenterFormContent);
             BuildFormControls();
             InitSoaGuide();
             ApplySoaWizard(); // the statement is a 3-step form (Client & service invoices → Trips & totals → Sign-off & save)
@@ -418,7 +421,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 pnlFormActionsBar.Padding = new Padding(Dpi(24), Dpi(12), Dpi(24), Dpi(12));
                 return;
             }
-            int side = Math.Max(Dpi(24), (pnlForm.ClientSize.Width - Dpi(FormContentMaxWidth)) / 2);
+            int side = Math.Max(Dpi(24), (pnlForm.ClientSize.Width - (int)Math.Round(Dpi(FormContentMaxWidth) * UiZoom.Factor)) / 2);
             pnlFormHeaderBar.Padding = new Padding(side, Dpi(4), side, Dpi(6));
             if (soaStrip != null) soaStrip.Padding = new Padding(side, 0, side, 0);
             pnlFormBody.Padding = new Padding(side, 0, side + SystemInformation.VerticalScrollBarWidth / 2, Dpi(16));
@@ -1456,7 +1459,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridSoa.DataSource = null;
             gridSoa.DataSource = filtered;
             UpdateSoaSummary(filtered.ToList());
+            if (lblForCollectionTitle != null) lblForCollectionTitle.Text = $"Statement of Account ({filtered.Count:N0})"; // Nov 26: was "For collection (N)"
         }
+
+        private Label? lblForCollectionTitle;
 
         private void GridSoa_SelectionChanged()
         {

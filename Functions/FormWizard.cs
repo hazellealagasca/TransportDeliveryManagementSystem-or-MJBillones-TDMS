@@ -63,7 +63,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Gfx.HighQuality(g);
             using (var pen = new Pen(AppTheme.Border)) g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
             int cur = current();
-            int d = (int)(30 * S);
+            float zf = UiZoom.Factor; // Nov 26: the step header follows the display size (fonts and badges)
+            int d = (int)(30 * S * zf);
             var fl = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix;
             for (int i = 0; i < names.Length; i++)
             {
@@ -75,10 +76,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Color ink = active ? AppTheme.OnAccent : done ? Color.White : AppTheme.TextMuted;
                 using (var b = new SolidBrush(fill)) g.FillEllipse(b, badge);
                 if (!active && !done) using (var pen = new Pen(AppTheme.Border)) g.DrawEllipse(pen, badge);
-                using (var nf = new Font("Segoe UI Semibold", 10F, FontStyle.Bold))
+                using (var nf = new Font("Segoe UI Semibold", 10F * zf, FontStyle.Bold))
                     TextRenderer.DrawText(g, done ? "✓" : n.ToString(), nf, badge, ink, fl);
                 var lbl = new Rectangle(badge.Right + (int)(10 * S), 0, cell.Right - badge.Right - (int)(14 * S), Height);
-                using (var lf = new Font("Segoe UI Semibold", 10F, active ? FontStyle.Bold : FontStyle.Regular))
+                using (var lf = new Font("Segoe UI Semibold", 10F * zf, active ? FontStyle.Bold : FontStyle.Regular))
                     TextRenderer.DrawText(g, names[i], lf, lbl, active ? AppTheme.TextPrimary : done ? AppTheme.TextSecondary : AppTheme.TextMuted,
                         TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
             }

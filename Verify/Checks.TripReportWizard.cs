@@ -7,7 +7,7 @@ namespace TDMS.Verify;
 
 /// <summary>
 /// The Trip Report form is on the shared FormWizard (same header, footer, Next and header rules as New Dispatch Order and the Collection Receipt):
-/// 1 Stores, DRs &amp; times, 2 Plant gate, sign-off &amp; attachments, 3 Incident / Damage Report &amp; save (2 steps with Save on step 2 while the trip-incident switch is off).
+/// Nov 26: always 2 steps. 1 Plant gate, sign-off, stores &amp; DRs (plant gate card above the stores card), 2 Incident / Damage Report above Attachments, &amp; save (while the trip-incident switch is off step 2 is Attachments &amp; save with the incident card hidden).
 /// The dispatch banner stays above the steps and the crate totals above the action bar on every step.
 /// </summary>
 public static partial class Checks
@@ -26,7 +26,7 @@ public static partial class Checks
     private static bool TwInside(Control c, Control p) { for (var x = c; x != null; x = x.Parent) if (x == p) return true; return false; }
 
     [Check]
-    public static string TripReportWizard_NewReport_StepsValidateNavigateAndStep3IsRequiredForMissingCrates()
+    public static string TripReportWizard_NewReport_StepsValidateNavigateAndStep2IsRequiredForMissingCrates()
     {
         Fresh();
         int id = P4DeliveryWithStores();
@@ -40,8 +40,9 @@ public static partial class Checks
             var bad = new List<string>();
             T.GetMethod("OpenNewTripReport", NonPub)!.Invoke(view, null); Pump(500);
             PickMain(view, no);
-            var p1 = TwPanel(view, "pnlStep1Stores"); var p2 = TwPanel(view, "pnlStep2PlantGate"); var p3 = TwPanel(view, "pnlStep3Incident");
-            var panels = new[] { p1, p2, p3 };
+            var p1 = TwPanel(view, "pnlStep1GateAndStores"); var p2 = TwPanel(view, "pnlStep2IncidentAndAttachments");
+            var pGate = TwPanel(view, "pnlPlantGateCard"); var pStores = TwPanel(view, "pnlStep1Stores"); var pInc = TwPanel(view, "pnlIncidentCard"); var pAtt = TwPanel(view, "pnlAttachmentsCard");
+            var panels = new[] { p1, p2 };
             var save = FieldOf<Button>(view, "btnSave")!; var update = FieldOf<Button>(view, "btnUpdate")!; var issue = FieldOf<Button>(view, "btnIssueExisting")!;
             var draft = FieldOf<Button>(view, "btnSaveDraft")!; var clear = FieldOf<Button>(view, "btnClear")!;
             var next = view.Controls.Find("btnNext", true).OfType<Button>().First(); var back = view.Controls.Find("btnBack", true).OfType<Button>().First();
@@ -63,25 +64,32 @@ public static partial class Checks
 
             // one implementation: the shared header, none of the old custom bar
             if (P4Walk(view).Any(c => c.GetType().Name == "TripStepper")) bad.Add("the old TripStepper bar is still on the form");
-            if (view.WizardStepCount != 3) bad.Add("step count " + view.WizardStepCount);
-            if (!TwInside(FieldOf<DataGridView>(view, "gridStores")!, p1)) bad.Add("the stores table is not on step 1");
-            if (!TwInside(FieldOf<TextBox>(view, "txtTruckTimeIn")!, p2) || !TwInside(FieldOf<TextBox>(view, "txtGuardName")!, p2) || !TwInside(FieldOf<TextBox>(view, "txtRemarks")!, p2)) bad.Add("the plant gate / sign-off fields are not on step 2");
-            if (!P4Walk(p2).Any(c => c.GetType().Name == "AttachmentPanel")) bad.Add("the attachments are not on step 2");
-            if (!TwInside(FieldOf<RadioButton>(view, "rbIncYes")!, p3)) bad.Add("the incident question is not on step 3");
-            if (TwInside(banner, p1) || TwInside(banner, p2) || TwInside(banner, p3)) bad.Add("the dispatch banner sits inside a step");
+            if (view.WizardStepCount != 2) bad.Add("step count " + view.WizardStepCount);
+            // Nov 26: step 1 = plant gate card above the stores card; step 2 = incident card above the attachments card
+            if (!TwInside(pGate, p1) || !TwInside(pStores, p1)) bad.Add("the plant gate / stores cards are not on step 1");
+            if (!TwInside(pInc, p2) || !TwInside(pAtt, p2)) bad.Add("the incident / attachments cards are not on step 2");
+            if (pGate.Top >= pStores.Top) bad.Add($"the plant gate card (top {pGate.Top}) is not above the stores card (top {pStores.Top})");
+            if (!TwInside(FieldOf<DataGridView>(view, "gridStores")!, pStores)) bad.Add("the stores table is not in the stores card");
+            if (!TwInside(FieldOf<TextBox>(view, "txtTruckTimeIn")!, pGate) || !TwInside(FieldOf<TextBox>(view, "txtGuardName")!, pGate) || !TwInside(FieldOf<TextBox>(view, "txtRemarks")!, pGate)) bad.Add("the plant gate / sign-off fields are not in the plant gate card");
+            if (!P4Walk(pAtt).Any(c => c.GetType().Name == "AttachmentPanel")) bad.Add("the attachments are not in the attachments card");
+            if (!TwInside(FieldOf<RadioButton>(view, "rbIncYes")!, pInc)) bad.Add("the incident question is not in the incident card");
+            if (TwInside(banner, p1) || TwInside(banner, p2)) bad.Add("the dispatch banner sits inside a step");
             Expect(1, "new report start");
             if (!clear.Visible || back.Visible || !next.Visible || save.Visible || update.Visible || issue.Visible || !draft.Visible)
                 bad.Add($"step 1 buttons wrong (clear {clear.Visible}, back {back.Visible}, next {next.Visible}, save {save.Visible}, update {update.Visible}, issue {issue.Visible}, draft {draft.Visible})");
-            if (!next.Text.Contains("Plant gate")) bad.Add("step 1 Next text: " + next.Text);
-            if (CanJump(2) || CanJump(3)) bad.Add("later steps are clickable on a new report");
+            if (!next.Text.Contains("Incident / Damage Report")) bad.Add("step 1 Next text: " + next.Text);
+            if (CanJump(2)) bad.Add("step 2 is clickable on a new report");
 
-            // Next on step 1 with nothing typed: stays, with the form's own messages
+            // Next on step 1 with nothing typed: stays, with the form's own messages for the plant gate AND the stores
             before = boxes.Boxes.Count;
             if (view.TryNextStep()) bad.Add("Next passed step 1 with nothing typed");
             Pump(200);
             Expect(1, "Next with step 1 empty");
             if (!Said("Time in is required") || !Said("DR (delivery receipt) number is required")) bad.Add("step 1 Next did not show the time-in / DR messages: " + AllSaid());
-            if (Said("Truck time in")) bad.Add("step 1 Next already complains about step 2 fields: " + AllSaid());
+            if (!Said("Truck time in (plant gate) is required") || !Said("Guard name & sign is required")) bad.Add("step 1 Next did not show the plant gate / sign-off messages: " + AllSaid());
+            FieldOf<TextBox>(view, "txtTruckTimeIn")!.Text = "7:30 PM"; FieldOf<TextBox>(view, "txtTruckTimeOut")!.Text = "8:00 PM";
+            foreach (var nm in new[] { "txtDtrApprovedBy", "txtDtrPreparedBy", "txtDrPreparedBy", "txtDrCheckedBy", "txtGuardName" }) FieldOf<TextBox>(view, nm)!.Text = "Maria Santos";
+            Pump(100);
 
             // a store whose time out is before its time in
             int n = 0;
@@ -93,7 +101,7 @@ public static partial class Checks
                 r.Cells["colDr"].Value = (5001 + n).ToString();
                 n++;
             }
-            grid.Rows[0].Cells["colRetG"].Value = Math.Max(0, int.Parse(grid.Rows[0].Cells["colLoadG"].Value?.ToString() ?? "0") - 2).ToString();   // 2 crates not returned: step 3 will be required
+            grid.Rows[0].Cells["colRetG"].Value = Math.Max(0, int.Parse(grid.Rows[0].Cells["colLoadG"].Value?.ToString() ?? "0") - 2).ToString();   // 2 crates not returned: the incident on step 2 will be required
             T.GetMethod("RecalculateTotalsFromStoreGrid", NonPub)!.Invoke(view, null); Pump(200);
             before = boxes.Boxes.Count;
             if (view.TryNextStep()) bad.Add("Next passed with a store's time out before its time in");
@@ -104,65 +112,48 @@ public static partial class Checks
             if (!view.TryNextStep()) bad.Add("Next refused a valid step 1: " + AllSaid());
             Pump(300);
             Expect(2, "Next from step 1");
-            if (back.Visible == false || !next.Visible || save.Visible || update.Visible || clear.Visible || !draft.Visible)
-                bad.Add($"step 2 buttons wrong (back {back.Visible}, next {next.Visible}, save {save.Visible}, update {update.Visible}, clear {clear.Visible}, draft {draft.Visible})");
-            if (!next.Text.Contains("Incident / Damage Report")) bad.Add("step 2 Next text: " + next.Text);
-            if (!CanJump(1) || CanJump(3)) bad.Add("header clickability wrong at step 2 of a new report");
-
-            // Next on step 2 with the plant gate empty
-            before = boxes.Boxes.Count;
-            if (view.TryNextStep()) bad.Add("Next passed step 2 with nothing typed");
-            Pump(200);
-            Expect(2, "Next with step 2 empty");
-            if (!Said("Truck time in (plant gate) is required") || !Said("Guard name & sign is required")) bad.Add("step 2 Next did not show the plant gate / sign-off messages: " + AllSaid());
-            FieldOf<TextBox>(view, "txtTruckTimeIn")!.Text = "7:30 PM"; FieldOf<TextBox>(view, "txtTruckTimeOut")!.Text = "8:00 PM";
-            foreach (var nm in new[] { "txtDtrApprovedBy", "txtDtrPreparedBy", "txtDrPreparedBy", "txtDrCheckedBy", "txtGuardName" }) FieldOf<TextBox>(view, nm)!.Text = "Maria Santos";
-            Pump(100);
-            if (!view.TryNextStep()) bad.Add("Next refused a valid step 2");
-            Pump(300);
-            Expect(3, "Next from step 2");
             if (!save.Visible || update.Visible || next.Visible || !back.Visible || clear.Visible || !draft.Visible || issue.Visible)
-                bad.Add($"step 3 buttons wrong (save {save.Visible}, update {update.Visible}, next {next.Visible}, back {back.Visible}, clear {clear.Visible}, draft {draft.Visible}, issue {issue.Visible})");
-            if (!CanJump(1) || !CanJump(2) || CanJump(3)) bad.Add("header clickability wrong at step 3 of a new report");
+                bad.Add($"step 2 buttons wrong (save {save.Visible}, update {update.Visible}, next {next.Visible}, back {back.Visible}, clear {clear.Visible}, draft {draft.Visible}, issue {issue.Visible})");
+            if (!CanJump(1) || CanJump(2)) bad.Add("header clickability wrong at step 2 of a new report");
+            if (!pInc.Visible || !pAtt.Visible || pInc.Top >= pAtt.Top) bad.Add($"step 2 cards wrong (incident visible {pInc.Visible} top {pInc.Top}, attachments visible {pAtt.Visible} top {pAtt.Top})");
 
-            // step 3 is required while crates are missing: Save refuses, nothing is saved
+            // the incident answer is required while crates are missing: Save refuses, nothing is saved
             before = boxes.Boxes.Count;
             T.GetMethod("SaveNewReport", NonPub)!.Invoke(view, new object[] { false }); Pump(500);
-            if (!Said("crate(s) are missing")) bad.Add("Save did not require step 3 for the missing crates: " + AllSaid());
+            if (!Said("crate(s) are missing")) bad.Add("Save did not require the incident for the missing crates: " + AllSaid());
             if (Long("SELECT COUNT(*) FROM TripReports WHERE DeliveryId = @d", ("@d", id)) != 0) bad.Add("a report was saved without the incident answer");
-            Expect(3, "Save refused on step 3");
+            Expect(2, "Save refused on step 2");
 
-            // Save jumps to the step of the first problem (step 2 comes before step 3)
+            // Save jumps to the step of the first problem (step 1 comes before step 2)
             var gateIn = FieldOf<TextBox>(view, "txtTruckTimeIn")!;
             gateIn.Text = "";
             before = boxes.Boxes.Count;
             T.GetMethod("SaveNewReport", NonPub)!.Invoke(view, new object[] { false }); Pump(500);
-            Expect(2, "Save with a step 2 and a step 3 problem");
+            Expect(1, "Save with a step 1 and a step 2 problem");
             if (!Said("Truck time in (plant gate) is required")) bad.Add("Save did not list the missing gate time: " + AllSaid());
             gateIn.Text = "7:30 PM"; Pump(100);
-            // ... and a step 1 problem comes first
+            // ... a blank DR on step 1 also jumps back from step 2
             grid.Rows[0].Cells["colDr"].Value = ""; Pump(100);
-            view.GoToStep(3); Pump(100);
+            view.GoToStep(2); Pump(100);
             before = boxes.Boxes.Count;
             T.GetMethod("SaveNewReport", NonPub)!.Invoke(view, new object[] { false }); Pump(500);
             Expect(1, "Save with a step 1 problem");
             grid.Rows[0].Cells["colDr"].Value = "5001"; Pump(100);
 
             // Back
-            view.GoToStep(3); Pump(100);
-            back.PerformClick(); Pump(200);
-            Expect(2, "Back from step 3");
+            view.GoToStep(2); Pump(100);
             back.PerformClick(); Pump(200);
             Expect(1, "Back from step 2");
             if (save.Visible || !next.Visible || !clear.Visible || back.Visible) bad.Add("buttons wrong on step 1 after Back");
 
             // anything focusing a control jumps to its step first
-            T.GetMethod("ShowStepFor", NonPub)!.Invoke(view, new object?[] { FieldOf<TextBox>(view, "txtGuardName") }); Pump(100);
-            Expect(2, "ShowStepFor(guard name)");
             T.GetMethod("ShowStepFor", NonPub)!.Invoke(view, new object?[] { FieldOf<RadioButton>(view, "rbIncYes") }); Pump(100);
-            Expect(3, "ShowStepFor(incident answer)");
+            Expect(2, "ShowStepFor(incident answer)");
+            T.GetMethod("ShowStepFor", NonPub)!.Invoke(view, new object?[] { FieldOf<TextBox>(view, "txtGuardName") }); Pump(100);
+            Expect(1, "ShowStepFor(guard name)");
+            view.GoToStep(2); Pump(100);
 
-            // answering step 3 lets Save finish the report (Draft vs finished is unchanged: this is the finished one)
+            // answering the incident (step 2) lets Save finish the report (Draft vs finished is unchanged: this is the finished one)
             var yes = FieldOf<RadioButton>(view, "rbIncYes")!;
             yes.Checked = true; Pump(200);
             var add = T.GetMethod("AddIncidentFromFields", NonPub)!;
@@ -205,7 +196,7 @@ public static partial class Checks
             var bad = new List<string>();
             var tr = MJdatabase.GetTripReports().First(t => t.DeliveryId == id);
             T.GetMethod("OpenEditTripReport", NonPub)!.Invoke(view, new object[] { tr }); Pump(1200);
-            var panels = new[] { "pnlStep1Stores", "pnlStep2PlantGate", "pnlStep3Incident" }.Select(nm => TwPanel(view, nm)).ToArray();
+            var panels = new[] { "pnlStep1GateAndStores", "pnlStep2IncidentAndAttachments" }.Select(nm => TwPanel(view, nm)).ToArray();
             var save = FieldOf<Button>(view, "btnSave")!; var update = FieldOf<Button>(view, "btnUpdate")!; var issue = FieldOf<Button>(view, "btnIssueExisting")!;
             var draft = FieldOf<Button>(view, "btnSaveDraft")!; var clear = FieldOf<Button>(view, "btnClear")!;
             var next = view.Controls.Find("btnNext", true).OfType<Button>().First();
@@ -219,31 +210,28 @@ public static partial class Checks
                 if (!footer.Visible) bad.Add($"{what}: the crate totals footer is not visible");
             }
             Expect(1, "an opened saved report");
-            if (!CanJump(2) || !CanJump(3)) bad.Add("steps 2 and 3 are not clickable on a saved report");
+            if (!CanJump(2)) bad.Add("step 2 is not clickable on a saved report");
             if (clear.Visible || save.Visible || update.Visible || issue.Visible || !next.Visible) bad.Add($"step 1 of a saved report: clear {clear.Visible}, save {save.Visible}, update {update.Visible}, issue {issue.Visible}, next {next.Visible}");
-            view.GoToStep(3); Pump(300);
-            Expect(3, "header jump to step 3");
-            if (!update.Visible || save.Visible || next.Visible || draft.Visible) bad.Add($"step 3 of a saved report: update {update.Visible}, save {save.Visible}, next {next.Visible}, draft {draft.Visible}");
-            if (!issue.Visible) bad.Add("a saved draft does not offer Proceed to SOA on its last step");
             view.GoToStep(2); Pump(300);
             Expect(2, "header jump to step 2");
-            if (update.Visible || issue.Visible) bad.Add("Update / Proceed visible before the last step");
+            if (!update.Visible || save.Visible || next.Visible || draft.Visible) bad.Add($"step 2 of a saved report: update {update.Visible}, save {save.Visible}, next {next.Visible}, draft {draft.Visible}");
+            if (!issue.Visible) bad.Add("a saved draft does not offer Proceed to SOA on its last step");
             view.GoToStep(1); Pump(200);
             Expect(1, "header jump to step 1");
 
             // closing and opening a new report starts on step 1 again, with finished-steps-only navigation
-            view.GoToStep(3); Pump(100);
+            view.GoToStep(2); Pump(100);
             T.GetMethod("SetFormVisibility", NonPub)!.Invoke(view, new object[] { false }); Pump(300);
             T.GetMethod("OpenNewTripReport", NonPub)!.Invoke(view, null); Pump(500);
             if (view.CurrentWizardStep != 1) bad.Add("a new report did not open on step 1");
-            if (CanJump(2) || CanJump(3)) bad.Add("a new report has clickable later steps");
+            if (CanJump(2)) bad.Add("a new report has clickable later steps");
             host.Close();
             return string.Join("; ", bad);
         });
     }
 
     [Check]
-    public static string TripReportWizard_IncidentSwitchOff_TwoSteps_SaveOnStep2_BackOnToThree()
+    public static string TripReportWizard_IncidentSwitchOff_StillTwoSteps_AttachmentsOnly_BackOn()
     {
         Fresh();
         int id = P4DeliveryWithStores();
@@ -259,17 +247,21 @@ public static partial class Checks
                 var bad = new List<string>();
                 T.GetMethod("OpenNewTripReport", NonPub)!.Invoke(view, null); Pump(500);
                 PickMain(view, no);
-                var p3 = TwPanel(view, "pnlStep3Incident");
+                var pInc = TwPanel(view, "pnlIncidentCard"); var pAtt = TwPanel(view, "pnlAttachmentsCard"); var p2 = TwPanel(view, "pnlStep2IncidentAndAttachments");
                 var save = FieldOf<Button>(view, "btnSave")!;
                 var next = view.Controls.Find("btnNext", true).OfType<Button>().First();
                 var footer = FieldOf<Label>(view, "lblDeliveredCrateTotals")!;
+                string StepName(int i) => view.Controls.Find("pnlStepperHeader", true).OfType<WizardStepHeader>().Select(h => (string[])typeof(WizardStepHeader).GetField("names", NonPub)!.GetValue(h)!).First()[i - 1];
+                if (StepName(2) != "Incident / Damage Report & save") bad.Add("step 2 is named '" + StepName(2) + "' with the switch on");
                 Features.Set(Features.TripIncidents, false, "Incident report in trip reports");
                 Pump(300);
                 if (view.WizardStepCount != 2) bad.Add("the switch off left " + view.WizardStepCount + " steps");
+                if (StepName(1) != "Plant gate, sign-off, stores & DRs" || StepName(2) != "Attachments & save") bad.Add("step names with the switch off: '" + StepName(1) + "' / '" + StepName(2) + "'");
                 view.GoToStep(2); Pump(200);
                 if (view.CurrentWizardStep != 2) bad.Add("step 2 not reached");
                 if (!save.Visible || next.Visible) bad.Add($"step 2 with the switch off: save {save.Visible}, next {next.Visible}");
-                if (p3.Visible) bad.Add("the incident card shows with the switch off");
+                if (pInc.Visible) bad.Add("the incident card shows with the switch off");
+                if (!pAtt.Visible || !p2.Visible || !TwInside(pAtt, p2)) bad.Add("the attachments card is not shown on step 2 with the switch off");
                 if (!footer.Visible) bad.Add("the crate totals footer is hidden");
                 view.GoToStep(3); Pump(100);
                 if (view.CurrentWizardStep != 2) bad.Add("GoToStep(3) went to step " + view.CurrentWizardStep + " with 2 steps");
@@ -277,12 +269,13 @@ public static partial class Checks
                 if (header.Count != 1) bad.Add("expected one step header, found " + header.Count);
                 Features.Set(Features.TripIncidents, true, "Incident report in trip reports");
                 Pump(300);
-                if (view.WizardStepCount != 3) bad.Add("the switch on left " + view.WizardStepCount + " steps");
+                if (view.WizardStepCount != 2) bad.Add("the switch on left " + view.WizardStepCount + " steps");
+                if (StepName(2) != "Incident / Damage Report & save") bad.Add("step 2 is named '" + StepName(2) + "' after the switch came back on");
                 next = view.Controls.Find("btnNext", true).OfType<Button>().First();   // the wizard (and its Next button) was rebuilt with the switch
                 view.GoToStep(1); Pump(100);
                 if (save.Visible || !next.Visible) bad.Add("step 1 buttons wrong after the switch came back on");
-                view.GoToStep(3); Pump(200);
-                if (!p3.Visible || !save.Visible) bad.Add("step 3 / Save not back with the switch on");
+                view.GoToStep(2); Pump(200);
+                if (!pInc.Visible || !pAtt.Visible || pInc.Top >= pAtt.Top || !save.Visible) bad.Add("the incident card / attachments / Save are not back on step 2 with the switch on");
                 host.Close();
                 return string.Join("; ", bad);
             });

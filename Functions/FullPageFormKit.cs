@@ -55,6 +55,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             originalMasterPadding = tblMaster.Padding;
             back.Text = "←  " + backText;
             pnlForm.Resize += (s, e) => Center();
+            UiZoom.OnApplied(host, "kit" + GetHashCode(), Center);
         }
         /// <summary>
         /// Moves the existing fields into section cards. Controls left out of every section go into the last one.
@@ -211,7 +212,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 actionsBar.Padding = new Padding(ws, D(12), ws, D(12));
                 return;
             }
-            int side = Math.Max(D(24), (pnlForm.ClientSize.Width - D(maxWidth)) / 2);
+            int side = Math.Max(D(24), (pnlForm.ClientSize.Width - (int)Math.Round(D(maxWidth) * UiZoom.Factor)) / 2);
             header.Padding = Compact ? new Padding(side, D(4), side, D(6)) : new Padding(side, D(10), side, D(14));
             if (strip != null) strip.Padding = new Padding(side, 0, side, 0);
             body.Padding = new Padding(side, 0, side + SystemInformation.VerticalScrollBarWidth / 2, D(16));
