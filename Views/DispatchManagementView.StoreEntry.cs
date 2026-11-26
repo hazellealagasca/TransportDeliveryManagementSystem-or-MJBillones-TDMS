@@ -130,6 +130,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             entryLookup = new TextBoxStoreLookup(txtEntryCode, txtEntryName, () => cbClient.Text,
                 () => storeListRoute != null ? $"{storeListRoute.RouteCode} - {storeListRoute.RouteName}" : cbDestination.Text);
+            entryLookup.ShowRoute = false; // Nov 26: the store list on New Dispatch Order shows code and name only (no Route column)
 
             foreach (Control c in new Control[] { txtEntryG, txtEntryE, cbTempType })
                 c.KeyDown += (s, e) =>

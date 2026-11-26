@@ -570,6 +570,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private readonly Func<string> client;
         private readonly Func<string?> defaultRoute;
         private readonly StoreLookupPopup popup = new StoreLookupPopup();
+        /// <summary>Nov 26: false hides the Route column of the floating store list (New Dispatch Order).</summary>
+        public bool ShowRoute { get => popup.ShowRoute; set => popup.ShowRoute = value; }
         private List<ClientStore> cache = new List<ClientStore>();
         private string cacheClient = "\0";
         private int cacheVersion = -1;
