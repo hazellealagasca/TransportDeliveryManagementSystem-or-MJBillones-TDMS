@@ -43,6 +43,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             // Nov 14: plant gate times and store times are 12-hour (08:42 PM); an old 4-digit HHMM still reads. The sign-off names are real names.
             foreach (var (tb, nm) in new[] { (txtTruckTimeIn, "Truck time in"), (txtTruckTimeOut, "Truck time out") })
                 if (tb != null && !string.IsNullOrWhiteSpace(tb.Text) && !GateTimeOk(tb.Text)) list.Add(($"{nm} must be a time like 08:42 PM.", tb));
+            // Nov 26: the truck time in at the plant gate can't be earlier than the departure time on the dispatch order (blocks Next / Save, not Save draft)
+            string departure = (GetSelectedDelivery()?.DepartureTime ?? "").Trim();
+            if (txtTruckTimeIn != null && DailyRules.TruckInBeforeDeparture(departure, txtTruckTimeIn.Text))
+                list.Add(($"Truck time in ({Fmt.Time(txtTruckTimeIn.Text)}) can't be earlier than the departure time on the dispatch order ({Fmt.Time(departure)}).", txtTruckTimeIn));
             if (gridStores != null)
             {
                 foreach (var (col, nm) in new[] { ("colIn", "Time in"), ("colOut", "Time out") })
