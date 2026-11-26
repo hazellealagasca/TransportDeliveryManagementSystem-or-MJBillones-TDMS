@@ -32,15 +32,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// unreadable text are not "earlier". Used for the plant gate and for each store: it only raises the overnight question, never refuses.
         /// </summary>
         /// <summary>
-        /// Nov 26: the truck reaches the plant gate after it leaves on the dispatch order, so its time in can't be earlier than the order's departure time.
-        /// Earlier by less than 12 hours = wrong; earlier by 12 hours or more is the next day (left late in the evening, at the plant after midnight) and is fine.
-        /// Blank or unreadable times are not judged here (the required / "must be a time" checks report those).
+        /// Nov 26: the truck reaches the plant gate after it departs on the dispatch order, so the truck time in must be LATER than the departure time:
+        /// the same time or earlier is wrong. Earlier by 12 hours or more on the clock is the next day (departs 11:00 PM, at the plant 1:00 AM) and is fine.
+        /// Returns true when the pair is wrong. Blank or unreadable times are not judged here (the required / "must be a time" checks report those).
         /// </summary>
-        public static bool TruckInBeforeDeparture(string? departure, string? truckIn)
+        public static bool TruckInNotAfterDeparture(string? departure, string? truckIn)
         {
             if (!Fmt.TryParseTime(departure, out var dep) || !Fmt.TryParseTime(truckIn, out var tin)) return false;
-            if (tin >= dep) return false;
-            return (dep - tin) < TimeSpan.FromHours(12);
+            if (tin > dep) return false;                       // at the plant after it departed: fine
+            return (dep - tin) < TimeSpan.FromHours(12);       // the same time, or earlier the same day: wrong
         }
         public static bool GateOutBeforeIn(string? timeIn, string? timeOut)
         {
