@@ -591,6 +591,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 keyValues.Add(("Contact Number / Mobile", string.IsNullOrEmpty(cc.ContactNumber) ? "N/A" : cc.ContactNumber));
                 keyValues.Add(("Office / Delivery Address", string.IsNullOrEmpty(cc.Address) ? "N/A" : cc.Address));
                 keyValues.Add(("Email Address", string.IsNullOrEmpty(cc.Email) ? "N/A" : cc.Email));
+                if (!string.IsNullOrEmpty(cc.Accountant1)) keyValues.Add(("Accountant 1", cc.Accountant1));
+                if (!string.IsNullOrEmpty(cc.Accountant2)) keyValues.Add(("Accountant 2", cc.Accountant2));
 
                 var clientSchedules = MJdatabase.GetLoadingSchedules().Where(s => s.ClientName.Equals(cc.CompanyName, StringComparison.OrdinalIgnoreCase)).ToList();
                 int totalCrates = clientSchedules.Sum(s => s.TotalCrates);

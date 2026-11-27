@@ -31,10 +31,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var list = dispatchSummaryShown;
                 bool Cancelled(Delivery d) => RowMenu.Is(d.Status, "Cancelled");
                 int CratesOf(Delivery d) => d.TotalCrates > 0 ? d.TotalCrates : Math.Max(0, d.GCrate) + Math.Max(0, d.ECrate);
-                int waiting = list.Count(d => RowMenu.Is(d.Status, "Pending", "Scheduled", "Assigned", "Loading"));
+                int waiting = list.Count(d => StageOf(d).Kind == DispatchStageKind.Open && RowMenu.Is(d.Status, "Pending", "Scheduled", "Assigned", "Loading"));
                 int road = list.Count(d => RowMenu.Is(d.Status, "In Transit", "Dispatched"));
-                int delivered = list.Count(d => RowMenu.Is(d.Status, "Delivered"));
-                int completed = list.Count(d => RowMenu.Is(d.Status, "Completed"));
+                int toBill = list.Count(d => StageOf(d).Clickable);   // Nov 28: back from the trip, not paid yet (trip report, statement, invoice, collection)
+                int completed = list.Count(d => StageOf(d).Kind == DispatchStageKind.Paid);
                 int cancelled = list.Count(Cancelled);
                 int crates = list.Where(d => !Cancelled(d)).Sum(CratesOf);
                 int trucks = list.Where(d => !Cancelled(d) && d.TruckId > 0).Select(d => d.TruckId).Distinct().Count();
@@ -43,8 +43,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     new("Orders shown", list.Count.ToString("N0"), SummaryTone.Blue, $"of {allDispatches.Count:N0} orders", Strong: true),
                     new("Waiting to leave", waiting.ToString("N0"), SummaryTone.Purple, "pending / scheduled"),
                     new("On the road", road.ToString("N0"), SummaryTone.Amber, "in transit now", Strong: road > 0),
-                    new("Delivered", delivered.ToString("N0"), SummaryTone.Teal, "waiting to be completed"),
-                    new("Completed", completed.ToString("N0"), SummaryTone.Green, "closed orders"),
+                    new("To bill and collect", toBill.ToString("N0"), SummaryTone.Teal, "trip back, not paid yet"),
+                    new("Completed", completed.ToString("N0"), SummaryTone.Green, "paid, closed orders"),
                     new("Cancelled", cancelled.ToString("N0"), SummaryTone.Red, "not counted in crates"),
                     new("Total crates", crates.ToString("N0"), SummaryTone.Blue, "on the orders shown"),
                     new("Trucks used", trucks.ToString("N0"), SummaryTone.Neutral, "different trucks"),

@@ -685,6 +685,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string text = btn.Text.ToUpperInvariant();
             string name = btn.Name.ToUpperInvariant();
             if (text.Contains("DELETE") || text.Contains("REMOVE") || text.Contains("VOID") || name.Contains("DELETE")) return ButtonRole.Danger;
+            if (text.Contains("BACK") || name.Contains("BACK")) return ButtonRole.Secondary; // Nov 28: Back buttons are outlined like Print (they had no border)
             if (text.Contains("CLEAR") || text.Contains("CANCEL") || text.Contains("EXIT") || text.Contains("RESET") || name.Contains("CLEAR") || name.Contains("EXIT") || name.Contains("CANCEL")) return ButtonRole.Secondary;
             if (text.Contains("UPDATE") || text.Contains("EDIT") || name.Contains("UPDATE")) return ButtonRole.Strong;
             if (text.Contains("PRINT") || name.Contains("PRINT") || text.Contains("EXPORT")) return ButtonRole.Secondary;
@@ -776,7 +777,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 StyleButtonChrome(btn);
                 return;
             }
-            btn.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Regular);
+            if (btn.Parent != null && btn.Parent.Name.Equals("flowNavTabs", StringComparison.OrdinalIgnoreCase))
+            {
+                // Nov 28: the tabs of Operations, Resources, Payments and Master Data read in bold (the hub sets their colours itself)
+                btn.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+                btn.FlatAppearance.BorderSize = 0;
+                StyleButtonChrome(btn);
+                return;
+            }
+            btn.Font = btn.Name.Equals("btnBack", StringComparison.OrdinalIgnoreCase) || btn.Name.Equals("btnNext", StringComparison.OrdinalIgnoreCase)
+                ? new Font("Segoe UI", 9.5F, FontStyle.Bold)   // Nov 28: the step forms' Back and Next read in bold
+                : new Font("Segoe UI Semibold", 9F, FontStyle.Regular);
             if (btn.Parent != null && btn.Parent.Name.Equals("pnlFormActionsBar", StringComparison.OrdinalIgnoreCase))
             {
                 btn.Height = 34;
@@ -1255,6 +1266,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Soft pill colours for a status word: (background, text, dot).</summary>
         public static (Color bg, Color fg, Color dot) StatusColors(string value)
         {
+            // Nov 28: the dispatch stage words (For trip report ... Completed, Current, Scheduled) have their own shared colours.
+            if (DispatchStage.TryLabelColors(value, out var stageColors)) return (stageColors.Back, stageColors.Fore, stageColors.Fore);
             string v = (value ?? "").ToUpperInvariant();
             if (v.Contains("FOR COMPLETION") || v.Contains("AWAITING"))
                 return (AppTheme.WarningSoft, AppTheme.WarningText, AppTheme.Danger);

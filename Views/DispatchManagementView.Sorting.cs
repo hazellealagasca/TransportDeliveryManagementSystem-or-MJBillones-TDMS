@@ -9,7 +9,7 @@ using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.F
 using Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Models;
 namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Service.Views
 {
-    /// <summary>Sort and status pickers for the dispatch list. Active first by default: in transit, delayed, scheduled; finished orders last.</summary>
+    /// <summary>Sort and status pickers for the dispatch list. Active first by default: in transit, delayed, scheduled, then the For ... stages; paid and cancelled orders last.</summary>
     public partial class DispatchManagementView
     {
         private ChoiceChip? cbSortBy, cbStatusPick;
@@ -31,7 +31,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ("Scheduled", "Scheduled"),
             ("Current", "In Transit"),
             ("Delayed", "Delayed"),
-            ("Completed", "Completed"),
+            ("For trip report", "stage:ForTripReport"),
+            ("For Statement of Account", "stage:ForSoa"),
+            ("For Service Invoice", "stage:ForInvoice"),
+            ("For Collection", "stage:ForCollection"),
+            ("Completed (paid)", "Completed"),
             ("Cancelled", "Cancelled"),
             ("All orders (incl. finished)", AllOrdersFilter)
         };
@@ -59,7 +63,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             dateChip.RangeChanged += (s, e) => FilterGridData();
             var tips = new ToolTip();
-            tips.SetToolTip(cbStatusPick, "Active orders = everything not yet completed or cancelled. Pick Completed, Cancelled or All orders to see finished ones.");
+            tips.SetToolTip(cbStatusPick, "Active orders = everything not yet paid or cancelled (Scheduled, Current, For trip report, For Statement of Account, For Service Invoice, For Collection). Pick Completed (paid), Cancelled or All orders to see finished ones.");
             tips.SetToolTip(cbSortBy, "Order of the list (you can also click a column header)");
             tips.SetToolTip(dateChip, "Show orders for a day, week, month or any dates you pick. ‹ › step back or forward.");
             FlowFit.Grow(pnlGridActionsFlow);

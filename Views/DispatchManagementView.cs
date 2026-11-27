@@ -642,7 +642,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 b.Margin = new Padding(Dpi(10), 0, 0, 0);
 
-                b.Font = new Font("Segoe UI Semibold", 9.5F);
+                b.Font = b == btnBack || b == btnNext ? new Font("Segoe UI", 9.5F, FontStyle.Bold) : new Font("Segoe UI Semibold", 9.5F); // Nov 28: Back and Next in bold
 
             }
 
@@ -840,7 +840,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnShowFinished.Click += (s, e) => SetShowFinished(!showFinished);
 
-            new ToolTip().SetToolTip(btnShowFinished, "Show or hide completed and cancelled orders. They also stay in Order History.");
+            new ToolTip().SetToolTip(btnShowFinished, "Show or hide paid and cancelled orders. They also stay in Order History. (An order stays in the active list until it is paid.)");
 
             pnlGridActionsFlow.Controls.Add(btnShowFinished);
 
@@ -1031,6 +1031,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
 
             if (delivery == null) return;
+            // Nov 28: a completed or cancelled order is view-only: it opens its details instead of the edit form
+            if (DispatchGate.IsCompleted(delivery.Status) || DispatchGate.IsCancelled(delivery.Status))
+            {
+                QuietBox.Show(FindForm(), $"Dispatch {delivery.DispatchNumber} is {StatusText.Display(delivery.Status).ToLowerInvariant()} and can't be edited. Its details open instead.", "Edit order", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Forms.DispatchDetailsDialog.ShowFor(this, delivery);
+                return;
+            }
 
             try
 
@@ -3986,7 +3993,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "GCrate", HeaderText = "G-Crates", DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }, FillWeight = 52, MinimumWidth = 42, ReadOnly = true });
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ECrate", HeaderText = "E-Crates", DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }, FillWeight = 52, MinimumWidth = 42, ReadOnly = true });
             gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TotalCrates", HeaderText = "Total", DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }, FillWeight = 52, MinimumWidth = 42, ReadOnly = true });
-            gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }, FillWeight = 82, MinimumWidth = 60, ReadOnly = true });
+            gridDispatch.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }, FillWeight = 150, MinimumWidth = StatusColumnMinWidth(), ReadOnly = true });
 
             gridDispatch.CellFormatting -= GridDispatch_CellFormatting;
 
@@ -4023,51 +4030,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
 
                 string status = e.Value.ToString() ?? "";
-                e.Value = StatusText.Display(status);   // "In Transit" reads "Current"; the stored value is unchanged
+                // Nov 28: the cell shows where the order is in its whole life; the stored status is unchanged ("In Transit" reads "Current")
 
-                if (status.Equals("Completed", StringComparison.OrdinalIgnoreCase))
+                var stage = DeliveryAtRow(e.RowIndex) is Delivery stageRow ? StageOf(stageRow) : DispatchStage.For(new Delivery { Status = status }, null, false, false, 0);
 
-                {
+                e.Value = stage.Label;
 
-                    e.CellStyle.BackColor = Pal.C(220, 252, 231);
-
-                    e.CellStyle.ForeColor = Pal.C(22, 101, 52);
-
-                    e.CellStyle.Font = FontCache.Get(gridDispatch.Font, FontStyle.Bold);
-
-                }
-
-
-
-                else if (status.Equals("In Transit", StringComparison.OrdinalIgnoreCase))
+                // Nov 28: every stage (Open ones too) takes its colours from the one helper Order History uses
+                if (DispatchStage.ColorsFor(stage, status) is (Color stageBack, Color stageFore))
 
                 {
 
-                    e.CellStyle.BackColor = Pal.C(254, 243, 199);
+                    e.CellStyle.BackColor = stageBack;
 
-                    e.CellStyle.ForeColor = Pal.C(180, 83, 9);
+                    e.CellStyle.ForeColor = stageFore;
 
-                    e.CellStyle.Font = FontCache.Get(gridDispatch.Font, FontStyle.Bold);
-
-                }
-
-                else if (status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
-
-                {
-
-                    e.CellStyle.BackColor = Pal.C(241, 245, 249);
-
-                    e.CellStyle.ForeColor = Pal.C(51, 65, 85);
-
-                }
-
-                else if (status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
-
-                {
-
-                    e.CellStyle.BackColor = Pal.C(241, 245, 249);
-
-                    e.CellStyle.ForeColor = Pal.C(100, 116, 139);
+                    if (stage.Kind != DispatchStageKind.Cancelled) e.CellStyle.Font = FontCache.Get(gridDispatch.Font, FontStyle.Bold);
 
                 }
 
@@ -4229,6 +4207,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SplitCrewLists(crews);
 
                 allDispatches = await MJdatabase.GetDeliveriesAsync();
+
+                await RebuildStageMapAsync(allDispatches);   // Nov 28: where each order is (trip report, statement, invoice, collection), once per load
 
                 RefreshOverCapacityMap();
 
@@ -4625,9 +4605,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private const string AllOrdersFilter = "__AllOrders";
 
-        /// <summary>Completed or cancelled: the order is finished and leaves the active list.</summary>
+        /// <summary>Nov 28: cancelled or paid. A completed trip that is not paid yet stays in the active list (For trip report ... For Collection).</summary>
 
-        private static bool IsFinished(Delivery d) => RowMenu.Is(d.Status, "Completed", "Cancelled");
+        private bool IsFinished(Delivery d) => StageOf(d).IsFinished;
 
         /// <summary>On the road: in transit / delayed, or its departure time has passed (the auto check may not have run yet).</summary>
 
@@ -6110,12 +6090,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
 
-        /// <summary>Active first: in transit, delayed, scheduled; then completed, then cancelled.</summary>
+        /// <summary>Active first: in transit, delayed, scheduled; then the For ... stages in order; then paid, then cancelled.</summary>
 
-        private static int StatusRank(Delivery d)
+        private int StatusRank(Delivery d)
 
         {
             string status = d.Status ?? "";
+
+            switch (StageOf(d).Kind)
+            {
+                case DispatchStageKind.ForTripReport: return 5;
+                case DispatchStageKind.ForSoa: return 6;
+                case DispatchStageKind.ForInvoice: return 7;
+                case DispatchStageKind.ForCollection: return 8;
+                case DispatchStageKind.Paid: return 9;
+            }
 
             if (RowMenu.Is(status, "In Transit")) return 1;
 
@@ -6123,9 +6112,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             if (RowMenu.Is(status, "Scheduled", "Pending")) return 3;
 
-            if (RowMenu.Is(status, "Completed")) return 5;
-
-            if (RowMenu.Is(status, "Cancelled")) return 6;
+            if (RowMenu.Is(status, "Cancelled")) return 10;
 
             return 4;
         }
@@ -6150,6 +6137,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 {
                     query = query.Where(d => string.Equals(d.Status, "Scheduled", StringComparison.OrdinalIgnoreCase) || string.Equals(d.Status, "Pending", StringComparison.OrdinalIgnoreCase));
                 }
+                else if (StageOfFilter(currentStatusFilter) is DispatchStageKind stageKind)
+                {
+                    query = query.Where(d => StageOf(d).Kind == stageKind);   // Nov 28: the For ... stages, and Completed = paid
+                }
                 else
                 {
                     query = query.Where(d => string.Equals(d.Status, currentStatusFilter, StringComparison.OrdinalIgnoreCase));
@@ -6171,7 +6162,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     (!string.IsNullOrEmpty(d.DriverName) && d.DriverName.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(d.AideNames) && d.AideNames.ToLower().Contains(q)) ||
                     (!string.IsNullOrEmpty(d.CargoType) && d.CargoType.ToLower().Contains(q)) ||
-                    (!string.IsNullOrEmpty(d.Status) && (d.Status.ToLower().Contains(q) || StatusText.Display(d.Status).ToLower().Contains(q)))
+                    (!string.IsNullOrEmpty(d.Status) && (d.Status.ToLower().Contains(q) || StatusText.Display(d.Status).ToLower().Contains(q))) ||
+                    StageOf(d).Label.ToLower().Contains(q)
                 );
 
             IEnumerable<Delivery> sorted = ApplySort(matching);
@@ -6190,7 +6182,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             string filterTag = currentStatusFilter == AllOrdersFilter ? " [All orders]"
 
-                : !string.IsNullOrEmpty(currentStatusFilter) ? $" [{currentStatusFilter}]" : "";
+                : !string.IsNullOrEmpty(currentStatusFilter) ? $" [{StatusOptions.Where(o => o.Filter == currentStatusFilter).Select(o => o.Label).FirstOrDefault() ?? currentStatusFilter}]" : "";
 
             UpdateShowFinishedButton();
 

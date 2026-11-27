@@ -1394,6 +1394,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtClientAddress.Text = d.Address;
             txtClientTin.Text = d.Tin;
             txtClientTin.PlaceholderText = d.Tin.Length == 0 ? "This client has no TIN: add it in Master Data › Clients" : "From the client's profile";
+            AutoFillAccountants();
+        }
+
+        // Nov 28: what was last put into Received by 1 / 2 from the client's accountants (so a client change replaces only auto-filled text).
+        private string autoReceivedBy1 = "", autoReceivedBy2 = "";
+        /// <summary>Nov 28: on a NEW statement, Received by 1 / 2 take the client's Accountant 1 / 2 when the box is empty or still holds the
+        /// previous client's auto-filled name. Typed text is never overwritten; a saved statement is never touched.</summary>
+        private void AutoFillAccountants()
+        {
+            if (isEditingExisting || soaViewOnly || isBindingForm) return;
+            ClientCompany? cl = null;
+            try { string cn = (cbClient.Text ?? "").Trim(); if (cn.Length > 0) cl = MJdatabase.GetClientByCompanyName(cn); } catch (Exception ex) { ErrLog.Swallowed(ex); }
+            string a1 = DailyRules.Tidy(cl?.Accountant1), a2 = DailyRules.Tidy(cl?.Accountant2);
+            if (txtReceivedBy1.Text.Trim().Length == 0 || txtReceivedBy1.Text == autoReceivedBy1) { txtReceivedBy1.Text = a1; autoReceivedBy1 = a1; }
+            if (txtReceivedBy2.Text.Trim().Length == 0 || txtReceivedBy2.Text == autoReceivedBy2) { txtReceivedBy2.Text = a2; autoReceivedBy2 = a2; }
         }
 
         public void RefreshData()
@@ -1543,6 +1558,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtPreparedBy.Text = "";
             txtReceivedBy1.Text = "";
             txtReceivedBy2.Text = "";
+            autoReceivedBy1 = ""; autoReceivedBy2 = "";
+            // Nov 28: a new statement is prepared by the signed-in user (only when that name passes the Prepared-by rule)
+            { string me = DailyRules.Tidy(PrintKit.CurrentUserName); if (me.Length > 0 && DailyRules.SignOffNameOk(me)) txtPreparedBy.Text = me; }
             numTotalSales.SetSafe(0);
             numVat.SetSafe(0);
             numNetOfVat.SetSafe(0);

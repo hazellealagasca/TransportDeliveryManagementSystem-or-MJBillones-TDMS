@@ -49,11 +49,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private TextBox txtClientName = null!;
         private TextBox txtClientTin = null!;
         private TextBox txtClientAddress = null!;
-        private TextBox txtContactPerson = null!;
+        private TextBox txtContactPerson = null!, txtAccountant1 = null!, txtAccountant2 = null!;
         private TextBox txtContactNumber = null!;
         private TextBox txtEmail = null!;
         private ComboBox cbClientType = null!;
-        private Panel fldName = null!, fldTin = null!, fldEmail = null!, fldContact = null!, fldPhone = null!, fldAddress = null!;
+        private Panel fldName = null!, fldTin = null!, fldEmail = null!, fldContact = null!, fldPhone = null!, fldAddress = null!, fldAcc1 = null!, fldAcc2 = null!;
         private bool IsIndividualType => string.Equals(cbClientType?.SelectedItem?.ToString(), ClientTypes.Individual, StringComparison.OrdinalIgnoreCase);
         private Button btnSave = null!;
         private Button btnDelete = null!;
@@ -449,10 +449,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtClientTin.TextChanged += TxtClientTin_TextChanged;
             txtClientAddress = new TextBox { Font = new Font("Segoe UI", 10.5F), Multiline = true, PlaceholderText = "Head office address", MaxLength = 250 };
             txtContactPerson = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "e.g. Dela Cruz, Juan", MaxLength = 100 };
+            txtAccountant1 = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "e.g. Dela Cruz, Juan", MaxLength = 100 };   // Nov 28: the client's accountants who receive the Statement of Account
+            txtAccountant2 = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "e.g. Dela Cruz, Juan", MaxLength = 100 };
             txtContactNumber = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "e.g. 09171234567", MaxLength = 11 };
             InputGuards.MobileNumber(txtContactNumber);   // Nov 17: 11 digits only
             txtEmail = new TextBox { Font = new Font("Segoe UI", 10.5F), PlaceholderText = "billing@company.com", MaxLength = 100 };
-            foreach (var t in new[] { txtClientName, txtClientTin, txtClientAddress, txtContactPerson, txtContactNumber, txtEmail })
+            foreach (var t in new[] { txtClientName, txtClientTin, txtClientAddress, txtContactPerson, txtContactNumber, txtEmail, txtAccountant1, txtAccountant2 })
                 t.TextChanged += (s, e) => MarkDirty();
             // Nov 14: the client type, at the top. Corporate asks for every company detail; Individual is a person with one automatic store.
             cbClientType = new ComboBox { Font = new Font("Segoe UI", 10.5F), DropDownStyle = ComboBoxStyle.DropDownList };
@@ -460,10 +462,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cbClientType.SelectedIndex = 0;
             cbClientType.SelectedIndexChanged += (s, e) => { ApplyClientTypeLayout(); MarkDirty(); };
             tips.SetToolTip(cbClientType, "Corporate: a company, all details required. Individual: a person, with one automatic store (the recipient). The type is chosen when the client is created.");
-            var tblDetails = new TableLayoutPanel { Height = Dpi(66) * 3 + Dpi(92), ColumnCount = 3, RowCount = 4, BackColor = AppTheme.Surface, Margin = new Padding(0) };
+            var tblDetails = new TableLayoutPanel { Height = Dpi(66) * 4 + Dpi(92), ColumnCount = 3, RowCount = 5, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             tblDetails.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
             tblDetails.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 27.5F));
             tblDetails.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 27.5F));
+            tblDetails.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(66)));
             tblDetails.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(66)));
             tblDetails.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(66)));
             tblDetails.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(66)));
@@ -480,7 +483,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblDetails.Controls.Add(fldEmail, 2, 1);
             tblDetails.Controls.Add(fldContact, 0, 2);
             tblDetails.Controls.Add(fldPhone, 1, 2);
-            tblDetails.Controls.Add(fldAddress, 0, 3);
+            fldAcc1 = Field("Accountant 1 (optional)", txtAccountant1);
+            fldAcc2 = Field("Accountant 2 (optional)", txtAccountant2);
+            tips.SetToolTip(txtAccountant1, "The client's accountant who receives the Statement of Account. Filled into Received by 1 on a new statement.");
+            tips.SetToolTip(txtAccountant2, "A second accountant, if any. Filled into Received by 2 on a new statement.");
+            tblDetails.Controls.Add(fldAcc1, 0, 3);
+            tblDetails.Controls.Add(fldAcc2, 1, 3);
+            tblDetails.SetColumnSpan(fldAcc2, 2);
+            tblDetails.Controls.Add(fldAddress, 0, 4);
             tblDetails.SetColumnSpan(fldAddress, 3);
             pnlCustomFields = new Panel { Height = 0, BackColor = AppTheme.Surface, Visible = false };
             var cardDetails = CreateSectionCard(1, "Company details", "Name, TIN and contact used on statements, invoices and receipts.", tblDetails, pnlCustomFields);
@@ -831,7 +841,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             isBinding = true;
             cbClientType.SelectedIndex = 0;
             ApplyClientTypeLayout();
-            foreach (var t in new[] { txtClientName, txtClientTin, txtClientAddress, txtContactPerson, txtContactNumber, txtEmail }) t.Text = "";
+            foreach (var t in new[] { txtClientName, txtClientTin, txtClientAddress, txtContactPerson, txtContactNumber, txtEmail, txtAccountant1, txtAccountant2 }) t.Text = "";
             foreach (var t in customFieldBoxes.Values) t.Text = "";
             isBinding = false;
             isDirty = false;
@@ -856,6 +866,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtContactPerson.Text = client.ContactPerson;
             txtContactNumber.Text = client.ContactNumber;
             txtEmail.Text = client.Email;
+            txtAccountant1.Text = client.Accountant1;
+            txtAccountant2.Text = client.Accountant2;
             var extra = GridLayoutStore.ReadValues(client.ExtraFieldsJson);
             foreach (var kv in customFieldBoxes) kv.Value.Text = extra.TryGetValue(kv.Key, out var v) ? v : "";
             isBinding = false;
@@ -1026,6 +1038,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 personBox.Focus();
                 return false;
             }
+            foreach (var accBox in new[] { txtAccountant1, txtAccountant2 })   // Nov 28: optional, the same name rule as the contact person
+            {
+                accBox.BackColor = AppTheme.InputBack;
+                if (accBox.Text.Trim().Length > 0 && !InputRules.IsValidPersonName(accBox.Text))
+                {
+                    accBox.BackColor = AppTheme.DangerSoft;
+                    MessageBox.Show("An accountant's name can only have letters, spaces, periods, hyphens and apostrophes (no digits).", "Client", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    accBox.Focus();
+                    return false;
+                }
+            }
             string tinDigits = new string(txtClientTin.Text.Where(char.IsDigit).ToArray());
             if (!individual && tinDigits.Length == 0)
             {
@@ -1086,6 +1109,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 client.Email = email;
                 client.ContactPerson = InputRules.Tidy(individual ? name : txtContactPerson.Text);   // an Individual client is its own contact
                 client.ClientType = individual ? ClientTypes.Individual : ClientTypes.Corporate;
+                client.Accountant1 = InputRules.Tidy(txtAccountant1.Text);
+                client.Accountant2 = InputRules.Tidy(txtAccountant2.Text);
                 var extraValues = GridLayoutStore.ReadValues(client.ExtraFieldsJson);
                 foreach (var kv in customFieldBoxes) extraValues[kv.Key] = kv.Value.Text.Trim();
                 client.ExtraFieldsJson = GridLayoutStore.WriteValues(extraValues);

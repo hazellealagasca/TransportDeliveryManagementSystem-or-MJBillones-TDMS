@@ -1974,6 +1974,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                     "ALTER TABLE Clients ADD COLUMN ClientType TEXT DEFAULT 'Corporate';",
 
+                    "ALTER TABLE Clients ADD COLUMN Accountant1 TEXT DEFAULT '';",
+
+                    "ALTER TABLE Clients ADD COLUMN Accountant2 TEXT DEFAULT '';",
+
                     "CREATE TABLE IF NOT EXISTS ClientStores (Id INTEGER PRIMARY KEY AUTOINCREMENT, ClientId INTEGER NOT NULL DEFAULT 0, ClientCompanyName TEXT NOT NULL DEFAULT '', StoreCode TEXT NOT NULL DEFAULT '', StoreName TEXT NOT NULL DEFAULT '', DestinationRoute TEXT NOT NULL DEFAULT '', CreatedAt TEXT DEFAULT CURRENT_TIMESTAMP);",
 
                     "ALTER TABLE TripReports ADD COLUMN StoreManagerLastName TEXT DEFAULT '';",
@@ -12490,7 +12494,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 var cmd = conn.CreateCommand();
 
-                cmd.CommandText = "SELECT Id, CompanyName, ContactPerson, ContactNumber, Address, Email, LastName, FirstName, MiddleName, TIN, COALESCE(ExtraFieldsJson, ''), COALESCE(IsActive, 1), COALESCE(DeactivatedAt, ''), COALESCE(CreatedAt, ''), COALESCE(ClientType, 'Corporate') FROM Clients ORDER BY CompanyName ASC";
+                cmd.CommandText = "SELECT Id, CompanyName, ContactPerson, ContactNumber, Address, Email, LastName, FirstName, MiddleName, TIN, COALESCE(ExtraFieldsJson, ''), COALESCE(IsActive, 1), COALESCE(DeactivatedAt, ''), COALESCE(CreatedAt, ''), COALESCE(ClientType, 'Corporate'), COALESCE(Accountant1, ''), COALESCE(Accountant2, '') FROM Clients ORDER BY CompanyName ASC";
 
                 using (var reader = cmd.ExecuteReader())
 
@@ -12562,7 +12566,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             CreatedAt = reader.FieldCount > 13 && !reader.IsDBNull(13) && DateTime.TryParse(reader.GetValue(13)?.ToString(), out var cAt) ? cAt : (DateTime?)null,
 
-                            ClientType = reader.FieldCount > 14 && !reader.IsDBNull(14) && reader.GetString(14).Trim().Length > 0 ? reader.GetString(14).Trim() : ClientTypes.Corporate
+                            ClientType = reader.FieldCount > 14 && !reader.IsDBNull(14) && reader.GetString(14).Trim().Length > 0 ? reader.GetString(14).Trim() : ClientTypes.Corporate,
+
+                            Accountant1 = reader.FieldCount > 15 && !reader.IsDBNull(15) ? reader.GetString(15) : "",
+
+                            Accountant2 = reader.FieldCount > 16 && !reader.IsDBNull(16) ? reader.GetString(16) : ""
 
                         });
 
@@ -12614,7 +12622,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 var cmd = conn.CreateCommand();
 
-                cmd.CommandText = "SELECT Id, CompanyName, ContactPerson, ContactNumber, Address, Email, LastName, FirstName, MiddleName, TIN, COALESCE(ExtraFieldsJson, ''), COALESCE(IsActive, 1), COALESCE(DeactivatedAt, ''), COALESCE(CreatedAt, ''), COALESCE(ClientType, 'Corporate') FROM Clients WHERE LOWER(TRIM(CompanyName)) = LOWER(TRIM(@name)) LIMIT 1";
+                cmd.CommandText = "SELECT Id, CompanyName, ContactPerson, ContactNumber, Address, Email, LastName, FirstName, MiddleName, TIN, COALESCE(ExtraFieldsJson, ''), COALESCE(IsActive, 1), COALESCE(DeactivatedAt, ''), COALESCE(CreatedAt, ''), COALESCE(ClientType, 'Corporate'), COALESCE(Accountant1, ''), COALESCE(Accountant2, '') FROM Clients WHERE LOWER(TRIM(CompanyName)) = LOWER(TRIM(@name)) LIMIT 1";
 
                 cmd.Parameters.AddWithValue("@name", companyName.Trim());
 
@@ -12688,7 +12696,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                             CreatedAt = reader.FieldCount > 13 && !reader.IsDBNull(13) && DateTime.TryParse(reader.GetValue(13)?.ToString(), out var cAt) ? cAt : (DateTime?)null,
 
-                            ClientType = reader.FieldCount > 14 && !reader.IsDBNull(14) && reader.GetString(14).Trim().Length > 0 ? reader.GetString(14).Trim() : ClientTypes.Corporate
+                            ClientType = reader.FieldCount > 14 && !reader.IsDBNull(14) && reader.GetString(14).Trim().Length > 0 ? reader.GetString(14).Trim() : ClientTypes.Corporate,
+
+                            Accountant1 = reader.FieldCount > 15 && !reader.IsDBNull(15) ? reader.GetString(15) : "",
+
+                            Accountant2 = reader.FieldCount > 16 && !reader.IsDBNull(16) ? reader.GetString(16) : ""
 
                         };
 
@@ -12742,9 +12754,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
                 cmd.CommandText = @"
 
-                    INSERT INTO Clients (CompanyName, ContactPerson, ContactNumber, Address, Email, LastName, FirstName, MiddleName, TIN, ExtraFieldsJson, IsActive, CreatedAt, ClientType)
+                    INSERT INTO Clients (CompanyName, ContactPerson, ContactNumber, Address, Email, LastName, FirstName, MiddleName, TIN, ExtraFieldsJson, IsActive, CreatedAt, ClientType, Accountant1, Accountant2)
 
-                    VALUES (@name, @person, @contact, @addr, @email, @ln, @fn, @mn, @tin, @extra, 1, datetime('now','localtime'), @ctype)
+                    VALUES (@name, @person, @contact, @addr, @email, @ln, @fn, @mn, @tin, @extra, 1, datetime('now','localtime'), @ctype, @acc1, @acc2)
 
                     ON CONFLICT(CompanyName) DO UPDATE SET
 
@@ -12765,6 +12777,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                         TIN = @tin,
 
                         ClientType = @ctype,
+
+                        Accountant1 = @acc1,
+
+                        Accountant2 = @acc2,
 
                         ExtraFieldsJson = CASE WHEN @extra = '' THEN COALESCE(ExtraFieldsJson, '') ELSE @extra END;
 
@@ -12791,6 +12807,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 cmd.Parameters.AddWithValue("@ctype", client.IsIndividual ? ClientTypes.Individual : ClientTypes.Corporate);
 
                 cmd.Parameters.AddWithValue("@extra", client.ExtraFieldsJson ?? "");
+
+                cmd.Parameters.AddWithValue("@acc1", (client.Accountant1 ?? "").Trim());
+
+                cmd.Parameters.AddWithValue("@acc2", (client.Accountant2 ?? "").Trim());
 
                 cmd.ExecuteNonQuery();
 

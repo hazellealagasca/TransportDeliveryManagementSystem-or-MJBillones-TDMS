@@ -292,7 +292,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlFormHeaderBar.BackColor = AppTheme.Canvas;
             pnlFormHeaderBar.Height = Dpi(58);
             pnlFormHeaderBar.Padding = new Padding(0, Dpi(6), 0, Dpi(12));
-            btnCloseForm.Text = "←  Back to trip reports";
+            btnCloseForm.Text = "←  Back to orders"; // Nov 28: the Trip Reports tab is hidden, Back returns to the dispatch list
             btnCloseForm.AutoSize = false;
             btnCloseForm.MinimumSize = Size.Empty;
             btnCloseForm.Padding = new Padding(0);
@@ -390,8 +390,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try { SetFormVisibility(false); } finally { keep.Keeping = false; }
             keep.MarkKept(this, btnToggleForm, () => keep.Resume(this, SetFormVisibility));
         }
+        /// <summary>Nov 28: raised when the trip report form closes (saved, Back, Escape); Operations then goes back to the dispatch list (the Trip Reports tab is hidden).</summary>
+        public Action? OnFormClosedToList;
         private void SetFormVisibility(bool visible)
         {
+            bool wasOpen = pnlForm.Visible;
             // Nov 6: a form is blank whenever it is opened or left.
             if (!visible && pnlForm.Visible && IsHandleCreated && !keep.Keeping) ClearFields();
             if (visible) formDirty ??= new FormDirtyTracker(pnlForm);
@@ -414,6 +417,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tblMasterContent.ResumeLayout(true);
             // Closing the form: the next new report may offer a waiting draft again.
             if (!visible) draftAnswered = false;
+            if (!visible && wasOpen && !keep.Keeping && OnFormClosedToList != null && IsHandleCreated)
+                BeginInvoke(new Action(() => OnFormClosedToList?.Invoke()));   // Nov 28: back to the dispatch list once this close has finished
             if (visible)
             {
                 CenterFormContent();

@@ -20,6 +20,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void SetupContextMenu()
         {
             gridDispatch.MultiSelect = true;
+            SetupStageClicks();   // Nov 28: the For ... status pills are clickable
             gridDispatch.CellMouseDown += (s, e) =>
             {
                 if (e.Button != MouseButtons.Right || e.RowIndex < 0) return;
@@ -103,9 +104,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string client = string.IsNullOrWhiteSpace(d.ClientName) ? "No client" : d.ClientName;
             m.Items.AddRange(Header(d.DispatchNumber, $"{client}  ·  {Fmt.Short(d.DispatchDate)}  ·  {status}"));
             m.Items.Add(new ToolStripSeparator());
+            // Nov 28: the next step of the order (for the For ... stages) comes first
+            var stage = StageOf(d);
+            if (stage.Clickable)
+            {
+                m.Items.Add(Item($"➜  {stage.Action}", () => RunStageAction(d, stage)));
+                m.Items.Add(new ToolStripSeparator());
+            }
             // Open
             m.Items.Add(Item("🔍  Open order details", () => RecordDetailsDialog.ShowDetails(this, d), "Enter"));
-            m.Items.Add(Item("✎  Edit order", () => EditDeliveryOrder(d), "Ctrl+E", enabled: !cancelled));
+            m.Items.Add(Item("✎  Edit order", () => EditDeliveryOrder(d), "Ctrl+E", enabled: !cancelled && !DispatchGate.IsCompleted(d.Status)));   // Nov 28: a completed order can't be edited
             m.Items.Add(new ToolStripSeparator());
             // What to do next, depending on where the order stands
             if (active)

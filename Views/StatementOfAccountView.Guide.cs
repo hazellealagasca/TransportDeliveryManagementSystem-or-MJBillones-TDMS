@@ -124,6 +124,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void OnSoaFormOpened()
         {
             if (soaPageHeaderHost != null) soaPageHeaderHost.Visible = false;
+            if (lblForCollectionTitle != null) lblForCollectionTitle.Visible = false; // Nov 28: the list title hides with the list
             if (soaReadyBanner != null) soaReadyBanner.Visible = false;
             soaSaving = false;
             btnSaveSoa.Enabled = true;
@@ -136,6 +137,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             soaGuideTimer.Stop();
             if (soaPageHeaderHost != null) soaPageHeaderHost.Visible = true;
+            if (lblForCollectionTitle != null) lblForCollectionTitle.Visible = true;
             if (soaReadyBanner != null) { soaReadyBanner.Visible = true; RefreshSoaReadyBanner(); }
             clientLookup?.HideList();
             addDispatchLookup?.HideList();
@@ -458,6 +460,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// numbers from the trip reports). <paramref name="onlyInvoiceIds"/> limits it to the ticked invoices. Nothing is saved until Save.
         /// </summary>
         public void StartSoaFor(string client, DateTime from, DateTime to, HashSet<int>? onlyInvoiceIds = null)
+            => StartSoaCore(client, from, to, pr => onlyInvoiceIds == null || onlyInvoiceIds.Contains(pr.Invoice != null ? pr.Invoice.Id : pr.Delivery.Id)); // trip-report rows (Nov 9) are keyed by their dispatch id
+
+        /// <summary>Nov 28: "For Statement of Account" on the dispatch list: a new statement for the trip's client with just that trip ticked.</summary>
+        public void StartSoaForTrip(Delivery d)
+            => StartSoaCore(d.ClientName ?? "", d.DispatchDate.Date, d.DispatchDate.Date, pr => pr.Invoice == null && pr.Special == null && pr.Delivery.Id == d.Id);
+
+        private void StartSoaCore(string client, DateTime from, DateTime to, Func<PickRow, bool> pick)
         {
             if (!Permissions.Can("Payments", "StatementOfAccount")) { Permissions.TellDenied(this, "Payments", "StatementOfAccount"); return; }
             OpenNewStatement();
@@ -469,8 +478,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             RefreshPicker();
             int ticked = 0;
             foreach (DataGridViewRow r in gridPicker.Rows)
-                if (r.Tag is PickRow pr && pr.State == PickState.Ready && !r.Cells["pkPick"].ReadOnly
-                    && (onlyInvoiceIds == null || onlyInvoiceIds.Contains(pr.Invoice != null ? pr.Invoice.Id : pr.Delivery.Id))) { r.Cells["pkPick"].Value = true; ticked++; } // trip-report rows (Nov 9) are keyed by their dispatch id
+                if (r.Tag is PickRow pr && pr.State == PickState.Ready && !r.Cells["pkPick"].ReadOnly && pick(pr)) { r.Cells["pkPick"].Value = true; ticked++; }
             if (ticked > 0) { AddTickedDispatches(); } // a new statement always opens on step 1 (the trips are in the table on step 2)
             LoadSoaGuideCache();
             lastGoodClient = cbClient.Text.Trim();

@@ -37,7 +37,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public object? Source { get; set; }
         public string Key => Kind + "|" + Number;
         public string Crew => string.Join(" · ", new[] { Driver, Aides }.Where(x => !string.IsNullOrWhiteSpace(x)));
-        /// <summary>Waiting, On the road, Completed or Cancelled.</summary>
+        /// <summary>Nov 28: where a dispatch is in its whole life (same as the Dispatch list); null for loading orders and special trips.</summary>
+        public DispatchStageInfo? Stage { get; set; }
+        /// <summary>What the status pill says: the stage of a dispatch, else the status as people read it.</summary>
+        public string StageLabel => Stage?.Label ?? (string.IsNullOrWhiteSpace(Status) ? StatusGroup : StatusShown);
+        /// <summary>Active (not paid, not cancelled), Completed (paid) or Cancelled.</summary>
+        public string Phase => StatusGroup == "Completed" ? "Completed" : StatusGroup == "Cancelled" ? "Cancelled" : "Active";
+        public bool IsActive => Phase == "Active";
         /// <summary>The status as people read it ("In Transit" shows as "Current"); <see cref="Status"/> keeps the stored value.</summary>
         public string StatusShown => StatusText.Display(Status);
         public string StatusGroup
@@ -45,6 +51,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             get
             {
                 string s = (Status ?? "").Trim();
+                if (Stage != null)
+                {
+                    // Nov 28: a dispatch is Completed only when PAID; the steps between the trip and payment are "After the trip".
+                    switch (Stage.Kind)
+                    {
+                        case DispatchStageKind.Cancelled: return "Cancelled";
+                        case DispatchStageKind.Paid: return "Completed";
+                        case DispatchStageKind.Open: return RowMenu.Is(s, "In Transit", "In-Transit", "Delayed", "Dispatched", "On Trip") ? "On the road" : "Waiting";
+                        default: return "After the trip";
+                    }
+                }
                 if (DispatchGate.IsCancelled(s)) return "Cancelled";
                 if (DispatchGate.IsCompleted(s)) return "Completed";
                 if (RowMenu.Is(s, "In Transit", "In-Transit", "Delayed", "Dispatched", "On Trip")) return "On the road";
@@ -55,7 +72,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Everything a person might remember about the record, lower-case, including the date written several ways.</summary>
         public string SearchText => search ??= string.Join("  ", new[]
         {
-            Kind, Number, Client, Route, Truck, Driver, Aides, Status, StatusGroup, Cargo, Remarks, InvoiceNo, TripReportNo, SoaNo, ReceiptNo, BillingStage,
+            Kind, Number, Client, Route, Truck, Driver, Aides, Status, StageLabel, StatusGroup, Cargo, Remarks, InvoiceNo, TripReportNo, SoaNo, ReceiptNo, BillingStage,
             Crates > 0 ? Crates + " crates" : "",
             Amount.HasValue ? Amount.Value.ToString("0.##", CultureInfo.InvariantCulture) + " " + Amount.Value.ToString("N2", CultureInfo.InvariantCulture) : "",
             Date.ToString("MMM d yyyy", CultureInfo.InvariantCulture), Date.ToString("MMMM d yyyy", CultureInfo.InvariantCulture),
@@ -78,14 +95,18 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 try { (chainByDelivery, chainBySpecial) = MJdatabase.GetOrderChains(); } catch (Exception ex) { ErrLog.Swallowed(ex); }
             }
-            var dispatchedSchedules = new HashSet<int>(dels.Where(d => d.LoadingScheduleId > 0).Select(d => d.LoadingScheduleId));
+            // Nov 28: the stage of every dispatch, worked out once (reusing the chains above when they were loaded).
+            Dictionary<int, DispatchStageInfo> stages;
+            try { stages = withAmounts ? DispatchStage.BuildMap(dels, chainByDelivery) : DispatchStage.BuildMap(dels); }
+            catch (Exception ex) { ErrLog.Swallowed(ex); stages = new Dictionary<int, DispatchStageInfo>(); }
+            var dispatchedSchedules =new HashSet<int>(dels.Where(d => d.LoadingScheduleId > 0).Select(d => d.LoadingScheduleId));
             foreach (var d in dels)
             {
                 chainByDelivery.TryGetValue(d.Id, out var ch);
                 var iv = ch?.Invoice;
                 list.Add(new TxRecord
                 {
-                    Chain = ch,
+                    Chain = ch, Stage = stages.TryGetValue(d.Id, out var stg) ? stg : DispatchStage.For(d, ch, false, false, 0),
                     Kind = TxRecord.KDispatch, Number = d.DispatchNumber ?? "", Date = d.DispatchDate, Time = d.DepartureTime ?? "",
                     Client = d.ClientName ?? "", Route = d.Destination ?? "", Truck = d.TruckInfo ?? "", Driver = d.DriverName ?? "",
                     Aides = !string.IsNullOrWhiteSpace(d.AideNames) ? d.AideNames : d.AideName ?? "",

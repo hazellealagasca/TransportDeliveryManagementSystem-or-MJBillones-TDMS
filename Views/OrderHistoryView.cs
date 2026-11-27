@@ -22,10 +22,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     /// </summary>
     public sealed class OrderHistoryView : UserControl, IRefreshable
     {
-        private readonly SegmentTabs tabs = new SegmentTabs("All", "✅ Completed", "✖ Cancelled", "Dispatches", "Loading orders", "📌 Pinned", "🕘 Recently viewed");   // Nov 17: the "Special trips" tab was removed
-        private const int TabCompleted = 1, TabCancelled = 2, TabPinned = 5, TabRecent = 6;
-        private static readonly string[] TabKinds = { "", "", "", TxRecord.KDispatch, TxRecord.KLoading, "", "" };
-        private static readonly string[] StatusOptions = { "All statuses", "Waiting", "On the road", "Completed", "Cancelled" };
+        private readonly SegmentTabs tabs = new SegmentTabs("All", "▶ Active", "✅ Completed", "✖ Cancelled", "Dispatches", "Loading orders", "📌 Pinned", "🕘 Recently viewed");   // Nov 17: the "Special trips" tab was removed
+        private const int TabActive = 1, TabCompleted = 2, TabCancelled = 3, TabPinned = 6, TabRecent = 7;
+        private static readonly string[] TabKinds = { "", "", "", "", TxRecord.KDispatch, TxRecord.KLoading, "", "" };
+        private static readonly string[] StatusOptions = { "All statuses", "Waiting", "On the road", "After the trip", "Completed", "Cancelled" };
         private static readonly string[] GroupOptions = { "By date", "By month", "By client", "By status", "By type", "No groups" };
         private static readonly string[] SortOptions = { "Newest first", "Oldest first", "Client A–Z", "Most crates", "Number" };
         private TextBox txtSearch = null!;
@@ -48,7 +48,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private string User => SessionContext.CurrentUsername;
         private const int MaxRows = 2000;
         private int D(int v) => PageKit.D(this, v);
-        private sealed class GroupTag { public string Key = ""; public string Title = ""; public int Count; public int Crates; }
+        private sealed class GroupTag { public string Key = ""; public string Title = ""; public int Count; public int Crates; public bool Part; }
         public OrderHistoryView()
         {
             Dock = DockStyle.Fill;
@@ -211,7 +211,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 m.Items.Add("Open full record", null, (a, b) => OpenRecord(r));
                 m.Items.Add(pinned.Contains(r.Key) ? "Unpin" : "📌  Pin to the top", null, (a, b) => TogglePin(r));
                 m.Items.Add("Copy number", null, (a, b) => CopyNumber(r));
-                if (r.Source is Delivery del && r.StatusGroup == "Completed")
+                if (r.Source is Delivery del && DispatchGate.IsCompleted(del.Status))
                 {
                     m.Items.Add(new ToolStripSeparator());
                     m.Items.Add("📝  View trip report", null, (a, b) => OnTripReportRequested?.Invoke(del.Id, del.DispatchNumber));
@@ -320,13 +320,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (grid == null) return;
             var baseAll = BaseFilter().ToList();
-            tabs.Badges = new[] { baseAll.Count, baseAll.Count(r => r.StatusGroup == "Completed"), baseAll.Count(r => r.StatusGroup == "Cancelled"), baseAll.Count(r => r.Kind == TxRecord.KDispatch), baseAll.Count(r => r.Kind == TxRecord.KLoading),
+            tabs.Badges = new[] { baseAll.Count, baseAll.Count(r => r.IsActive), baseAll.Count(r => r.StatusGroup == "Completed"), baseAll.Count(r => r.StatusGroup == "Cancelled"), baseAll.Count(r => r.Kind == TxRecord.KDispatch), baseAll.Count(r => r.Kind == TxRecord.KLoading),
                 baseAll.Count(r => pinned.Contains(r.Key)), baseAll.Count(r => recent.Contains(r.Key)) };
             tabs.Invalidate();
             var q = baseAll.AsEnumerable();
-            if (tabs.Selected == TabCompleted) q = q.Where(r => r.StatusGroup == "Completed");
+            if (tabs.Selected == TabActive) q = q.Where(r => r.IsActive);
+            else if (tabs.Selected == TabCompleted) q = q.Where(r => r.StatusGroup == "Completed");
             else if (tabs.Selected == TabCancelled) q = q.Where(r => r.StatusGroup == "Cancelled");
-            else if (tabs.Selected is >= 3 and <= 4) { string k = TabKinds[tabs.Selected]; q = q.Where(r => r.Kind == k); }
+            else if (tabs.Selected is >= 4 and <= 5) { string k = TabKinds[tabs.Selected]; q = q.Where(r => r.Kind == k); }
             else if (tabs.Selected == TabPinned) q = q.Where(r => pinned.Contains(r.Key));
             else if (tabs.Selected == TabRecent) q = q.Where(r => recent.Contains(r.Key)).OrderBy(r => recent.IndexOf(r.Key));
             shown = tabs.Selected == TabRecent ? q.ToList() : Sorted(q).ToList();
@@ -363,10 +364,26 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var pins = shown.Where(r => pinned.Contains(r.Key)).ToList();
                 if (pins.Count > 0) AddGroup("📌", "📌  Pinned", pins, true);
                 var rest = shown.Where(r => !pinned.Contains(r.Key)).ToList();
-                if (!grouped) AddGroup("all", "", rest, false);
+                // Nov 28: Active (not paid, not cancelled) first, then Completed & cancelled; the sort and the date groups apply inside each part.
+                void AddRest(List<TxRecord> items, string prefix)
+                {
+                    if (!grouped) AddGroup(prefix + "all", "", items, false);
+                    else
+                        foreach (var g in items.Select(r => (r, g: GroupOf(r, out var o), o)).GroupBy(x => x.g).Select(g => (Key: g.Key, Order: g.First().o, Items: g.Select(x => x.r).ToList())).OrderBy(g => g.Order))
+                            AddGroup(prefix + g.Key, g.Key, g.Items, true);
+                }
+                if (tabs.Selected is TabActive or TabCompleted or TabCancelled) AddRest(rest, "");
                 else
-                    foreach (var g in rest.Select(r => (r, g: GroupOf(r, out var o), o)).GroupBy(x => x.g).Select(g => (Key: g.Key, Order: g.First().o, Items: g.Select(x => x.r).ToList())).OrderBy(g => g.Order))
-                        AddGroup(g.Key, g.Key, g.Items, true);
+                    foreach (var (pk, ptitle, part) in new[] { ("part:active", "Active", rest.Where(r => r.IsActive).ToList()), ("part:done", "Completed & cancelled", rest.Where(r => !r.IsActive).ToList()) })
+                    {
+                        if (part.Count == 0) continue;
+                        var ph = new DataGridViewRow();
+                        ph.CreateCells(grid);
+                        ph.Height = D(40);
+                        ph.Tag = new GroupTag { Key = pk, Title = $"{ptitle} ({part.Count:N0})", Count = part.Count, Crates = part.Sum(i => i.Crates), Part = true };
+                        rows.Add(ph);
+                        if (!collapsed.Contains(pk)) AddRest(part, pk + "|");
+                    }
             }
             rendering = true;
             grid.SuspendLayout();
@@ -422,11 +439,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var sel = selected;
                 if (sel != null)
                 {
-                    m.Add(new SummaryMetric("Selected order", sel.Number, SummaryTone.Purple, $"{sel.Kind} · {sel.StatusShown}", Strong: true));
+                    m.Add(new SummaryMetric("Selected order", sel.Number, SummaryTone.Purple, $"{sel.Kind} · {sel.StageLabel}", Strong: true));
                     m.Add(new SummaryMetric("Its crates", sel.Crates.ToString("N0"), SummaryTone.Teal, string.IsNullOrWhiteSpace(sel.Route) || !Features.On(Features.DeliveryRoutes) ? sel.Client : sel.Route));   // Nov 19: no route text while routes are off
                     m.Add(new SummaryMetric("Its amount", sel.Amount.HasValue ? AllInOneSummaryBar.Money(sel.Amount.Value) : "—", SummaryTone.Green, string.IsNullOrWhiteSpace(sel.InvoiceNo) ? "no invoice yet" : "invoice " + sel.InvoiceNo));
                     m.Add(new SummaryMetric("Truck & crew", string.IsNullOrWhiteSpace(sel.Truck) ? "—" : sel.Truck, SummaryTone.Neutral, string.IsNullOrWhiteSpace(sel.Crew) ? "no crew yet" : sel.Crew));
-                    context = $"Selected {sel.Kind.ToLowerInvariant()} {sel.Number} — {sel.Client} · {Fmt.Date(sel.Date)} · {sel.StatusShown}   ·   Transactions shown: {list.Count:N0}";
+                    context = $"Selected {sel.Kind.ToLowerInvariant()} {sel.Number} — {sel.Client} · {Fmt.Date(sel.Date)} · {sel.StageLabel}   ·   Transactions shown: {list.Count:N0}";
                     preview += $"  ·  selected {sel.Number}";
                 }
                 historySummary.SetMetrics(m, preview, context);
@@ -440,11 +457,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (e.RowIndex < 0 || e.RowIndex >= grid.Rows.Count || grid.Rows[e.RowIndex].Tag is not GroupTag g) return;
             var b = e.RowBounds;
-            using (var bg = new SolidBrush(AppTheme.SurfaceAlt)) e.Graphics.FillRectangle(bg, b);
+            using (var bg = new SolidBrush(g.Part ? AppTheme.AccentSoft : AppTheme.SurfaceAlt)) e.Graphics.FillRectangle(bg, b);
             using (var line = new Pen(AppTheme.Border)) e.Graphics.DrawLine(line, b.Left, b.Bottom - 1, b.Right, b.Bottom - 1);
             string title = $"{(collapsed.Contains(g.Key) ? "▸" : "▾")}   {g.Title}";
-            string count = $"{g.Count:N0}" + (g.Crates > 0 ? $"  ·  {g.Crates:N0} crates" : "");
-            using var f1 = new Font("Segoe UI Semibold", 9.75F);
+            string count = g.Part ? (g.Crates > 0 ? $"{g.Crates:N0} crates" : "") : $"{g.Count:N0}" + (g.Crates > 0 ? $"  ·  {g.Crates:N0} crates" : "");
+            using var f1 = new Font("Segoe UI Semibold", g.Part ? 10.5F : 9.75F);
             using var f2 = new Font("Segoe UI", 8.75F);
             var flags = TextFormatFlags.NoPrefix | TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.SingleLine;
             int w = TextRenderer.MeasureText(e.Graphics, title, f1).Width;
@@ -476,14 +493,17 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int pad = D(4), top = b.Top + D(9), lineH = D(21);
             // right side: status pill + amount/crates
             using var fPill = new Font("Segoe UI Semibold", 8.5F);
-            string st = string.IsNullOrWhiteSpace(r.Status) ? r.StatusGroup : r.StatusShown;
-            var (pillBg, pillFg) = r.StatusGroup switch
-            {
-                "Completed" => (AppTheme.SuccessSoft, AppTheme.SuccessText),
-                "Cancelled" => (AppTheme.DangerSoft, AppTheme.DangerText),
-                "On the road" => (AppTheme.InfoSoft, AppTheme.InfoText),
-                _ => (AppTheme.WarningSoft, AppTheme.WarningText)
-            };
+            string st = r.StageLabel;
+            // Nov 28: a dispatch wears the same stage pill (words and colours) as the Dispatch list.
+            var (pillBg, pillFg) = r.Stage != null
+                ? DispatchStage.ColorsFor(r.Stage, r.Status)
+                : r.StatusGroup switch
+                {
+                    "Completed" => (AppTheme.SuccessSoft, AppTheme.SuccessText),
+                    "Cancelled" => (AppTheme.DangerSoft, AppTheme.DangerText),
+                    "On the road" => (AppTheme.InfoSoft, AppTheme.InfoText),
+                    _ => (AppTheme.WarningSoft, AppTheme.WarningText)
+                };
             int pw = TextRenderer.MeasureText(g, st, fPill).Width + D(14);
             var pill = new Rectangle(b.Right - pw - D(14), top + D(1), pw, D(22));
             using (var path = Gfx.RoundedRect(pill, D(11))) using (var pb = new SolidBrush(pillBg)) g.FillPath(pb, path);
@@ -581,7 +601,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     bCancelLs.Click += (s, e) => CancelLoadingOrder(lsp);
                     stack.Controls.Add(bCancelLs);
                 }
-                if (r.Source is Delivery del && r.StatusGroup == "Completed")
+                if (r.Source is Delivery del && DispatchGate.IsCompleted(del.Status))
                 {
                     stack.Controls.Add(new Label { Text = "Completed trip", AutoSize = true, Font = new Font("Segoe UI Semibold", 9.5F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, D(2), 0, D(6)) });
                     var done = new FlowLayoutPanel { AutoSize = true, WrapContents = true, MaximumSize = new Size(D(300), 0), BackColor = Color.Transparent, Margin = new Padding(0, 0, 0, D(12)) };
@@ -607,7 +627,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     facts.Controls.Add(new Label { Text = k, AutoSize = true, Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, Margin = new Padding(0, D(3), D(6), D(5)), UseMnemonic = false });
                     facts.Controls.Add(new Label { Text = v, AutoSize = true, MaximumSize = new Size(D(196), 0), Font = new Font("Segoe UI", 9.5F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, D(2), 0, D(5)), UseMnemonic = false });
                 }
-                F("Status", r.StatusShown);
+                F("Status", r.StageLabel);   // Nov 28: the same stage as the Dispatch list
                 F("Date", Fmt.DayDate(r.Date));
                 F("Departure", r.Time);
                 if (Features.On(Features.DeliveryRoutes)) F("Route", r.Route);   // Nov 19
@@ -619,7 +639,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (CanFin)
                 {
                     // The whole story of a completed trip: trip report → invoice → statement → receipt.
-                    if (r.Chain != null && r.StatusGroup == "Completed") F("Billing", r.BillingStage);
+                    if (r.Chain != null && r.Stage == null && r.StatusGroup == "Completed") F("Billing", r.BillingStage);   // Nov 28: a dispatch says it in its Status (stage)
                     F("Trip report", r.TripReportNo);
                     F("Invoice", r.InvoiceNo);
                     F("Amount", r.Amount.HasValue ? "₱" + r.Amount.Value.ToString("N2") : "");
@@ -756,7 +776,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             {
                 var cells = new List<string> { Fmt.Date(r.Date), Q(r.Time), Q(r.Kind), Q(r.Number), Q(r.Client) };
                 if (routesOn) cells.Add(Q(r.Route));
-                cells.AddRange(new[] { Q(r.Truck), Q(r.Driver), Q(r.Aides), r.Crates.ToString(), Q(r.StatusShown) });
+                cells.AddRange(new[] { Q(r.Truck), Q(r.Driver), Q(r.Aides), r.Crates.ToString(), Q(r.StageLabel) });
                 if (CanFin) { cells.Add(Q(r.TripReportNo)); cells.Add(Q(r.InvoiceNo)); cells.Add(r.Amount.HasValue ? r.Amount.Value.ToString("0.00") : ""); cells.Add(Q(r.SoaNo)); cells.Add(Q(r.ReceiptNo)); cells.Add(r.PaidOn.HasValue ? Fmt.Date(r.PaidOn.Value) : ""); }
                 sb.AppendLine(string.Join(",", cells));
             }

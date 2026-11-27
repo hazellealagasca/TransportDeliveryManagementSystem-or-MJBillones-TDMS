@@ -207,7 +207,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 if (string.IsNullOrWhiteSpace(clientName)) clientName = "Direct client";
                 client = SafeGet(() => MJdatabase.GetClientByCompanyName(clientName), null);
                 trip = SafeGet(() => MJdatabase.GetTripReports().FirstOrDefault(t => t.DeliveryId == del.Id || (!string.IsNullOrEmpty(t.DispatchNumber) && t.DispatchNumber == del.DispatchNumber)), null);
-                invoice = SafeGet(() => MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == del.Id), null);
+                // Nov 28: the invoice that bills the trip comes from the order chain (a statement's invoice too), not only an invoice made for this dispatch alone
+                int liveInvId = SafeGet(() => MJdatabase.GetOrderChainForTrip(del.Id).Invoice?.InvoiceId ?? 0, 0);
+                invoice = SafeGet(() => liveInvId > 0 ? MJdatabase.GetInvoices().FirstOrDefault(i => i.Id == liveInvId) : MJdatabase.GetInvoices().FirstOrDefault(i => i.DeliveryId == del.Id), null);
                 soa = SafeGet(() => MJdatabase.GetLiveSoaOfDelivery(del.Id), ((string Number, string Issued)?)null);   // Nov 18: live statement of this trip, for the tracker
                 incidents = SafeGet(() => MJdatabase.GetTripIncidents(del.Id), new List<IncidentReport>());   // Nov 14: the trip incidents (step 3 of the trip report), read-only here
                 crews = SafeGet(() => MJdatabase.GetCrews(), new List<Crew>());
@@ -359,7 +361,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 // Nov 18: Trip report -> Statement of Account -> Invoiced -> Paid
                 new Tracker.Step("Statement of Account", soa == null ? "" : (soa.Value.Number + (DateTime.TryParse(soa.Value.Issued, out var soaDt) ? " · " + soaDt.ToString("MM/dd") : "")), soa != null),
                 new Tracker.Step("Invoiced", invoice != null ? Fmt.Short(invoice.IssueDate) : "", invoice != null),
-                new Tracker.Step("Paid", IsPaid ? "Settled" : "", IsPaid)
+                new Tracker.Step("Completed", IsPaid ? "Paid" : "", IsPaid)   // Nov 28: a paid trip shows Completed
             };
             var host = new Panel { Dock = DockStyle.Top, Height = D(86), BackColor = AppTheme.Surface, Padding = new Padding(D(24), D(8), D(24), D(6)) };
             host.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawLine(pen, 0, host.Height - 1, host.Width, host.Height - 1); };
@@ -399,6 +401,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 text = "Delivered. File the trip report to record store sign-offs, returned crates and crew pay.";
                 back = AppTheme.InfoSoft; fore = AppTheme.InfoText;
                 actions.Add(ActionButton("📝  File trip report", "primary", OpenTripReport));
+            }
+            else if (invoice == null && soa != null)
+            {
+                text = $"On Statement of Account {soa.Value.Number}. Next: its service invoice (Payments › Service Invoices).";   // Nov 28
+                back = AppTheme.InfoSoft; fore = AppTheme.InfoText;
             }
             else if (invoice == null)
             {
@@ -948,10 +955,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             p.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawLine(pen, 0, 0, p.Width, 0); };
             var left = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false, BackColor = AppTheme.Surface, Margin = new Padding(0) };
             var right = new FlowLayoutPanel { Dock = DockStyle.Right, AutoSize = true, WrapContents = false, FlowDirection = FlowDirection.RightToLeft, BackColor = AppTheme.Surface, Margin = new Padding(0) };
-            var btnEdit = MakeButton("✎  Edit order", "strong", D(132));
-            btnEdit.Click += (s, e) => EditOrder();
-            tips.SetToolTip(btnEdit, "Open this order in the dispatch form (Ctrl+E)");
-            left.Controls.Add(btnEdit);
+            if (IsActiveOrder)   // Nov 28: a completed (or cancelled) order is view-only: no Edit order
+            {
+                var btnEdit = MakeButton("✎  Edit order", "strong", D(132));
+                btnEdit.Click += (s, e) => EditOrder();
+                tips.SetToolTip(btnEdit, "Open this order in the dispatch form (Ctrl+E)");
+                left.Controls.Add(btnEdit);
+            }
             if (IsActiveOrder)
             {
                 var btnRes = MakeButton("📅  Reschedule", "secondary", D(136));
@@ -1068,6 +1078,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void EditOrder()
         {
+            if (!IsActiveOrder) { QuietBox.Show(this, $"Dispatch {del.DispatchNumber} is {StatusText.Display(del.Status).ToLowerInvariant()} and can't be edited.", "Edit order", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }   // Nov 28
             var d = del;
             Close();
             if (parentView is DispatchManagementView dv) dv.EditDeliveryOrder(d);

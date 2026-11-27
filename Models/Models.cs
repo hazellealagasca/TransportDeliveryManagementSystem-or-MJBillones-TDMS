@@ -335,6 +335,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public DateTime? CreatedAt { get; set; }
         /// <summary>Corporate (a company: every detail required) or Individual (a person: one automatic recipient store).</summary>
         public string ClientType { get; set; } = ClientTypes.Corporate;
+        /// <summary>Nov 28: the client's accountants who receive the Statement of Account (filled into Received by 1 / 2).</summary>
+        public string Accountant1 { get; set; } = string.Empty;
+        public string Accountant2 { get; set; } = string.Empty;
         public bool IsIndividual => string.Equals(ClientType, ClientTypes.Individual, StringComparison.OrdinalIgnoreCase);
     }
 

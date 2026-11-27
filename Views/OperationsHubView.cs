@@ -64,6 +64,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             AddTab("TripReports", "📝  Trip Reports", () =>
             {
                 var tv = new TripReportView();
+                // Nov 28: the Trip Reports tab is hidden: closing a trip report form returns to the dispatch list
+                tv.OnFormClosedToList = () => { if (!IsDisposed && tabButtons.TryGetValue("TripReports", out var tb) && !tb.Visible && activeTabBtn == tb) SelectTab("Dispatch"); };
                 tv.OnLogIncidentRequested = (delId, dispNum, missing, date) =>
                 {
                     PrefillIncidentFromTrip(delId, dispNum, missing, date);
@@ -89,6 +91,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             }, Features.SpecialTrips, Features.Incidents);
         }
 
+        private readonly Dictionary<string, Action> tabOpeners = new();
         private void AddTab(string key, string title, Func<UserControl> viewFactory)
         {
             Button btn = new Button
@@ -109,7 +112,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             btn.FlatAppearance.BorderSize = 1;
             btn.FlatAppearance.BorderColor = Pal.C(226, 232, 240);
-            btn.Click += (s, e) =>
+            void Open()
             {
                 if (activeTabBtn != null && activeTabBtn != btn)
                 {
@@ -122,7 +125,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     cachedViews[key] = view;
                 }
                 ActivateTab(btn, view);
-            };
+            }
+            btn.Click += (s, e) => Open();
+            tabOpeners[key] = Open; // Nov 28: a hidden tab (Trip Reports) can still be opened: PerformClick does nothing on a hidden button
 
             flowNavTabs.Controls.Add(btn);
             tabButtons[key] = btn;
@@ -157,6 +162,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             if (tabButtons.ContainsKey(key) && !Permissions.Can("Operations", key)) { Permissions.TellDenied(this, "Operations", key); key = ""; }
             if (tabButtons.TryGetValue(key, out var b0) && b0.Visible) return key;
+            if (key == "TripReports" && Permissions.Can("Operations", key)) return key;   // Nov 28: hidden tab, still opened from the dispatch list
             foreach (var kv in tabButtons) if (kv.Value.Visible) return kv.Key;
             return null;
         }
@@ -164,6 +170,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             "SpecialTrips" => Features.On(Features.SpecialTrips),
             "Incidents" => Features.On(Features.Incidents),
+            "TripReports" => false, // Nov 28: no Trip Reports tab; a trip report is opened from the dispatch list (For trip report) and still works
             _ => true
         };
         public void SelectTab(string key)
@@ -175,10 +182,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (completed) key = "History";
             key = AllowedTab(key) ?? "";
             if (key != "History") completed = false;
-            if (tabButtons.TryGetValue(key, out var btn))
-            {
-                btn.PerformClick();
-            }
+            if (tabOpeners.TryGetValue(key, out var open)) open();
             if (completed && cachedViews.TryGetValue("History", out var hv) && hv is OrderHistoryView oh) oh.ShowCompleted();
         }
 

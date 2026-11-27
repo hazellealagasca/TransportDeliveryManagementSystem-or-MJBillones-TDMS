@@ -132,7 +132,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 b.Dock = DockStyle.None;
                 b.Height = Dpi(40);
                 b.Margin = new Padding(Dpi(10), 0, 0, 0);
-                b.Font = new Font("Segoe UI Semibold", 9.5F);
+                b.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold); // Nov 28: Back and Next in bold
             }
             // Right-to-left bar: Next first = far right (Save takes its place on the last step).
             flowFormActions.Controls.Add(wizard.NextButton);

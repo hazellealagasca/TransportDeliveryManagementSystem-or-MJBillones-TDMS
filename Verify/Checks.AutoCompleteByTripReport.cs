@@ -54,11 +54,11 @@ public static partial class Checks
 
     // (a) -------------------------------------------------------------------------------------------------------------------------------
     [Check]
-    public static string AutoComplete_DepartedDispatch_ShowsCurrent_IsWaitingForReport_AndCanGetOne()
+    public static string AutoComplete_DepartedDispatch_ShowsCurrentToday_ForTripReportFromNextDay_IsWaitingForReport_AndCanGetOne()
     {
         Fresh(); MJdatabase.RunOneTimeMigrations(); MJdatabase.EnsureCapacitySchema(); RunBackfill();
         var young = AcSeed(2, tag: "1");     // left 2 hours ago
-        var old = AcSeed(30, tag: "2");      // left 30 hours ago: past the 24 hours, still Current
+        var old = AcSeed(30, tag: "2");      // left 30 hours ago: past the 24 hours (an earlier day)
         var bad = new List<string>();
         foreach (var t in new[] { young, old })
         {
@@ -71,7 +71,7 @@ public static partial class Checks
             if (row == null || row.ReportState != "No trip report yet") bad.Add($"{t.Number} is not in the waiting list ({row?.ReportState})");
             if (!MJdatabase.GetTripsWaitingForTripReport().Any(r => r.DeliveryId == t.Id)) bad.Add($"{t.Number} is not in GetTripsWaitingForTripReport");
         }
-        // The dispatch screen shows Current for both, and no "Awaiting completion" / "Complete" label.
+        // The dispatch screen shows Current (today's dispatch) or For trip report (an earlier day), and no "Awaiting completion" / "Complete" label.
         bad.Add(RunOnSta(() =>
         {
             SignInAsAdmin();
@@ -80,9 +80,17 @@ public static partial class Checks
             var grid = DcGet<DataGridView>(view, "gridDispatch");
             view.RefreshData(); Pump(600);
             var statusCol = grid.Columns.Cast<DataGridViewColumn>().First(c => c.DataPropertyName == "Status");
-            var shown = grid.Rows.Cast<DataGridViewRow>().Select(r => r.Cells[statusCol.Index].FormattedValue?.ToString() ?? "").ToList();
+            var shown = grid.Rows.Cast<DataGridViewRow>().Where(r => r.DataBoundItem is Delivery).ToDictionary(r => ((Delivery)r.DataBoundItem!).Id, r => (Date: ((Delivery)r.DataBoundItem!).DispatchDate.Date, Text: r.Cells[statusCol.Index].FormattedValue?.ToString() ?? ""));
             host.Close();
-            return shown.Count == 2 && shown.All(s => s == "Current") ? "" : "the status column shows: " + string.Join("|", shown);
+            // Nov 28: Current only on the dispatch day; from the next day, with no finished trip report, it reads For trip report.
+            var wrong = new List<string>();
+            foreach (var t in new[] { young, old })
+            {
+                if (!shown.TryGetValue(t.Id, out var s)) { wrong.Add(t.Number + " not listed"); continue; }
+                string want = s.Date < DateTime.Today ? "For trip report" : "Current";
+                if (s.Text != want) wrong.Add($"{t.Number} (dispatch day {s.Date:yyyy-MM-dd}) shows '{s.Text}', expected '{want}'");
+            }
+            return shown.Count == 2 ? string.Join("; ", wrong) : "the status column shows: " + string.Join("|", shown.Values.Select(v => v.Text));
         }));
         // A trip report can be started for each: it is numbered once and the dispatch stays On the road.
         foreach (var t in new[] { young, old })
@@ -170,7 +178,8 @@ public static partial class Checks
         }
         if (Str("SELECT ReasonOrNotes FROM AuditTrail WHERE ActionType='ORDER_COMPLETED' AND RecordId=@i", ("@i", viaDraft.Id)).Contains(Str("SELECT TripReportNumber FROM TripReports WHERE Id=@i", ("@i", trId))) == false) bad.Add("the audit note does not name the trip report");
         var after = OnList();
-        if (after.Contains(viaDraft.Id) || after.Contains(direct.Id)) bad.Add("after: the open list still holds them: " + string.Join(",", after));
+        // Nov 28: a completed dispatch stays in the active list until it is paid (it is now "For Statement of Account"); only paid or cancelled ones leave.
+        if (!after.Contains(viaDraft.Id) || !after.Contains(direct.Id)) bad.Add("after: a completed, unpaid dispatch left the active list: " + string.Join(",", after));
         // Completing again is harmless: saving the finished report once more changes nothing.
         var once = MJdatabase.GetTripReports().First(x => x.Id == trId); once.Remarks = "edited later";
         MJdatabase.SaveTripReport(once);

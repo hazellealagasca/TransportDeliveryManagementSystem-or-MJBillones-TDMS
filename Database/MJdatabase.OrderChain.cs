@@ -116,6 +116,21 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Dispatch id → where that dispatch stands from trip report to receipt.</summary>
         public static Dictionary<int, OrderChain> GetOrderChainsByDelivery() => LoadOrderChains().ByDelivery;
 
+        /// <summary>Nov 28: dispatch id to the newest live (not cancelled / void) statement that has the trip as a line. One query for the whole dispatch list.</summary>
+        public static Dictionary<int, int> GetLiveSoaIdsByDelivery()
+        {
+            var map = new Dictionary<int, int>();
+            using var conn = new SqliteConnection(connectionString);
+            conn.Open();
+            using var c = conn.CreateCommand();
+            c.CommandText = @"SELECT x.DeliveryId, MAX(s.Id) FROM StatementOfAccountItems x
+                              JOIN StatementsOfAccount s ON s.Id = x.SoaId AND LOWER(COALESCE(s.Status,'')) NOT IN ('cancelled','void','voided')
+                              WHERE COALESCE(x.DeliveryId,0) > 0 GROUP BY x.DeliveryId";
+            using var r = c.ExecuteReader();
+            while (r.Read()) map[r.GetInt32(0)] = r.GetInt32(1);
+            return map;
+        }
+
         /// <summary>Special trip id → where that special trip stands from trip report to receipt.</summary>
         public static Dictionary<int, OrderChain> GetOrderChainsBySpecialTrip() => LoadOrderChains().BySpecialTrip;
 
