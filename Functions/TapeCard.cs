@@ -19,6 +19,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Shown when there are no rows yet.</summary>
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden), System.ComponentModel.Browsable(false)]
         public string EmptyText { get; set; } = "Pick a statement or invoice to see what it adds up to.";
+        /// <summary>Nov 28: true shows only the coloured total slab (no heading, no label rows). Used by the Statement of Account form.</summary>
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden), System.ComponentModel.Browsable(false)]
+        public bool SlabOnly { get; set; }
         public TapeCard()
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
@@ -34,7 +37,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         public void Set(string heading, IEnumerable<(string Label, string Value)> lines, string slabCaption, string slabAmount, string slabSub)
         {
             title = heading; rows = lines.ToList(); slabLabel = slabCaption; slabValue = slabAmount; slabNote = slabSub;
-            int want = D(46) + Math.Max(1, rows.Count) * D(30) + D(12) + (slabValue.Length > 0 ? D(98) : 0) + D(14);
+            int want = SlabOnly ? D(14) + D(84) + D(14)
+                : D(46) + Math.Max(1, rows.Count) * D(30) + D(12) + (slabValue.Length > 0 ? D(98) : 0) + D(14);
             if (Height != want) Height = want;
             Invalidate();
         }
@@ -50,6 +54,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             using (var pen = new Pen(AppTheme.Border)) g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
             const TextFormatFlags f = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.VerticalCenter;
             int pad = D(24);
+            if (SlabOnly) { PaintSlab(g, pad, D(14), f); return; }
             using var cap = new Font("Segoe UI Semibold", 8.75F * UiZoomFactor);
             TextRenderer.DrawText(g, title.ToUpperInvariant(), cap, new Rectangle(pad, D(14), Width - pad * 2, D(22)), AppTheme.TextMuted, f);
             using (var pen = new Pen(AppTheme.Border)) g.DrawLine(pen, pad, D(42), Width - pad, D(42));
@@ -74,7 +79,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 y += D(30);
             }
             if (slabValue.Length == 0) return;
-            y += D(12);
+            PaintSlab(g, pad, y + D(12), f);
+        }
+
+        private void PaintSlab(Graphics g, int pad, int y, TextFormatFlags f)
+        {
+            if (slabValue.Length == 0) return;
             var slab = new Rectangle(pad, y, Width - pad * 2, D(84));
             using (var path = RoundRect(slab, D(12)))
             using (var br = new LinearGradientBrush(slab, AppTheme.AccentPressed, AppTheme.Accent, 35f))

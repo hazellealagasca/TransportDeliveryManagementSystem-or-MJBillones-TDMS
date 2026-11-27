@@ -58,7 +58,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             soaCardClient.Dock = DockStyle.Top; soaCardPicker.Dock = DockStyle.Top; soaCardLines.Dock = DockStyle.Top; soaCardSign.Dock = DockStyle.Top;
             pnlSoaAdjust.Dock = DockStyle.Top;
 
-            soaTape = new TapeCard { EmptyText = "Pick the ready service invoices to see the statement add up.", Dock = DockStyle.Top };
+            soaTape = new TapeCard { EmptyText = "Pick the ready service invoices to see the statement add up.", Dock = DockStyle.Top, SlabOnly = true /* Nov 28: only the TOTAL AMOUNT DUE bar (no heading, no VAT / net / withholding lines) */ };
             soaTape.Set("The statement adds up to", Array.Empty<(string, string)>(), "Total amount due", "₱0.00", "");
             var tapeHost = new Panel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = AppTheme.Canvas, Margin = new Padding(0) };
             tapeHost.Controls.Add(soaTape);

@@ -65,6 +65,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 store.IsGeneratedCode = true;
                 return;
             }
+            // Nov 28: a newly typed or edited code is at most 10 characters; the code the store already has (even a longer one) is kept as it is.
+            if (!(old != null && string.Equals(CleanStoreCode(old.StoreCode), typed, StringComparison.OrdinalIgnoreCase))) { string? codeRule = StoreCodeProblem(store.StoreCode); if (codeRule != null) throw new InvalidOperationException(codeRule); }
             store.StoreCode = typed;
             store.IsGeneratedCode = old != null && old.IsGeneratedCode && string.Equals(CleanStoreCode(old.StoreCode), typed, StringComparison.OrdinalIgnoreCase);
         }

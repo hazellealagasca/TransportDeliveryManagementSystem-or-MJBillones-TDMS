@@ -87,6 +87,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             string cleanCode = CleanStoreCode(code), cleanName = CleanStoreText(name);
             if (client.Length == 0) return "Choose the client company first.";
             // Nov 14: the code may be left blank; one is made on save (see GenerateStoreCode).
+            { string? codeRule = StoreCodeProblem(code); if (codeRule != null) return codeRule; } // Nov 28: a typed code is at most 10 characters
             if (cleanName.Length == 0 && !partial) return "Enter the store name.";
             if (cleanName.Length > StoreNameMaxLength) return $"The store name is too long (at most {StoreNameMaxLength} characters).";
             if (cleanCode.Length > 0)

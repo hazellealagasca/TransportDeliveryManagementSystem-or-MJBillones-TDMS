@@ -18,6 +18,41 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Longest store name allowed when registering a store.</summary>
         public const int StoreNameMaxLength = 120;
 
+        /// <summary>Nov 28: the most characters a store code TYPED by a person may have (codes the system makes, and codes already saved, are not held to this).</summary>
+        public const int TypedStoreCodeMaxLength = 10;
+
+        /// <summary>The message shown when a typed store code is too long or has nothing usable in it.</summary>
+        public static string StoreCodeRuleText => "Store code: up to 10 characters (letters, numbers, hyphens).";
+
+        /// <summary>A store code as <see cref="CleanStoreCode"/> normalises it, but not cut at <see cref="StoreCodeMaxLength"/> (so a too-long code can be seen as too long).</summary>
+        private static string NormalizeStoreCodeFull(string? s)
+        {
+            string c = Regex.Replace(CleanStoreText(s).ToUpperInvariant(), @"[^A-Z0-9\-]", "");
+            return Regex.Replace(c, "-{2,}", "-").Trim('-');
+        }
+
+        /// <summary>Nov 28: true when a typed store code is allowed: blank, or 1 to 10 characters once normalised (upper case; letters, digits, hyphens).</summary>
+        public static bool StoreCodeTypedOk(string? code)
+        {
+            if (CleanStoreText(code).Length == 0) return true;
+            int n = NormalizeStoreCodeFull(code).Length;
+            return n >= 1 && n <= TypedStoreCodeMaxLength;
+        }
+
+        /// <summary>
+        /// Nov 28: the problem with a NEWLY typed store code, or null. Blank, "(no code)", a code that is already saved (any client) and a
+        /// code the system made are never refused here (a saved duplicate is reported by the duplicate checks).
+        /// </summary>
+        public static string? StoreCodeProblem(string? code)
+        {
+            string t = CleanStoreText(code);
+            if (t.Length == 0 || string.Equals(t, NoCodeText, StringComparison.OrdinalIgnoreCase)) return null;
+            if (StoreCodeTypedOk(t)) return null;
+            if (IsGeneratedStoreCode(t) || FindStoreByCodeAnyClient(NormalizeStoreCodeFull(t)) != null || FindStoreByCodeAnyClient(t) != null) return null;
+            return StoreCodeRuleText;
+        }
+
+
         /// <summary>Spaces trimmed and runs of spaces made single.</summary>
         public static string CleanStoreText(string? s) => Regex.Replace((s ?? "").Trim(), @"\s+", " ");
 
@@ -79,6 +114,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (client.Length == 0) return "Choose the client company first.";
             // Rule 16c: the route is optional; a store can be registered to the client's pool first and put on routes later.
             // Nov 14: the code may be left blank; one is made on save (see GenerateStoreCode).
+            { string? codeRule = StoreCodeProblem(code); if (codeRule != null) return codeRule; } // Nov 28: a typed code is at most 10 characters
             if (cleanName.Length == 0) return "Enter the store name.";
             if (cleanName.Length > StoreNameMaxLength) return $"The store name is too long (at most {StoreNameMaxLength} characters).";
             if (label.Length == 0)

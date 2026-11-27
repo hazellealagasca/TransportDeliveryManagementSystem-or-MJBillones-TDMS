@@ -61,6 +61,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 string code = MJdatabase.CleanStoreCode(r.Code), name = MJdatabase.CleanStoreText(r.Name);
                 if (noClient) { result.Add(new PasteRow(code, name, PasteStatus.Invalid, "Choose the client company first.")); continue; }
                 if (code.Length == 0) { result.Add(new PasteRow(code, name, PasteStatus.Invalid, "Invalid code: use letters, numbers and hyphens.")); continue; }
+                if (MJdatabase.StoreCodeProblem(r.Code) is string codeRule) { result.Add(new PasteRow(code, name, PasteStatus.Invalid, codeRule)); continue; } // Nov 28: a typed code is at most 10 characters
                 if (name.Length == 0) { result.Add(new PasteRow(code, name, PasteStatus.Invalid, "Missing store name.")); continue; }
                 if (name.Length > MJdatabase.StoreNameMaxLength) { result.Add(new PasteRow(code, name, PasteStatus.Invalid, $"Name too long (at most {MJdatabase.StoreNameMaxLength} characters).")); continue; }
                 if (codes.Contains(code) || names.Contains(name)) { result.Add(new PasteRow(code, name, PasteStatus.Duplicate, "Duplicate in the list.")); continue; }

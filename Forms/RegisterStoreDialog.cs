@@ -72,10 +72,10 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             routesShown = Features.On(Features.DeliveryRoutes);
             capRoute.Visible = routeRow.Visible = routesShown;
 
-            root.Controls.Add(Cap($"Store code (optional: left blank, one is made and shows as {MJdatabase.NoCodeText}; letters, numbers, hyphens; up to {MJdatabase.StoreCodeMaxLength})"));
+            root.Controls.Add(Cap($"Store code (optional: left blank, one is made and shows as {MJdatabase.NoCodeText}; letters, numbers, hyphens; up to {MJdatabase.TypedStoreCodeMaxLength})"));
             Field(txtCode);
             txtCode.CharacterCasing = CharacterCasing.Upper;
-            txtCode.MaxLength = MJdatabase.StoreCodeMaxLength;
+            txtCode.MaxLength = MJdatabase.TypedStoreCodeMaxLength; // Nov 28: a typed code is at most 10 characters
             txtCode.KeyPress += (s, e) => { if (!char.IsControl(e.KeyChar) && !char.IsLetterOrDigit(e.KeyChar) && e.KeyChar != '-') e.Handled = true; };
             root.Controls.Add(txtCode);
 

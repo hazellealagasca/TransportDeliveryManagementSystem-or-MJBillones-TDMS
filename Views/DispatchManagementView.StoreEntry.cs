@@ -82,6 +82,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, Dpi(36)));
 
             txtEntryCode = EntryBox("txtEntryStoreCode", "Code", false);
+            txtEntryCode.MaxLength = Database.MJdatabase.StoreCodeMaxLength; // Nov 28: a typed NEW code is checked (max 10) on save; this box also looks up saved codes (up to 20)
             txtEntryName = EntryBox("txtEntryStoreName", "Name", false);
             txtEntryG = EntryBox("txtEntryGCrates", "0", true);
             txtEntryE = EntryBox("txtEntryECrates", "0", true);

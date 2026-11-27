@@ -130,15 +130,15 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 try
                 {
                     MJdatabase.EnsureClientExists(shownName);
-                    ToastHelper.ShowToast(FindForm() ?? (Control)this, $"\"{shownName}\" added to clients. Open it to add TIN, contact and stores.", ToastType.Success);
                     ClientRegistered?.Invoke(shownName);
                     Render(shownName);
+                    // Nov 28: a new client goes straight to its page (company details, stores) to fill in; Back returns to the form it came from
                 }
                 catch (Exception ex)
-                { ErrLog.Error("ClientInfoStrip", ex); 
+                { ErrLog.Error("ClientInfoStrip", ex);
                     MessageBox.Show(FindForm(), "Couldn't add the client: " + ex.Message, "Clients", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
                 }
-                return;
             }
             var back = ReturnTo?.Invoke();
             if (back != null) MainForm.Instance?.OpenClientProfile(shownName, back.Value.Label, back.Value.Go);

@@ -705,7 +705,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 9F),
                 PlaceholderText = "Store Code",
-                MaxLength = 20,
+                MaxLength = MJdatabase.TypedStoreCodeMaxLength, // Nov 28: at most 10 characters
                 Margin = new Padding(0, 1, 4, 1)
             };
 

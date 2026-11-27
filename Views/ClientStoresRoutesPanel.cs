@@ -65,6 +65,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             txtName = Entry("Store Name", 260, upper: false);
             txtAddress = Entry("Store address", 300, upper: false);
             txtAddress.MaxLength = 200;
+            txtCode.MaxLength = MJdatabase.TypedStoreCodeMaxLength; // Nov 28: a typed store code is at most 10 characters
             var btnAdd = BigButton("＋ Add store", AppTheme.Success);
             btnAdd.Click += (s, e) => AddStore();
             var btnPaste = BigButton("Paste list…", AppTheme.Accent);
