@@ -658,11 +658,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     + "\n\nMake a separate statement for each client.", "Other client's trips", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 if (fresh.Count == 0) return;
             }
-            int unpriced = AppendDeliveries(fresh);
+            AppendDeliveries(fresh);
             AfterLinesAdded();
-            string msg = $"Added {fresh.Count} dispatch{(fresh.Count == 1 ? "" : "es")} to the statement";
-            if (unpriced > 0) msg += $"; {unpriced} have no service invoice amount yet (make it in Billing)";
-            ToastHelper.ShowToast(this, msg, unpriced > 0 ? ToastType.Warning : ToastType.Success);
+            // Nov 28: no toast — the row's "On this statement" column already shows it was added.
         }
         /// <summary>Adds the dispatch typed in the box, checking it's completed, for this client and not billed already.</summary>
         private void AddDispatchByNumber()
