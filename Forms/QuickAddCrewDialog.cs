@@ -128,7 +128,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var header = new Panel { Dock = DockStyle.Top, Height = D(64), BackColor = AppTheme.Surface, Padding = new Padding(D(20), D(10), D(20), D(8)) };
             header.Paint += (s, e) => { using var p = new Pen(AppTheme.Border); e.Graphics.DrawLine(p, 0, header.Height - 1, header.Width, header.Height - 1); };
             header.Controls.Add(new Label { Text = $"Save a new {noun}. Photo and pay are added later on the Crew screen.", Dock = DockStyle.Top, Height = D(20), Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, AutoEllipsis = true });
-            header.Controls.Add(new Label { Text = driver ? "New driver" : "New aide / helper", Dock = DockStyle.Top, Height = D(28), Font = new Font("Segoe UI Semibold", 13F), ForeColor = AppTheme.TextPrimary });
+            header.Controls.Add(new Label { Text = driver ? "New driver" : "New aide / helper", Dock = DockStyle.Top, Height = D(28), Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary });
 
             var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = D(54), FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(D(16), D(8), D(16), D(8)), BackColor = AppTheme.Surface };
             btnCancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Size = new Size(D(96), D(34)), Cursor = Cursors.Hand };

@@ -56,7 +56,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var header = new Panel { Dock = DockStyle.Top, Height = D(92), BackColor = soft, Padding = new Padding(D(20), D(12), D(20), D(10)) };
             header.Controls.Add(new Label { Dock = DockStyle.Fill, Text = res.Message, Font = new Font("Segoe UI", 9.75F), ForeColor = AppTheme.TextPrimary, UseMnemonic = false });
-            header.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(30), Text = $"{(good ? "✓" : warn ? "⚠" : "⛔")}  {res.Title}", Font = new Font("Segoe UI Semibold", 13F), ForeColor = tone, UseMnemonic = false });
+            header.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(30), Text = $"{(good ? "✓" : warn ? "⚠" : "⛔")}  {res.Title}", Font = UITheme.CardHeaderFont, ForeColor = tone, UseMnemonic = false });
 
 
 

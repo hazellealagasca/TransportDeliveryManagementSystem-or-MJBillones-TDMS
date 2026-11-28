@@ -352,7 +352,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private Panel SectionHeader(string title, string hint)
         {
             var p = new Panel { Dock = DockStyle.Top, Height = D(60), BackColor = AppTheme.Surface };
-            var t = new Label { Text = title, AutoSize = true, Font = new Font("Segoe UI Semibold", 12F), ForeColor = AppTheme.TextPrimary, Location = new Point(0, 0) };
+            var t = new Label { Text = title, AutoSize = true, Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, Location = new Point(0, 0) };
             var h = new Label { Text = hint, AutoSize = true, Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, Location = new Point(D(1), D(28)) };
             p.Controls.Add(t);
             p.Controls.Add(h);

@@ -23,6 +23,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             ("Status · active first", "Status", true),
             ("Status · finished first", "Status", false),
             ("Dispatch # (A–Z)", "DispatchNumber", true),
+            ("Client (A–Z)", "Client", true),
+            ("Client (Z–A)", "Client", false),
             ("Most crates first", "TotalCrates", false)
         };
         private static readonly (string Label, string Filter)[] StatusOptions =
@@ -86,6 +88,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 "DispatchDate" or "DepartureTime" => "Date",
                 "Status" => "Status",
                 "TotalCrates" => "TotalCrates",
+                "ClientName" => "Client",
                 _ => dataProperty
             };
             if (currentSortColumn == col) isSortAscending = !isSortAscending;
@@ -109,6 +112,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                     return byStatus.ThenByDescending(DepartureOf).ThenByDescending(d => d.Id);
                 case "DispatchNumber":
                     return isSortAscending ? rows.OrderBy(d => d.DispatchNumber) : rows.OrderByDescending(d => d.DispatchNumber);
+                case "Client":
+                    var byClient = isSortAscending
+                        ? rows.OrderBy(d => (d.ClientName ?? "").Trim(), StringComparer.CurrentCultureIgnoreCase)
+                        : rows.OrderByDescending(d => (d.ClientName ?? "").Trim(), StringComparer.CurrentCultureIgnoreCase);
+                    return byClient.ThenByDescending(DepartureOf).ThenByDescending(d => d.Id);
                 case "TotalCrates":
                     return (isSortAscending ? rows.OrderBy(d => d.TotalCrates) : rows.OrderByDescending(d => d.TotalCrates)).ThenByDescending(DepartureOf);
                 case "Date":

@@ -26,7 +26,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Font = new Font("Segoe UI", 9.75F);
             try { ThemeManager.StyleWindowChrome(this); } catch (Exception ex) { ErrLog.Swallowed(ex); }
             var head = new Panel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(D(24), D(16), D(24), D(10)), BackColor = AppTheme.Surface };
-            var h1 = new Label { Text = heading, Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI Semibold", 13F), ForeColor = AppTheme.TextPrimary, UseMnemonic = false };
+            var h1 = new Label { Text = heading, Dock = DockStyle.Top, AutoSize = true, Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, UseMnemonic = false };
             var h2 = new Label { Text = subtitle, Dock = DockStyle.Top, AutoSize = true, Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, UseMnemonic = false, Padding = new Padding(0, D(4), 0, 0) };
             head.Controls.Add(h2); head.Controls.Add(h1);
             // Wrap the explanation to the window width.

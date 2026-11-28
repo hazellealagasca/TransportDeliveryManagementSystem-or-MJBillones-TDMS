@@ -132,6 +132,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
                 return true;
             }
+            if (keyData == Keys.Escape && !pnlForm.Visible && soaPage == SoaPage.Create) { ShowSoaListPage(); return true; } // Nov 28: Esc on the creation page = Back
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
@@ -164,16 +165,16 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             btnToggleForm = new Button
             {
-                Text = "＋ New statement",
+                Text = "＋ New Statement",
                 Size = new Size(170, 32),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
                 Cursor = Cursors.Hand,
-                Margin = new Padding(0, 1, 8, 0)
+                Margin = new Padding(Dpi(6), 1, 0, 0)
             };
             btnToggleForm.FlatAppearance.BorderSize = 0;
-            btnToggleForm.Click += (s, e) => OpenNewStatement();
-            // Nov 14: "+ New statement" sits in the bottom action bar of the list, next to Print (built below).
+            // Nov 28: "＋ New Statement" is in the list toolbar and opens the creation page (a kept draft still resumes straight away).
+            btnToggleForm.Click += (s, e) => { if (keep.Kept) OpenNewStatement(); else ShowSoaCreatePage(); };
 
             btnPrintOfficial = new Button
             {
@@ -274,6 +275,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             cancelledChip.SelectionChanged += (s, e) => FilterGridData();
             new ToolTip().SetToolTip(cancelledChip, "Cancelled statements stay in the audit log. Searching always finds them.");
             pnlGridActionsFlow.Controls.Add(cancelledChip);
+            pnlGridActionsFlow.Controls.Add(btnToggleForm);
 
             pnlTopBar.Controls.Add(pnlGridActionsFlow);
             // H3: the toolbar wraps onto a second row (search, client filter, Paid / Cancelled chips). An AutoSize panel measured it one row too
@@ -291,7 +293,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             pnlListActionsBar.Paint += (s, e) => { using var pen = new Pen(Pal.C(226, 232, 240)); e.Graphics.DrawLine(pen, 0, 0, pnlListActionsBar.Width, 0); };
             var flowListActions = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, BackColor = Color.Transparent };
             flowListActions.Controls.Add(btnPrintOfficial);
-            flowListActions.Controls.Add(btnToggleForm);
             pnlListActionsBar.Controls.Add(flowListActions);
             this.Controls.Add(pnlListActionsBar);
 
@@ -302,6 +303,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             soaHeaderHost.Controls.Add(soaHeader);
             this.Controls.Add(soaHeaderHost);
             BuildSoaReadyBanner();
+            BuildSoaBackBar();
             tblMasterContent = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -890,6 +892,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UIThemeHelper.SetButtonRole(btnToggleForm, "primary");
             UIThemeHelper.SetButtonRole(btnCloseForm, "secondary");
             btnCloseForm.ForeColor = AppTheme.TextPrimary;
+            UIThemeHelper.SetButtonRole(btnSoaBack, "secondary");
+            btnSoaBack.ForeColor = AppTheme.TextPrimary;
             pnlForm.BackColor = AppTheme.Canvas;
             pnlFormBody.BackColor = AppTheme.Canvas;
             pnlFormHeaderBar.BackColor = AppTheme.Canvas;
@@ -1006,7 +1010,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 e.Value = StatusText.BillingText(st, row.TotalAmount); // Unpaid reads For Collection; the stored word is unchanged
                 e.FormattingApplied = true;
             };
-            gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 75, MinimumWidth = 60, ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter } });
+            gridSoa.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Status", HeaderText = "Status", FillWeight = 75, MinimumWidth = StatusColumnMinWidth(), ReadOnly = true, DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter } });
         }
 
         /// <summary>Nov 17: the list's status for a saved statement that has no service invoice yet (see LoadData).</summary>
@@ -1027,6 +1031,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             hub.InvoiceStatement(soa.Id);
         }
 
+        /// <summary>Nov 28: the Status column is never narrower than its "+ Create service invoice" button text (plus the button's padding), so it is not cut.</summary>
+        private int StatusColumnMinWidth()
+        {
+            using var f = new Font("Segoe UI Semibold", 8.25F);
+            return TextRenderer.MeasureText("＋ Create service invoice", f).Width + Dpi(8) + Dpi(20);
+        }
         /// <summary>The "+ Create service invoice" button drawn in the Status cell of a "No invoice" row (bounds inside the cell).</summary>
         private Rectangle CreateInvoiceButtonRect(Rectangle cell)
         {
@@ -1207,6 +1217,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void SetFormVisibility(bool visible)
         {
             ExitSoaViewOnly(); // a read-only view never carries over to the next statement
+            if (!visible && pnlForm.Visible) soaPage = SoaPage.List; // Nov 28: a closed form (saved, discarded or Back) lands on the list page
             // Nov 6: a form is blank whenever it is opened or left.
             if (!visible && pnlForm.Visible && IsHandleCreated && !keep.Keeping) ClearForm();
             if (visible) formDirty ??= new FormDirtyTracker(pnlForm);
@@ -1214,10 +1225,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (visible) keep.Restored(btnToggleForm);
             tblMasterContent.SuspendLayout();
             // The statement form is a full page of its own: it replaces the list instead of sitting beside it.
+            if (visible) tblMasterContent.Visible = true; // Nov 28: the creation page hides the table that holds the form
             pnlForm.Visible = visible;
-            gridSoa.Visible = !visible;
-            pnlTopBar.Visible = !visible;
-            if (pnlListActionsBar != null) pnlListActionsBar.Visible = !visible;
             tblMasterContent.ColumnStyles[0].SizeType = visible ? SizeType.Percent : SizeType.Absolute;
             tblMasterContent.ColumnStyles[0].Width = visible ? 100F : 0F;
             tblMasterContent.ColumnStyles[1].SizeType = visible ? SizeType.Absolute : SizeType.Percent;

@@ -251,8 +251,9 @@ public static partial class Checks
         return string.Join("; ", bad);
     }
 
+    // Nov 28: "＋ New Statement" moved from the bottom bar to the list toolbar (it opens the creation page); the bottom bar keeps Print official SOA.
     [Check]
-    public static string Payments_NewStatementButton_IsInTheBottomBar_NextToPrint()
+    public static string Payments_NewStatementButton_IsInTheToolbar_PrintStaysInBottomBar()
     {
         Fresh();
         return RunOnSta(() =>
@@ -266,14 +267,15 @@ public static partial class Checks
             var top = P5Get<Control>(view, "pnlTopBar");
             var bottom = P5Get<Control>(view, "pnlListActionsBar");
             var bad = new List<string>();
-            if (toggle.Text != "＋ New statement") bad.Add("button text is '" + toggle.Text + "'");
+            if (toggle.Text != "＋ New Statement") bad.Add("button text is '" + toggle.Text + "'");
             bool InTree(Control root, Control c) { for (Control? p = c; p != null; p = p.Parent) if (p == root) return true; return false; }
-            if (InTree(top, toggle)) bad.Add("+ New statement is still in the header");
-            if (!InTree(bottom, toggle)) bad.Add("+ New statement is not in the bottom bar");
+            if (!InTree(top, toggle)) bad.Add("+ New Statement is not in the list toolbar");
+            if (InTree(bottom, toggle)) bad.Add("+ New Statement is still in the bottom bar");
+            if (!InTree(bottom, print)) bad.Add("Print official SOA is not in the bottom bar");
             if (bottom.Dock != DockStyle.Bottom) bad.Add("the bar is not at the bottom");
-            if (toggle.Parent != print.Parent) bad.Add("+ New statement is not next to Print");
             toggle.PerformClick(); Pump(500);
-            if (!P5Get<Control>(view, "pnlForm").Visible) bad.Add("+ New statement does not open the form");
+            if (P5Get<Control>(view, "pnlForm").Visible) bad.Add("+ New Statement opened the form instead of the creation page");
+            if (!P5Get<Control>(view, "soaReadyBanner").Visible) bad.Add("+ New Statement does not open the creation page");
             host.Close();
             return string.Join("; ", bad);
         });
@@ -339,7 +341,7 @@ public static partial class Checks
             using var _ = host;
             var bad = new List<string>();
             var btn = P5Get<Button>(view, "btnToggleForm");
-            if (btn.Text != "＋ New service invoice") bad.Add("button says '" + btn.Text + "'");
+            if (btn.Text != "＋ New Service Invoice") bad.Add("button says '" + btn.Text + "'");
             host.Close();
             string root = RepoRoot();
             string soaSrc = File.ReadAllText(Path.Combine(root, "Views", "BillingView.Soa.cs"));

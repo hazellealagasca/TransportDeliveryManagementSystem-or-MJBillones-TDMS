@@ -636,7 +636,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             card.Height = D(12) + D(32) + rows.Count * RowH + D(14);
             card.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1); };
             card.Resize += (s, e) => card.Invalidate();
-            var lblTitle = new Label { Dock = DockStyle.Top, Height = D(32), Text = title, Font = new Font("Segoe UI Semibold", 11.5F), ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.TopLeft };
+            var lblTitle = new Label { Dock = DockStyle.Top, Height = D(32), Text = title, Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.TopLeft };
             var tbl = new TableLayoutPanel { Dock = DockStyle.Top, Height = rows.Count * RowH, ColumnCount = 2, RowCount = rows.Count, BackColor = AppTheme.Surface };
             tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, D(150)));
             tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
@@ -872,7 +872,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var card = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.Surface, Padding = new Padding(D(16), D(12), D(16), D(12)) };
             card.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1); };
             card.Resize += (s, e) => card.Invalidate();
-            var title = new Label { Dock = DockStyle.Top, Height = D(30), Text = "Order notes", Font = new Font("Segoe UI Semibold", 11.5F), ForeColor = AppTheme.TextPrimary };
+            var title = new Label { Dock = DockStyle.Top, Height = D(30), Text = "Order notes", Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary };
             var sub = new Label { Dock = DockStyle.Top, Height = D(26), Text = "Anything the team should know about this order: instructions, gate passes, problems on the road.", Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, AutoEllipsis = true };
             txtNotes = new TextBox
             {

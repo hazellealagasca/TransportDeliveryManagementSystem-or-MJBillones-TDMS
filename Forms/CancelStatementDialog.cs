@@ -26,7 +26,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(D(20)), BackColor = AppTheme.Surface };
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             Label L(string t, Font f, Color c, int top = 0) => new Label { Text = t, AutoSize = true, MaximumSize = new Size(D(520), 0), Font = f, ForeColor = c, UseMnemonic = false, Margin = new Padding(0, D(top), 0, D(4)) };
-            root.Controls.Add(L($"Cancel Statement of Account {soaNumber}?", new Font("Segoe UI Semibold", 12F), AppTheme.TextPrimary));
+            root.Controls.Add(L($"Cancel Statement of Account {soaNumber}?", UITheme.CardHeaderFont, AppTheme.TextPrimary));
             root.Controls.Add(L($"{client} · {invoiceCount} service invoice{(invoiceCount == 1 ? "" : "s")} · ₱{total:N2}", new Font("Segoe UI", 9.75F), AppTheme.TextSecondary, 2));
             root.Controls.Add(L("What happens:\n• The statement is marked Cancelled. It is not erased: it stays in the list and the audit log.\n" +
                                 "• Its service invoices are not cancelled. They go back to \"Ready for a statement\" so you can put them on a new statement.\n" +

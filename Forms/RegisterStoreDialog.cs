@@ -218,7 +218,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var root = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 1, BackColor = AppTheme.Surface };
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, D(460)));
             Controls.Add(root);
-            root.Controls.Add(new Label { Text = "⚠  Store not registered", AutoSize = true, Font = new Font("Segoe UI Semibold", 13F), ForeColor = AppTheme.WarningText, Margin = new Padding(0, 0, 0, D(8)), UseMnemonic = false });
+            root.Controls.Add(new Label { Text = "⚠  Store not registered", AutoSize = true, Font = UITheme.CardHeaderFont, ForeColor = AppTheme.WarningText, Margin = new Padding(0, 0, 0, D(8)), UseMnemonic = false });
             root.Controls.Add(new Label { Text = message, AutoSize = true, MaximumSize = new Size(D(460), 0), Font = new Font("Segoe UI", 10.5F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, 0, 0, D(6)), UseMnemonic = false });
             root.Controls.Add(new Label
             {

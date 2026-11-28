@@ -66,7 +66,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             grid.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             grid.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             int r = 0;
-            var head = new Label { Text = title, AutoSize = true, Font = new Font("Segoe UI Semibold", 12.5F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0), UseMnemonic = false };
+            var head = new Label { Text = title, AutoSize = true, Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, Margin = new Padding(0), UseMnemonic = false };
             grid.Controls.Add(head, 0, r); grid.SetColumnSpan(head, 3); r++;
             var sub = new Label { Text = subtitle, AutoSize = true, ForeColor = AppTheme.TextMuted, Font = new Font("Segoe UI", 9F), Margin = new Padding(0, D(4), 0, D(8)), UseMnemonic = false };
             grid.Controls.Add(sub, 0, r); grid.SetColumnSpan(sub, 3); r++;

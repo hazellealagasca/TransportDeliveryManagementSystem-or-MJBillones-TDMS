@@ -16,7 +16,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     public sealed class FinanceStatementHistoryView : UserControl, IRefreshable
     {
         private readonly DataGridView grid = new();
-        private readonly Label lblTitle = new() { Dock = DockStyle.Top, Height = 40, Font = new Font("Segoe UI Semibold", 11F), Padding = new Padding(12, 10, 0, 0), UseMnemonic = false };
+        private readonly Label lblTitle = new() { Dock = DockStyle.Top, Height = 40, Font = UITheme.CardHeaderFont, Padding = new Padding(12, 10, 0, 0), UseMnemonic = false };
         private List<StatementHistoryRow> rows = new();
 
         public FinanceStatementHistoryView()

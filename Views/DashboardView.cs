@@ -408,7 +408,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             head = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 2, RowCount = 2, AutoSize = true, BackColor = Color.Transparent, Margin = new Padding(0), Padding = new Padding(0, 0, 0, D(10)) };
             head.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             head.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            var t = new Label { Text = title, AutoSize = true, Font = new Font("Segoe UI Semibold", 12F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0), UseMnemonic = false };
+            var t = new Label { Text = title, AutoSize = true, Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, Margin = new Padding(0), UseMnemonic = false };
             head.Controls.Add(t, 0, 0);
             if (!string.IsNullOrEmpty(subtitle))
                 head.Controls.Add(new Label { Text = subtitle, AutoSize = true, Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.TextMuted, Margin = new Padding(0, D(2), 0, 0), UseMnemonic = false }, 0, 1);

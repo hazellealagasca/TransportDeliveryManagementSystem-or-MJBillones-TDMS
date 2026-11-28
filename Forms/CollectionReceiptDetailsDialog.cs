@@ -262,7 +262,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             card.Height = D(12) + D(32) + items.Count * RowH + D(14);
             card.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1); };
             card.Resize += (s, e) => card.Invalidate();
-            var lblTitle = new Label { Dock = DockStyle.Top, Height = D(32), Text = title, Font = new Font("Segoe UI Semibold", 11.5F), ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.TopLeft };
+            var lblTitle = new Label { Dock = DockStyle.Top, Height = D(32), Text = title, Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.TopLeft };
             var tbl = new TableLayoutPanel { Dock = DockStyle.Top, Height = items.Count * RowH, ColumnCount = 2, RowCount = items.Count, BackColor = AppTheme.Surface };
             tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, D(120)));
             tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
@@ -296,7 +296,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var card = new Panel { BackColor = AppTheme.Surface, Padding = new Padding(pad, D(12), pad, D(12)) };
             card.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1); };
             card.Resize += (s, e) => card.Invalidate();
-            var lblTitle = new Label { Dock = DockStyle.Top, Height = D(32), Text = "Collection Receipt", Font = new Font("Segoe UI Semibold", 11.5F), ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.TopLeft };
+            var lblTitle = new Label { Dock = DockStyle.Top, Height = D(32), Text = "Collection Receipt", Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.TopLeft };
 
             // receipt and payment details: label | value | label | value (the label column matches the Client / Statement boxes)
             var pairs = new List<(string, string)>

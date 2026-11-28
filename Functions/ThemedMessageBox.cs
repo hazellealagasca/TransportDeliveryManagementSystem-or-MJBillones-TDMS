@@ -141,7 +141,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 TextRenderer.DrawText(g, glyph, f, new Rectangle(0, 0, badge.Width, badge.Height), Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
             };
             var stack = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0), BackColor = AppTheme.Surface };
-            stack.Controls.Add(new Label { Text = title, Font = new Font("Segoe UI Semibold", 12F), ForeColor = AppTheme.TextPrimary, BackColor = AppTheme.Surface, AutoSize = true, MaximumSize = new Size(textW, 0), Margin = new Padding(0, D(2), 0, 0), UseMnemonic = false });
+            stack.Controls.Add(new Label { Text = title, Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, BackColor = AppTheme.Surface, AutoSize = true, MaximumSize = new Size(textW, 0), Margin = new Padding(0, D(2), 0, 0), UseMnemonic = false });
             if (body.Length > 0)
             {
                 var bodyFont = new Font("Segoe UI", 9.75F);

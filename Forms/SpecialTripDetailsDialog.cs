@@ -368,7 +368,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             card.Height = D(12) + D(32) + rows.Count * rowH + D(14);
             card.Paint += (s, e) => { using var pen = new Pen(AppTheme.Border); e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1); };
             card.Resize += (s, e) => card.Invalidate();
-            var lblTitle = new Label { Dock = DockStyle.Top, Height = D(32), Text = title, Font = new Font("Segoe UI Semibold", 11.5F), ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.TopLeft };
+            var lblTitle = new Label { Dock = DockStyle.Top, Height = D(32), Text = title, Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, TextAlign = ContentAlignment.TopLeft };
             var tbl = new TableLayoutPanel { Dock = DockStyle.Top, Height = rows.Count * rowH, ColumnCount = 2, RowCount = rows.Count, BackColor = AppTheme.Surface };
             tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, D(170)));
             tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));

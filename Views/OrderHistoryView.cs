@@ -563,7 +563,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Label L(string text, Font f, Color c, int bottom = 0) => new Label { Text = text, AutoSize = true, MaximumSize = new Size(D(290), 0), Font = f, ForeColor = c, Margin = new Padding(0, 0, 0, D(bottom)), UseMnemonic = false };
             if (r == null)
             {
-                stack.Controls.Add(L("Details", new Font("Segoe UI Semibold", 12F), AppTheme.TextPrimary, 8));
+                stack.Controls.Add(L("Details", UITheme.CardHeaderFont, AppTheme.TextPrimary, 8));
                 stack.Controls.Add(L("Click any row to see everything about it here.", new Font("Segoe UI", 9.5F), AppTheme.TextSecondary, 16));
                 stack.Controls.Add(L("Tips", new Font("Segoe UI Semibold", 9.5F), AppTheme.TextPrimary, 4));
                 foreach (var tip in new[]

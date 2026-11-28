@@ -142,9 +142,14 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 grid.Columns.Clear(); grid.Rows.Clear();
                 grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "", FillWeight = 4, MinimumWidth = 34, SortMode = DataGridViewColumnSortMode.NotSortable });
                 AddCol("Trip report / SI", 12); AddCol("Dispatch", 12); AddCol("Client", 24); AddCol("Completed", 10); AddCol("Invoiced", 10); AddCol("Amount", 12); AddCol("Waiting", 9);
+                grid.Columns[5].Visible = false; // Nov 28: "Invoiced" is not shown (its value stays in the row)
+                AddCol("Status", 16);
+                using (var bold = new Font(grid.Font, FontStyle.Bold))   // wide enough for the whole pill text at 100%
+                    grid.Columns[8].MinimumWidth = TextRenderer.MeasureText(DispatchStage.LabelSoa, bold).Width + (int)Math.Ceiling(24 * (DeviceDpi / 96.0));
+                grid.Columns[8].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
                 foreach (var r in rows)
                 {
-                    int i = grid.Rows.Add(picked.Contains(r.InvoiceId), r.InvoiceNumber, r.TripNumber + (r.Kind == "Special" ? " (special)" : ""), r.ClientName, Fmt.Short(r.TripDate), r.Kind == "Special" ? Fmt.Short(r.IssueDate) : "no invoice yet", r.Net > 0 ? $"₱{r.Net:N2}" : "typed on the statement", r.DaysWaiting == 0 ? "today" : $"{r.DaysWaiting} d");
+                    int i = grid.Rows.Add(picked.Contains(r.InvoiceId), r.InvoiceNumber, r.TripNumber + (r.Kind == "Special" ? " (special)" : ""), r.ClientName, Fmt.Short(r.TripDate), r.Kind == "Special" ? Fmt.Short(r.IssueDate) : "no invoice yet", r.Net > 0 ? $"₱{r.Net:N2}" : "typed on the statement", r.DaysWaiting == 0 ? "today" : $"{r.DaysWaiting} d", DispatchStage.LabelSoa);
                     grid.Rows[i].Tag = r;
                 }
                 grid.ResumeLayout();

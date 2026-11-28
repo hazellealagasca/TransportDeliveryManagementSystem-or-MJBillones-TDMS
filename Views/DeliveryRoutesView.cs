@@ -100,7 +100,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
 
             var header = new Panel { Dock = DockStyle.Top, Height = D(156), BackColor = AppTheme.Surface, Padding = new Padding(0, 0, 0, D(8)) };
-            lblGridHeader = new Label { Dock = DockStyle.Top, AutoSize = false, Height = D(36), Text = "Delivery routes", Font = new Font("Segoe UI Semibold", 14F), ForeColor = AppTheme.TextPrimary, UseMnemonic = false };
+            lblGridHeader = new Label { Dock = DockStyle.Top, AutoSize = false, Height = D(36), Text = "Delivery routes", Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, UseMnemonic = false };
             var lblSub = new Label
             {
                 Dock = DockStyle.Top,

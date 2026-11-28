@@ -51,7 +51,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Controls.Add(root);
 
 
-            var lblTitle = new Label { Text = string.IsNullOrWhiteSpace(title) ? "DR numbers" : $"DR numbers · {title}", AutoSize = true, Font = new Font("Segoe UI Semibold", 13F), ForeColor = AppTheme.TextPrimary, UseMnemonic = false, MaximumSize = new Size(D(420), 0), Margin = new Padding(0, 0, 0, D(2)) };
+            var lblTitle = new Label { Text = string.IsNullOrWhiteSpace(title) ? "DR numbers" : $"DR numbers · {title}", AutoSize = true, Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, UseMnemonic = false, MaximumSize = new Size(D(420), 0), Margin = new Padding(0, 0, 0, D(2)) };
             root.Controls.Add(lblTitle, 0, 0); root.SetColumnSpan(lblTitle, 2);
             var lblHint = new Label { Text = "Type or paste one or more DR numbers (commas or new lines between them), then press Enter or Add.", AutoSize = true, Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, UseMnemonic = false, MaximumSize = new Size(D(420), 0), Margin = new Padding(0, 0, 0, D(8)) };
             root.Controls.Add(lblHint, 0, 1); root.SetColumnSpan(lblHint, 2);

@@ -116,7 +116,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             rows.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             rows.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             int r = 0;
-            rows.Controls.Add(new Label { Text = title, AutoSize = true, Font = new Font("Segoe UI Semibold", 12.5F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0), UseMnemonic = false }, 0, r);
+            rows.Controls.Add(new Label { Text = title, AutoSize = true, Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, Margin = new Padding(0), UseMnemonic = false }, 0, r);
             rows.SetColumnSpan(rows.GetControlFromPosition(0, r)!, 2); r++;
             var sub = new Label { Text = subtitle, AutoSize = true, ForeColor = AppTheme.TextMuted, Font = new Font("Segoe UI", 9F), Margin = new Padding(0, D(4), 0, D(8)), UseMnemonic = false };
             rows.Controls.Add(sub, 0, r); rows.SetColumnSpan(sub, 2); r++;

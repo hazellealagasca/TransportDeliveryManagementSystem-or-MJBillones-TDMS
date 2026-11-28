@@ -241,7 +241,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private static Control SectionTitle(string title, string subtitle)
         {
             var p = new Panel { Height = S(52), BackColor = AppTheme.Surface };
-            var t = new Label { Text = title, AutoSize = true, Location = new Point(S(0), S(0)), Font = new Font("Segoe UI Semibold", 11.5F), ForeColor = AppTheme.TextPrimary };
+            var t = new Label { Text = title, AutoSize = true, Location = new Point(S(0), S(0)), Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary };
             var st = new Label { Text = subtitle, AutoSize = false, Location = new Point(S(1), S(24)), Height = S(24), Font = new Font("Segoe UI", 8.75F), ForeColor = AppTheme.TextMuted, AutoEllipsis = true, Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top };
             p.Controls.Add(t);
             p.Controls.Add(st);

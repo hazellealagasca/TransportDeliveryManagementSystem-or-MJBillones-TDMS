@@ -28,7 +28,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             try { ThemeManager.StyleWindowChrome(dlg); } catch (Exception ex) { ErrLog.Swallowed(ex); }
             int D(int v) => (int)Math.Round(v * dlg.DeviceDpi / 96f);
             var root = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 1, Padding = new Padding(D(24), D(20), D(24), D(16)), BackColor = AppTheme.Surface };
-            root.Controls.Add(new Label { Text = heading, AutoSize = true, MaximumSize = new Size(D(460), 0), Font = new Font("Segoe UI Semibold", 12F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, 0, 0, D(8)) });
+            root.Controls.Add(new Label { Text = heading, AutoSize = true, MaximumSize = new Size(D(460), 0), Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, 0, 0, D(8)) });
             root.Controls.Add(new Label { Text = body, AutoSize = true, MaximumSize = new Size(D(460), 0), ForeColor = AppTheme.TextSecondary, Margin = new Padding(0, 0, 0, D(18)) });
             var row = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0), BackColor = AppTheme.Surface };
             for (int i = 0; i < buttons.Length; i++)

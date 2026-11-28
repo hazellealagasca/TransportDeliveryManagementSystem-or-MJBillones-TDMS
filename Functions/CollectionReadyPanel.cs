@@ -128,10 +128,13 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 var rows = VisibleRows();
                 grid.SuspendLayout();
                 grid.Columns.Clear(); grid.Rows.Clear();
-                AddCol("Statement of Account", 15); AddCol("Service invoices", 20); AddCol("Client", 22); AddCol("Invoiced", 9); AddCol("Due date", 10, false); AddCol("Amount due", 12, true); AddCol("Status", 12);
+                AddCol("Statement of Account", 15); AddCol("Service invoices", 20); AddCol("Client", 22); AddCol("Invoiced", 9); AddCol("Due date", 16, false); AddCol("Amount due", 12, true); AddCol("Status", 12); // Nov 28: due info is in Due date, Status is the stage pill
+                using (var bold = new Font(grid.Font, FontStyle.Bold)) grid.Columns[6].MinimumWidth = TextRenderer.MeasureText(DispatchStage.LabelCollection, bold).Width + (int)Math.Ceiling(24 * (DeviceDpi / 96.0));
+                grid.Columns[4].MinimumWidth = TextRenderer.MeasureText("12/28/2026 · 365 d overdue", grid.Font).Width + (int)Math.Ceiling(16 * (DeviceDpi / 96.0));
+                grid.Columns[6].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
                 foreach (var t in rows)
                 {
-                    int i = grid.Rows.Add(t.IsSoa ? t.SoaNumber : "(no statement)", string.Join(", ", t.Invoices.Select(x => x.Number)), t.Client, Fmt.Short(t.IssueDate), Fmt.Date(t.DueDate), $"₱{t.Net:N2}", Due(t.DueDate));
+                    int i = grid.Rows.Add(t.IsSoa ? t.SoaNumber : "(no statement)", string.Join(", ", t.Invoices.Select(x => x.Number)), t.Client, Fmt.Short(t.IssueDate), Fmt.Date(t.DueDate) + " · " + Due(t.DueDate), $"₱{t.Net:N2}", DispatchStage.LabelCollection);
                     grid.Rows[i].Tag = t;
                 }
                 grid.ResumeLayout();
@@ -169,12 +172,11 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
         private void Grid_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0 || grid.Columns[e.ColumnIndex].HeaderText != "Status") return;
+            if (e.RowIndex < 0 || e.ColumnIndex < 0 || grid.Columns[e.ColumnIndex].HeaderText != "Due date") return; // Nov 28: the Status pill is the shared stage pill; the due colour moved to Due date
             if (grid.Rows[e.RowIndex].Tag is not PayTarget t) return;
             int days = (int)(t.DueDate.Date - DateTime.Today).TotalDays;
             e.CellStyle.Font = new Font("Segoe UI Semibold", 9F);
             e.CellStyle.ForeColor = days < 0 ? AppTheme.DangerText : days <= 3 ? AppTheme.WarningText : AppTheme.TextMuted;
-            if (days < 0) e.Value = "● " + e.Value;
         }
     }
 }

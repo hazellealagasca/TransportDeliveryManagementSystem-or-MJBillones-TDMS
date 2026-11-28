@@ -81,7 +81,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
 
             var head = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0), BackColor = AppTheme.SurfaceAlt };
-            head.Controls.Add(L("Cancel " + Title(itemType ?? ""), new Font("Segoe UI Semibold", 13F), AppTheme.TextPrimary, 0, AppTheme.SurfaceAlt));
+            head.Controls.Add(L("Cancel " + Title(itemType ?? ""), UITheme.CardHeaderFont, AppTheme.TextPrimary, 0, AppTheme.SurfaceAlt));
             string who = string.Join("  ·  ", new[] { identifier, subject }.Where(x => !string.IsNullOrWhiteSpace(x)));
             if (who.Length > 0) head.Controls.Add(L(who, new Font("Segoe UI Semibold", 10F), AppTheme.TextSecondary, D(2), AppTheme.SurfaceAlt));
             string effect = isDispatch

@@ -57,7 +57,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         {
             // Compact page header: smaller title row, back button and title on one line.
             pnlFormHeaderBar.Height = Dpi(44);
-            lblFormHeader.Font = new Font("Segoe UI Semibold", 13F);
+            lblFormHeader.Font = UITheme.CardHeaderFont;
             btnCloseForm.Width = Dpi(176);
             btnCloseForm.Font = new Font("Segoe UI Semibold", 9F);
             // Sticky totals strip right under the header (outside the scrolling body).
@@ -123,9 +123,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>Form opened: reload what the checks need and show the guide.</summary>
         private void OnSoaFormOpened()
         {
-            if (soaPageHeaderHost != null) soaPageHeaderHost.Visible = false;
-            if (lblForCollectionTitle != null) lblForCollectionTitle.Visible = false; // Nov 28: the list title hides with the list
-            if (soaReadyBanner != null) soaReadyBanner.Visible = false;
+            ApplySoaPage(); // Nov 28: the form hides both pages
             soaSaving = false;
             btnSaveSoa.Enabled = true;
             if (!keep.Resuming) txtSoaAdjustReason.Text = isEditingExisting && selectedSoa != null ? MJdatabase.GetAdjustmentReason("StatementsOfAccount", selectedSoa.Id) : "";
@@ -136,9 +134,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void OnSoaFormClosed()
         {
             soaGuideTimer.Stop();
-            if (soaPageHeaderHost != null) soaPageHeaderHost.Visible = true;
-            if (lblForCollectionTitle != null) lblForCollectionTitle.Visible = true;
-            if (soaReadyBanner != null) { soaReadyBanner.Visible = true; RefreshSoaReadyBanner(); }
+            ApplySoaPage();
+            RefreshSoaReadyBanner();
             clientLookup?.HideList();
             addDispatchLookup?.HideList();
         }
@@ -441,11 +438,68 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         /// <summary>The list above the statements: every service invoice that is ready for a statement. Tick several (or Select all) of one client to make one statement.</summary>
         private void BuildSoaReadyBanner()
         {
-            soaReadyBanner = new StatementReadyPanel { Height = Dpi(190), Padding = new Padding(Dpi(16), Dpi(2), Dpi(16), Dpi(8)) };
+            soaReadyBanner = new StatementReadyPanel { Dock = DockStyle.Fill, Padding = new Padding(Dpi(16), Dpi(2), Dpi(16), Dpi(8)), Visible = false }; // Nov 28: fills the creation page
             soaReadyBanner.StatementRequested += (client, rows) => StartSoaFor(client, rows);
             Controls.Add(soaReadyBanner);
             Controls.SetChildIndex(soaReadyBanner, Controls.GetChildIndex(soaPageHeaderHost));
+            soaPageHeaderHost.Visible = false;
         }
+
+        // ------------------------------------------------------------------ Two pages in the tab (Nov 28)
+        private enum SoaPage { List, Create }
+        private SoaPage soaPage = SoaPage.List;
+        private Panel soaBackBar = null!;
+        private TableLayoutPanel soaCreatePage = null!;
+        private Button btnSoaBack = null!;
+        /// <summary>"← Back to statements" bar at the top left of the creation page.</summary>
+        private void BuildSoaBackBar()
+        {
+            btnSoaBack = new Button { Text = "←  Back to statements", Dock = DockStyle.Left, Width = Dpi(190), FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI Semibold", 9.5F), Cursor = Cursors.Hand };
+            btnSoaBack.Click += (s, e) => ShowSoaListPage();
+            soaBackBar = new Panel { Dock = DockStyle.Top, Height = Dpi(48), Padding = new Padding(Dpi(16), Dpi(8), 0, Dpi(4)), BackColor = Color.Transparent, Visible = false };
+            soaBackBar.Controls.Add(btnSoaBack);
+            // The creation page is one container of its own: the waiting panel (Fill) is added first (index 0, docked last),
+            // then the header, then the Back bar (highest index, docked first = topmost).
+            // A table (not docking) fixes the order: row 0 Back bar, row 1 header, row 2 waiting panel.
+            var page = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, BackColor = Color.Transparent, Visible = false, Margin = Padding.Empty, Padding = Padding.Empty };
+            page.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            page.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            soaBackBar.Dock = DockStyle.Fill; soaBackBar.Margin = Padding.Empty;
+            soaPageHeaderHost.Dock = DockStyle.Fill; soaPageHeaderHost.Margin = Padding.Empty;
+            soaReadyBanner.Dock = DockStyle.Fill; soaReadyBanner.Margin = Padding.Empty;
+            page.Controls.Add(soaBackBar, 0, 0);
+            page.Controls.Add(soaPageHeaderHost, 0, 1);
+            page.Controls.Add(soaReadyBanner, 0, 2);
+            soaCreatePage = page;
+            Controls.Add(soaCreatePage);
+        }
+        /// <summary>The one place that decides what is visible: list page, creation page, or the statement form (which hides both).</summary>
+        private void ApplySoaPage()
+        {
+            bool formOpen = pnlForm != null && pnlForm.Visible;
+            bool list = !formOpen && soaPage == SoaPage.List, create = !formOpen && soaPage == SoaPage.Create;
+            SuspendLayout();
+            if (soaCreatePage != null) soaCreatePage.Visible = create;
+            if (soaBackBar != null) soaBackBar.Visible = create;
+            if (soaPageHeaderHost != null) soaPageHeaderHost.Visible = create;
+            if (soaReadyBanner != null) soaReadyBanner.Visible = create;
+            if (lblForCollectionTitle != null) lblForCollectionTitle.Visible = list;
+            if (pnlTopBar != null) pnlTopBar.Visible = list;
+            if (pnlListActionsBar != null) pnlListActionsBar.Visible = list;
+            if (gridSoa != null) gridSoa.Visible = list;
+            if (tblMasterContent != null) tblMasterContent.Visible = !create; // holds the list grid and the form
+            ResumeLayout(true);
+        }
+        private void ShowSoaCreatePage()
+        {
+            if (!Permissions.Can("Payments", "StatementOfAccount")) { Permissions.TellDenied(this, "Payments", "StatementOfAccount"); return; }
+            soaPage = SoaPage.Create;
+            RefreshSoaReadyBanner();
+            ApplySoaPage();
+        }
+        private void ShowSoaListPage() { soaPage = SoaPage.List; ApplySoaPage(); }
         private void RefreshSoaReadyBanner() => soaReadyBanner?.RefreshData();
 
         /// <summary>"Make statement" from the ready list: the chosen invoices of one client, with the period of their trips.</summary>

@@ -28,7 +28,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(D(20)), BackColor = AppTheme.Surface };
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             Label L(string t, Font f, Color c, int top = 0) => new Label { Text = t, AutoSize = true, MaximumSize = new Size(D(520), 0), Font = f, ForeColor = c, UseMnemonic = false, Margin = new Padding(0, D(top), 0, D(4)) };
-            root.Controls.Add(L($"Cancel Service Invoice {invoiceNumber}?", new Font("Segoe UI Semibold", 12F), AppTheme.TextPrimary));
+            root.Controls.Add(L($"Cancel Service Invoice {invoiceNumber}?", UITheme.CardHeaderFont, AppTheme.TextPrimary));
             root.Controls.Add(L("Why is it being cancelled? Choose one:", new Font("Segoe UI", 9.75F), AppTheme.TextSecondary, 4));
             rbTyping = new RadioButton { AutoSize = true, MaximumSize = new Size(D(520), 0), Margin = new Padding(0, D(6), 0, 0), Text = "I typed something wrong. The paper invoice is fine and I will enter it again with the same number." };
             root.Controls.Add(rbTyping);

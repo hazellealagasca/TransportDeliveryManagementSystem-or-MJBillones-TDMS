@@ -11,7 +11,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
     public static class UITheme
     {
         public static readonly Font TitleFont          = new Font("Segoe UI Semibold", 16F, FontStyle.Bold);
-        public static readonly Font CardHeaderFont     = new Font("Segoe UI Semibold", 12.5F); // Nov 26: every page / list title is this one size (was 11.5 bold)
+        public static readonly Font CardHeaderFont     = new Font("Segoe UI", 13.5F, FontStyle.Bold); // Nov 28: titles bold, 1 pt bigger (was 12.5 semibold)
         public static readonly Font FieldLabelFont     = new Font("Segoe UI Semibold", 9F, FontStyle.Regular);
         public static readonly Font InputFont          = new Font("Segoe UI", 9.75F, FontStyle.Regular);
         public static readonly Font ButtonPrimaryFont   = new Font("Segoe UI Semibold", 9.5F, FontStyle.Regular);
@@ -640,7 +640,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 lbl.AutoEllipsis = true;
                 lbl.Dock = DockStyle.Fill;
                 lbl.TextAlign = ContentAlignment.MiddleLeft;
-                lbl.Font = new Font("Segoe UI Semibold", 11F, FontStyle.Regular);
+                lbl.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
                 lbl.ForeColor = AppTheme.TextPrimary;
                 return;
             }

@@ -28,7 +28,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Padding = new Padding(1);
             Visible = false;
             var header = new Panel { Dock = DockStyle.Top, Height = D(56), BackColor = AppTheme.Surface, Padding = new Padding(D(16), D(12), D(10), D(6)) };
-            var title = new Label { Text = "Notifications", AutoSize = true, Font = new Font("Segoe UI Semibold", 12.5F), ForeColor = AppTheme.TextPrimary, Location = new Point(D(16), D(14)) };
+            var title = new Label { Text = "Notifications", AutoSize = true, Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, Location = new Point(D(16), D(14)) };
             lblCount = new Label { AutoSize = true, Font = new Font("Segoe UI Semibold", 8.5F), ForeColor = AppTheme.AccentText, BackColor = AppTheme.AccentSoft, Padding = new Padding(D(6), D(2), D(6), D(2)), Location = new Point(D(150), D(18)) };
             var actions = new FlowLayoutPanel { Dock = DockStyle.Right, AutoSize = true, WrapContents = false, BackColor = AppTheme.Surface };
             Button Link(string text, Action a)

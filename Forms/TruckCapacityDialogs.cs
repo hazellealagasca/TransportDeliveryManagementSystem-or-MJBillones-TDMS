@@ -97,7 +97,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var header = new Panel { Dock = DockStyle.Top, Height = D(64), BackColor = AppTheme.Surface, Padding = new Padding(D(20), D(10), D(20), D(6)) };
             header.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(22), Text = "Crates each category can carry. A truck's capacity is locked to its category and crate type. Combi = cold part + dry part; the Dry capacity is the truck's hard maximum.", Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, AutoEllipsis = true });
-            header.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(28), Text = "Truck categories & capacities", Font = new Font("Segoe UI Semibold", 13F), ForeColor = AppTheme.TextPrimary });
+            header.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(28), Text = "Truck categories & capacities", Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary });
 
 
 
@@ -137,7 +137,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             editor.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             for (int i = 0; i < 8; i++) editor.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             editor.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            lblEditTitle = new Label { Text = "New category", AutoSize = true, Font = new Font("Segoe UI Semibold", 11F), ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, 0, 0, D(8)) };
+            lblEditTitle = new Label { Text = "New category", AutoSize = true, Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, 0, 0, D(8)) };
             editor.Controls.Add(lblEditTitle, 0, 0); editor.SetColumnSpan(lblEditTitle, 2);
             Label Cap(string t) => new Label { Text = t, AutoSize = true, Font = new Font("Segoe UI Semibold", 9F), ForeColor = AppTheme.TextSecondary, Margin = new Padding(0, D(6), 0, D(2)) };
             NumericUpDown Num() { var n = new NumericUpDown { Dock = DockStyle.Fill, Maximum = 5000, Minimum = 0, Font = new Font("Segoe UI", 10F), Margin = new Padding(0, 0, D(8), 0) }; n.ValueChanged += (s, e) => ShowRules(); return n; }

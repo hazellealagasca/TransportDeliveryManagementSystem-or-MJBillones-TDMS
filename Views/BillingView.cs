@@ -159,6 +159,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             UIThemeHelper.ApplyTheme(this);
                     InitFullPageForm();
             BuildForCollectionHeading();
+            BuildBillCreatePage();
+            ApplyBillPage();
         }
 
         private Panel? pnlForCollection;
@@ -187,8 +189,63 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (lblForCollectionCount != null) lblForCollectionCount.Text = $"·  {rows:N0} invoice{(rows == 1 ? "" : "s")}";
         }
 
+        // ------------------------------------------------------------------ Two pages in the tab (Nov 28)
+        private enum BillPage { List, Create }
+        private BillPage billPage = BillPage.List;
+        private TableLayoutPanel billCreatePage = null!;
+        private Panel billBackBar = null!, billPageHeaderHost = null!;
+        private Button btnBillBack = null!;
+        /// <summary>Creation page: row 0 "Back to service invoices", row 1 title + description, row 2 the statements waiting for their invoice.</summary>
+        private void BuildBillCreatePage()
+        {
+            btnBillBack = new Button { Text = "←  Back to service invoices", Dock = DockStyle.Left, Width = Dpi(230), FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI Semibold", 9.5F), Cursor = Cursors.Hand };
+            UIThemeHelper.SetButtonRole(btnBillBack, "secondary");
+            btnBillBack.ForeColor = AppTheme.TextPrimary;
+            btnBillBack.Click += (s, e) => ShowBillListPage();
+            billBackBar = new Panel { Dock = DockStyle.Fill, Margin = Padding.Empty, Height = Dpi(48), Padding = new Padding(0, Dpi(8), 0, Dpi(4)), BackColor = Color.Transparent };
+            billBackBar.Controls.Add(btnBillBack);
+            var header = PageKit.Header("Creation of Service Invoice", "A service invoice bills one Statement of Account. Pick the statement that is ready, then issue its invoice.");
+            header.MakeCompact();
+            billPageHeaderHost = new Panel { Dock = DockStyle.Fill, Margin = Padding.Empty, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(0, Dpi(8), 0, Dpi(4)), BackColor = Color.Transparent };
+            billPageHeaderHost.Controls.Add(header);
+            var page = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, BackColor = Color.Transparent, Visible = false, Margin = Padding.Empty, Padding = Padding.Empty };
+            page.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            page.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            billWaiting.Dock = DockStyle.Fill; billWaiting.Margin = Padding.Empty; billWaiting.Visible = false;
+            page.Controls.Add(billBackBar, 0, 0);
+            page.Controls.Add(billPageHeaderHost, 0, 1);
+            page.Controls.Add(billWaiting, 0, 2);
+            billCreatePage = page;
+            pnlGridCard.Controls.Add(billCreatePage);
+        }
+        /// <summary>The one place that decides what is visible: list page, creation page, or the invoice form (which hides both).</summary>
+        private void ApplyBillPage()
+        {
+            if (billCreatePage == null) return;
+            bool formOpen = pnlForm != null && pnlForm.Visible;
+            bool list = !formOpen && billPage == BillPage.List, create = !formOpen && billPage == BillPage.Create;
+            pnlGridCard.SuspendLayout();
+            billCreatePage.Visible = create;
+            billWaiting.Visible = create;
+            pnlGridHeaderBar.Visible = list; pnlSummary.Visible = list; gridInvoices.Visible = list;
+            if (pnlForCollection != null) pnlForCollection.Visible = false; // Nov 28: the page title is "Service Invoice (N)"; no second heading
+            if (btnToggleForm != null) btnToggleForm.Visible = list;
+            pnlGridCard.ResumeLayout(true);
+        }
+        private void ShowBillCreatePage()
+        {
+            if (!Permissions.Can("Payments", "Billing")) { Permissions.TellDenied(this, "Payments", "Billing"); return; }
+            billPage = BillPage.Create;
+            RefreshBillReady();
+            ApplyBillPage();
+        }
+        private void ShowBillListPage() { billPage = BillPage.List; ApplyBillPage(); }
+
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
+            if (keyData == Keys.Escape && !pnlForm.Visible && billPage == BillPage.Create) { ShowBillListPage(); return true; } // Nov 28: Esc on the creation page = Back
             if (keyData == Keys.Escape && pnlForm.Visible && EscapeGuard.AllowClose(this))
             {
                 SetFormVisibility(false);
@@ -211,7 +268,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 4, 8, 4)
             };
             btnToggleForm.FlatAppearance.BorderSize = 0;
-            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) { if (FormGuard.ConfirmDiscard(this)) SetFormVisibility(false); } else OpenNewRecordForm(); };
+            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) { if (FormGuard.ConfirmDiscard(this)) SetFormVisibility(false); } else if (keep.Kept) OpenNewRecordForm(); else ShowBillCreatePage(); }; // Nov 28: New Service Invoice opens the creation page (a kept draft resumes straight away)
             pnlGridActionsFlow.Controls.Add(btnToggleForm);
             pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
 
@@ -256,7 +313,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             BuildBillWizard(); // the invoice is a 2-step form (Invoice & statement -> Amounts & save), like New Dispatch Order and the Collection Receipt
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = "＋ New service invoice";
+                btnToggleForm.Text = "＋ New Service Invoice";
                 UIThemeHelper.SetButtonRole(btnToggleForm, "primary");
             }
             gridInvoices.CellDoubleClick += (s, e) =>
@@ -292,6 +349,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         }
         private void SetFormVisibility(bool visible)
         {
+            bool wasOpen = pnlForm.Visible;
             // Nov 6: a form is blank whenever it is opened or left.
             if (!visible && pnlForm.Visible && IsHandleCreated && !keep.Keeping) ClearFields();
             if (visible && !keep.Resuming) wizard?.GoToStep(1); // a form opens on its first step (a kept draft comes back on the step it was left on)
@@ -300,7 +358,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (visible) keep.Restored(btnToggleForm);
             if (formKit != null) formKit.Show(visible);
             else pnlForm.Visible = visible;
-            if (btnToggleForm != null) btnToggleForm.Visible = false; // Nov 26: no "+ New service invoice" button: a completed Statement of Account comes here by itself (the waiting list above, Invoice ▸)
+            if (!visible && wasOpen) billPage = BillPage.List; // Nov 28: a closed form (saved, discarded or Back) lands on the list page
+            ApplyBillPage();
             OnBillFormShown(visible);
             MainForm.Instance?.NotifyDrawerToggled(visible);
         }
@@ -930,8 +989,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             int openCount = allInvoices.Count(IsOpenWork); // Nov 24: only open work is listed (paid ones: Finance History → Completed; cancelled: → Voided)
             UpdateForCollectionCount(filtered.Count);
             lblGridHeader.Text = string.IsNullOrEmpty(q) && filtered.Count == openCount
-                ? $"Creation of Service Invoice ({openCount})" // Nov 26: was "Invoices (N)"
-                : $"Creation of Service Invoice ({filtered.Count} of {openCount})";
+                ? $"Service Invoice ({openCount})" // Nov 28: the list page title (the creation page has its own)
+                : $"Service Invoice ({filtered.Count} of {openCount})";
             if (filtered.Count > 0)
             {
                 gridInvoices.ClearSelection();

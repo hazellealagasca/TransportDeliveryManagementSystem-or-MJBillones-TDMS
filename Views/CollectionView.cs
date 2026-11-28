@@ -28,7 +28,6 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             Pal.RemapTree(this);
             gridCollections.BringToFront();
             SetupGridColumns();
-            BuildCompletedTitle(); // Nov 26
             InitListChips();
             SetupContextMenu();
             gridCollections.ColumnHeaderMouseClick += (s, e) => {
@@ -66,6 +65,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 SetFormVisibility(false);
                 return true;
             }
+            if (keyData == Keys.Escape && !pnlForm.Visible && collPage == CollPage.Create) { ShowCollListPage(); return true; } // Nov 28: Esc on the creation page = Back
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
@@ -83,7 +83,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Margin = new Padding(0, 4, 8, 4)
             };
             btnToggleForm.FlatAppearance.BorderSize = 0;
-            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) { if (FormGuard.ConfirmDiscard(this)) SetFormVisibility(false); } else OpenNewRecordForm(); };
+            btnToggleForm.Click += (s, e) => { if (pnlForm.Visible) { if (FormGuard.ConfirmDiscard(this)) SetFormVisibility(false); } else if (keep.Kept) OpenNewRecordForm(); else ShowCollCreatePage(); }; // Nov 28: opens the creation page (a kept draft resumes straight away)
             pnlGridActionsFlow.Controls.Add(btnToggleForm);
             pnlGridActionsFlow.Controls.SetChildIndex(btnToggleForm, 0);
 
@@ -122,7 +122,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             btnSave.Text = "✔ Complete / Issue Receipt"; // Nov 10: enabled only after the overall amount is ticked as checked
             if (btnToggleForm != null)
             {
-                btnToggleForm.Text = "＋ New receipt";
+                btnToggleForm.Text = "＋ New Collection Receipt"; btnToggleForm.Size = new Size(Dpi(220), Dpi(32));
                 UIThemeHelper.SetButtonRole(btnToggleForm, "primary");
             }
             gridCollections.CellDoubleClick += (s, e) =>
@@ -167,6 +167,9 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
         private void SetFormVisibility(bool visible)
         {
             // Nov 6: a form is blank whenever it is opened or left.
+            if (!visible && collFormOpen) collPage = CollPage.List; // Nov 28: a closed form (saved, discarded or Back) lands on the list page
+            collFormOpen = visible;
+            if (visible && tblMasterContent != null) tblMasterContent.Visible = true; // the creation page hides the table that holds the form
             if (!visible && pnlForm.Visible && IsHandleCreated && !keep.Keeping) ClearFields();
             if (visible && !keep.Resuming) wizard?.GoToStep(1); // a form opens on its first step (a kept draft comes back on the step it was left on)
             if (visible) formDirty ??= new FormDirtyTracker(pnlForm);
@@ -174,9 +177,8 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             if (visible) keep.Restored(btnToggleForm);
             if (formKit != null) formKit.Show(visible);
             else pnlForm.Visible = visible;
-            // Nov 17: no "+ New receipt" button: a receipt is made from its statement (Proceed to Collection Receipt), which opens this form.
-            if (btnToggleForm != null) btnToggleForm.Visible = false;
             OnCollFormShown(visible);
+            ApplyCollPage();
             MainForm.Instance?.NotifyDrawerToggled(visible);
         }
 
@@ -368,31 +370,22 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             gridCollections.DataSource = null;
             gridCollections.DataSource = filtered;
             UpdateCollectionSummary(filtered.ToList());
-            // Nov 26: the page title counts what is waiting for a receipt; the completed list has its own title right above it
-            UpdateCollTitles();
-            if (lblCompletedTitle != null) lblCompletedTitle.Text = filtered.Count == listable.Count
+            completedTitleText = filtered.Count == listable.Count
                 ? $"Completed Collection receipts ({listable.Count})"
                 : $"Completed Collection receipts ({filtered.Count} of {listable.Count})";
+            UpdateCollTitles();
             ShowHeaderSortGlyph();
             // Nov 25: nothing is selected until a receipt is clicked; selecting never touches the entry form (selectedCollection stays null)
             gridCollections.ClearSelection();
         }
 
-        private Label? lblCompletedTitle;
+        private string completedTitleText = "Completed Collection receipts";
         private int collWaitingCount;
-        /// <summary>Nov 26: page title = the statements / invoices waiting for their collection receipt.</summary>
+        /// <summary>Nov 28: list page title = the completed receipts; the creation page title counts what waits for a receipt.</summary>
         private void UpdateCollTitles()
         {
-            lblGridHeader.Text = $"For Collection Receipt ({collWaitingCount:N0})";
-            // Nov 26: titles share UITheme.CardHeaderFont (one size everywhere)
-        }
-        /// <summary>Nov 26: "Completed Collection receipts (N)" directly above the completed receipts list.</summary>
-        private void BuildCompletedTitle()
-        {
-            lblCompletedTitle = new Label { Dock = DockStyle.Top, /* no Name: the theme restyles named labels, this one keeps the shared title font */ Height = Dpi(44), Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, BackColor = Color.Transparent, TextAlign = ContentAlignment.BottomLeft, Padding = new Padding(Dpi(8), 0, 0, Dpi(4)), UseMnemonic = false, Text = "Completed Collection receipts" };
-            gridCollections.BringToFront();
-            pnlGridCard.Controls.Add(lblCompletedTitle);
-            pnlGridCard.Controls.SetChildIndex(lblCompletedTitle, 1); // just above the list (index 0 = the list, Fill)
+            lblGridHeader.Text = completedTitleText;
+            if (lblCollCreateTitle != null) lblCollCreateTitle.Text = $"For Collection Receipt ({collWaitingCount:N0})";
         }
 
         private void TxtGridSearch_TextChanged(object? sender, EventArgs e)

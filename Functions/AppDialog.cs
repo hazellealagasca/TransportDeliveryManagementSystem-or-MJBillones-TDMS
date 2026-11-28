@@ -49,7 +49,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             };
             var text = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0), BackColor = AppTheme.Surface };
             Label L(string t, Font f, Color c, int top) => new Label { Text = t, Font = f, ForeColor = c, AutoSize = true, MaximumSize = new Size(textW, 0), Margin = new Padding(0, top, 0, 0), UseMnemonic = false, BackColor = AppTheme.Surface };
-            text.Controls.Add(L(heading, new Font("Segoe UI Semibold", 12.5F), AppTheme.TextPrimary, 0));
+            text.Controls.Add(L(heading, UITheme.CardHeaderFont, AppTheme.TextPrimary, 0));
             if (!string.IsNullOrWhiteSpace(body)) text.Controls.Add(L(body, new Font("Segoe UI", 9.75F), AppTheme.TextSecondary, D(6)));
             if (!string.IsNullOrWhiteSpace(path))
             {

@@ -99,10 +99,12 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
             var rows = invoiceRows.Where(r => q.Length == 0 || Hit(q, r.SoaNumber, r.ClientName, r.Period, r.IssueDate.ToString("MMM d yyyy") + " " + Fmt.Date(r.IssueDate))).ToList();
             decimal expected = rows.Sum(r => r.Total);
             lblHeader.Text = $"{invoiceRows.Count} Statement{(invoiceRows.Count == 1 ? "" : "s")} of Account waiting for their service invoice" + (expected > 0 ? $" · ₱{expected:N2} total due" : "");
-            AddCol("SOA #", 14); AddCol("Client", 24); AddCol("Statement date", 12); AddCol("Period covered", 22); AddCol("Trips to invoice", 10); AddCol("Total due", 12); AddCol("Waiting", 10);
+            AddCol("SOA #", 14); AddCol("Client", 24); AddCol("Statement date", 12); AddCol("Period covered", 22); AddCol("Trips to invoice", 10); AddCol("Total due", 12); AddCol("Waiting", 10); AddCol("Status", 16);
+            using (var bold = new Font(grid.Font, FontStyle.Bold)) grid.Columns[7].MinimumWidth = TextRenderer.MeasureText(DispatchStage.LabelInvoice, bold).Width + (int)Math.Ceiling(24 * (DeviceDpi / 96.0)); // Nov 28: wide enough for the whole pill text
+            grid.Columns[7].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             foreach (var r in rows)
             {
-                int i = grid.Rows.Add(r.SoaNumber, r.ClientName, Fmt.Short(r.IssueDate), r.Period, r.TripsToInvoice, r.Total > 0 ? $"₱{r.Total:N2}" : "", r.DaysWaiting == 0 ? "today" : r.DaysWaiting == 1 ? "1 day" : $"{r.DaysWaiting} days");
+                int i = grid.Rows.Add(r.SoaNumber, r.ClientName, Fmt.Short(r.IssueDate), r.Period, r.TripsToInvoice, r.Total > 0 ? $"₱{r.Total:N2}" : "", r.DaysWaiting == 0 ? "today" : r.DaysWaiting == 1 ? "1 day" : $"{r.DaysWaiting} days", DispatchStage.LabelInvoice);
                 grid.Rows[i].Tag = r;
             }
             lblEmpty.Text = invoiceRows.Count == 0 ? "All caught up — no Statement of Account is waiting for its service invoice." : "No statement matches your search.";

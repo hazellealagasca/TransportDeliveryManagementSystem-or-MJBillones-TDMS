@@ -801,7 +801,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
                 Font = new Font("Segoe UI", 9.5F)
             };
             try { ThemeManager.StyleWindowChrome(f); } catch (System.Exception swx2) { ErrLog.Swallowed(swx2); }
-            var lblTop = new Label { Text = $"Change {rows.Count} selected row{(rows.Count == 1 ? "" : "s")}", Location = new Point(Dpi(18), Dpi(14)), Size = new Size(Dpi(400), Dpi(26)), Font = new Font("Segoe UI Semibold", 11.5F), ForeColor = AppTheme.TextPrimary };
+            var lblTop = new Label { Text = $"Change {rows.Count} selected row{(rows.Count == 1 ? "" : "s")}", Location = new Point(Dpi(18), Dpi(14)), Size = new Size(Dpi(400), Dpi(26)), Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary };
             var lblCol = new Label { Text = "Column", Location = new Point(Dpi(18), Dpi(50)), Size = new Size(Dpi(400), Dpi(20)), ForeColor = AppTheme.TextSecondary };
             var cbCol = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Location = new Point(Dpi(18), Dpi(72)), Size = new Size(Dpi(404), Dpi(28)), Font = new Font("Segoe UI", 10F) };
             foreach (var c in editable) cbCol.Items.Add(c.HeaderText);

@@ -86,7 +86,7 @@ namespace Transport_Delivery_Management_System_for_M.J._Billones_Transport_Servi
 
             var header = new Panel { Dock = DockStyle.Top, Height = D(66), BackColor = AppTheme.Surface, Padding = new Padding(D(20), D(10), D(20), D(8)) };
             header.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(22), Text = $"Pick the stores the truck delivers to, in order. Only {client}'s stores in Master Data can be picked.", Font = new Font("Segoe UI", 9F), ForeColor = AppTheme.TextMuted, AutoEllipsis = true, UseMnemonic = false });
-            header.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(28), Text = $"Stores on {routeLabel}", Font = new Font("Segoe UI Semibold", 13F), ForeColor = AppTheme.TextPrimary, AutoEllipsis = true, UseMnemonic = false });
+            header.Controls.Add(new Label { Dock = DockStyle.Top, Height = D(28), Text = $"Stores on {routeLabel}", Font = UITheme.CardHeaderFont, ForeColor = AppTheme.TextPrimary, AutoEllipsis = true, UseMnemonic = false });
 
 
 
